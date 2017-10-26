@@ -1,0 +1,90 @@
+# project: cj74c95q70fab0177fwxnf7k3
+# version: 56
+
+type User implements Node {
+  id: ID! @isUnique
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  traces: [Trace!]! @relation(name: "UserTraces")
+  todos: [Todo!]! @relation(name: "UserTodos")
+  categories: [Category!]! @relation(name: "UserCategories")
+}
+
+type File implements Node {
+  contentType: String!
+  createdAt: DateTime!
+  id: ID! @isUnique
+  name: String!
+  secret: String! @isUnique
+  size: Int!
+  updatedAt: DateTime!
+  url: String! @isUnique
+}
+
+type Event implements Node {
+  createdAt: DateTime!
+  id: ID! @isUnique
+  updatedAt: DateTime!
+  timestamp: DateTime!
+  phase: String!
+  message: String
+  activity: Activity @relation(name: "ActivityEvents")
+  todo: Todo @relation(name: "TodoEvent")
+  trace: Trace @relation(name: "TraceEvents")
+  garbage: Boolean
+}
+
+type Activity implements Node {
+  createdAt: DateTime!
+  id: ID! @isUnique
+  updatedAt: DateTime!
+  description: String
+  name: String!
+  categories: [Category!]! @relation(name: "ActivitiesCategories")
+  events: [Event!]! @relation(name: "ActivityEvents")
+  thread: Thread! @relation(name: "ThreadActivities")
+  garbageTrace: String
+  garbageEvent: String
+}
+
+type Todo implements Node {
+  createdAt: DateTime!
+  id: ID! @isUnique
+  updatedAt: DateTime!
+  user: User! @relation(name: "UserTodos")
+  name: String!
+  description: String
+  event: Event! @relation(name: "TodoEvent")
+  categories: [Category!]! @relation(name: "TodosCategories")
+  garbage: String
+}
+
+type Thread implements Node {
+  createdAt: DateTime!
+  id: ID! @isUnique
+  updatedAt: DateTime!
+  name: String
+  activities: [Activity!]! @relation(name: "ThreadActivities")
+  trace: Trace @relation(name: "TraceThreads")
+}
+
+type Trace implements Node {
+  name: String
+  threads: [Thread!]! @relation(name: "TraceThreads")
+  createdAt: DateTime!
+  id: ID! @isUnique
+  updatedAt: DateTime!
+  user: User @relation(name: "UserTraces")
+  events: [Event!]! @relation(name: "TraceEvents")
+}
+
+type Category implements Node {
+  createdAt: DateTime!
+  id: ID! @isUnique
+  updatedAt: DateTime!
+  name: String
+  activities: [Activity!]! @relation(name: "ActivitiesCategories")
+  todos: [Todo!]! @relation(name: "TodosCategories")
+  color: String!
+  user: User! @relation(name: "UserCategories")
+}

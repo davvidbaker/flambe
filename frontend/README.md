@@ -1,0 +1,78 @@
+# flame-chart🔥🔥🔥 web component
+
+```
+npm start
+```
+
+___
+
+# Flame Graph - for keeping track of where I am and making sure I come back up for air(✍️)
+- easy color changing UI
+- easy editing, drag and drop?
+	- add child
+- off-topic-initializers(?) (like the flow events in Chrome DevTools)
+- details (optional)
+- multiple threads and flow events/initializers between threads
+
+___
+
+## Left out for now
+- async (see line 217 of TracingModel.js)
+
+Trace Event possible phase values from ChromeDevTools
+```
+ SDK.TracingModel.Phase = {
+   Begin: 'B',
+   End: 'E',
+   Complete: 'X',
+   Instant: 'I',
+   AsyncBegin: 'S',
+   AsyncStepInto: 'T',
+   AsyncStepPast: 'p',
+   AsyncEnd: 'F',
+   NestableAsyncBegin: 'b',
+   NestableAsyncEnd: 'e',
+   NestableAsyncInstant: 'n',
+   FlowBegin: 's',
+   FlowStep: 't',
+   FlowEnd: 'f',
+   Metadata: 'M',
+   Counter: 'C',
+   Sample: 'P',
+   CreateObject: 'N',
+   SnapshotObject: 'O',
+   DeleteObject: 'D'
+ };
+ ```
+
+ ___
+ 
+## Why not just fork Chrome DevTools?
+
+ Several reasons:
+ - thought I could learn more starting more from scratch
+ - DevTools Frontend is a complicated beast, with much more functionality than I need. It's also *a lot* to take in.
+ - I like using Redux to manage state. **DevTools is super OG fresh**. It has like no dependencies.
+
+___
+
+## Events
+- `B`: Begin
+  - When work begins on an activity.
+  - 1 activity per event
+- `E`: End
+  - When work ends on an activity.
+  - 1 activity per event
+- `S`: Spark
+  - When an activity is thought up (sparked).
+  - 1 activity per event (I think this makes most sense).
+
+___
+
+## Dependent shoutouts
+*add links later*
+- React DnD
+- React Color(?)
+- Styled Components
+- Redux
+- Apollo (maybe, might abandon)
