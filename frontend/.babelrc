@@ -1,0 +1,28 @@
+{
+  "plugins": [
+    "transform-optional-chaining", // can't use until babel 7
+    "transform-class-properties",
+    "transform-react-jsx",
+    "transform-object-rest-spread", 
+    /**
+    Decorators are not officially supported yet in 6.x pending a proposal update.However, if you need to use them you can install the legacy decorators transform.
+    */
+    "transform-decorators-legacy",
+    "react-hot-loader/babel", // currently can't use with babel 7 I don't think
+
+
+    
+  ],
+
+  "presets": [
+    ["es2015", {"modules": false}],
+    "stage-2",
+    "react",
+    "flow"
+  ]
+  // "env": {
+  //   "test": {
+  //     "presets": [["es2015"], "react"]
+  //   }
+  // }
+}
