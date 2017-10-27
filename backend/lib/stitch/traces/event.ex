@@ -6,7 +6,7 @@ defmodule Stitch.Traces.Event do
   schema "events" do
     field :message, :string
     field :phase, :string
-    field :timestamp, :naive_datetime
+    field :timestamp, :utc_datetime
     field :timestamp_integer, :integer, virtual: true
     belongs_to :trace, Trace
     belongs_to :activity, Activity

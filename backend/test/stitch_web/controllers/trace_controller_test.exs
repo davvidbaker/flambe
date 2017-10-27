@@ -1,15 +1,16 @@
 defmodule StitchWeb.TraceControllerTest do
   use StitchWeb.ConnCase
 
-  alias Stitch.Traces
+  alias Stitch.{Traces, TestHelper}
   alias Stitch.Traces.Trace
 
-  @create_attrs %{name: "some name"}
-  @update_attrs %{name: "some updated name"}
+  @create_attrs %{name: "some trace name"}
+  @update_attrs %{name: "some updated trace name"}
   @invalid_attrs %{name: nil}
 
   def fixture(:trace) do
-    {:ok, trace} = Traces.create_trace(@create_attrs)
+    user = TestHelper.create_dummy_user()
+    {:ok, trace} = Traces.create_trace(user, @create_attrs)
     trace
   end
 
@@ -26,17 +27,35 @@ defmodule StitchWeb.TraceControllerTest do
 
   describe "create trace" do
     test "renders trace when data is valid", %{conn: conn} do
-      conn = post conn, trace_path(conn, :create), trace: @create_attrs
+     %Stitch.Accounts.User{id: user_id} = TestHelper.create_dummy_user()
+      conn = post conn, trace_path(conn, :create), %{user_id: user_id, trace: @create_attrs}
+    
       assert %{"id" => id} = json_response(conn, 201)["data"]
 
       conn = get conn, trace_path(conn, :show, id)
       assert json_response(conn, 200)["data"] == %{
         "id" => id,
-        "name" => "some name"}
+        "name" => "some trace name"}
+    end
+
+    test "creates a main thread when data is valid", %{conn: conn} do
+      %Stitch.Accounts.User{id: user_id} = TestHelper.create_dummy_user()
+       conn = post conn, trace_path(conn, :create), %{user_id: user_id, trace: @create_attrs}
+
+      #  ⚠️ this will likely change if I return more with the trace
+      %{"id" => id} = json_response(conn, 201)["data"]
+
+      [main_thread | _tail] = 
+        Stitch.Traces.get_trace!(id) 
+        |> Stitch.Repo.preload(:threads) 
+        |> Stitch.Traces.list_trace_threads
+        
+      assert main_thread.name == "Main"
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
-      conn = post conn, trace_path(conn, :create), trace: @invalid_attrs
+      %Stitch.Accounts.User{id: user_id} = TestHelper.create_dummy_user()
+      conn = post conn, trace_path(conn, :create), %{user_id: user_id, trace: @invalid_attrs}
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
@@ -51,7 +70,7 @@ defmodule StitchWeb.TraceControllerTest do
       conn = get conn, trace_path(conn, :show, id)
       assert json_response(conn, 200)["data"] == %{
         "id" => id,
-        "name" => "some updated name"}
+        "name" => "some updated trace name"}
     end
 
     test "renders errors when data is invalid", %{conn: conn, trace: trace} do
