@@ -24,4 +24,6 @@ Ready to run in production? Please [check our deployment guides](http://www.phoe
 
 I'm probably doing some things kinda wrong.
 
-* 
+* ⚠️ TESTING is probably done rather haphazardly. I couldn't find a good resource on how to organize things for Phoenix 1.3.
+
+* 🤔 Should I be passing around ids or structs/maps.

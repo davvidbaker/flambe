@@ -1,12 +1,13 @@
 defmodule Stitch.Traces.Trace do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Stitch.Traces.{Trace, Event}
+  alias Stitch.Traces.{Trace, Event, Thread}
 
   schema "traces" do
     field :name, :string
     
     has_many :events, Event
+    has_many :threads, Thread
     belongs_to :user, Stitch.Accounts.User
 
     timestamps()
