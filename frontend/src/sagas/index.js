@@ -2,8 +2,9 @@
  * I'm kinda spying on apollo. Is that bad practice? Probably...
  */
 
-import { call, put, takeEvery, takeLatest } from 'redux-saga/effects';
+import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
 import { processTimelineTrace, updateActivity } from 'actions';
+import { getUser } from 'reducers/user';
 
 function* respondToQuery(action) {
   switch (action.operationName) {
@@ -64,7 +65,7 @@ function* respondToMutation(action) {
 }
 
 async function requestResource(resource) {
-  const response = await fetch(`${SERVER}/api/${resource.type}`);
+  const response = await fetch(`${SERVER}/api/${resource.type}/${resource.id}`);
   return response.json();
 }
 
@@ -74,16 +75,12 @@ async function requestResource(resource) {
 function* fetchResource({ resource }) {
   // action should be {resourceType, resourceIdentifier}
 
-  console.log('before fetch');
   try {
-    const json = yield call(requestResource, resource)
-    console.log('json success', json)
+    const json = yield call(requestResource, resource);
+    console.log('json success', json);
     yield put({ type: `FETCH_${resource.type.toUpperCase()}_SUCCEEDED`, json });
   } catch (e) {
-
-    // const response = await fetch(`${SERVER}/api/${resource.type}`);
-    // const json = await response.json();
-    console.log('after', `FETCH_${resource.type.toUpperCase()}_SUCCEEDED`);
+    console.log('after', `FETCH_${resource.type.toUpperCase()}_FAILED`, e);
   }
 
   // console.log('got here')

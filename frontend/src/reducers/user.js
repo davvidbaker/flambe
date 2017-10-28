@@ -2,7 +2,7 @@ export const getUser = state => state.user;
 
 // ⚠️ TODO change
 function user(
-  state = { name: 'David', id: 'cj75obgc8kecq0120mb7l3bej' },
+  state = { name: 'david', id: '1' },
   action
 ) {
   switch (action.type) {
