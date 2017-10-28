@@ -70,7 +70,8 @@ defmodule StitchWeb.TraceControllerTest do
       conn = get conn, trace_path(conn, :show, id)
       assert json_response(conn, 200)["data"] == %{
         "id" => id,
-        "name" => "some updated trace name"}
+        "name" => "some updated trace name"
+      }
     end
 
     test "renders errors when data is invalid", %{conn: conn, trace: trace} do
