@@ -1,7 +1,7 @@
 defmodule Stitch.AccountsTest do
   use Stitch.DataCase
 
-  alias Stitch.Accounts
+  alias Stitch.{Accounts, TestHelper}
 
   describe "users" do
     alias Stitch.Accounts.User
@@ -21,17 +21,16 @@ defmodule Stitch.AccountsTest do
 
     test "list_users/0 returns all users" do
       user = user_fixture()
-      assert Accounts.list_users() == [user]
+      assert Enum.map(Accounts.list_users(), fn x -> x.id end) == Enum.map([user], fn x -> x.id end)
     end
 
     test "get_user!/1 returns the user with given id" do
       user = user_fixture()
-      assert Accounts.get_user!(user.id) == user
+      assert Accounts.get_user!(user.id).id == user.id
     end
 
     test "create_user/1 with valid data creates a user" do
       assert {:ok, %User{} = user} = Accounts.create_user(@valid_attrs)
-      assert user.email == "some email"
       assert user.name == "some name"
     end
 
@@ -43,14 +42,15 @@ defmodule Stitch.AccountsTest do
       user = user_fixture()
       assert {:ok, user} = Accounts.update_user(user, @update_attrs)
       assert %User{} = user
-      assert user.email == "some updated email"
+      # ⚠️ should do some testing with credential and email
+      # assert user.credential.email == "some updated email"
       assert user.name == "some updated name"
     end
 
     test "update_user/2 with invalid data returns error changeset" do
       user = user_fixture()
       assert {:error, %Ecto.Changeset{}} = Accounts.update_user(user, @invalid_attrs)
-      assert user == Accounts.get_user!(user.id)
+      assert user.id == Accounts.get_user!(user.id).id
     end
 
     test "delete_user/1 deletes the user" do
@@ -72,11 +72,10 @@ defmodule Stitch.AccountsTest do
     @update_attrs %{email: "some updated email"}
     @invalid_attrs %{email: nil}
 
-    def credential_fixture(attrs \\ %{}) do
-      {:ok, credential} =
-        attrs
-        |> Enum.into(@valid_attrs)
-        |> Accounts.create_credential()
+    def credential_fixture(attrs \\ @valid_attrs) do
+      # ⚠️ right now you can't reall create a credential separate from a user
+      {:ok, user} = Accounts.create_user(%{name: "dummy name", credential: attrs})
+      %Accounts.User{:credential => credential} = user
 
       credential
     end
@@ -92,7 +91,7 @@ defmodule Stitch.AccountsTest do
     end
 
     test "create_credential/1 with valid data creates a credential" do
-      assert {:ok, %Credential{} = credential} = Accounts.create_credential(@valid_attrs)
+      assert {:ok, %Credential{} = credential} = {:ok, credential_fixture()}
       assert credential.email == "some email"
     end
 

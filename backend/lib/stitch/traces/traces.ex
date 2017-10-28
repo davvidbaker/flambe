@@ -215,7 +215,7 @@ defmodule Stitch.Traces do
     %Event{}
     |> Event.changeset(attrs)
     |> Ecto.Changeset.put_assoc(:trace, Stitch.Traces.get_trace!(trace_id))    
-    |> Ecto.Changeset.put_assoc(:activity, Stitch.activitys.get_activity!(activity_id))    
+    |> Ecto.Changeset.put_assoc(:activity, Stitch.Traces.get_activity!(activity_id))    
     |> Repo.insert()
   end
 
@@ -348,19 +348,6 @@ defmodule Stitch.Traces do
   """
   def delete_activity(%Activity{} = activity) do
     Repo.delete(activity)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking activity changes.
-
-  ## Examples
-
-      iex> change_activity(activity)
-      %Ecto.Changeset{source: %Activity{}}
-
-  """
-  def change_activity(%Activity{} = activity) do
-    Activity.changeset(activity, %{})
   end
 
   alias Stitch.Traces.Thread
