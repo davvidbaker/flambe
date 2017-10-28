@@ -7,6 +7,7 @@ defmodule StitchWeb.TraceView do
   end
 
   def render("show.json", %{trace: trace}) do
+    # ⚠️ I should flesh this out to make it so when you get the trace, you get all of its events and activities too, right?
     %{data: render_one(trace, TraceView, "trace.json")}
   end
 

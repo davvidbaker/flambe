@@ -18,7 +18,6 @@ defmodule StitchWeb.Router do
     pipe_through :browser # Use the default browser stack
 
     get "/", PageController, :index
-    resources "/users", UserController
   end
 
   scope "/", StitchWeb do
@@ -50,10 +49,14 @@ defmodule StitchWeb.Router do
   # Other scopes may use custom stacks.
   scope "/api", StitchWeb do
     pipe_through [:api] # ⚠️ add authentication in eventually..., :authenticate_user]
-
+    
+    resources "/users", UserController, except: [:new, :edit]
     resources "/traces", TraceController, except: [:new, :edit]
     resources "/events", EventController, only: [:create]
     resources "/activities", ActivityController, only: [:create]
+    resources "/categories", CategoryController, except: [:new, :edit]
+    resources "/threads", ThreadController, except: [:new, :edit]
+    
     # resources "/events" EventController, only: [:new]
   end
 end
