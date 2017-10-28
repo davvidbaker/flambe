@@ -38,6 +38,7 @@ defmodule StitchWeb.Endpoint do
     key: "_stitch_key",
     signing_salt: "IFiVAZWC"
 
+  plug CORSPlug
   plug StitchWeb.Router
 
   @doc """
