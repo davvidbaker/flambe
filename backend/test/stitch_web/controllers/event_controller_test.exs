@@ -35,7 +35,7 @@ defmodule StitchWeb.EventControllerTest do
 
       trace =
         TestHelper.create_dummy_user 
-        |> TestHelper.create_dummy_trace()
+        |> TestHelper.create_dummy_trace
 
       [main_thread | _tail] = 
         trace
