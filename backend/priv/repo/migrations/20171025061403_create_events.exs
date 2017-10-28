@@ -3,7 +3,7 @@ defmodule Stitch.Repo.Migrations.CreateEvents do
 
   def change do
     create table(:events) do
-      add :timestamp, :integer
+      add :timestamp, :utc_datetime
       add :phase, :string
       add :message, :string
       add :trace_id, references(:traces, on_delete: :delete_all), null: false
