@@ -31,9 +31,9 @@ defmodule Stitch.Traces do
       [%{id: integer, name: "my trace"}, ...]
 
   """
-  def list_user_traces(%User{} = user) do
+  def list_user_traces(user_id) do
     query = from trace in "traces", 
-      where: trace.user_id == ^user.id, 
+      where: trace.user_id == ^user_id, 
       select: map(trace, [:name, :id])
     Repo.all(query)
   end

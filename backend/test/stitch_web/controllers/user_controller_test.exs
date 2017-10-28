@@ -31,7 +31,9 @@ defmodule StitchWeb.UserControllerTest do
       assert json_response(conn, 200)["data"] == %{
         "id" => id,
         "email" => "some email",
-        "name" => "some name"}
+        "name" => "some name",
+        "traces" => []
+      }
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
@@ -51,7 +53,9 @@ defmodule StitchWeb.UserControllerTest do
       assert json_response(conn, 200)["data"] == %{
         "id" => id,
         "email" => "some updated email",
-        "name" => "some updated name"}
+        "name" => "some updated name",
+        "traces" => []
+      }
     end
 
     test "renders errors when data is invalid", %{conn: conn, user: user} do
