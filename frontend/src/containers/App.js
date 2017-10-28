@@ -52,7 +52,7 @@ class App
   }> {
     
   componentWillMount() {
-    this.props.fetchResource({ type: 'traces' });
+    this.props.fetchResource({ type: 'users', id: this.props.user.id });
   }
 
   componentDidMount() {

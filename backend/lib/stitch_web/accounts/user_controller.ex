@@ -1,7 +1,7 @@
 defmodule StitchWeb.UserController do
   use StitchWeb, :controller
 
-  alias Stitch.Accounts
+  alias Stitch.{Accounts, Traces}
   alias Stitch.Accounts.User
 
   action_fallback StitchWeb.FallbackController  
@@ -22,6 +22,9 @@ defmodule StitchWeb.UserController do
 
   def show(conn, %{"id" => id}) do
     user = Accounts.get_user!(id)
+    # traces = Traces.list_user_traces(user.id)
+    # user_with_traces = user |> Stitch.Repo.preload(:traces) #Map.put(user, :traces, traces)
+
     render(conn, "show.json", user: user)
   end
 
