@@ -41,7 +41,8 @@ defmodule Stitch.Mixfile do
       {:phoenix_live_reload, "~> 1.0", only: :dev},
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
-      {:ex_doc, "~> 0.13"}      
+      {:ex_doc, "~> 0.13"},
+      {:cors_plug, "~> 1.2"}  
     ]
   end
 
