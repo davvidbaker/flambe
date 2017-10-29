@@ -33,11 +33,9 @@ defmodule StitchWeb.TraceControllerTest do
       assert %{"id" => id} = json_response(conn, 201)["data"]
 
       conn = get conn, trace_path(conn, :show, id)
-      assert json_response(conn, 200)["data"] == %{
-        "id" => id,
-        "name" => "some trace name",
-        "events" => []
-      }
+      assert %{"id" => id, "name" => name, "events" => events, "threads" => threads} = json_response(conn, 200)["data"] 
+      assert is_list events
+      assert [%{"name" => "Main", "id" => thread_id}] = threads
     end
 
     test "creates a main thread when data is valid", %{conn: conn} do
@@ -70,11 +68,15 @@ defmodule StitchWeb.TraceControllerTest do
       assert %{"id" => ^id} = json_response(conn, 200)["data"]
 
       conn = get conn, trace_path(conn, :show, id)
-      assert json_response(conn, 200)["data"] == %{
-        "id" => id,
-        "name" => "some updated trace name",
-        "events" => []
-      }
+      assert %{"id" => ^id, "name" => "some updated trace name", "events" => events, "threads" => threads} = json_response(conn, 200)["data"] 
+      assert is_list events
+
+      # assert json_response(conn, 200)["data"] == %{
+      #   "id" => id,
+      #   "name" => "some updated trace name",
+      #   "events" => [],
+      #   "threads" => ["Main"]        
+      # }
     end
 
     test "renders errors when data is invalid", %{conn: conn, trace: trace} do
