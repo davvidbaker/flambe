@@ -16,6 +16,7 @@ export const KEY_UP = 'KEY_UP';
 export const FETCH_RESOURCE = 'FETCH_RESOURCE';
 
 export const ACTIVITY_CREATE = 'ACTIVITY_CREATE';
+export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
 export const ACTIVITY_END = 'ACTIVITY_END';
 
 export const TRACE_CREATE = 'TRACE_CREATE';
@@ -55,7 +56,6 @@ export function deleteTrace(id: number) {
   };
 }
 
-
 export function createActivity({
   name,
   timestamp,
@@ -75,7 +75,7 @@ export function createActivity({
     timestamp,
     description,
     thread_id,
-    category_id
+    category_id,
   };
 }
 
@@ -86,8 +86,16 @@ export function endActivity(id, timestamp, message, thread_id) {
     id,
     timestamp,
     message,
-    thread_id
-  }
+    thread_id,
+  };
+}
+
+export function updateActivity(id, { name }) {
+  return {
+    type: ACTIVITY_UPDATE,
+    id,
+    name,
+  };
 }
 
 export function focusActivity(id: string) {
@@ -104,13 +112,13 @@ export function hoverActivity(id: string) {
   };
 }
 
-export function updateActivity(id, updates: {}) {
-  return {
-    type: UPDATE_ACTIVITY,
-    id,
-    updates,
-  };
-}
+// export function updateActivity(id, updates: {}) {
+//   return {
+//     type: UPDATE_ACTIVITY,
+//     id,
+//     updates,
+//   };
+// }
 
 export function updateThreadLevel(id, inc) {
   return {
@@ -156,7 +164,7 @@ export function deleteCurrentTrace() {
 
 export function fetchResource(
   resource: ?{ type: string, id: string },
-  params: ?{} = { method: 'GET' }
+  params: ?{} = { method: 'GET' },
 ) {
   return {
     type: FETCH_RESOURCE,
@@ -187,7 +195,7 @@ export function zoomTimeline(
   rightBoundaryTime: number,
   width: number,
   nowTime: number,
-  minTime: number
+  minTime: number,
 ) {
   return {
     type: ZOOM_TIMELINE,
@@ -210,7 +218,7 @@ export function panTimeline(
   width: number,
   topOffset: number,
   nowTime: number,
-  minTime: number
+  minTime: number,
 ) {
   return {
     type: PAN_TIMELINE,
