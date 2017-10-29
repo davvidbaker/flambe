@@ -1,8 +1,11 @@
 // @flow
 
 import React, { Component } from 'react';
+import { connect } from 'react-redux';
 // flow-ignore
-import { gql, graphql, compose } from 'react-apollo';
+// import { gql, graphql, compose } from 'react-apollo';
+
+import { createActivity } from 'actions';
 
 import StyledDraggable from 'components/StyledDraggable';
 
@@ -24,32 +27,39 @@ class EventForm extends Component<Props> {
     e.preventDefault();
 
     if (this.name && this.description && this.props.threads && this.form) {
-      const message = '';
+      // const message = '';
       const activityName = this.name.value;
-      const activityDescription = this.description.value;
+      const activityDescription = this.description.value || '';
 
       // only main thread right now
       const mainThreadId = this.props.threads.find(
         thread => thread.name === 'Main'
       ).id;
 
-      const ts = new Date().toISOString();
+      this.props.createActivity({
+        timestamp: Date.now(),
+        // message,
+        name: activityName,
+        description: activityDescription,
+        thread_id: mainThreadId,
 
-      this.props.beginActivity({
-        variables: {
-          timestamp: ts,
-          message,
-          activityName,
-          activityDescription,
-          threadId: mainThreadId,
-          traceId: this.props.traceId,
-
-          // ⚠️ abstract up
-          categoryIds: this.props.lastCategory
-            ? [this.props.lastCategory]
-            : [],
-        },
+        // ⚠️ abstract up
+        category_id: this.props.lastCategory ? this.props.lastCategory : null,
       });
+
+      // this.props.createActivity({
+      //   variables: {
+      //     timestamp: ts,
+      //     message,
+      //     activityName,
+      //     activityDescription,
+      //     threadId: mainThreadId,
+      //     traceId: this.props.traceId,
+
+      //     // ⚠️ abstract up
+      //     categoryIds: this.props.lastCategory ? [this.props.lastCategory] : [],
+      //   },
+      // });
 
       if (this.form.reset) {
         this.form.reset();
@@ -112,57 +122,68 @@ class EventForm extends Component<Props> {
 }
 
 // mutation returns an event!
-export const BeginActivity = gql`
-  mutation BeginActivity($timestamp: DateTime!, $traceId: ID! $message: String, $threadId: ID!, $activityName: String!, $activityDescription: String, $categoryIds: [ID!]) {
-    createEvent(
-      traceId:  $traceId,
-      timestamp: $timestamp,
-      phase: "B",
-      activity: {
-        name: $activityName,
-        description: $activityDescription,
-        threadId: $threadId,
-        categoriesIds: $categoryIds
-      },
-      message: $message
-    ) {
-      id
-      phase
-      timestamp
-      activity {
-        id
-        name
-        description
-        thread {
-          name
-          id
-        }
-      }
-    }
-  }
-`;
+// export const BeginActivity = gql`
+//   mutation BeginActivity($timestamp: DateTime!, $traceId: ID! $message: String, $threadId: ID!, $activityName: String!, $activityDescription: String, $categoryIds: [ID!]) {
+//     createEvent(
+//       traceId:  $traceId,
+//       timestamp: $timestamp,
+//       phase: "B",
+//       activity: {
+//         name: $activityName,
+//         description: $activityDescription,
+//         threadId: $threadId,
+//         categoriesIds: $categoryIds
+//       },
+//       message: $message
+//     ) {
+//       id
+//       phase
+//       timestamp
+//       activity {
+//         id
+//         name
+//         description
+//         thread {
+//           name
+//           id
+//         }
+//       }
+//     }
+//   }
+// `;
 
 // mutation returns an event!
-export const EndActivity = gql`
-  mutation EndActivity($timestamp: DateTime!, $traceId: ID!, $message: String, $activityId: ID!) {
-    createEvent(
-      timestamp: $timestamp,
-      phase: "E",
-      activityId: $activityId,
-      message: $message,
-      traceId: $traceId,
-    ) {
-      id
-    }
-  }
-`;
+// export const EndActivity = gql`
+//   mutation EndActivity($timestamp: DateTime!, $traceId: ID!, $message: String, $activityId: ID!) {
+//     createEvent(
+//       timestamp: $timestamp,
+//       phase: "E",
+//       activityId: $activityId,
+//       message: $message,
+//       traceId: $traceId,
+//     ) {
+//       id
+//     }
+//   }
+// `;
 
-export default compose(
+export default /* compose(
   graphql(BeginActivity, {
     name: 'beginActivity',
     options: {
       // not very efficient
       refetchQueries: ['AllEventsInTrace'],
     },
-  })
-)(EventForm);
+  }) */
+connect(null, dispatch => ({
+  createActivity: ({
+    name,
+    timestamp,
+    description,
+    thread_id /* message */,
+    category_id,
+  }) =>
+    dispatch(
+      createActivity({ name, timestamp, description, thread_id, category_id })
+    ),
+}))(EventForm);

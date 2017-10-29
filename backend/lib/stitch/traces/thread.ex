@@ -7,7 +7,7 @@ defmodule Stitch.Traces.Thread do
   schema "threads" do
     field :name, :string
     belongs_to :trace, Stitch.Traces.Trace
-    has_many :activities, Activity
+    has_many :activities, Activity, on_delete: :delete_all
 
     timestamps()
   end
