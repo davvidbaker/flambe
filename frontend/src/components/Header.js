@@ -31,7 +31,13 @@ h1 {
 }
 `;
 
-const Header = ({ traces, currentTrace, selectTrace, deleteCurrentTrace }) => (
+const Header = ({
+  traces,
+  currentTrace,
+  selectTrace,
+  deleteTrace,
+  deleteCurrentTrace,
+}) => (
   <StyledHeader>
     {traces &&
       <ToggleButton
@@ -43,6 +49,7 @@ const Header = ({ traces, currentTrace, selectTrace, deleteCurrentTrace }) => (
             selectTrace={selectTrace}
             currentTrace={currentTrace}
             deleteCurrentTrace={deleteCurrentTrace}
+            deleteTrace={deleteTrace}
           />
         )}
       >

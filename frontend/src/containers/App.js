@@ -18,9 +18,11 @@ import { history } from 'store';
 import {
   keyDown,
   keyUp,
+  deleteTrace,
+  fetchTrace,
   selectTrace,
   deleteCurrentTrace,
-  fetchResource,
+  fetchUser,
 } from 'actions';
 import { getTimeline } from 'reducers/timeline';
 import { getUser } from 'reducers/user';
@@ -50,9 +52,16 @@ class App
     userTraces: (?Trace)[],
     userTodos: (?Todo)[],
   }> {
-    
   componentWillMount() {
-    this.props.fetchResource({ type: 'users', id: this.props.user.id });
+    console.log("main component will mount");
+    /** ⚠️ come back */
+    this.props.fetchUser(this.props.user.id)
+    
+    if (!this.props.user) {
+      // this.props.fetchUser(this.props.user.id)
+    } else if (this.props.trace) {
+      this.props.fetchTrace(this.props.trace)
+    }
   }
 
   componentDidMount() {
@@ -91,14 +100,15 @@ class App
       <ConnectedRouter history={history}>
         <div>
           <Header
-            traces={this.props.userTraces}
+            traces={this.props.user.traces}
             currentTrace={this.props.trace}
             selectTrace={this.props.selectTrace}
+            deleteTrace={this.props.deleteTrace}
             deleteCurrentTrace={this.props.deleteCurrentTrace}
           />
 
           <Grid columns={'4fr 1fr'}>
-            <Route path="/trace/:traceId" render={this.renderTimeline} />
+            <Route path="/traces/:traceId" render={this.renderTimeline} />
             <Route exact path="/" render={this.renderTimeline} />
 
             {/* // ⚠️ fix userid */}
@@ -164,56 +174,59 @@ export default compose(
   connect(
     state => ({
       user: getUser(state),
+      userTraces: getUser(state).traces,
       trace: getTimeline(state).trace,
     }),
     dispatch => ({
       keyDown: key => dispatch(keyDown(key)),
       keyUp: key => dispatch(keyUp(key)),
-      selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       deleteCurrentTrace: () => dispatch(deleteCurrentTrace()),
-      fetchResource: resource => dispatch(fetchResource(resource)),
+      fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
+      selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
+      deleteTrace: (id: number) => dispatch(deleteTrace(id)),
+      fetchUser: user_id => dispatch(fetchUser(user_id)),
     })
   ),
-  graphql(AllTraces, {
-    options: props => ({
-      variables: {
-        user: 'cj75obgc8kecq0120mb7l3bej', // props.user.id,
-      },
-      fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
-    }),
-    props: ({ data }) => ({
-      // User,
-      // user: data.User.id,
-      userTraces: data.User && data.User.traces,
-      // traces: User && User.traces,
-    }),
-  }),
-  graphql(AllCategories, {
-    options: props => ({
-      variables: {
-        user: 'cj75obgc8kecq0120mb7l3bej', // props.user.id,
-      },
-      fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
-    }),
-    props: ({ data }) => ({
-      // User,
-      // user: data.User.id,
-      userCategories: data.User && data.User.categories,
-      // traces: User && User.traces,
-    }),
-  }),
-  graphql(AllTodos, {
-    options: props => ({
-      variables: {
-        user: 'cj75obgc8kecq0120mb7l3bej', // props.user.id,
-      },
-      fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
-    }),
-    props: ({ data }) => ({
-      // User,
-      // user: data.User.id,
-      userTodos: data.User && data.User.todos,
-      // traces: User && User.traces,
-    }),
-  })
+  // graphql(AllTraces, {
+  //   options: props => ({
+  //     variables: {
+  //       user: 'cj75obgc8kecq0120mb7l3bej', // props.user.id,
+  //     },
+  //     fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
+  //   }),
+  //   props: ({ data }) => ({
+  //     // User,
+  //     // user: data.User.id,
+  //     userTraces: data.User && data.User.traces,
+  //     // traces: User && User.traces,
+  //   }),
+  // }),
+  // graphql(AllCategories, {
+  //   options: props => ({
+  //     variables: {
+  //       user: 'cj75obgc8kecq0120mb7l3bej', // props.user.id,
+  //     },
+  //     fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
+  //   }),
+  //   props: ({ data }) => ({
+  //     // User,
+  //     // user: data.User.id,
+  //     userCategories: data.User && data.User.categories,
+  //     // traces: User && User.traces,
+  //   }),
+  // }),
+  // graphql(AllTodos, {
+  //   options: props => ({
+  //     variables: {
+  //       user: 'cj75obgc8kecq0120mb7l3bej', // props.user.id,
+  //     },
+  //     fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
+  //   }),
+  //   props: ({ data }) => ({
+  //     // User,
+  //     // user: data.User.id,
+  //     userTodos: data.User && data.User.todos,
+  //     // traces: User && User.traces,
+  //   }),
+  // })
 )(App);

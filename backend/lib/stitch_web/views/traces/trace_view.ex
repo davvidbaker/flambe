@@ -19,9 +19,40 @@ defmodule StitchWeb.TraceView do
     
     # 💁 trace.events will only not be loaded if the trace was just created, in which case it will have no events.
     events = case Ecto.assoc_loaded?(trace.events) do
-      true -> trace.events
+      true -> 
+        Enum.map(trace.events, fn evt_in ->
+          evt_in = Stitch.Repo.preload(evt_in, :activity)
+          evt_out = %{
+            timestamp: evt_in.timestamp,
+            phase: evt_in.phase, 
+            id: evt_in.id,
+          }
+          IO.puts "😃"
+          IO.inspect Map.keys(evt_in)
+          IO.inspect Map.has_key?(evt_in, :activity)
+          evt_out = case is_nil evt_in.activity do
+            true -> evt_out
+            false -> Map.put(
+              evt_out,
+              :activity,
+               %{
+                name: evt_in.activity.name,
+                id: evt_in.activity.id,
+                # ⚠️ add categories back in 
+                categories: [],
+                thread: %{
+                  id: evt_in.activity.thread_id
+                }
+              })
+          end
+          IO.inspect evt_out
+        end)
+
+        
       false -> []
     end
+
+    IO.inspect events
 
     %{id: trace.id,
       name: trace.name,
