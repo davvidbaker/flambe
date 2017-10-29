@@ -5,7 +5,7 @@ import {
   PROCESS_TIMELINE_TRACE,
   FOCUS_ACTIVITY,
   HOVER_ACTIVITY,
-  UPDATE_ACTIVITY,
+  ACTIVITY_UPDATE,
   UPDATE_THREAD_LEVEL,
   ZOOM_TIMELINE,
   PAN_TIMELINE,
@@ -42,7 +42,7 @@ function timeline(state = initialState, action) {
         action.rightBoundaryTime,
         action.width,
         action.nowTime,
-        action.minTime
+        action.minTime,
       );
       return {
         ...state,
@@ -59,7 +59,7 @@ function timeline(state = initialState, action) {
         action.width,
         action.topOffset,
         action.nowTime,
-        action.minTime
+        action.minTime,
       );
       return {
         ...state,
@@ -134,7 +134,7 @@ function timeline(state = initialState, action) {
         ...state,
         activities: mapKeys(
           state.activities,
-          (_val, key) => (key === 'optimisticActivity' ? action.data.id : key)
+          (_val, key) => (key === 'optimisticActivity' ? action.data.id : key),
         ),
       };
     // 😃 optimism!
@@ -166,12 +166,13 @@ function timeline(state = initialState, action) {
         hoveredActivityId: action.id,
       };
 
-    case UPDATE_ACTIVITY:
+    case ACTIVITY_UPDATE:
       return {
         ...state,
         activities: {
           ...state.activities,
-          [action.id]: { ...state.activities[action.id], ...action.updates },
+          /** ⚠️ right now you can only change activity name, not description */
+          [action.id]: { ...state.activities[action.id], name: action.name },
         },
       };
 
