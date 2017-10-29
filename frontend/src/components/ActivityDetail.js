@@ -10,8 +10,8 @@ import Category, { AddCategory } from 'components/Category';
 import DeleteButton from 'components/DeleteButton';
 import Grid from 'components/Grid';
 import { InputFromButton } from 'components/Button';
-import { EndActivity } from 'components/EventForm';
-import { updateThreadLevel } from 'actions';
+// import { EndActivity } from 'components/EventForm';
+import { /* updateThreadLevel, */ endActivity } from 'actions';
 
 import type { Activity } from 'types/Activity';
 import type { Category as CategoryType } from 'types/Category';
@@ -113,7 +113,11 @@ type Props = {
   activity: Activity,
   categories: CategoryType[],
   updateActivity: (id: string, {}) => mixed,
-  endActivity: ({ variables: {} }) => mixed,
+  endActivity: (
+    activity_id: number,
+    timestamp: number,
+    message: string
+  ) => mixed,
   DeleteButton: ({ variables: {} }) => mixed,
   deleteActivity: ({ variables: {} }) => mixed,
   deleteEvent: ({ variables: {} }) => mixed,
@@ -121,7 +125,7 @@ type Props = {
   addCategory: ({ variables: {} }) => mixed,
   updateName: ({ variables: { name: string } }) => mixed,
   threadLevels: { [string]: number },
-  updateThreadLevels: (id: string, inc: number) => mixed,
+  // updateThreadLevels: (id: string, inc: number) => mixed,
 };
 
 class ActivityDetail extends React.Component<Props> {
@@ -179,7 +183,7 @@ class ActivityDetail extends React.Component<Props> {
       deleteEvent,
       updateName,
       threadLevels,
-      updateThreadLevels,
+      // updateThreadLevels,
       categories,
     } = this.props;
 
@@ -212,14 +216,7 @@ class ActivityDetail extends React.Component<Props> {
               const ts = new Date();
               updateActivity(activity.id, { endTime: ts.getTime() });
 
-              updateThreadLevels(activity.thread.id, -1);
-
-              endActivity({
-                variables: {
-                  timestamp: ts.toISOString(),
-                  message: value,
-                },
-              });
+              endActivity(activity.id, Date.now(), value, activity.thread.id);
             }}
           >
             End Activity
@@ -289,10 +286,10 @@ export default compose(
     name: 'updateName',
     options,
   }),
-  graphql(EndActivity, {
-    name: 'endActivity',
-    options,
-  }),
+  // graphql(EndActivity, {
+  //   name: 'endActivity',
+  //   options,
+  // }),
   graphql(DeleteActivity, {
     name: 'deleteActivity',
   }),
@@ -309,8 +306,10 @@ export default compose(
       categories: state.categories,
     }),
     dispatch => ({
-      updateThreadLevels: (id: string, inc: number) =>
-        dispatch(updateThreadLevel(id, inc)),
+      // updateThreadLevels: (id: string, inc: number) =>
+        // dispatch(updateThreadLevel(id, inc)),
+      endActivity: (id, timestamp, message, thread_id) =>
+        dispatch(endActivity(id, timestamp, message, thread_id)),
     })
   )
 )(ActivityDetail);

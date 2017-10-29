@@ -1,8 +1,11 @@
 import React, { Component } from 'react';
 import { gql, graphql } from 'react-apollo';
+import { connect } from 'react-redux';
+
+import { AllTraces } from 'containers/App';
+import { createTrace } from 'actions';
 
 import { InputFromButton } from './Button';
-import { AllTraces } from 'containers/App';
 
 const CreateTrace = gql`
   mutation CreateTraceWithMainThread($name: String!) {
@@ -28,11 +31,12 @@ class NewTrace extends Component {
 
   submitNewTrace = value => {
     console.log('submitting', value);
-    this.props.createTrace({
-      variables: {
-        name: value,
-      },
-    });
+    this.props.createTrace(value);
+    // this.props.createTrace({
+    //   variables: {
+    //     name: value,
+    //   },
+    // });
   };
 
   render() {
@@ -51,7 +55,7 @@ const TraceSettings = () => (
     <input type="text" placeholder="Trace Name" />
   </div>
 );
-
+/* 
 export default graphql(CreateTrace, {
   name: 'createTrace',
   options: {
@@ -71,4 +75,9 @@ export default graphql(CreateTrace, {
       store.writeQuery({ query: AllTraces, data });
     },
   },
-})(NewTrace);
+})
+ */
+
+export default connect(null, dispatch => ({
+  createTrace: name => dispatch(createTrace(name)),
+}))(NewTrace);

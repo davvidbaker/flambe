@@ -19,6 +19,6 @@ defmodule Stitch.Traces.Activity do
   def changeset(%Activity{} = activity, attrs) do
     activity
     |> cast(attrs, [:name, :description])
-    |> validate_required([:name, :description])
+    |> validate_required([:name])
   end
 end

@@ -1,11 +1,11 @@
 // @flow
+import type { Trace } from 'types/Trace';
 
 export const PROCESS_TIMELINE_TRACE = 'PROCESS_TIMELINE_TRACE';
 export const REFLECT_PROCESSED_TRACE = 'REFLECT_PROCESSED_TRACE';
 export const ADD_EVENT = 'ADD_EVENT';
 export const ZOOM_TIMELINE = 'ZOOM_TIMELINE';
 export const PAN_TIMELINE = 'PAN_TIMELINE';
-export const SELECT_TRACE = 'SELECT_TRACE';
 export const FOCUS_ACTIVITY = 'FOCUS_ACTIVITY';
 export const HOVER_ACTIVITY = 'HOVER_ACTIVITY';
 export const UPDATE_ACTIVITY = 'UPDATE_ACTIVITY';
@@ -15,7 +15,16 @@ export const KEY_DOWN = 'KEY_DOWN';
 export const KEY_UP = 'KEY_UP';
 export const FETCH_RESOURCE = 'FETCH_RESOURCE';
 
-import type { Trace } from 'types/Trace';
+export const ACTIVITY_CREATE = 'ACTIVITY_CREATE';
+export const ACTIVITY_END = 'ACTIVITY_END';
+
+export const TRACE_CREATE = 'TRACE_CREATE';
+export const TRACE_DELETE = 'TRACE_DELETE';
+export const TRACE_SELECT = 'TRACE_SELECT';
+export const TRACE_FETCH = 'TRACE_FETCH';
+
+export const USER_FETCH = 'USER_FETCH';
+
 // trace array of events -> object of activities
 export function processTimelineTrace(events, threads) {
   return {
@@ -23,6 +32,62 @@ export function processTimelineTrace(events, threads) {
     events,
     threads,
   };
+}
+
+export function fetchUser(id) {
+  return {
+    type: USER_FETCH,
+    id,
+  };
+}
+
+export function createTrace(name: string) {
+  return {
+    type: TRACE_CREATE,
+    name,
+  };
+}
+
+export function deleteTrace(id: number) {
+  return {
+    type: TRACE_DELETE,
+    id,
+  };
+}
+
+
+export function createActivity({
+  name,
+  timestamp,
+  description,
+  thread_id /* message */,
+  category_id,
+}: {
+  name: string,
+  timestamp: number,
+  description: string,
+  thread_id: number /* message */,
+  category_id: ?number,
+}) {
+  return {
+    type: ACTIVITY_CREATE,
+    name,
+    timestamp,
+    description,
+    thread_id,
+    category_id
+  };
+}
+
+/** 💁 the thread_id is just being used for optimystical updating threadLevels */
+export function endActivity(id, timestamp, message, thread_id) {
+  return {
+    type: ACTIVITY_END,
+    id,
+    timestamp,
+    message,
+    thread_id
+  }
 }
 
 export function focusActivity(id: string) {
@@ -71,7 +136,14 @@ export function keyUp(key: string) {
 
 export function selectTrace(trace: Trace) {
   return {
-    type: SELECT_TRACE,
+    type: TRACE_SELECT,
+    trace,
+  };
+}
+
+export function fetchTrace(trace: Trace) {
+  return {
+    type: TRACE_FETCH,
     trace,
   };
 }
@@ -82,9 +154,13 @@ export function deleteCurrentTrace() {
   };
 }
 
-export function fetchResource(resource: ?{type: string, id: string}) {
+export function fetchResource(
+  resource: ?{ type: string, id: string },
+  params: ?{} = { method: 'GET' }
+) {
   return {
     type: FETCH_RESOURCE,
+    params,
     resource,
   };
 }
