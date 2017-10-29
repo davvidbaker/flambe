@@ -12,7 +12,15 @@ defmodule StitchWeb.TraceView do
   end
 
   def render("trace.json", %{trace: trace}) do
+    # 💁 trace.events will only not be loaded if the trace was just created, in which case it will have no events.
+    events = case Ecto.assoc_loaded?(trace.events) do
+      true -> trace.events
+      false -> []
+    end
+
     %{id: trace.id,
-      name: trace.name}
+      name: trace.name,
+      events: events
+    }
   end
 end
