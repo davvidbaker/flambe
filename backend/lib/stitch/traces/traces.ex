@@ -78,7 +78,11 @@ defmodule Stitch.Traces do
       ** (Ecto.NoResultsError)
 
   """
-  def get_trace!(id), do: Repo.get!(Trace, id)
+  def get_trace!(id) do
+    Trace
+    |> Repo.get!(id)
+    |> Repo.preload(:events)
+  end
 
   @doc """
   Creates a trace.
