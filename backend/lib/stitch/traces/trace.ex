@@ -7,7 +7,7 @@ defmodule Stitch.Traces.Trace do
     field :name, :string
     
     has_many :events, Event
-    has_many :threads, Thread
+    has_many :threads, Thread, on_delete: :delete_all
     belongs_to :user, Stitch.Accounts.User
 
     timestamps()

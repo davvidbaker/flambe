@@ -1,3 +1,6 @@
+import mapKeys from 'lodash/mapKeys';
+import mapValues from 'lodash/mapValues';
+
 import {
   PROCESS_TIMELINE_TRACE,
   FOCUS_ACTIVITY,
@@ -6,8 +9,11 @@ import {
   UPDATE_THREAD_LEVEL,
   ZOOM_TIMELINE,
   PAN_TIMELINE,
-  SELECT_TRACE,
-  DELETE_CURRENT_TRACE
+  DELETE_CURRENT_TRACE,
+  TRACE_SELECT,
+  TRACE_FETCH,
+  ACTIVITY_CREATE,
+  ACTIVITY_END,
 } from 'actions';
 
 import { zoom, pan, processTrace } from 'utilities';
@@ -63,10 +69,14 @@ function timeline(state = initialState, action) {
       };
 
     case PROCESS_TIMELINE_TRACE:
-      const { activities, min, max, threadLevels, threads, lastCategory } = processTrace(
-        action.events,
-        action.threads
-      );
+      const {
+        activities,
+        min,
+        max,
+        threadLevels,
+        threads,
+        lastCategory,
+      } = processTrace(action.events, action.threads);
 
       return {
         ...state,
@@ -76,10 +86,10 @@ function timeline(state = initialState, action) {
         activities,
         threadLevels,
         threads,
-        lastCategory
+        lastCategory,
       };
 
-    case SELECT_TRACE:
+    case TRACE_SELECT:
       return {
         ...state,
         trace: action.trace,
@@ -99,6 +109,50 @@ function timeline(state = initialState, action) {
           [action.id]: state.threadLevels[action.id] + action.inc,
         },
       };
+    // 😃 optimism!
+    case ACTIVITY_CREATE:
+      return {
+        ...state,
+        activities: {
+          ...state.activities,
+          optimisticActivity: {
+            name: action.name,
+            startTime: action.timestamp,
+            categories: [action.category_id],
+            level: state.threadLevels[action.thread_id],
+            thread: { id: action.thread_id },
+          },
+        },
+        threadLevels: {
+          ...state.threadLevels,
+          [action.thread_id]: state.threadLevels[action.thread_id] + 1,
+        },
+      };
+
+    case `${ACTIVITY_CREATE}_SUCCEEDED`:
+      return {
+        ...state,
+        activities: mapKeys(
+          state.activities,
+          (_val, key) => (key === 'optimisticActivity' ? action.data.id : key)
+        ),
+      };
+    // 😃 optimism!
+    case ACTIVITY_END:
+      return {
+        ...state,
+        activities: {
+          ...state.activities,
+          [action.id]: {
+            ...state.activities[action.id],
+            endTime: action.timestamp,
+          },
+        },
+        threadLevels: {
+          ...state.threadLevels,
+          [action.thread_id]: state.threadLevels[action.thread_id] - 1,
+        },
+      };
 
     case FOCUS_ACTIVITY:
       return {
@@ -106,7 +160,7 @@ function timeline(state = initialState, action) {
         focusedActivityId: action.id,
       };
 
-      case HOVER_ACTIVITY:
+    case HOVER_ACTIVITY:
       return {
         ...state,
         hoveredActivityId: action.id,

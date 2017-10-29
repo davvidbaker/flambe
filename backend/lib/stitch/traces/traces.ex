@@ -216,6 +216,11 @@ defmodule Stitch.Traces do
   """
 #   ⚠️ need to do validation on trace_id and activity_id
   def create_event(trace_id, activity_id, attrs) do
+    IO.inspect "🚗"
+    IO.inspect trace_id
+    IO.inspect activity_id
+    IO.inspect attrs
+    
     %Event{}
     |> Event.changeset(attrs)
     |> Ecto.Changeset.put_assoc(:trace, Stitch.Traces.get_trace!(trace_id))    

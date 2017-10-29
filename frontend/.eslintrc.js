@@ -31,7 +31,9 @@ module.exports = {
   },
   rules: {
     'arrow-parens': 'off',
+    camelcase: 'off',
     'comma-dangle': 'off',
+    'max-len': 'off',
     'one-var': 'off',
     'no-bitwise': 'off',
     'no-case-declarations': 'off',

@@ -1,101 +1,197 @@
 /**
  * I'm kinda spying on apollo. Is that bad practice? Probably...
  */
-
 import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
-import { processTimelineTrace, updateActivity } from 'actions';
+
+import {
+  processTimelineTrace,
+  updateActivity,
+  ACTIVITY_CREATE,
+  ACTIVITY_END,
+  USER_FETCH,
+  TRACE_CREATE,
+  TRACE_FETCH,
+  TRACE_SELECT,
+  TRACE_DELETE,
+} from 'actions';
 import { getUser } from 'reducers/user';
+import { getTimeline } from 'reducers/timeline';
 
-function* respondToQuery(action) {
-  switch (action.operationName) {
-    case 'AllEventsInTrace':
-      const trace = action.result.data.Trace;
-      if (trace.events.length === 0) {
-        console.warn('trace had 0 events!', trace);
-      } else {
-        yield put(
-          processTimelineTrace(
-            trace.events.map(event => ({
-              ...event,
-              timestamp: new Date(event.timestamp).getTime(),
-            })),
-            trace.threads
-          )
-        );
-      }
-      break;
+// function* respondToQuery(action) {
+//   switch (action.operationName) {
+//     case 'AllEventsInTrace':
+//       const trace = action.result.data.Trace;
+//       if (trace.events.length === 0) {
+//         console.warn('trace had 0 events!', trace);
+//       } else {
+//         yield put(
+//           processTimelineTrace(
+//             trace.events.map(event => ({
+//               ...event,
+//               timestamp: new Date(event.timestamp).getTime(),
+//             })),
+//             trace.threads
+//           )
+//         );
+//       }
+//       break;
 
-    case 'AllCategories':
-      const categories = action.result.data.User.categories;
+//     case 'AllCategories':
+//       const categories = action.result.data.User.categories;
 
-      if (categories.length > 0) {
-        // ⚠️ make an action creator
-        yield put({
-          type: 'SET_CATEGORIES',
-          categories, // .map(cat => cat.id),
-        });
-      }
-      break;
+//       if (categories.length > 0) {
+//         // ⚠️ make an action creator
+//         yield put({
+//           type: 'SET_CATEGORIES',
+//           categories, // .map(cat => cat.id),
+//         });
+//       }
+//       break;
 
-    default:
-      break;
-  }
-}
+//     default:
+//       break;
+//   }
+// }
 
-function* respondToMutation(action) {
-  switch (action.operationName) {
-    case 'DeleteActivity':
-      break;
-    // case 'DeleteEvent':
-    // yield put(
-    //   processTimelineTrace(
-    //     trace.events.map(event => ({
-    //       ...event,
-    //       timestamp: new Date(event.timestamp).getTime(),
-    //     })),
-    //     trace.threads
-    //   )
-    // );
-    // yield
-
-
-    default:
-      break;
-  }
-}
-
-async function requestResource(resource) {
-  const response = await fetch(`${SERVER}/api/${resource.type}/${resource.id}`);
+async function hitNetwork({ resource, params = {} }) {
+  const response = await fetch(
+    params.method === 'POST'
+      ? `${SERVER}/api/${resource.path}`
+      : `${SERVER}/api/${resource.path}/${resource.id}`,
+    {
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      ...params,
+    }
+  );
+  if (!response.ok) throw response;
+  if (response.status === 204) return { data: null };
   return response.json();
 }
 
-/**
- * ⚠️ I tried doing an async generator but was running into call stack exceptions and it seemed to be swallowing put errors.
- */
-function* fetchResource({ resource }) {
+/** 💁 I tried doing an async generator but was running into call stack exceptions and it seemed to be swallowing put errors. Using Redux-Saga `call works instead */
+function* fetchResource(actionType, { resource, params }) {
   // action should be {resourceType, resourceIdentifier}
-
   try {
-    const json = yield call(requestResource, resource);
-    console.log('json success', json);
-    yield put({ type: `FETCH_${resource.type.toUpperCase()}_SUCCEEDED`, json });
+    const json = yield call(hitNetwork, { resource, params });
+    const data = json.data;
+    console.log('json success, data:', data);
+    yield put({ type: `${actionType}_SUCCEEDED`, data });
   } catch (e) {
-    console.log('after', `FETCH_${resource.type.toUpperCase()}_FAILED`, e);
+    console.log('failed response', `${actionType}_FAILED`, e, e.statusText);
   }
-
-  // console.log('got here')
-  // yield put({ type: `FETCH_${resource.type.toUpperCase()}_FAILED` });
-  // console.log('got to end')
 }
+
+// // // // // // // // // // // // // // // // // // // // // // // //
+
+function* createActivity({
+  type,
+  name,
+  timestamp,
+  description,
+  thread_id /* message */,
+  category_id,
+}) {
+  const timeline = yield select(getTimeline);
+  yield fetchResource(type, {
+    resource: { path: 'activities' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        trace_id: timeline.trace.id,
+        thread_id,
+        event: { timestamp_integer: timestamp },
+        activity: { name, description },
+      }),
+    },
+  });
+}
+
+function* endActivity({ type, id, timestamp, message }) {
+  const timeline = yield select(getTimeline);
+  yield fetchResource(type, {
+    /** 💁 path of 'events' is not a mistake */
+    resource: { path: 'events' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        trace_id: timeline.trace.id,
+        activity_id: id,
+        event: {
+          timestamp_integer: timestamp,
+          message,
+          phase: 'E',
+        },
+      }),
+    },
+  });
+}
+
+function* createTrace({ type, name }) {
+  const user = yield select(getUser);
+  yield fetchResource(type, {
+    resource: { path: 'traces' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({ user_id: user.id, trace: { name } }),
+    },
+  });
+}
+
+function* fetchUser({ type, id }) {
+  yield fetchResource(type, {
+    resource: { path: 'users', id },
+  });
+}
+
+function* fetchTrace({ trace }) {
+  yield fetchResource(TRACE_FETCH, {
+    resource: { path: 'traces', id: trace.id },
+  });
+}
+
+function* deleteTrace({ type, id }) {
+  yield fetchResource(type, {
+    resource: { path: 'traces', id },
+    params: {
+      method: 'DELETE',
+    },
+  });
+}
+
+function* processFetchedTrace({ data }) {
+  yield put(
+    processTimelineTrace(
+      data.events.map(event => ({
+        ...event,
+        timestamp: new Date(event.timestamp).getTime(),
+      })),
+      data.threads
+    )
+  );
+}
+
+// // // // // // // // // // // // // // // // // // // // // // // //
 
 function* mainSaga() {
   /** Not sure what the difference between these two actions is 🤷 */
-  yield takeEvery('APOLLO_QUERY_RESULT', respondToQuery);
-  yield takeEvery('APOLLO_QUERY_RESULT_CLIENT', respondToQuery);
+  // yield takeEvery('APOLLO_QUERY_RESULT', respondToQuery);
+  // yield takeEvery('APOLLO_QUERY_RESULT_CLIENT', respondToQuery);
 
-  yield takeEvery('APOLLO_MUTATION_RESULT', respondToMutation);
+  yield takeLatest(USER_FETCH, fetchUser);
 
-  yield takeEvery('FETCH_RESOURCE', fetchResource);
+  yield takeEvery(TRACE_CREATE, createTrace);
+  yield takeEvery(TRACE_DELETE, deleteTrace);
+  yield takeLatest(TRACE_FETCH, fetchTrace);
+  yield takeLatest(TRACE_SELECT, fetchTrace);
+  yield takeLatest(`${TRACE_FETCH}_SUCCEEDED`, processFetchedTrace);
+
+  yield takeEvery(ACTIVITY_CREATE, createActivity);
+  yield takeEvery(ACTIVITY_END, endActivity);
+
+  // yield takeEvery('FETCH_RESOURCE', fetchResource);
 }
 
 export default mainSaga;
