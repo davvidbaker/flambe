@@ -5,6 +5,7 @@ import {
   ACTIVITY_CREATE,
   ACTIVITY_END,
   ACTIVITY_UPDATE,
+  CATEGORY_CREATE,
   PROCESS_TIMELINE_TRACE,
   FOCUS_ACTIVITY,
   HOVER_ACTIVITY,
@@ -154,6 +155,48 @@ function timeline(state = initialState, action) {
           [action.thread_id]: state.threadLevels[action.thread_id] - 1,
         },
       };
+    /** ⚠️ need to handle network failures */
+    case ACTIVITY_UPDATE:
+      return {
+        ...state,
+        activities: {
+          ...state.activities,
+          /** ⚠️ right now you can only change activity name, not description */
+          [action.id]: { ...state.activities[action.id], name: action.name },
+        },
+      };
+    /** 😃 optimism */
+    case CATEGORY_CREATE:
+      return {
+        ...state,
+        activities: {
+          ...state.activities,
+          [action.activity_id]: {
+            ...state.activities[action.activity_id],
+            categories: [
+              ...state.activities[action.activity_id].categories,
+              'optimisticCategory',
+            ],
+          },
+        },
+      };
+
+    case `${CATEGORY_CREATE}_SUCCEEDED`:
+      return {
+        ...state,
+        activities: mapValues(
+          state.activities,
+          act =>
+            (act.categories.includes('optimisticCategory')
+              ? {
+                ...act,
+                categories: act.categories.map(
+                  cat => (cat === 'optimisticCategory' ? action.data.id : cat),
+                ),
+              }
+              : act),
+        ),
+      };
 
     case FOCUS_ACTIVITY:
       return {
@@ -165,17 +208,6 @@ function timeline(state = initialState, action) {
       return {
         ...state,
         hoveredActivityId: action.id,
-      };
-
-    /** ⚠️ need to handle network failures */
-    case ACTIVITY_UPDATE:
-      return {
-        ...state,
-        activities: {
-          ...state.activities,
-          /** ⚠️ right now you can only change activity name, not description */
-          [action.id]: { ...state.activities[action.id], name: action.name },
-        },
       };
 
     default:

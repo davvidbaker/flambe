@@ -19,6 +19,10 @@ Ready to run in production? Please [check our deployment guides](http://www.phoe
   * Mailing list: http://groups.google.com/group/phoenix-talk
   * Source: https://github.com/phoenixframework/phoenix
 
+## Need to do a bunch of things to make it multi-user friendly
+  * unique constraints shuold be per user, not global
+    - I am only doing this a little bit right now. I think I am doing it properly for user categories.
+
 
 ## Writeup
 
@@ -27,3 +31,4 @@ I'm probably doing some things kinda wrong.
 * ⚠️ TESTING is probably done rather haphazardly. I couldn't find a good resource on how to organize things for Phoenix 1.3.
 
 * 🤔 Should I be passing around ids or structs/maps.
+
