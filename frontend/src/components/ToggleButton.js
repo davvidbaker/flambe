@@ -19,7 +19,9 @@ class ToggleButton extends Component {
 
   render() {
     return [
-      <Button onClick={this.toggle} key="btn">{this.props.children}</Button>,
+      <Button onClick={this.toggle} key="btn">
+        {this.props.children}
+      </Button>,
       this.state.toggledOn === true ? this.props.toggles(this.toggle) : null,
     ];
   }

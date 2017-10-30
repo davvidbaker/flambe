@@ -38,7 +38,7 @@ class Popup extends Component<Props> {
                   clickedOnPopup = true;
                 }
               });
-              if (!clickedOnPopup) {
+              if (!clickedOnPopup && this.props.isOpen) {
                 this.props.onClose();
               } else {
                 console.log('clicked on popup', evt);

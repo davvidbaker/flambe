@@ -12,10 +12,12 @@ import Grid from 'components/Grid';
 import { InputFromButton } from 'components/Button';
 // import { EndActivity } from 'components/EventForm';
 import {
-  /* updateThreadLevel, */ updateActivity,
+  updateActivity,
   endActivity,
   createCategory,
+  updateCategory,
 } from 'actions';
+import { getUser } from 'reducers/user';
 
 import type { Activity } from 'types/Activity';
 import type { Category as CategoryType } from 'types/Category';
@@ -127,6 +129,7 @@ type Props = {
   deleteEvent: ({ variables: {} }) => mixed,
   createCategory: () => mixed,
   addCategory: ({ variables: {} }) => mixed,
+  updateCategory: ({ name?: string, color?: string }) => mixed,
   updateName: ({ variables: { name: string } }) => mixed,
   threadLevels: { [string]: number },
   // updateThreadLevels: (id: string, inc: number) => mixed,
@@ -183,11 +186,11 @@ class ActivityDetail extends React.Component<Props> {
       deleteActivity,
       deleteEvent,
       threadLevels,
+      updateCategory,
       // updateThreadLevels,
       categories,
     } = this.props;
 
-    console.log(categories);
     return (
       <div style={{ position: 'absolute', bottom: 0 }}>
         {/* // flow-ignore */}
@@ -210,7 +213,6 @@ class ActivityDetail extends React.Component<Props> {
               canBeBlank
               placeholder="why?"
               submit={value => {
-                const ts = new Date();
                 endActivity(activity.id, Date.now(), value, activity.thread.id);
               }}
             >
@@ -245,7 +247,12 @@ class ActivityDetail extends React.Component<Props> {
                   categories.find(cat => cat.id === categoryId) || {};
                 return (
                   <li key={category.name}>
-                    <Category name={category.name} color={category.color} />
+                    <Category
+                      id={category.id}
+                      name={category.name}
+                      color={category.color}
+                      updateCategory={updateCategory}
+                    />
                   </li>
                 );
               })}
@@ -299,13 +306,14 @@ export default compose(
   // flow-ignore
   connect(
     state => ({
-      categories: state.categories,
+      categories: getUser(state).categories,
     }),
     dispatch => ({
       // updateThreadLevels: (id: string, inc: number) =>
       // dispatch(updateThreadLevel(id, inc)),
       createCategory: ({ activity_id, name, color }) =>
         dispatch(createCategory({ activity_id, name, color })),
+      updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
       updateActivity: (id, { name }) => dispatch(updateActivity(id, { name })),
       endActivity: (id, timestamp, message, thread_id) =>
         dispatch(endActivity(id, timestamp, message, thread_id)),
