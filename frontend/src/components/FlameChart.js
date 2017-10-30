@@ -274,7 +274,8 @@ class FlameChart extends Component<Props, State> {
 
           this.ctx.fillStyle = colors.flames.main;
 
-          if (activity.categories.length > 0) {
+          /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
+          if (activity.categories.length > 0 && activity.categories[0]) {
             // ⚠️ don't always just show the color belonging to category 0... need a better way
             const cat = this.props.categories.find(
               element => element.id === activity.categories[0]
@@ -300,7 +301,7 @@ class FlameChart extends Component<Props, State> {
           // ⚠️ chrome devtools caches the text widths for perf. If I notice that becoming an issue, I will look into doing the same.
           const text = trimTextMiddle(
             this.ctx,
-            activity.name,
+            activity.name || "",
             barWidth - 2 * FlameChart.textPadding.x
           );
 

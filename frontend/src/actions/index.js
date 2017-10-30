@@ -4,8 +4,8 @@ import type { Trace } from 'types/Trace';
 export const PROCESS_TIMELINE_TRACE = 'PROCESS_TIMELINE_TRACE';
 export const REFLECT_PROCESSED_TRACE = 'REFLECT_PROCESSED_TRACE';
 export const ADD_EVENT = 'ADD_EVENT';
-export const ZOOM_TIMELINE = 'ZOOM_TIMELINE';
-export const PAN_TIMELINE = 'PAN_TIMELINE';
+export const TIMELINE_ZOOM = 'TIMELINE_ZOOM';
+export const TIMELINE_PAN = 'TIMELINE_PAN';
 export const FOCUS_ACTIVITY = 'FOCUS_ACTIVITY';
 export const HOVER_ACTIVITY = 'HOVER_ACTIVITY';
 export const UPDATE_ACTIVITY = 'UPDATE_ACTIVITY';
@@ -24,6 +24,8 @@ export const TRACE_DELETE = 'TRACE_DELETE';
 export const TRACE_SELECT = 'TRACE_SELECT';
 export const TRACE_FETCH = 'TRACE_FETCH';
 
+export const CATEGORY_CREATE = 'CATEGORY_CREATE';
+
 export const USER_FETCH = 'USER_FETCH';
 
 // trace array of events -> object of activities
@@ -32,6 +34,23 @@ export function processTimelineTrace(events, threads) {
     type: PROCESS_TIMELINE_TRACE,
     events,
     threads,
+  };
+}
+
+export function createCategory({
+  activity_id,
+  name,
+  color,
+}: {
+  activity_id: string,
+  name: string,
+  color: string,
+}) {
+  return {
+    type: CATEGORY_CREATE,
+    activity_id,
+    name,
+    color,
   };
 }
 
@@ -198,7 +217,7 @@ export function zoomTimeline(
   minTime: number,
 ) {
   return {
-    type: ZOOM_TIMELINE,
+    type: TIMELINE_ZOOM,
     deltaY,
     zoomCenter,
     zoomCenterTime,
@@ -221,7 +240,7 @@ export function panTimeline(
   minTime: number,
 ) {
   return {
-    type: PAN_TIMELINE,
+    type: TIMELINE_PAN,
     deltaX,
     deltaY,
     leftBoundaryTime,
