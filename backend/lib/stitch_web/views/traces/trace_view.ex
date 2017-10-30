@@ -21,7 +21,7 @@ defmodule StitchWeb.TraceView do
     events = case Ecto.assoc_loaded?(trace.events) do
       true -> 
         Enum.map(trace.events, fn evt_in ->
-          evt_in = Stitch.Repo.preload(evt_in, :activity)
+          evt_in = Stitch.Repo.preload(evt_in, [activity: [:categories]])
           evt_out = %{
             timestamp: evt_in.timestamp,
             phase: evt_in.phase, 
@@ -39,19 +39,19 @@ defmodule StitchWeb.TraceView do
                 name: evt_in.activity.name,
                 id: evt_in.activity.id,
                 # ⚠️ add categories back in 
-                categories: [],
                 thread: %{
                   id: evt_in.activity.thread_id
-                }
+                },
+                categories: Enum.map(evt_in.activity.categories, fn cat -> cat.id end)
               })
           end
           IO.inspect evt_out
         end)
-
         
-      false -> []
-    end
-
+        
+        false -> []
+      end
+      
     IO.inspect events
 
     %{id: trace.id,

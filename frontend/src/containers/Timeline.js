@@ -86,12 +86,12 @@ class Timeline extends Component<Props, State> {
       this.state.rightBoundaryTime,
       canvasWidth,
       Date.now(),
-      this.props.minTime
+      this.props.minTime,
     );
 
     this.setState(
       { leftBoundaryTime, rightBoundaryTime },
-      this.setLocalStorage
+      this.setLocalStorage,
     );
   };
 
@@ -104,11 +104,11 @@ class Timeline extends Component<Props, State> {
       canvasWidth,
       this.state.topOffset,
       Date.now(),
-      this.props.minTime
+      this.props.minTime,
     );
     this.setState(
       { leftBoundaryTime, rightBoundaryTime, topOffset },
-      this.setLocalStorage
+      this.setLocalStorage,
     );
   };
 
@@ -132,6 +132,7 @@ class Timeline extends Component<Props, State> {
 
   render() {
     const props = this.props;
+    console.log(props)
     const focusedActivity =
       props.focusedActivityId && props.activities[props.focusedActivityId];
 
@@ -170,22 +171,25 @@ class Timeline extends Component<Props, State> {
                   this.state.rightBoundaryTime || props.maxTime
                 }
                 topOffset={this.state.topOffset || 0}
-                categories={props.categories}
+                categories={props.user.categories}
                 zoom={this.zoom}
                 pan={this.pan}
               />
             </WithDropTarget>
-            {props.focusedActivityId
-              ? <ActivityDetail
+            {props.focusedActivityId ? (
+              <ActivityDetail
                 activity={{
                   id: props.focusedActivityId,
                   ...focusedActivity,
                 }}
+                categories={props.user.categories}
                 updateActivity={props.updateActivity}
                 traceId={props.traceId}
                 threadLevels={props.threadLevels}
               />
-              : <div />}
+            ) : (
+              <div />
+            )}
             <div>
               <EventForm
                 traceId={props.traceId}
@@ -202,37 +206,37 @@ class Timeline extends Component<Props, State> {
 }
 
 export const AllEventsInTrace = gql`
-query AllEventsInTrace($traceId: ID!) {
-  Trace(id: $traceId) {
-    id
-    name
-    events {
+  query AllEventsInTrace($traceId: ID!) {
+    Trace(id: $traceId) {
       id
-      phase
-      timestamp
-      activity {
+      name
+      events {
+        id
+        phase
+        timestamp
+        activity {
+          id
+          name
+          description
+          thread {
+            name
+            id
+          }
+          categories {
+            id
+          }
+        }
+      }
+      threads {
         id
         name
-        description
-        thread {
+        activities {
           name
           id
         }
-        categories {
-          id
-        }
-      }
-    }
-    threads {
-      id
-      name
-      activities {
-        name
-        id
       }
     }
   }
-}
 `;
 
 export default compose(
@@ -247,7 +251,8 @@ export default compose(
     props: ({ data: { loading, error, Trace } }) => ({
       loading,
       error,
-      events: Trace &&
+      events:
+        Trace &&
         Trace.events.map(event => ({
           ...event,
           timestamp: new Date(event.timestamp).getTime(),
@@ -265,13 +270,12 @@ export default compose(
       maxTime: getTimeline(state).maxTime,
       threadLevels: getTimeline(state).threadLevels,
       threads: getTimeline(state).threads,
-      categories: state.categories,
       lastCategory: getTimeline(state).lastCategory,
     }),
     dispatch => ({
       updateActivity: (id, obj) => {
         dispatch(updateActivity(id, obj));
       },
-    })
-  )
+    }),
+  ),
 )(Timeline);

@@ -3,7 +3,10 @@ import { USER_FETCH, TRACE_DELETE, TRACE_CREATE } from 'actions';
 export const getUser = state => state.user;
 
 // ⚠️ TODO change
-function user(state = { name: 'david', id: '1', traces: [] }, action) {
+function user(
+  state = { name: 'david', id: '1', traces: [], categories: [] },
+  action,
+) {
   switch (action.type) {
     case `${USER_FETCH}_SUCCEEDED`:
       return action.data;
@@ -33,11 +36,10 @@ function user(state = { name: 'david', id: '1', traces: [] }, action) {
           trace =>
             (trace.name === action.data.name
               ? { ...trace, id: action.data.id }
-              : trace)
+              : trace),
         ),
       };
     /** ⚠️ TODO handle TRACE_CREATE_FAILED */
-
 
     default:
       return state;
