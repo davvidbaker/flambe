@@ -24,6 +24,7 @@ defmodule StitchWeb.CategoryControllerTest do
     end
   end
 
+  # ⚠️ the next time you test this, I bet this function fails, since now to create a category you need an associated activity 
   describe "create category" do
     test "renders category when data is valid", %{conn: conn} do
       conn = post conn, category_path(conn, :create), category: @create_attrs

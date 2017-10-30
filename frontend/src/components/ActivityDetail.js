@@ -11,14 +11,16 @@ import DeleteButton from 'components/DeleteButton';
 import Grid from 'components/Grid';
 import { InputFromButton } from 'components/Button';
 // import { EndActivity } from 'components/EventForm';
-import { /* updateThreadLevel, */ updateActivity, endActivity } from 'actions';
+import {
+  /* updateThreadLevel, */ updateActivity,
+  endActivity,
+  createCategory,
+} from 'actions';
 
 import type { Activity } from 'types/Activity';
 import type { Category as CategoryType } from 'types/Category';
 
-const P = styled.p`
-margin: 0;
-`;
+const P = styled.p`margin: 0;`;
 
 const UpdateName = gql`
   mutation UpdateName($activityId: ID!, $name: String!) {
@@ -29,35 +31,35 @@ const UpdateName = gql`
   }
 `;
 
-const CreateCategory = gql`
-mutation createCategory($userId: ID!, $name: String!, $color: String!, $activityId: ID!) {
-  createCategory(userId: $userId, name: $name, color: $color, activitiesIds: [$activityId]) {
-    id
-    name
-    color
-    activities {
-      id
-    }
-  }
-}
-`;
+// const CreateCategory = gql`
+// mutation createCategory($userId: ID!, $name: String!, $color: String!, $activityId: ID!) {
+//   createCategory(userId: $userId, name: $name, color: $color, activitiesIds: [$activityId]) {
+//     id
+//     name
+//     color
+//     activities {
+//       id
+//     }
+//   }
+// }
+// `;
 
 const AddCategoryToActivity = gql`
-mutation AddCategoryToActivity($activityId: ID!, $categoryId: ID!) {
-  addToActivitiesCategories(
-    activitiesActivityId: $activityId,
-    categoriesCategoryId: $categoryId
-  ) {
-    activitiesActivity {
-      id
-      name
-    }
-    categoriesCategory {
-      id
-      name
+  mutation AddCategoryToActivity($activityId: ID!, $categoryId: ID!) {
+    addToActivitiesCategories(
+      activitiesActivityId: $activityId
+      categoriesCategoryId: $categoryId
+    ) {
+      activitiesActivity {
+        id
+        name
+      }
+      categoriesCategory {
+        id
+        name
+      }
     }
   }
-}
 `;
 
 /** 
@@ -100,9 +102,11 @@ function mapToGrid(obj, { columns }) {
       {Object.entries(obj).map(([key, val]) => [
         <P key={`key-${key}`}>{key}</P>,
         <div key={`val-${key}`}>
-          {typeof val === 'object'
-            ? mapToGrid(val, { columns: '1fr 3fr' })
-            : <P>{val}</P>}
+          {val !== null && typeof val === 'object' ? (
+            mapToGrid(val, { columns: '1fr 3fr' })
+          ) : (
+            <P>{val}</P>
+          )}
         </div>,
       ])}
     </Grid>
@@ -116,12 +120,12 @@ type Props = {
   endActivity: (
     activity_id: number,
     timestamp: number,
-    message: string
+    message: string,
   ) => mixed,
   DeleteButton: ({ variables: {} }) => mixed,
   deleteActivity: ({ variables: {} }) => mixed,
   deleteEvent: ({ variables: {} }) => mixed,
-  createCategory: ({ variables: {} }) => mixed,
+  createCategory: () => mixed,
   addCategory: ({ variables: {} }) => mixed,
   updateName: ({ variables: { name: string } }) => mixed,
   threadLevels: { [string]: number },
@@ -156,12 +160,9 @@ class ActivityDetail extends React.Component<Props> {
 
   addNewCategory = (name, hexString) => {
     this.props.createCategory({
-      variables: {
-        userId: this.props.userId,
-        name,
-        color: hexString,
-        activityId: this.props.activity.id,
-      },
+      activity_id: this.props.activity.id,
+      name,
+      color: hexString,
     });
   };
 
@@ -181,12 +182,12 @@ class ActivityDetail extends React.Component<Props> {
       endActivity,
       deleteActivity,
       deleteEvent,
-      updateName,
       threadLevels,
       // updateThreadLevels,
       categories,
     } = this.props;
 
+    console.log(categories);
     return (
       <div style={{ position: 'absolute', bottom: 0 }}>
         {/* // flow-ignore */}
@@ -200,29 +201,28 @@ class ActivityDetail extends React.Component<Props> {
           {activity.name}
         </InputFromButton>
         {!activity.endTime &&
-          isCloseable(activity, threadLevels) &&
-          <InputFromButton
-            ref={endButton => {
-              this.endButton = endButton;
-            }}
-            looksLikeButton
-            canBeBlank
-            placeholder="why?"
-            submit={value => {
-              const ts = new Date();
-              updateActivity(activity.id, { endTime: ts.getTime() });
-
-              endActivity(activity.id, Date.now(), value, activity.thread.id);
-            }}
-          >
-            End Activity
-          </InputFromButton>}
+          isCloseable(activity, threadLevels) && (
+            <InputFromButton
+              ref={endButton => {
+                this.endButton = endButton;
+              }}
+              looksLikeButton
+              canBeBlank
+              placeholder="why?"
+              submit={value => {
+                const ts = new Date();
+                endActivity(activity.id, Date.now(), value, activity.thread.id);
+              }}
+            >
+              End Activity
+            </InputFromButton>
+          )}
 
         {/* abstract out the delete functionality */}
         <DeleteButton
           onConfirm={() => {
             activity.events.forEach(id =>
-              deleteEvent({ variables: { eventId: id } })
+              deleteEvent({ variables: { eventId: id } }),
             );
 
             deleteActivity({
@@ -238,16 +238,17 @@ class ActivityDetail extends React.Component<Props> {
         <div>
           Categories:
           <ul>
-            {activity.categories.map(categoryId => {
-              const category = categories.find(
-                cat => cat.id === categoryId
-              ) || {};
-              return (
-                <li key={category.name}>
-                  <Category name={category.name} color={category.color} />
-                </li>
-              );
-            })}
+            {activity.categories &&
+              categories &&
+              activity.categories.map(categoryId => {
+                const category =
+                  categories.find(cat => cat.id === categoryId) || {};
+                return (
+                  <li key={category.name}>
+                    <Category name={category.name} color={category.color} />
+                  </li>
+                );
+              })}
             <AddCategory
               addNewCategory={this.addNewCategory}
               addExistingCategory={this.addExistingCategory}
@@ -255,7 +256,7 @@ class ActivityDetail extends React.Component<Props> {
             />
           </ul>
         </div>
-        {mapToGrid(activity, { columns: '1fr 3fr' })}
+        {activity && mapToGrid(activity, { columns: '1fr 3fr' })}
         {/* </StyledDraggable> */}
       </div>
     );
@@ -298,15 +299,16 @@ export default compose(
   // flow-ignore
   connect(
     state => ({
-      userId: state.user.id,
       categories: state.categories,
     }),
     dispatch => ({
       // updateThreadLevels: (id: string, inc: number) =>
       // dispatch(updateThreadLevel(id, inc)),
+      createCategory: ({ activity_id, name, color }) =>
+        dispatch(createCategory({ activity_id, name, color })),
       updateActivity: (id, { name }) => dispatch(updateActivity(id, { name })),
       endActivity: (id, timestamp, message, thread_id) =>
         dispatch(endActivity(id, timestamp, message, thread_id)),
-    })
-  )
+    }),
+  ),
 )(ActivityDetail);

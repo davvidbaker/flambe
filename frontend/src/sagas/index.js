@@ -8,11 +8,12 @@ import {
   ACTIVITY_CREATE,
   ACTIVITY_END,
   ACTIVITY_UPDATE,
-  USER_FETCH,
+  CATEGORY_CREATE,
   TRACE_CREATE,
   TRACE_FETCH,
   TRACE_SELECT,
   TRACE_DELETE,
+  USER_FETCH,
 } from 'actions';
 import { getUser } from 'reducers/user';
 import { getTimeline } from 'reducers/timeline';
@@ -139,6 +140,22 @@ function* updateActivity({ type, id, name }) {
   });
 }
 
+function* createCategory({ type, activity_id, name, color }) {
+  const user = yield select(getUser);
+  yield fetchResource(type, {
+    resource: { path: 'categories' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: user.id,
+        /** 🔮 if you want to be able to set a bunch of activities to a new category, this will have to change */
+        activity_ids: [activity_id],
+        category: { name, color },
+      }),
+    },
+  });
+}
+
 function* createTrace({ type, name }) {
   const user = yield select(getUser);
   yield fetchResource(type, {
@@ -201,6 +218,8 @@ function* mainSaga() {
   yield takeEvery(ACTIVITY_CREATE, createActivity);
   yield takeEvery(ACTIVITY_END, endActivity);
   yield takeEvery(ACTIVITY_UPDATE, updateActivity);
+
+  yield takeEvery(CATEGORY_CREATE, createCategory);
 
   // yield takeEvery('FETCH_RESOURCE', fetchResource);
 }

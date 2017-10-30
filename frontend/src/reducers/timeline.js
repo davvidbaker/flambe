@@ -2,18 +2,18 @@ import mapKeys from 'lodash/mapKeys';
 import mapValues from 'lodash/mapValues';
 
 import {
+  ACTIVITY_CREATE,
+  ACTIVITY_END,
+  ACTIVITY_UPDATE,
   PROCESS_TIMELINE_TRACE,
   FOCUS_ACTIVITY,
   HOVER_ACTIVITY,
-  ACTIVITY_UPDATE,
   UPDATE_THREAD_LEVEL,
-  ZOOM_TIMELINE,
-  PAN_TIMELINE,
   DELETE_CURRENT_TRACE,
   TRACE_SELECT,
   TRACE_FETCH,
-  ACTIVITY_CREATE,
-  ACTIVITY_END,
+  TIMELINE_ZOOM,
+  TIMELINE_PAN,
 } from 'actions';
 
 import { zoom, pan, processTrace } from 'utilities';
@@ -33,7 +33,7 @@ const initialState = {
 
 function timeline(state = initialState, action) {
   switch (action.type) {
-    case ZOOM_TIMELINE:
+    case TIMELINE_ZOOM:
       const { leftBoundaryTime, rightBoundaryTime } = zoom(
         action.deltaY,
         action.zoomCenter,
@@ -50,7 +50,7 @@ function timeline(state = initialState, action) {
         rightBoundaryTime,
       };
 
-    case PAN_TIMELINE:
+    case TIMELINE_PAN:
       const { leftBoundaryTime: lBT, rightBoundaryTime: rBT, topOffset } = pan(
         action.deltaX,
         action.deltaY,
@@ -139,6 +139,7 @@ function timeline(state = initialState, action) {
       };
     // 😃 optimism!
     case ACTIVITY_END:
+      console.log(state);
       return {
         ...state,
         activities: {
@@ -166,6 +167,7 @@ function timeline(state = initialState, action) {
         hoveredActivityId: action.id,
       };
 
+    /** ⚠️ need to handle network failures */
     case ACTIVITY_UPDATE:
       return {
         ...state,

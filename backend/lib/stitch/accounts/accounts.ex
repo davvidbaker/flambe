@@ -263,9 +263,11 @@ defmodule Stitch.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_category(attrs \\ %{}) do
+  def create_category(activity_ids, user_id, attrs \\ %{}) do
     %Category{}
     |> Category.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:activities, Enum.map(activity_ids, fn id -> Stitch.Traces.get_activity!(id) end))
+    |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
 
