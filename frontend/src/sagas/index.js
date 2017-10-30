@@ -9,6 +9,7 @@ import {
   ACTIVITY_END,
   ACTIVITY_UPDATE,
   CATEGORY_CREATE,
+  CATEGORY_UPDATE,
   TRACE_CREATE,
   TRACE_FETCH,
   TRACE_SELECT,
@@ -148,9 +149,21 @@ function* createCategory({ type, activity_id, name, color }) {
       method: 'POST',
       body: JSON.stringify({
         user_id: user.id,
-        /** 🔮 if you want to be able to set a bunch of activities to a new category, this will have to change */
+        /** 🔮 <-(first crystal ball use) if you want to be able to set a bunch of activities to a new category, this will have to change, like with highlighting a big section */
         activity_ids: [activity_id],
         category: { name, color },
+      }),
+    },
+  });
+}
+
+function* updateCategory({ type, id, updates }) {
+  yield fetchResource(type, {
+    resource: { path: 'categories', id },
+    params: {
+      method: 'PUT',
+      body: JSON.stringify({
+        category: { ...updates },
       }),
     },
   });
@@ -220,6 +233,7 @@ function* mainSaga() {
   yield takeEvery(ACTIVITY_UPDATE, updateActivity);
 
   yield takeEvery(CATEGORY_CREATE, createCategory);
+  yield takeEvery(CATEGORY_UPDATE, updateCategory);
 
   // yield takeEvery('FETCH_RESOURCE', fetchResource);
 }

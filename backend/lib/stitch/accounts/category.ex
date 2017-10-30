@@ -19,5 +19,7 @@ defmodule Stitch.Accounts.Category do
     category
     |> cast(attrs, [:name, :color])
     |> validate_required([:name, :color])
+    # 💁 the :name atom and name: key are not related! beware!
+    |> unique_constraint(:name, name: :user_category_index,)
   end
 end
