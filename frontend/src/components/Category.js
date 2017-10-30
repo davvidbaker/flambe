@@ -37,7 +37,7 @@ type State = {
 export class AddCategory extends Component<Props, State> {
   state = {
     colorPickerVisible: false,
-    color: colors.flames.main,
+    color: { hex: colors.flames.main },
     name: null,
   };
 
@@ -86,8 +86,8 @@ export class AddCategory extends Component<Props, State> {
             <div>
               <label {...getLabelProps()}>Enter a fruit</label>
               <input {...getInputProps()} />
-              {isOpen
-                ? <div>
+              {isOpen ? (
+                <div>
                   {this.props.categories
                     .filter(i => !inputValue || i.name.includes(inputValue))
                     .map((item, index) => (
@@ -97,12 +97,12 @@ export class AddCategory extends Component<Props, State> {
                           index,
                           item,
                           style: {
-                            backgroundColor: highlightedIndex === index
-                              ? 'lightgray'
-                              : 'white',
-                            fontWeight: selectedItem === item
-                              ? 'bold'
-                              : 'normal',
+                            backgroundColor:
+                              highlightedIndex === index
+                                ? 'lightgray'
+                                : 'white',
+                            fontWeight:
+                              selectedItem === item ? 'bold' : 'normal',
                           },
                         })}
                       >
@@ -110,13 +110,13 @@ export class AddCategory extends Component<Props, State> {
                       </div>
                     ))}
                 </div>
-                : null}
+              ) : null}
             </div>
           )}
         </Downshift>
         <Popup
           isOpen={this.state.colorPickerVisible}
-          close={this.closeColorPicker}
+          onClose={this.closeColorPicker}
         >
           {() => (
             <ColorPicker

@@ -24,8 +24,8 @@ class Popup extends Component<Props> {
 
   render() {
     const { isOpen, onClose, children } = this.props;
-    return isOpen // flow-ignore
-      ? <WithEventListeners
+    return isOpen ? ( // flow-ignore
+      <WithEventListeners
         node={document}
         eventListeners={[
           [
@@ -34,14 +34,12 @@ class Popup extends Component<Props> {
               // ⚠️ event.path might only work in chrome!
               let clickedOnPopup = false;
               evt.path.forEach(element => {
-                if (
-                  element.classList && element.classList.contains('popup')
-                ) {
+                if (element.classList && element.classList.contains('popup')) {
                   clickedOnPopup = true;
                 }
               });
               if (!clickedOnPopup) {
-                this.props.close();
+                this.props.onClose();
               } else {
                 console.log('clicked on popup', evt);
               }
@@ -51,7 +49,7 @@ class Popup extends Component<Props> {
             'keydown',
             evt => {
               if (evt.key === 'Enter' || evt.key === 'Escape') {
-                this.props.close();
+                this.props.onClose();
               }
             },
           ],
@@ -72,7 +70,7 @@ class Popup extends Component<Props> {
           </div>
         )}
       </WithEventListeners>
-      : null;
+    ) : null;
   }
 }
 

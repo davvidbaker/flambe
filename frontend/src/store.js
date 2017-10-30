@@ -2,11 +2,11 @@ import { createStore, applyMiddleware, compose, combineReducers } from 'redux';
 import { createNetworkInterface, ApolloClient } from 'react-apollo';
 import thunk from 'redux-thunk'; // ⚠️ do I still need thunks ever, now that I am using apollo client?
 import 'regenerator-runtime/runtime';
-import createSagaMiddleware from 'redux-saga'
+import createSagaMiddleware from 'redux-saga';
 import { routerReducer, routerMiddleware } from 'react-router-redux';
-import createHistory from 'history/createBrowserHistory'
+import createHistory from 'history/createBrowserHistory';
 
-import { timeline, modifiers, user, categories } from 'reducers';
+import { timeline, modifiers, user } from 'reducers';
 import { getTimeline } from 'reducers/timeline';
 import { loadState, saveState } from 'utilities';
 import mainSaga from 'sagas';
@@ -19,14 +19,13 @@ const networkInterface = createNetworkInterface({
 });
 
 // create the saga middleware
-const sagaMiddleware = createSagaMiddleware()
+const sagaMiddleware = createSagaMiddleware();
 
 // Create a history of your choosing (we're using a browser history in this case)
 export const history = createHistory();
 
 // Build the middleware for intercepting and dispatching navigation actions
 const rMiddleware = routerMiddleware(history);
-
 
 export const client = new ApolloClient({ networkInterface });
 
@@ -36,7 +35,6 @@ const rootReducer = combineReducers({
   timeline,
   modifiers,
   user,
-  categories,
   router: routerReducer,
   apollo: client.reducer(),
 });
@@ -47,11 +45,11 @@ const store = createStore(
     applyMiddleware(thunk),
     applyMiddleware(client.middleware()),
     applyMiddleware(rMiddleware),
-    applyMiddleware(sagaMiddleware)
-  )
+    applyMiddleware(sagaMiddleware),
+  ),
 );
 
-sagaMiddleware.run(mainSaga)
+sagaMiddleware.run(mainSaga);
 
 store.subscribe(() => {
   saveState({

@@ -33,7 +33,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
   // 👇 The trace from the database is not necessarily ordered.
   const orderedTrace: TraceEvent[] = sortBy(
-    (event: TraceEvent) => event.timestamp
+    (event: TraceEvent) => event.timestamp,
   )(trace);
 
   // ⚠️ maybe one day don't have this redundancy.
@@ -65,7 +65,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
     activity.categories = pushToMaybeNullArray(
       activity.categories,
-      ...event.activity.categories.map(cat => cat.id)
+      ...event.activity.categories,
     );
     activity.categories = uniq(activity.categories);
 
@@ -94,6 +94,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         break;
     }
 
+    if (!activity.name) debugger;
     // adjust boundaries
     if (event.timestamp > rightTime) {
       rightTime = event.timestamp;
@@ -101,9 +102,8 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     if (event.timestamp < leftTime) {
       leftTime = event.timestamp;
     }
-    lastCategory = activity.categories.length > 0
-      ? activity.categories[0]
-      : null
+    lastCategory =
+      activity.categories.length > 0 ? activity.categories[0] : null;
   });
 
   return {

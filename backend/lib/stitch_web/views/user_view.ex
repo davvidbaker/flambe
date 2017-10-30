@@ -12,15 +12,18 @@ defmodule StitchWeb.UserView do
     
     def render("user.json", %{user: user}) do
       # ⚠️ this might not be how you're supposed to do this, email is really not part of the user, but the user credentials. This could be refactored.
-      user_with_email = Stitch.Repo.preload(user, :credential)
+      user = Stitch.Repo.preload(user, [:credential, :categories])
 
       # ⚠️ Is this where this should happen? I doubt it.
       traces = Stitch.Traces.list_user_traces(user.id);
+
+      categories = Enum.map(user.categories, fn cat -> %{id: cat.id, color: cat.color, name: cat.name} end)
       
-      %{id: user_with_email.id,
-        name: user_with_email.name,
-        email: user_with_email.credential.email,
-        traces: traces
+      %{id: user.id,
+        name: user.name,
+        email: user.credential.email,
+        traces: traces,
+        categories: categories
       }
     end
 
