@@ -5,9 +5,9 @@ import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
 
 import {
   processTimelineTrace,
-  updateActivity,
   ACTIVITY_CREATE,
   ACTIVITY_END,
+  ACTIVITY_UPDATE,
   USER_FETCH,
   TRACE_CREATE,
   TRACE_FETCH,
@@ -64,7 +64,7 @@ async function hitNetwork({ resource, params = {} }) {
         'Content-Type': 'application/json',
       },
       ...params,
-    }
+    },
   );
   if (!response.ok) throw response;
   if (response.status === 204) return { data: null };
@@ -129,6 +129,16 @@ function* endActivity({ type, id, timestamp, message }) {
   });
 }
 
+function* updateActivity({ type, id, name }) {
+  yield fetchResource(type, {
+    resource: { path: 'activities', id },
+    params: {
+      method: 'PUT',
+      body: JSON.stringify({ activity: { name } }),
+    },
+  });
+}
+
 function* createTrace({ type, name }) {
   const user = yield select(getUser);
   yield fetchResource(type, {
@@ -168,8 +178,8 @@ function* processFetchedTrace({ data }) {
         ...event,
         timestamp: new Date(event.timestamp).getTime(),
       })),
-      data.threads
-    )
+      data.threads,
+    ),
   );
 }
 
@@ -190,6 +200,7 @@ function* mainSaga() {
 
   yield takeEvery(ACTIVITY_CREATE, createActivity);
   yield takeEvery(ACTIVITY_END, endActivity);
+  yield takeEvery(ACTIVITY_UPDATE, updateActivity);
 
   // yield takeEvery('FETCH_RESOURCE', fetchResource);
 }

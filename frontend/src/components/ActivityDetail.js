@@ -11,7 +11,7 @@ import DeleteButton from 'components/DeleteButton';
 import Grid from 'components/Grid';
 import { InputFromButton } from 'components/Button';
 // import { EndActivity } from 'components/EventForm';
-import { /* updateThreadLevel, */ endActivity } from 'actions';
+import { /* updateThreadLevel, */ updateActivity, endActivity } from 'actions';
 
 import type { Activity } from 'types/Activity';
 import type { Category as CategoryType } from 'types/Category';
@@ -192,13 +192,9 @@ class ActivityDetail extends React.Component<Props> {
         {/* // flow-ignore */}
         <InputFromButton
           submit={(value: string) => {
-            // the activity we store on the client side needs updating directly, as it is only derived from event data, and not 1 to 1 with the database (bad wording)
             updateActivity(activity.id, {
               name: value,
             });
-
-            // this updates the graphql activity
-            updateName({ variables: { name: value } });
           }}
         >
           {activity.name}
@@ -275,30 +271,30 @@ const options = props => ({
 
 export default compose(
   // ⚠️ move this elsewhere?
-  graphql(AddCategoryToActivity, {
-    name: 'addCategory',
-  }),
-  // ⚠️ move this elsewhere?
-  graphql(CreateCategory, {
-    name: 'createCategory',
-  }),
-  graphql(UpdateName, {
-    name: 'updateName',
-    options,
-  }),
-  // graphql(EndActivity, {
-  //   name: 'endActivity',
+  // graphql(AddCategoryToActivity, {
+  //   name: 'addCategory',
+  // }),
+  // // ⚠️ move this elsewhere?
+  // graphql(CreateCategory, {
+  //   name: 'createCategory',
+  // }),
+  // graphql(UpdateName, {
+  //   name: 'updateName',
   //   options,
   // }),
-  graphql(DeleteActivity, {
-    name: 'deleteActivity',
-  }),
-  graphql(DeleteEvent, {
-    name: 'deleteEvent',
-    options: props => ({
-      refetchQueries: ['AllEventsInTrace'],
-    }),
-  }),
+  // // graphql(EndActivity, {
+  // //   name: 'endActivity',
+  // //   options,
+  // // }),
+  // graphql(DeleteActivity, {
+  //   name: 'deleteActivity',
+  // }),
+  // graphql(DeleteEvent, {
+  //   name: 'deleteEvent',
+  //   options: props => ({
+  //     refetchQueries: ['AllEventsInTrace'],
+  //   }),
+  // }),
   // flow-ignore
   connect(
     state => ({
@@ -307,7 +303,8 @@ export default compose(
     }),
     dispatch => ({
       // updateThreadLevels: (id: string, inc: number) =>
-        // dispatch(updateThreadLevel(id, inc)),
+      // dispatch(updateThreadLevel(id, inc)),
+      updateActivity: (id, { name }) => dispatch(updateActivity(id, { name })),
       endActivity: (id, timestamp, message, thread_id) =>
         dispatch(endActivity(id, timestamp, message, thread_id)),
     })
