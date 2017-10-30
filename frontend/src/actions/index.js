@@ -25,6 +25,7 @@ export const TRACE_SELECT = 'TRACE_SELECT';
 export const TRACE_FETCH = 'TRACE_FETCH';
 
 export const CATEGORY_CREATE = 'CATEGORY_CREATE';
+export const CATEGORY_UPDATE = 'CATEGORY_UPDATE';
 
 export const USER_FETCH = 'USER_FETCH';
 
@@ -51,6 +52,14 @@ export function createCategory({
     activity_id,
     name,
     color,
+  };
+}
+
+export function updateCategory(id, updates) {
+  return {
+    type: CATEGORY_UPDATE,
+    id,
+    updates,
   };
 }
 

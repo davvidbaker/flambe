@@ -13,14 +13,59 @@ import { colors } from 'styles';
 
 import type { Category as CategoryType } from 'types/Category';
 
-const Category = ({ name, color }) => (
-  <div>
-    {name}
-    <ToggleButton toggles={toggle => <ColorPicker key="color-picker" />}>
-      <ColorCircle background={color} />
-    </ToggleButton>
-  </div>
-);
+class Category extends Component<{
+  id: number,
+  name: string,
+  color: string,
+  updateCategory: () => mixed,
+}> {
+  state = { color: null, colorPickerVisible: false };
+
+  componentWillMount() {
+    this.setState({ color: this.props.color });
+  }
+
+  setColor = color => {
+    this.setState({ color: color.hex });
+  };
+
+  closeColorPicker = () => {
+    console.log('closing color picker');
+    this.props.updateCategory(this.props.id, { color: this.state.color });
+    this.setState({ colorPickerVisible: false });
+  };
+
+  openColorPicker = () => {
+    // if (this.state.colorPickerVisible) {
+    //   this.props.updateCategory(this.state.color);
+    // }
+    this.setState({ colorPickerVisible: !this.state.colorPickerVisible });
+  };
+
+  render() {
+    return (
+      <div>
+        {this.props.name}
+        <Popup
+          isOpen={this.state.colorPickerVisible}
+          onClose={this.closeColorPicker}
+          key="color-picker-popup"
+        >
+          {() => (
+            <ColorPicker
+              color={this.state.color}
+              onChangeComplete={this.setColor}
+            />
+          )}
+        </Popup>
+
+        <button onClick={this.openColorPicker}>
+          <ColorCircle background={this.props.color} />
+        </button>
+      </div>
+    );
+  }
+}
 
 type Props = {
   categories: Category[],
