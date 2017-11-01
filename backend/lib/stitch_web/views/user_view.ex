@@ -16,14 +16,17 @@ defmodule StitchWeb.UserView do
 
       # ⚠️ Is this where this should happen? I doubt it.
       traces = Stitch.Traces.list_user_traces(user.id);
+      todos = Stitch.Accounts.list_user_todos(user.id)
 
       categories = Enum.map(user.categories, fn cat -> %{id: cat.id, color: cat.color, name: cat.name} end)
+      
       
       %{id: user.id,
         name: user.name,
         email: user.credential.email,
         traces: traces,
-        categories: categories
+        categories: categories,
+        todos: todos
       }
     end
 
