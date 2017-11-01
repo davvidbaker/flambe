@@ -42,25 +42,24 @@ html {
 `;
 
 // @DragDropContext(HTML5Backend)
-class App
-  extends Component<{
-    keyDown: () => mixed,
-    keyUp: () => mixed,
-    selectTrace: (trace: Trace) => mixed,
-    trace: ?Trace,
-    user: { id: string, name: string },
-    userTraces: (?Trace)[],
-    userTodos: (?Todo)[],
-  }> {
+class App extends Component<{
+  keyDown: () => mixed,
+  keyUp: () => mixed,
+  selectTrace: (trace: Trace) => mixed,
+  trace: ?Trace,
+  user: { id: string, name: string },
+  userTraces: (?Trace)[],
+  userTodos: (?Todo)[],
+}> {
   componentWillMount() {
-    console.log("main component will mount");
+    console.log('main component will mount');
     /** ⚠️ come back */
-    this.props.fetchUser(this.props.user.id)
-    
+    this.props.fetchUser(this.props.user.id);
+
     if (!this.props.user) {
       // this.props.fetchUser(this.props.user.id)
     } else if (this.props.trace) {
-      this.props.fetchTrace(this.props.trace)
+      this.props.fetchTrace(this.props.trace);
     }
   }
 
@@ -90,9 +89,9 @@ class App
       ? route.match.params.traceId
       : this.props.trace && this.props.trace.id;
 
-    return traceId
-      ? <Timeline traceId={traceId} user={this.props.user} key="timeline" />
-      : null;
+    return traceId ? (
+      <Timeline traceId={traceId} user={this.props.user} key="timeline" />
+    ) : null;
   };
 
   render() {
@@ -111,11 +110,7 @@ class App
             <Route path="/traces/:traceId" render={this.renderTimeline} />
             <Route exact path="/" render={this.renderTimeline} />
 
-            {/* // ⚠️ fix userid */}
-            <Todos
-              userId={'cj75obgc8kecq0120mb7l3bej'}
-              todos={this.props.userTodos}
-            />
+            <Todos todos={this.props.user.todos} />
           </Grid>
         </div>
       </ConnectedRouter>
@@ -124,48 +119,48 @@ class App
 }
 
 export const AllTraces = gql`
-query AllTraces($user: ID) {
-  User(id: $user) {
-    id
-    traces {
+  query AllTraces($user: ID) {
+    User(id: $user) {
       id
-      name
+      traces {
+        id
+        name
+      }
     }
   }
-}
 `;
 
 export const AllCategories = gql`
-query AllCategories($user: ID) {
-  User(id: $user) {
-    categories {
-      id
-      name
-      color
-    }
-  }
-}
-`;
-
-export const AllTodos = gql`
-query AllTodos($user: ID) {
-  User(id: $user) {
-    id
-    todos {
-      id
-      name
-      description
+  query AllCategories($user: ID) {
+    User(id: $user) {
       categories {
-        id 
+        id
         name
         color
       }
-      event {
+    }
+  }
+`;
+
+export const AllTodos = gql`
+  query AllTodos($user: ID) {
+    User(id: $user) {
+      id
+      todos {
         id
+        name
+        description
+        categories {
+          id
+          name
+          color
+        }
+        event {
+          id
+        }
       }
     }
   }
-}
 `;
 
 export default compose(
@@ -185,7 +180,7 @@ export default compose(
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       deleteTrace: (id: number) => dispatch(deleteTrace(id)),
       fetchUser: user_id => dispatch(fetchUser(user_id)),
-    })
+    }),
   ),
   // graphql(AllTraces, {
   //   options: props => ({

@@ -12,10 +12,11 @@ import {
   HOVER_ACTIVITY,
   UPDATE_THREAD_LEVEL,
   DELETE_CURRENT_TRACE,
-  TRACE_SELECT,
-  TRACE_FETCH,
   TIMELINE_ZOOM,
   TIMELINE_PAN,
+  TODO_BEGIN,
+  TRACE_SELECT,
+  TRACE_FETCH,
 } from 'actions';
 
 import { zoom, pan, processTrace } from 'utilities';
@@ -112,6 +113,7 @@ function timeline(state = initialState, action) {
         },
       };
     // 😃 optimism!
+    case TODO_BEGIN:
     case ACTIVITY_CREATE:
       return {
         ...state,
@@ -130,7 +132,8 @@ function timeline(state = initialState, action) {
           [action.thread_id]: state.threadLevels[action.thread_id] + 1,
         },
       };
-
+      
+    case `${TODO_BEGIN}_SUCCEEDED`:      
     case `${ACTIVITY_CREATE}_SUCCEEDED`:
       return {
         ...state,

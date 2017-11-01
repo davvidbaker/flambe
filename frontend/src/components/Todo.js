@@ -3,7 +3,6 @@
 import React, { Component } from 'react';
 import { DragSource } from 'react-dnd';
 // flow-ignore
-import { gql, graphql } from 'react-apollo';
 
 import type { ConnectDragSource } from 'react-dnd';
 import type { Todo as TYPE_TODO } from 'types/Todo';
@@ -29,7 +28,7 @@ const draggableSource = {
 
       // only main thread right now
       const mainThreadId = dropResult.threads.find(
-        thread => thread.name === 'Main'
+        thread => thread.name === 'Main',
       ).id;
 
       const garbage = JSON.stringify({
@@ -37,11 +36,13 @@ const draggableSource = {
         traceId: dropResult.traceId,
       });
 
-      props.markTodo({
-        variables: {
-          todoId: todo.id,
-          garbage,
-        },
+      /** ⚠️ change for multiple threads */
+      props.beginTodo({
+        todo_id: item.todo.id,
+        thread_id: mainThreadId,
+        name: item.todo.name,
+        description: item.todo.description,
+        timestamp: Date.now()
       });
     }
   },
@@ -58,7 +59,7 @@ type Props = {
   todo: TYPE_TODO,
   connectDragSource: ConnectDragSource,
   isDragging: boolean,
-  markTodo: () => mixed,
+  beginTodo: () => mixed,
 };
 
 // flow-ignore
@@ -70,20 +71,4 @@ class Todo extends Component<Props> {
   }
 }
 
-// Triggers server-side function cascacde 💥 -> 💥 -> 💥
-const MarkTodo = gql`
-  mutation MarkTodo($todoId: ID!, $garbage: String!) {
-    updateTodo(id: $todoId, garbage: $garbage) {
-      id
-      garbage
-    }
-  }
-`;
-
-export default graphql(MarkTodo, {
-  name: 'markTodo',
-  options: {
-    // not very efficient ⚠️ think about this . Is this right? I don't think so.
-    refetchQueries: ['AllEventsInTrace', 'AllTodos'],
-  },
-})(Todo);
+export default Todo;

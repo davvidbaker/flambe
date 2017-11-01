@@ -20,13 +20,16 @@ export const ACTIVITY_DELETE = 'ACTIVITY_DELETE';
 export const ACTIVITY_END = 'ACTIVITY_END';
 export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
 
+export const CATEGORY_CREATE = 'CATEGORY_CREATE';
+export const CATEGORY_UPDATE = 'CATEGORY_UPDATE';
+
+export const TODO_BEGIN = 'TODO_BEGIN';
+export const TODO_CREATE = 'TODO_CREATE';
+
 export const TRACE_CREATE = 'TRACE_CREATE';
 export const TRACE_DELETE = 'TRACE_DELETE';
 export const TRACE_SELECT = 'TRACE_SELECT';
 export const TRACE_FETCH = 'TRACE_FETCH';
-
-export const CATEGORY_CREATE = 'CATEGORY_CREATE';
-export const CATEGORY_UPDATE = 'CATEGORY_UPDATE';
 
 export const USER_FETCH = 'USER_FETCH';
 
@@ -36,6 +39,31 @@ export function processTimelineTrace(events, threads) {
     type: PROCESS_TIMELINE_TRACE,
     events,
     threads,
+  };
+}
+
+export function createTodo(name, description) {
+  return {
+    type: TODO_CREATE,
+    name,
+    description,
+  };
+}
+
+export function beginTodo({
+  todo_id,
+  thread_id,
+  name,
+  description,
+  timestamp,
+}) {
+  return {
+    type: TODO_BEGIN,
+    todo_id,
+    name,
+    description,
+    timestamp,
+    thread_id,
   };
 }
 
