@@ -24,8 +24,16 @@ defmodule StitchWeb.ActivityController do
     render(conn, "show.json", activity: activity)
   end
 
-  def delete(conn, %{"id" => id}) do
-    activity = Traces.get_activity!(id)
+  # 🔮 will fail next test probably
+  def delete(conn, %{"id" => id, "delete_events" => delete_events}) do
+    activity = Traces.get_activity!(id) |> Stitch.Repo.preload(:events)
+
+    if delete_events do
+      for evt <- activity.events do
+        Traces.delete_event(evt)
+      end
+    end
+
     with {:ok, %Activity{}} <- Traces.delete_activity(activity) do
       send_resp(conn, :no_content, "")
     end

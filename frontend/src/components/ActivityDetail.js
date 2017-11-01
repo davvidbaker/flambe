@@ -12,8 +12,9 @@ import Grid from 'components/Grid';
 import { InputFromButton } from 'components/Button';
 // import { EndActivity } from 'components/EventForm';
 import {
-  updateActivity,
+  deleteActivity,
   endActivity,
+  updateActivity,
   createCategory,
   updateCategory,
 } from 'actions';
@@ -70,13 +71,13 @@ const AddCategoryToActivity = gql`
  * 
  * Instead, I am just making multiple separate mutations. ⚠️ That is probably bad.
  * */
-const DeleteActivity = gql`
-  mutation DeleteActivity($activityId: ID!) {
-    deleteActivity(id: $activityId) {
-      id
-    }
-  }
-`;
+// const DeleteActivity = gql`
+//   mutation DeleteActivity($activityId: ID!) {
+//     deleteActivity(id: $activityId) {
+//       id
+//     }
+//   }
+// `;
 
 const DeleteEvent = gql`
   mutation DeleteEvent($eventId: ID!) {
@@ -125,7 +126,7 @@ type Props = {
     message: string,
   ) => mixed,
   DeleteButton: ({ variables: {} }) => mixed,
-  deleteActivity: ({ variables: {} }) => mixed,
+  deleteActivity: (id, thread_id) => mixed,
   deleteEvent: ({ variables: {} }) => mixed,
   createCategory: () => mixed,
   addCategory: ({ variables: {} }) => mixed,
@@ -184,7 +185,6 @@ class ActivityDetail extends React.Component<Props> {
       updateActivity,
       endActivity,
       deleteActivity,
-      deleteEvent,
       threadLevels,
       updateCategory,
       // updateThreadLevels,
@@ -223,15 +223,7 @@ class ActivityDetail extends React.Component<Props> {
         {/* abstract out the delete functionality */}
         <DeleteButton
           onConfirm={() => {
-            activity.events.forEach(id =>
-              deleteEvent({ variables: { eventId: id } }),
-            );
-
-            deleteActivity({
-              variables: {
-                activityId: activity.id,
-              },
-            });
+            deleteActivity(activity.id, activity.thread.id);
           }}
         >
           Delete Activity
@@ -315,6 +307,8 @@ export default compose(
         dispatch(createCategory({ activity_id, name, color })),
       updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
       updateActivity: (id, { name }) => dispatch(updateActivity(id, { name })),
+      deleteActivity: (id, thread_id) =>
+        dispatch(deleteActivity(id, thread_id)),
       endActivity: (id, timestamp, message, thread_id) =>
         dispatch(endActivity(id, timestamp, message, thread_id)),
     }),
