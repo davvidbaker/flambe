@@ -6,6 +6,7 @@ import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
 import {
   processTimelineTrace,
   ACTIVITY_CREATE,
+  ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_UPDATE,
   CATEGORY_CREATE,
@@ -131,6 +132,19 @@ function* endActivity({ type, id, timestamp, message }) {
   });
 }
 
+// 🔮 if you don't want to delete the events along with the activity, make changes here
+function* deleteActivity({ type, id }) {
+  yield fetchResource(type, {
+    resource: { path: 'activities', id },
+    params: {
+      method: 'DELETE',
+      body: JSON.stringify({
+        delete_events: true,
+      }),
+    },
+  });
+}
+
 function* updateActivity({ type, id, name }) {
   yield fetchResource(type, {
     resource: { path: 'activities', id },
@@ -229,6 +243,7 @@ function* mainSaga() {
   yield takeLatest(`${TRACE_FETCH}_SUCCEEDED`, processFetchedTrace);
 
   yield takeEvery(ACTIVITY_CREATE, createActivity);
+  yield takeEvery(ACTIVITY_DELETE, deleteActivity);
   yield takeEvery(ACTIVITY_END, endActivity);
   yield takeEvery(ACTIVITY_UPDATE, updateActivity);
 

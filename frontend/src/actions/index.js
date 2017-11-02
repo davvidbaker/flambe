@@ -16,8 +16,9 @@ export const KEY_UP = 'KEY_UP';
 export const FETCH_RESOURCE = 'FETCH_RESOURCE';
 
 export const ACTIVITY_CREATE = 'ACTIVITY_CREATE';
-export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
+export const ACTIVITY_DELETE = 'ACTIVITY_DELETE';
 export const ACTIVITY_END = 'ACTIVITY_END';
+export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
 
 export const TRACE_CREATE = 'TRACE_CREATE';
 export const TRACE_DELETE = 'TRACE_DELETE';
@@ -107,13 +108,22 @@ export function createActivity({
   };
 }
 
-/** 💁 the thread_id is just being used for optimystical updating threadLevels */
+/** 💁 the thread_id is just being used here for optimystical updating threadLevels */
 export function endActivity(id, timestamp, message, thread_id) {
   return {
     type: ACTIVITY_END,
     id,
     timestamp,
     message,
+    thread_id,
+  };
+}
+
+/** 💁 the thread_id is just being used here for optimystical updating threadLevels */
+export function deleteActivity(id, thread_id) {
+  return {
+    type: ACTIVITY_DELETE,
+    id,
     thread_id,
   };
 }
