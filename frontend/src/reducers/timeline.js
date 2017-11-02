@@ -3,6 +3,7 @@ import mapValues from 'lodash/mapValues';
 
 import {
   ACTIVITY_CREATE,
+  ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_UPDATE,
   CATEGORY_CREATE,
@@ -138,6 +139,36 @@ function timeline(state = initialState, action) {
           (_val, key) => (key === 'optimisticActivity' ? action.data.id : key),
         ),
       };
+
+    case ACTIVITY_DELETE:
+      const acts = {};
+      /** 💁 we need to adjust the levels of any affected activities */
+      Object.entries(state.activities).forEach(([key, val]) => {
+        if (key !== action.id) {
+          acts[key] = val;
+          if (val.thread.id === action.thread_id) {
+            if (!state.activities[action.id].endTime) {
+              if (val.startTime > state.activities[action.id].startTime) {
+                acts[key].level--;
+              }
+            } else if (val.startTime > state.activities[action.id].startTime && val.endTime < state.activities[action.id].endTime) {
+              acts[key].level--;
+            }
+          }
+        }
+      })
+
+      return {
+        ...state,
+        activities: acts,
+        focusedActivityId: null,
+        /** 💁 if the activity hasn't ended, we need to adjust thread level for the future */
+        threadLevels: state.activities[action.id].endTime ? state.threadLevels : {
+          ...state.threadLevels,
+          [action.thread_id]: state.threadLevels[action.thread_id] - 1,
+        }
+      };
+
     // 😃 optimism!
     case ACTIVITY_END:
       console.log(state);
@@ -191,7 +222,8 @@ function timeline(state = initialState, action) {
               ? {
                 ...act,
                 categories: act.categories.map(
-                  cat => (cat === 'optimisticCategory' ? action.data.id : cat),
+                  cat =>
+                    (cat === 'optimisticCategory' ? action.data.id : cat),
                 ),
               }
               : act),
