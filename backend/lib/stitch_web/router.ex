@@ -59,6 +59,7 @@ defmodule StitchWeb.Router do
     resources "/activities", ActivityController, only: [:create, :show, :delete, :update]
     resources "/categories", CategoryController, except: [:new, :edit]
     resources "/threads", ThreadController, except: [:new, :edit]
+    resources "/todos", TodoController, except: [:new, :edit]
     
     # resources "/events" EventController, only: [:new]
   end

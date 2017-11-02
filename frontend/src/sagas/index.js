@@ -11,6 +11,8 @@ import {
   ACTIVITY_UPDATE,
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
+  TODO_CREATE,
+  TODO_BEGIN,
   TRACE_CREATE,
   TRACE_FETCH,
   TRACE_SELECT,
@@ -89,6 +91,7 @@ function* fetchResource(actionType, { resource, params }) {
 
 // // // // // // // // // // // // // // // // // // // // // // // //
 
+/** 💁 Creating an activity from a todo automatically handles deleting that todo (from the database). */
 function* createActivity({
   type,
   name,
@@ -96,6 +99,7 @@ function* createActivity({
   description,
   thread_id /* message */,
   category_id,
+  todo_id = null,
 }) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
@@ -105,6 +109,7 @@ function* createActivity({
       body: JSON.stringify({
         trace_id: timeline.trace.id,
         thread_id,
+        todo_id,
         event: { timestamp_integer: timestamp },
         activity: { name, description },
       }),
@@ -166,6 +171,23 @@ function* createCategory({ type, activity_id, name, color }) {
         /** 🔮 <-(first crystal ball use) if you want to be able to set a bunch of activities to a new category, this will have to change, like with highlighting a big section */
         activity_ids: [activity_id],
         category: { name, color },
+      }),
+    },
+  });
+}
+
+function* createTodo({ type, name, description }) {
+  const user = yield select(getUser);
+  yield fetchResource(type, {
+    resource: { path: 'todos' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: user.id,
+        todo: {
+          name,
+          description,
+        },
       }),
     },
   });
@@ -249,6 +271,9 @@ function* mainSaga() {
 
   yield takeEvery(CATEGORY_CREATE, createCategory);
   yield takeEvery(CATEGORY_UPDATE, updateCategory);
+
+  yield takeEvery(TODO_BEGIN, createActivity);
+  yield takeEvery(TODO_CREATE, createTodo);
 
   // yield takeEvery('FETCH_RESOURCE', fetchResource);
 }
