@@ -35,6 +35,6 @@ class Todos extends Component {
 export default connect(null, dispatch => ({
   createTodo: (name, description = '') =>
     dispatch(createTodo(name, description)),
-  beginTodo: (id, name, description: '') =>
-    dispatch(beginTodo(id, name, description)),
+  beginTodo: ({ todo_id, thread_id, timestamp, name, description = '' }) =>
+    dispatch(beginTodo({ todo_id, thread_id, timestamp, name, description })),
 }))(Todos);

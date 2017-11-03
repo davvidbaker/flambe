@@ -38,6 +38,7 @@ module.exports = {
     'no-bitwise': 'off',
     'no-case-declarations': 'off',
     'no-console': 'off',
+    'no-debugger': 'off',
     'no-plusplus': 'off',
     'no-unused-vars': 'error',
     indent: [

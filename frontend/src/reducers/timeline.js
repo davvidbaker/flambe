@@ -12,6 +12,7 @@ import {
   HOVER_ACTIVITY,
   UPDATE_THREAD_LEVEL,
   DELETE_CURRENT_TRACE,
+  THREAD_CREATE,
   TIMELINE_ZOOM,
   TIMELINE_PAN,
   TODO_BEGIN,
@@ -132,8 +133,8 @@ function timeline(state = initialState, action) {
           [action.thread_id]: state.threadLevels[action.thread_id] + 1,
         },
       };
-      
-    case `${TODO_BEGIN}_SUCCEEDED`:      
+
+    case `${TODO_BEGIN}_SUCCEEDED`:
     case `${ACTIVITY_CREATE}_SUCCEEDED`:
       return {
         ...state,
@@ -154,22 +155,27 @@ function timeline(state = initialState, action) {
               if (val.startTime > state.activities[action.id].startTime) {
                 acts[key].level--;
               }
-            } else if (val.startTime > state.activities[action.id].startTime && val.endTime < state.activities[action.id].endTime) {
+            } else if (
+              val.startTime > state.activities[action.id].startTime &&
+              val.endTime < state.activities[action.id].endTime
+            ) {
               acts[key].level--;
             }
           }
         }
-      })
+      });
 
       return {
         ...state,
         activities: acts,
         focusedActivityId: null,
         /** 💁 if the activity hasn't ended, we need to adjust thread level for the future */
-        threadLevels: state.activities[action.id].endTime ? state.threadLevels : {
-          ...state.threadLevels,
-          [action.thread_id]: state.threadLevels[action.thread_id] - 1,
-        }
+        threadLevels: state.activities[action.id].endTime
+          ? state.threadLevels
+          : {
+            ...state.threadLevels,
+            [action.thread_id]: state.threadLevels[action.thread_id] - 1,
+          },
       };
 
     // 😃 optimism!
@@ -230,6 +236,26 @@ function timeline(state = initialState, action) {
                 ),
               }
               : act),
+        ),
+      };
+
+    case THREAD_CREATE:
+      return {
+        ...state,
+        threads: [
+          ...state.threads,
+          { name: action.name, rank: action.rank, id: 'optimisticThread' },
+        ],
+      };
+
+    case `${THREAD_CREATE}_SUCCEEDED`:
+      return {
+        ...state,
+        threads: state.threads.map(
+          thread =>
+            (thread.id === 'optimisticThread'
+              ? { ...thread, id: action.data.id }
+              : thread),
         ),
       };
 

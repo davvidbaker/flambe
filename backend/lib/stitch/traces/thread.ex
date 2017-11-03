@@ -6,6 +6,7 @@ defmodule Stitch.Traces.Thread do
 
   schema "threads" do
     field :name, :string
+    field :rank, :integer, default: 0
     belongs_to :trace, Stitch.Traces.Trace
     has_many :activities, Activity, on_delete: :delete_all
 
