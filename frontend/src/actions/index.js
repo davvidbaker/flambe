@@ -26,6 +26,8 @@ export const CATEGORY_UPDATE = 'CATEGORY_UPDATE';
 export const TODO_BEGIN = 'TODO_BEGIN';
 export const TODO_CREATE = 'TODO_CREATE';
 
+export const THREAD_CREATE = 'THREAD_CREATE';
+
 export const TRACE_CREATE = 'TRACE_CREATE';
 export const TRACE_DELETE = 'TRACE_DELETE';
 export const TRACE_SELECT = 'TRACE_SELECT';
@@ -39,6 +41,14 @@ export function processTimelineTrace(events, threads) {
     type: PROCESS_TIMELINE_TRACE,
     events,
     threads,
+  };
+}
+
+export function createThread(name, rank) {
+  return {
+    type: THREAD_CREATE,
+    name,
+    rank,
   };
 }
 

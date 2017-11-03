@@ -20,22 +20,25 @@ const commonStyles = `
 `;
 
 const Button = styled.button`
-  ${commonStyles}
-  cursor: pointer;  
+  ${commonStyles} cursor: pointer;
 
   &:hover {
-    background: ${tinycolor(colors.hover).darken(5).toString()};
+    background: ${tinycolor(colors.hover)
+    .darken(5)
+    .toString()};
   }
 
   &:active {
-    background: ${tinycolor(colors.hover).darken(10).toString()};
+    background: ${tinycolor(colors.hover)
+    .darken(10)
+    .toString()};
   }
-  ${props => (props.looksLikeButton ? 'border-color: #ccc' : '')}
+  ${props => (props.looksLikeButton ? 'border-color: #ccc' : '')};
 `;
 
 const StyledInputFromButton = styled.input`
-min-width: unset;
-${commonStyles}
+  min-width: unset;
+  ${commonStyles};
 `;
 
 type Props = {
@@ -55,7 +58,6 @@ export class InputFromButton extends Component<Props, { isInput: boolean }> {
   };
 
   transformIntoInput = () => {
-    console.log('transformed into input');
     this.setState({ isInput: true }, () => {
       this.transformedInput.focus();
     });
@@ -63,7 +65,8 @@ export class InputFromButton extends Component<Props, { isInput: boolean }> {
 
   onKeyPress = e => {
     if (
-      e.key === 'Enter' && (this.props.canBeBlank || e.target.value.length > 0)
+      e.key === 'Enter' &&
+      (this.props.canBeBlank || e.target.value.length > 0)
     ) {
       this.props.submit(e.target.value);
       this.transformIntoButton();
@@ -75,14 +78,15 @@ export class InputFromButton extends Component<Props, { isInput: boolean }> {
   };
 
   render() {
-    return this.state.isInput === false
-      ? <Button
+    return this.state.isInput === false ? (
+      <Button
         onClick={this.transformIntoInput}
         looksLikeButton={this.props.looksLikeButton}
       >
         {this.props.children}
       </Button>
-      : <StyledInputFromButton
+    ) : (
+      <StyledInputFromButton
         type="text"
         placeholder={this.props.placeholder || this.props.children}
         onBlur={this.transformIntoButton}
@@ -90,7 +94,8 @@ export class InputFromButton extends Component<Props, { isInput: boolean }> {
         innerRef={input => {
           this.transformedInput = input;
         }}
-      />;
+      />
+    );
   }
 }
 

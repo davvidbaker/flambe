@@ -11,9 +11,10 @@ import ActivityDetail from 'components/ActivityDetail';
 import EventForm from 'components/EventForm';
 import WithDropTarget from 'containers/WithDropTarget';
 import WithEventListeners from 'components/WithEventListeners';
+import { InputFromButton } from 'components/Button';
 
 import { MAX_TIME_INTO_FUTURE } from 'constants.js';
-import { updateActivity } from 'actions';
+import { updateActivity, createThread } from 'actions';
 import { getTimeline } from 'reducers/timeline';
 import { layout } from 'styles';
 
@@ -132,7 +133,7 @@ class Timeline extends Component<Props, State> {
 
   render() {
     const props = this.props;
-    console.log(props)
+    console.log(props);
     const focusedActivity =
       props.focusedActivityId && props.activities[props.focusedActivityId];
 
@@ -164,18 +165,27 @@ class Timeline extends Component<Props, State> {
             >
               <FlameChart
                 activities={props.activities}
-                minTime={props.minTime}
+                threads={props.threads}
+                categories={props.user.categories}
                 maxTime={props.maxTime}
+                minTime={props.minTime}
                 leftBoundaryTime={this.state.leftBoundaryTime || props.minTime}
                 rightBoundaryTime={
                   this.state.rightBoundaryTime || props.maxTime
                 }
-                topOffset={this.state.topOffset || 0}
-                categories={props.user.categories}
-                zoom={this.zoom}
                 pan={this.pan}
+                topOffset={this.state.topOffset || 0}
+                zoom={this.zoom}
               />
             </WithDropTarget>
+            <InputFromButton
+              submit={(name: string) => {
+                console.log('name', name);
+                props.createThread(name, props.threads.length);
+              }}
+            >
+              New Thread
+            </InputFromButton>
             {props.focusedActivityId ? (
               <ActivityDetail
                 activity={{
@@ -273,9 +283,8 @@ export default compose(
       lastCategory: getTimeline(state).lastCategory,
     }),
     dispatch => ({
-      updateActivity: (id, obj) => {
-        dispatch(updateActivity(id, obj));
-      },
+      createThread: (name, rank) => dispatch(createThread(name, rank)),
+      updateActivity: (id, obj) => dispatch(updateActivity(id, obj)),
     }),
   ),
 )(Timeline);
