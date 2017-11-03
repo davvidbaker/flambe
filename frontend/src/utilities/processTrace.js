@@ -58,6 +58,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     if (!threadLevels[threadId]) {
       threadLevels[threadId] = 0;
     }
+    console.log('threadId', threadId);
 
     const activity: Activity = activities[event.activity.id];
 

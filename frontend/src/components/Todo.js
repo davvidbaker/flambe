@@ -26,23 +26,19 @@ const draggableSource = {
     if (dropResult && dropResult.hit === 'flame-chart') {
       const todo = item.todo;
 
-      // only main thread right now
-      const mainThreadId = dropResult.threads.find(
-        thread => thread.name === 'Main',
-      ).id;
+      const client_offset = monitor.getClientOffset();
 
-      const garbage = JSON.stringify({
-        threadId: mainThreadId,
-        traceId: dropResult.traceId,
-      });
+      // /** ⚠️ change for multiple threads */
+      // const mainThreadId = dropResult.threads.find(
+      //   thread => thread.name === 'Main',
+      // ).id;
 
-      /** ⚠️ change for multiple threads */
       props.beginTodo({
         todo_id: item.todo.id,
-        thread_id: mainThreadId,
+        thread_id: dropResult.thread_id,
         name: item.todo.name,
         description: item.todo.description,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     }
   },
