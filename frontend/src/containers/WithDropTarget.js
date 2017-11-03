@@ -8,11 +8,16 @@ import StyledDropTarget from 'components/StyledDropTarget';
 
 // ⚠️ rename, make more abstract
 const todoTarget = {
-  drop(props) {
+  drop(props, monitor) {
+    // ⚠️️️ ⚠️️️ ⚠️️️ ⚠️️️ hack for POC
     console.log('prippy props', props);
     return {
       hit: props.targetName,
-      threads: props.threads,
+      // ⚠️️️ ⚠️️️ ⚠️️️ ⚠️️️ hack for POC
+      thread_id:
+        monitor.getClientOffset().y > 250
+          ? props.threads.find(thread => thread.name === 'Main').id
+          : 12,
       traceId: props.traceId,
     };
   },
@@ -40,11 +45,12 @@ class unenhancedDropTarget extends Component<Props> {
     return connectDropTarget(
       <div style={{ position: 'relative', height: '90%' }}>
         {children}
-        {canDrop &&
+        {canDrop && (
           <StyledDropTarget isOver={isOver}>
             <h2> Get to work! 👷</h2>
-          </StyledDropTarget>}
-      </div>
+          </StyledDropTarget>
+        )}
+      </div>,
     );
   }
 }

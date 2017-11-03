@@ -11,6 +11,7 @@ import {
   ACTIVITY_UPDATE,
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
+  THREAD_CREATE,
   TODO_CREATE,
   TODO_BEGIN,
   TRACE_CREATE,
@@ -249,20 +250,26 @@ function* processFetchedTrace({ data }) {
   );
 }
 
+function* createThread({ type, name, rank }) {
+  const timeline = yield select(getTimeline);
+  yield fetchResource(type, {
+    resource: { path: 'threads' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        trace_id: timeline.trace.id,
+        thread: { name, rank },
+      }),
+    },
+  });
+}
+
 // // // // // // // // // // // // // // // // // // // // // // // //
 
 function* mainSaga() {
   /** Not sure what the difference between these two actions is 🤷 */
   // yield takeEvery('APOLLO_QUERY_RESULT', respondToQuery);
   // yield takeEvery('APOLLO_QUERY_RESULT_CLIENT', respondToQuery);
-
-  yield takeLatest(USER_FETCH, fetchUser);
-
-  yield takeEvery(TRACE_CREATE, createTrace);
-  yield takeEvery(TRACE_DELETE, deleteTrace);
-  yield takeLatest(TRACE_FETCH, fetchTrace);
-  yield takeLatest(TRACE_SELECT, fetchTrace);
-  yield takeLatest(`${TRACE_FETCH}_SUCCEEDED`, processFetchedTrace);
 
   yield takeEvery(ACTIVITY_CREATE, createActivity);
   yield takeEvery(ACTIVITY_DELETE, deleteActivity);
@@ -274,6 +281,16 @@ function* mainSaga() {
 
   yield takeEvery(TODO_BEGIN, createActivity);
   yield takeEvery(TODO_CREATE, createTodo);
+
+  yield takeEvery(TRACE_CREATE, createTrace);
+  yield takeEvery(TRACE_DELETE, deleteTrace);
+  yield takeLatest(TRACE_FETCH, fetchTrace);
+  yield takeLatest(TRACE_SELECT, fetchTrace);
+  yield takeLatest(`${TRACE_FETCH}_SUCCEEDED`, processFetchedTrace);
+
+  yield takeEvery(THREAD_CREATE, createThread);
+
+  yield takeLatest(USER_FETCH, fetchUser);
 
   // yield takeEvery('FETCH_RESOURCE', fetchResource);
 }
