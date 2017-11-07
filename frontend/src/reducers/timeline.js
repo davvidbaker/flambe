@@ -106,11 +106,16 @@ function timeline(state = initialState, action) {
       };
 
     case UPDATE_THREAD_LEVEL:
+      const prevLevel = state.threadLevels[action.id].current;
+      const prevMax = state.threadLevels[action.id].max;
       return {
         ...state,
         threadLevels: {
           ...state.threadLevels,
-          [action.id]: state.threadLevels[action.id] + action.inc,
+          [action.id]: {
+            current: prevLevel + action.inc,
+            max: Math.max(prevLevel + action.inc, prevMax),
+          },
         },
       };
     // 😃 optimism!
@@ -124,13 +129,19 @@ function timeline(state = initialState, action) {
             name: action.name,
             startTime: action.timestamp,
             categories: [action.category_id],
-            level: state.threadLevels[action.thread_id],
+            level: state.threadLevels[action.thread_id].current,
             thread: { id: action.thread_id },
           },
         },
         threadLevels: {
           ...state.threadLevels,
-          [action.thread_id]: state.threadLevels[action.thread_id] + 1,
+          [action.thread_id]: {
+            current: state.threadLevels[action.thread_id].current + 1,
+            max: Math.max(
+              state.threadLevels[action.thread_id].current + 1,
+              state.threadLevels[action.thread_id].max,
+            ),
+          },
         },
       };
 
@@ -174,7 +185,11 @@ function timeline(state = initialState, action) {
           ? state.threadLevels
           : {
             ...state.threadLevels,
-            [action.thread_id]: state.threadLevels[action.thread_id] - 1,
+            /** ⚠️ I THINK THIS IS WRONG */
+            [action.thread_id]: {
+              current: state.threadLevels[action.thread_id].current - 1,
+              max: state.threadLevels[action.thread_id].max,
+            },
           },
       };
 
@@ -192,7 +207,10 @@ function timeline(state = initialState, action) {
         },
         threadLevels: {
           ...state.threadLevels,
-          [action.thread_id]: state.threadLevels[action.thread_id] - 1,
+          [action.thread_id]: {
+            current: state.threadLevels[action.thread_id].current - 1,
+            max: state.threadLevels[action.thread_id].max,
+          },
         },
       };
     /** ⚠️ need to handle network failures */

@@ -17,7 +17,10 @@ function pushToMaybeNullArray(arr, ...items) {
 function processTrace(trace: TraceEvent[], threads: Thread[]) {
   const threadLevels = {};
   threads.forEach(thread => {
-    threadLevels[thread.id] = 0;
+    threadLevels[thread.id] = {
+      current: 0,
+      max: 0,
+    };
   });
   console.log('processing trace events...');
 
@@ -56,7 +59,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     const threadId = event.activity.thread.id;
 
     if (!threadLevels[threadId]) {
-      threadLevels[threadId] = 0;
+      threadLevels[threadId] = { current: 0, max: 0 };
     }
     console.log('threadId', threadId);
 
@@ -78,17 +81,21 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       // B for begin
       case 'B':
         activity.startTime = event.timestamp;
-        activity.level = threadLevels[threadId];
+        activity.level = threadLevels[threadId].current;
         activity.name = event.activity.name;
         activity.description = event.activity.description;
         activity.thread = event.activity.thread;
 
-        threadLevels[threadId]++;
+        threadLevels[threadId].current++;
+        threadLevels[threadId].max = Math.max(
+          threadLevels[threadId].current,
+          threadLevels[threadId].max,
+        );
         break;
       // E for End
       case 'E':
         activity.endTime = event.timestamp;
-        threadLevels[threadId]--;
+        threadLevels[threadId].current--;
         break;
 
       default:

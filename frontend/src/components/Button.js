@@ -48,6 +48,7 @@ type Props = {
   placeholder: ?string,
   submit: (value: string) => mixed,
 };
+
 export class InputFromButton extends Component<Props, { isInput: boolean }> {
   state = {
     isInput: false,
