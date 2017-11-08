@@ -13,6 +13,7 @@ import {
   UPDATE_THREAD_LEVEL,
   DELETE_CURRENT_TRACE,
   THREAD_CREATE,
+  THREAD_UPDATE,
   TIMELINE_ZOOM,
   TIMELINE_PAN,
   TODO_BEGIN,
@@ -46,7 +47,7 @@ function timeline(state = initialState, action) {
         action.rightBoundaryTime,
         action.width,
         action.nowTime,
-        action.minTime,
+        action.minTime
       );
       return {
         ...state,
@@ -63,7 +64,7 @@ function timeline(state = initialState, action) {
         action.width,
         action.topOffset,
         action.nowTime,
-        action.minTime,
+        action.minTime
       );
       return {
         ...state,
@@ -139,7 +140,7 @@ function timeline(state = initialState, action) {
             current: state.threadLevels[action.thread_id].current + 1,
             max: Math.max(
               state.threadLevels[action.thread_id].current + 1,
-              state.threadLevels[action.thread_id].max,
+              state.threadLevels[action.thread_id].max
             ),
           },
         },
@@ -151,7 +152,7 @@ function timeline(state = initialState, action) {
         ...state,
         activities: mapKeys(
           state.activities,
-          (_val, key) => (key === 'optimisticActivity' ? action.data.id : key),
+          (_val, key) => (key === 'optimisticActivity' ? action.data.id : key)
         ),
       };
 
@@ -192,7 +193,6 @@ function timeline(state = initialState, action) {
             },
           },
       };
-
     // 😃 optimism!
     case ACTIVITY_END:
       console.log(state);
@@ -249,11 +249,10 @@ function timeline(state = initialState, action) {
               ? {
                 ...act,
                 categories: act.categories.map(
-                  cat =>
-                    (cat === 'optimisticCategory' ? action.data.id : cat),
+                  cat => (cat === 'optimisticCategory' ? action.data.id : cat)
                 ),
               }
-              : act),
+              : act)
         ),
       };
 
@@ -273,7 +272,19 @@ function timeline(state = initialState, action) {
           thread =>
             (thread.id === 'optimisticThread'
               ? { ...thread, id: action.data.id }
-              : thread),
+              : thread)
+        ),
+      };
+
+    /** ⚠️ need to handle failures */
+    case THREAD_UPDATE:
+      return {
+        ...state,
+        threads: state.threads.map(
+          thread =>
+            (thread.id === action.id
+              ? { ...thread, ...action.updates }
+              : thread)
         ),
       };
 
