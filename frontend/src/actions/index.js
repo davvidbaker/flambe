@@ -27,6 +27,7 @@ export const TODO_BEGIN = 'TODO_BEGIN';
 export const TODO_CREATE = 'TODO_CREATE';
 
 export const THREAD_CREATE = 'THREAD_CREATE';
+export const THREAD_UPDATE = 'THREAD_UPDATE';
 
 export const TRACE_CREATE = 'TRACE_CREATE';
 export const TRACE_DELETE = 'TRACE_DELETE';
@@ -97,6 +98,14 @@ export function createCategory({
 export function updateCategory(id, updates) {
   return {
     type: CATEGORY_UPDATE,
+    id,
+    updates,
+  };
+}
+
+export function updateThread(id, updates) {
+  return {
+    type: THREAD_UPDATE,
     id,
     updates,
   };

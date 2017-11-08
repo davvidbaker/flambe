@@ -3,7 +3,6 @@
 import React from 'react';
 import styled from 'styled-components';
 // flow-ignore
-import { gql, graphql, compose } from 'react-apollo';
 import { connect } from 'react-redux';
 
 import Category, { AddCategory } from 'components/Category';
@@ -25,75 +24,13 @@ import type { Category as CategoryType } from 'types/Category';
 
 const P = styled.p`margin: 0;`;
 
-const UpdateName = gql`
-  mutation UpdateName($activityId: ID!, $name: String!) {
-    updateActivity(id: $activityId, name: $name) {
-      id
-      name
-    }
-  }
-`;
-
-// const CreateCategory = gql`
-// mutation createCategory($userId: ID!, $name: String!, $color: String!, $activityId: ID!) {
-//   createCategory(userId: $userId, name: $name, color: $color, activitiesIds: [$activityId]) {
-//     id
-//     name
-//     color
-//     activities {
-//       id
-//     }
-//   }
-// }
-// `;
-
-const AddCategoryToActivity = gql`
-  mutation AddCategoryToActivity($activityId: ID!, $categoryId: ID!) {
-    addToActivitiesCategories(
-      activitiesActivityId: $activityId
-      categoriesCategoryId: $categoryId
-    ) {
-      activitiesActivity {
-        id
-        name
-      }
-      categoriesCategory {
-        id
-        name
-      }
-    }
-  }
-`;
-
-/** 
- * 💁‍ cascading deletes are not yet available in GraphCool
- * https://github.com/graphcool/graphcool/issues/47 
- * 
- * Instead, I am just making multiple separate mutations. ⚠️ That is probably bad.
- * */
-// const DeleteActivity = gql`
-//   mutation DeleteActivity($activityId: ID!) {
-//     deleteActivity(id: $activityId) {
-//       id
-//     }
-//   }
-// `;
-
-const DeleteEvent = gql`
-  mutation DeleteEvent($eventId: ID!) {
-    deleteEvent(id: $eventId) {
-      id
-    }
-  }
-`;
-
-// Activity is only closeable if it is on the tip of the icicle.
-function isCloseable(activity, threadLevels) {
+// Activity is only endable if it is on the tip of the icicle.
+function isEndable(activity, threadLevels) {
   if (!activity.thread) {
     console.warn('activity missing thread!', activity);
     return;
   }
-  if (activity.level + 1 === threadLevels[activity.thread.id]) {
+  if (activity.level + 1 === threadLevels[activity.thread.id].current) {
     return true;
   }
   return false;
@@ -204,7 +141,7 @@ class ActivityDetail extends React.Component<Props> {
           {activity.name}
         </InputFromButton>
         {!activity.endTime &&
-          isCloseable(activity, threadLevels) && (
+          isEndable(activity, threadLevels) && (
             <InputFromButton
               ref={endButton => {
                 this.endButton = endButton;
@@ -269,48 +206,20 @@ const options = props => ({
   },
 });
 
-export default compose(
-  // ⚠️ move this elsewhere?
-  // graphql(AddCategoryToActivity, {
-  //   name: 'addCategory',
-  // }),
-  // // ⚠️ move this elsewhere?
-  // graphql(CreateCategory, {
-  //   name: 'createCategory',
-  // }),
-  // graphql(UpdateName, {
-  //   name: 'updateName',
-  //   options,
-  // }),
-  // // graphql(EndActivity, {
-  // //   name: 'endActivity',
-  // //   options,
-  // // }),
-  // graphql(DeleteActivity, {
-  //   name: 'deleteActivity',
-  // }),
-  // graphql(DeleteEvent, {
-  //   name: 'deleteEvent',
-  //   options: props => ({
-  //     refetchQueries: ['AllEventsInTrace'],
-  //   }),
-  // }),
-  // flow-ignore
-  connect(
-    state => ({
-      categories: getUser(state).categories,
-    }),
-    dispatch => ({
-      // updateThreadLevels: (id: string, inc: number) =>
-      // dispatch(updateThreadLevel(id, inc)),
-      createCategory: ({ activity_id, name, color }) =>
-        dispatch(createCategory({ activity_id, name, color })),
-      updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
-      updateActivity: (id, { name }) => dispatch(updateActivity(id, { name })),
-      deleteActivity: (id, thread_id) =>
-        dispatch(deleteActivity(id, thread_id)),
-      endActivity: (id, timestamp, message, thread_id) =>
-        dispatch(endActivity(id, timestamp, message, thread_id)),
-    }),
-  ),
+export default // flow-ignore
+connect(
+  state => ({
+    categories: getUser(state).categories,
+  }),
+  dispatch => ({
+    // updateThreadLevels: (id: string, inc: number) =>
+    // dispatch(updateThreadLevel(id, inc)),
+    createCategory: ({ activity_id, name, color }) =>
+      dispatch(createCategory({ activity_id, name, color })),
+    updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
+    updateActivity: (id, { name }) => dispatch(updateActivity(id, { name })),
+    deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
+    endActivity: (id, timestamp, message, thread_id) =>
+      dispatch(endActivity(id, timestamp, message, thread_id)),
+  }),
 )(ActivityDetail);

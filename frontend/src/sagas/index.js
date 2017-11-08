@@ -12,6 +12,7 @@ import {
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
   THREAD_CREATE,
+  THREAD_UPDATE,
   TODO_CREATE,
   TODO_BEGIN,
   TRACE_CREATE,
@@ -206,6 +207,18 @@ function* updateCategory({ type, id, updates }) {
   });
 }
 
+function* updateThread({ type, id, updates }) {
+  yield fetchResource(type, {
+    resource: { path: 'threads', id },
+    params: {
+      method: 'PUT',
+      body: JSON.stringify({
+        thread: { ...updates },
+      }),
+    },
+  });
+}
+
 function* createTrace({ type, name }) {
   const user = yield select(getUser);
   yield fetchResource(type, {
@@ -289,6 +302,7 @@ function* mainSaga() {
   yield takeLatest(`${TRACE_FETCH}_SUCCEEDED`, processFetchedTrace);
 
   yield takeEvery(THREAD_CREATE, createThread);
+  yield takeEvery(THREAD_UPDATE, updateThread);
 
   yield takeLatest(USER_FETCH, fetchUser);
 

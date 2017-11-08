@@ -3,11 +3,12 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 // flow-ignore
-import { gql, graphql, compose } from 'react-apollo';
 import throttle from 'lodash/throttle';
+import sortBy from 'lodash/sortBy';
 
 import FlameChart from 'components/FlameChart';
 import ActivityDetail from 'components/ActivityDetail';
+import ThreadDetail from 'components/ThreadDetail';
 import EventForm from 'components/EventForm';
 import WithDropTarget from 'containers/WithDropTarget';
 import WithEventListeners from 'components/WithEventListeners';
@@ -47,6 +48,9 @@ type Props = {
 type State = {
   leftBoundaryTime: number,
   rightBoundaryTime: number,
+  topOffset: number,
+
+  threadModal_id: ?number,
 };
 
 class Timeline extends Component<Props, State> {
@@ -57,8 +61,8 @@ class Timeline extends Component<Props, State> {
     eventListeners: null,
   };
 
-  componentWillMount() {
-    console.log('lbt', localStorage.getItem('lbt'));
+  constructor(props) {
+    super(props);
     const savedTimes = {
       lbt: localStorage.getItem('lbt'),
       rbt: localStorage.getItem('rbt'),
@@ -67,9 +71,11 @@ class Timeline extends Component<Props, State> {
     const rbt = savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
 
     if (lbt && rbt) {
-      this.setState({ leftBoundaryTime: lbt, rightBoundaryTime: rbt });
+      this.state.leftBoundaryTime = lbt;
+      this.state.rightBoundaryTime = rbt;
     }
   }
+
   // shows about the last 10 minutes
   showRightNow() {
     this.setState({
@@ -113,6 +119,10 @@ class Timeline extends Component<Props, State> {
     );
   };
 
+  showThreadDetail = (id: number) => {
+    this.setState({ threadModal_id: id });
+  };
+
   /**
    * 💁 I didn't want left and right boundary times to be part of redux, because they were changing too fast for a super silky smooth animation, but I did want them to persist through reloads. So, when this component will mount, if they exist in localStorage, they will take that initial value. They are then set in localStorage at most once a second. 
    *
@@ -133,7 +143,6 @@ class Timeline extends Component<Props, State> {
 
   render() {
     const props = this.props;
-    console.log(props);
     const focusedActivity =
       props.focusedActivityId && props.activities[props.focusedActivityId];
 
@@ -166,6 +175,7 @@ class Timeline extends Component<Props, State> {
               <FlameChart
                 activities={props.activities}
                 threads={props.threads}
+                threadLevels={props.threadLevels}
                 categories={props.user.categories}
                 maxTime={props.maxTime}
                 minTime={props.minTime}
@@ -174,6 +184,7 @@ class Timeline extends Component<Props, State> {
                   this.state.rightBoundaryTime || props.maxTime
                 }
                 pan={this.pan}
+                showThreadDetail={this.showThreadDetail}
                 topOffset={this.state.topOffset || 0}
                 zoom={this.zoom}
               />
@@ -186,7 +197,16 @@ class Timeline extends Component<Props, State> {
             >
               New Thread
             </InputFromButton>
-            {props.focusedActivityId ? (
+            {this.state.threadModal_id && (
+              <ThreadDetail
+                id={this.state.threadModal_id}
+                name={
+                  props.threads.find(t => t.id === this.state.threadModal_id)
+                    .name
+                }
+              />
+            )}
+            {props.focusedActivityId && (
               <ActivityDetail
                 activity={{
                   id: props.focusedActivityId,
@@ -197,8 +217,6 @@ class Timeline extends Component<Props, State> {
                 traceId={props.traceId}
                 threadLevels={props.threadLevels}
               />
-            ) : (
-              <div />
             )}
             <div>
               <EventForm
@@ -215,76 +233,19 @@ class Timeline extends Component<Props, State> {
   }
 }
 
-export const AllEventsInTrace = gql`
-  query AllEventsInTrace($traceId: ID!) {
-    Trace(id: $traceId) {
-      id
-      name
-      events {
-        id
-        phase
-        timestamp
-        activity {
-          id
-          name
-          description
-          thread {
-            name
-            id
-          }
-          categories {
-            id
-          }
-        }
-      }
-      threads {
-        id
-        name
-        activities {
-          name
-          id
-        }
-      }
-    }
-  }
-`;
-
-export default compose(
-  graphql(AllEventsInTrace, {
-    options: props => ({
-      variables: {
-        traceId: props.traceId,
-      },
-      fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
-    }),
-
-    props: ({ data: { loading, error, Trace } }) => ({
-      loading,
-      error,
-      events:
-        Trace &&
-        Trace.events.map(event => ({
-          ...event,
-          timestamp: new Date(event.timestamp).getTime(),
-        })),
-      // threads: Trace && Trace.threads,
-      // trace: Trace && { name: Trace.name, id: Trace.id },
-    }),
+export default // flow-ignore
+connect(
+  state => ({
+    activities: getTimeline(state).activities,
+    focusedActivityId: getTimeline(state).focusedActivityId,
+    minTime: getTimeline(state).minTime,
+    maxTime: getTimeline(state).maxTime,
+    threadLevels: getTimeline(state).threadLevels,
+    threads: sortBy(getTimeline(state).threads, t => t.rank),
+    lastCategory: getTimeline(state).lastCategory,
   }),
-  // flow-ignore
-  connect(
-    state => ({
-      activities: getTimeline(state).activities,
-      focusedActivityId: getTimeline(state).focusedActivityId,
-      minTime: getTimeline(state).minTime,
-      maxTime: getTimeline(state).maxTime,
-      threadLevels: getTimeline(state).threadLevels,
-      threads: getTimeline(state).threads,
-      lastCategory: getTimeline(state).lastCategory,
-    }),
-    dispatch => ({
-      createThread: (name, rank) => dispatch(createThread(name, rank)),
-      updateActivity: (id, obj) => dispatch(updateActivity(id, obj)),
-    }),
-  ),
+  dispatch => ({
+    createThread: (name, rank) => dispatch(createThread(name, rank)),
+    updateActivity: (id, obj) => dispatch(updateActivity(id, obj)),
+  }),
 )(Timeline);
