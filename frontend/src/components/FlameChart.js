@@ -66,11 +66,8 @@ class FlameChart extends Component<Props, State> {
 
   constructor(props) {
     super(props);
-
-    if (props.threads) {
-      const offsets = this.setOffsets(props.threads, props.threadLevels);
-      this.state.offsets = offsets;
-    }
+    const offsets = this.setOffsets(props.threads, props.threadLevels);
+    this.state.offsets = offsets;
   }
 
   componentDidMount() {
@@ -100,18 +97,24 @@ class FlameChart extends Component<Props, State> {
   }
 
   setOffsets = (threads, threadLevels) => {
-    const offsets = {};
+    if (
+      threads &&
+      threadLevels &&
+      threads.length === Object.keys(threadLevels).length
+    ) {
+      const offsets = {};
 
-    threads.reduce((acc, thread, ind) => {
-      const spacer = ind > 0 ? 4 : 0;
-      offsets[thread.id] = acc + spacer; // FlameChart.foldedThreadHeight;
-      const add =
-        (this.activityHeight + 1) * threadLevels[thread.id].max +
-        FlameChart.threadHeaderHeight;
-      return acc + add + spacer;
-    }, 0);
+      threads.reduce((acc, thread, ind) => {
+        const spacer = ind > 0 ? 4 : 0;
+        offsets[thread.id] = acc + spacer; // FlameChart.foldedThreadHeight;
+        const add =
+          (this.activityHeight + 1) * threadLevels[thread.id].max +
+          FlameChart.threadHeaderHeight;
+        return acc + add + spacer;
+      }, 0);
 
-    return offsets;
+      return offsets;
+    } return {};
   };
 
   setCanvasSize = () => {
@@ -213,7 +216,7 @@ class FlameChart extends Component<Props, State> {
       }
     } else {
       this.props.hoverActivity(null);
-      
+
       if (this.state.hoverThreadEllipsis) {
         this.canvas.style.cursor = 'default';
         this.setState({ hoverThreadEllipsis: null });

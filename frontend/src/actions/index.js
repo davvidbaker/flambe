@@ -27,6 +27,7 @@ export const TODO_BEGIN = 'TODO_BEGIN';
 export const TODO_CREATE = 'TODO_CREATE';
 
 export const THREAD_CREATE = 'THREAD_CREATE';
+export const THREAD_DELETE = 'THREAD_DELETE';
 export const THREAD_UPDATE = 'THREAD_UPDATE';
 
 export const TRACE_CREATE = 'TRACE_CREATE';
@@ -128,6 +129,13 @@ export function createTrace(name: string) {
 export function deleteTrace(id: number) {
   return {
     type: TRACE_DELETE,
+    id,
+  };
+}
+
+export function deleteThread(id: number) {
+  return {
+    type: THREAD_DELETE,
     id,
   };
 }

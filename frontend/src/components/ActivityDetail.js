@@ -162,6 +162,7 @@ class ActivityDetail extends React.Component<Props> {
           onConfirm={() => {
             deleteActivity(activity.id, activity.thread.id);
           }}
+          contentLabel="Delete Activity?"
         >
           Delete Activity
         </DeleteButton>
