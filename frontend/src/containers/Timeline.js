@@ -123,6 +123,11 @@ class Timeline extends Component<Props, State> {
     this.setState({ threadModal_id: id });
   };
 
+  closeThreadDetail = () => {
+    console.log('trying to close thread detail');
+    this.setState({ threadModal_id: null });
+  };
+
   /**
    * 💁 I didn't want left and right boundary times to be part of redux, because they were changing too fast for a super silky smooth animation, but I did want them to persist through reloads. So, when this component will mount, if they exist in localStorage, they will take that initial value. They are then set in localStorage at most once a second. 
    *
@@ -197,15 +202,14 @@ class Timeline extends Component<Props, State> {
             >
               New Thread
             </InputFromButton>
-            {this.state.threadModal_id && (
-              <ThreadDetail
-                id={this.state.threadModal_id}
-                name={
-                  props.threads.find(t => t.id === this.state.threadModal_id)
-                    .name
-                }
-              />
-            )}
+            <ThreadDetail
+              closeThreadDetail={this.closeThreadDetail}
+              id={this.state.threadModal_id}
+              name={
+                this.state.threadModal_id &&
+                props.threads.find(t => t.id === this.state.threadModal_id).name
+              }
+            />
             {props.focusedActivityId && (
               <ActivityDetail
                 activity={{

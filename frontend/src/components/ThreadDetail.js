@@ -8,6 +8,7 @@ import { InputFromButton } from './Button';
 
 type Props = {
   updateThread: (name: string) => mixed,
+  closeThreadDetail: () => mixed,
   id: number,
   name: string,
 };
@@ -19,7 +20,12 @@ class ThreadDetail extends Component<Props> {
 
   render() {
     return (
-      <Modal contentLabel="Thread Details" isOpen>
+      <Modal
+        contentLabel="Thread Details"
+        isOpen={!!this.props.id}
+        shouldCloseOnOverlayClick
+        onRequestClose={this.props.closeThreadDetail}
+      >
         <h1>Thread Details</h1>
         <InputFromButton submit={this.updateName}>
           {this.props.name}
