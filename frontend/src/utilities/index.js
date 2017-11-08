@@ -2,9 +2,18 @@ import zoom from './zoom';
 import pan from './pan';
 import processTrace from './processTrace';
 import { saveState, loadState } from './localStorage';
-import trimTextMiddle from './trimText'
+import trimTextMiddle from './trimText';
+import deepArrayIsEqual from './deepArrayIsEqual';
 
-export { zoom, pan, processTrace, saveState, loadState, trimTextMiddle };
+export {
+  zoom,
+  pan,
+  processTrace,
+  saveState,
+  loadState,
+  trimTextMiddle,
+  deepArrayIsEqual,
+};
 
 // Everything below is borrowed with ❤️ from Chrome DevTools.
 /**
