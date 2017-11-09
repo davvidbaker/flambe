@@ -2,26 +2,48 @@
 
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-// flow-ignore
-// import { gql, graphql, compose } from 'react-apollo';
 
 import { createActivity } from 'actions';
 
 import StyledDraggable from 'components/StyledDraggable';
+import BasicAutocomplete from 'components/BasicAutocomplete';
 
 import type { Thread } from 'types/Thread';
 
 type Props = {
-  traceId: string,
-  threads: (?Thread)[],
   beginActivity: ({ variables: {} }) => mixed,
   endActivity: ({ variables: {} }) => mixed,
+  lastThread_id: number,
+  threads: (?Thread)[],
+  trace_id: string,
 };
 
-class EventForm extends Component<Props> {
+type State = {
+  selectedThread: ?string,
+};
+
+class EventForm extends Component<Props, State> {
   name: ?HTMLInputElement;
   description: ?HTMLInputElement;
   form: ?HTMLFormElement;
+
+  state = {
+    threadName: null,
+  };
+
+  constructor(props) {
+    super(props);
+
+    if (props.lastThread_id) {
+      this.state.threadName = this.props.threads.find(
+        th => th.id === this.props.lastThread_id,
+      ).name;
+    }
+  }
+
+  handleThreadChange = threadName => {
+    this.setState({ threadName });
+  };
 
   submitBeginActivity = e => {
     e.preventDefault();
@@ -32,8 +54,8 @@ class EventForm extends Component<Props> {
       const activityDescription = this.description.value || '';
 
       // only main thread right now
-      const mainThreadId = this.props.threads.find(
-        thread => thread.name === 'Main'
+      const thread_id = this.props.threads.find(
+        thread => thread.name === this.state.threadName,
       ).id;
 
       this.props.createActivity({
@@ -41,25 +63,13 @@ class EventForm extends Component<Props> {
         // message,
         name: activityName,
         description: activityDescription,
-        thread_id: mainThreadId,
+        thread_id,
 
         // ⚠️ abstract up
-        category_id: this.props.lastCategory ? this.props.lastCategory : null,
+        category_id: this.props.lastCategory_id
+          ? this.props.lastCategory_id
+          : null,
       });
-
-      // this.props.createActivity({
-      //   variables: {
-      //     timestamp: ts,
-      //     message,
-      //     activityName,
-      //     activityDescription,
-      //     threadId: mainThreadId,
-      //     traceId: this.props.traceId,
-
-      //     // ⚠️ abstract up
-      //     categoryIds: this.props.lastCategory ? [this.props.lastCategory] : [],
-      //   },
-      // });
 
       if (this.form.reset) {
         this.form.reset();
@@ -80,7 +90,8 @@ class EventForm extends Component<Props> {
         >
           <div className="panel fields-panel">
             <label>
-              title <input
+              title{' '}
+              <input
                 type="text"
                 placeholder="title"
                 ref={name => {
@@ -89,8 +100,7 @@ class EventForm extends Component<Props> {
               />
             </label>
             <label>
-              category
-              {' '}
+              category{' '}
               <input disabled placeholder="cats" type="text" name="cat" />
             </label>
             <label>
@@ -110,7 +120,13 @@ class EventForm extends Component<Props> {
               <option value="E">End</option>
             </select>
           </label> */}
-            <label>thread <input type="text" name="thread" /></label>
+            <BasicAutocomplete
+              items={this.props.threads.map(th => th.name)}
+              label="thread"
+              defaultInputValue={this.state.threadName}
+              placeholder="thread"
+              onChange={this.handleThreadChange}
+            />
             <button type="submit" onClick={this.submitBeginActivity}>
               SUBMIT
             </button>
@@ -123,9 +139,9 @@ class EventForm extends Component<Props> {
 
 // mutation returns an event!
 // export const BeginActivity = gql`
-//   mutation BeginActivity($timestamp: DateTime!, $traceId: ID! $message: String, $threadId: ID!, $activityName: String!, $activityDescription: String, $categoryIds: [ID!]) {
+//   mutation BeginActivity($timestamp: DateTime!, $trace_id: ID! $message: String, $threadId: ID!, $activityName: String!, $activityDescription: String, $categoryIds: [ID!]) {
 //     createEvent(
-//       traceId:  $traceId,
+//       trace_id:  $trace_id,
 //       timestamp: $timestamp,
 //       phase: "B",
 //       activity: {
@@ -154,13 +170,13 @@ class EventForm extends Component<Props> {
 
 // mutation returns an event!
 // export const EndActivity = gql`
-//   mutation EndActivity($timestamp: DateTime!, $traceId: ID!, $message: String, $activityId: ID!) {
+//   mutation EndActivity($timestamp: DateTime!, $trace_id: ID!, $message: String, $activityId: ID!) {
 //     createEvent(
 //       timestamp: $timestamp,
 //       phase: "E",
 //       activityId: $activityId,
 //       message: $message,
-//       traceId: $traceId,
+//       trace_id: $trace_id,
 //     ) {
 //       id
 //     }
@@ -184,6 +200,6 @@ connect(null, dispatch => ({
     category_id,
   }) =>
     dispatch(
-      createActivity({ name, timestamp, description, thread_id, category_id })
+      createActivity({ name, timestamp, description, thread_id, category_id }),
     ),
 }))(EventForm);

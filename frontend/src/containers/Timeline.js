@@ -37,10 +37,10 @@ type Thread = {
 };
 
 type Props = {
-  traceId: string,
+  trace_id: string,
   minTime: number,
   maxTime: number,
-  focusedActivityId: ?string,
+  focusedActivity_id: ?string,
   activities: { [string]: Activity },
   threads: (?Thread)[],
 };
@@ -149,7 +149,7 @@ class Timeline extends Component<Props, State> {
   render() {
     const props = this.props;
     const focusedActivity =
-      props.focusedActivityId && props.activities[props.focusedActivityId];
+      props.focusedActivity_id && props.activities[props.focusedActivity_id];
 
     return (
       <WithEventListeners
@@ -175,7 +175,7 @@ class Timeline extends Component<Props, State> {
             <WithDropTarget
               targetName="flame-chart"
               threads={props.threads}
-              traceId={props.traceId}
+              trace_id={props.trace_id}
             >
               <FlameChart
                 activities={props.activities}
@@ -210,24 +210,25 @@ class Timeline extends Component<Props, State> {
                 props.threads.find(t => t.id === this.state.threadModal_id).name
               }
             />
-            {props.focusedActivityId && (
+            {props.focusedActivity_id && (
               <ActivityDetail
                 activity={{
-                  id: props.focusedActivityId,
+                  id: props.focusedActivity_id,
                   ...focusedActivity,
                 }}
                 categories={props.user.categories}
                 updateActivity={props.updateActivity}
-                traceId={props.traceId}
+                trace_id={props.trace_id}
                 threadLevels={props.threadLevels}
               />
             )}
             <div>
               <EventForm
-                traceId={props.traceId}
-                threads={props.threads}
                 categories={props.categories}
-                lastCategory={props.lastCategory}
+                lastCategory_id={props.lastCategory_id}
+                lastThread_id={props.lastThread_id}
+                threads={props.threads}
+                trace_id={props.trace_id}
               />
             </div>
           </div>
@@ -241,12 +242,13 @@ export default // flow-ignore
 connect(
   state => ({
     activities: getTimeline(state).activities,
-    focusedActivityId: getTimeline(state).focusedActivityId,
+    focusedActivity_id: getTimeline(state).focusedActivity_id,
     minTime: getTimeline(state).minTime,
     maxTime: getTimeline(state).maxTime,
     threadLevels: getTimeline(state).threadLevels,
     threads: sortBy(getTimeline(state).threads, t => t.rank),
-    lastCategory: getTimeline(state).lastCategory,
+    lastCategory_id: getTimeline(state).lastCategory_id,
+    lastThread_id: getTimeline(state).lastThread_id,
   }),
   dispatch => ({
     createThread: (name, rank) => dispatch(createThread(name, rank)),

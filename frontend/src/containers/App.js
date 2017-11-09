@@ -85,12 +85,12 @@ class App extends Component<{
   }
 
   renderTimeline = route => {
-    const traceId = route.match.params.traceId
-      ? route.match.params.traceId
+    const trace_id = route.match.params.trace_id
+      ? route.match.params.trace_id
       : this.props.trace && this.props.trace.id;
 
-    return traceId ? (
-      <Timeline traceId={traceId} user={this.props.user} key="timeline" />
+    return trace_id ? (
+      <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
     ) : null;
   };
 
@@ -106,8 +106,8 @@ class App extends Component<{
             deleteCurrentTrace={this.props.deleteCurrentTrace}
           />
 
-          <Grid columns={'4fr 1fr'}>
-            <Route path="/traces/:traceId" render={this.renderTimeline} />
+          <Grid rows={'4fr 1fr'}>
+            <Route path="/traces/:trace_id" render={this.renderTimeline} />
             <Route exact path="/" render={this.renderTimeline} />
 
             <Todos todos={this.props.user.todos} />

@@ -30,8 +30,8 @@ type Props = {
   leftBoundaryTime: number,
   rightBoundaryTime: number,
   topOffset: number,
-  focusedActivityId?: string,
-  hoveredActivityId?: string,
+  focusedActivity_id?: string,
+  hoveredActivity_id?: string,
   categories: { id: string, name: string, color: string },
   threads: { name: string, id: number, rank: number }[],
   threadLevels: { id: { current: number, max: number } }[],
@@ -263,10 +263,10 @@ class FlameChart extends Component<Props, State> {
 
   render() {
     const focusedActivityBlock = this.getBlockDetails(
-      this.canvas && this.props.activities && this.props.focusedActivityId
+      this.canvas && this.props.activities && this.props.focusedActivity_id
     );
     const hoveredActivityBlock = this.getBlockDetails(
-      this.canvas && this.props.activities && this.props.hoveredActivityId
+      this.canvas && this.props.activities && this.props.hoveredActivity_id
     );
 
     this.draw();
@@ -297,7 +297,7 @@ class FlameChart extends Component<Props, State> {
           focusedActivityBlock &&
             <FocusActivity
               key="focused"
-              visible={Boolean(this.props.focusedActivityId)}
+              visible={Boolean(this.props.focusedActivity_id)}
               x={focusedActivityBlock.barX}
               y={focusedActivityBlock.barY}
               width={focusedActivityBlock.barWidth || 400}
@@ -306,7 +306,7 @@ class FlameChart extends Component<Props, State> {
           hoveredActivityBlock &&
             <HoverActivity
               key="hovered"
-              visible={Boolean(this.props.hoveredActivityId)}
+              visible={Boolean(this.props.hoveredActivity_id)}
               x={hoveredActivityBlock.barX}
               y={hoveredActivityBlock.barY}
               width={hoveredActivityBlock.barWidth || 400}
@@ -562,8 +562,8 @@ class FlameChart extends Component<Props, State> {
 export default // flow-ignore
 connect(
   state => ({
-    focusedActivityId: getTimeline(state).focusedActivityId,
-    hoveredActivityId: getTimeline(state).hoveredActivityId,
+    focusedActivity_id: getTimeline(state).focusedActivity_id,
+    hoveredActivity_id: getTimeline(state).hoveredActivity_id,
   }),
   dispatch => ({
     focusActivity: id => dispatch(focusActivity(id)),
