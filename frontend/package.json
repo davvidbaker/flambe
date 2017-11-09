@@ -27,6 +27,7 @@
     "downshift": "^1.9.1",
     "history": "^4.7.2",
     "lodash": "^4.17.4",
+    "match-sorter": "^2.0.2",
     "react": "^16.0.0-rc.2",
     "react-apollo": "^1.4.15",
     "react-color": "^2.13.5",
