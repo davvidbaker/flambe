@@ -16,7 +16,7 @@ defmodule Stitch.Traces.Thread do
   @doc false
   def changeset(%Thread{} = thread, attrs) do
     thread
-    |> cast(attrs, [:name])
+    |> cast(attrs, [:name, :rank])
     |> validate_required([:name])
   end
 end
