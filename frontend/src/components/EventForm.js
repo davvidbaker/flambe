@@ -41,6 +41,12 @@ class EventForm extends Component<Props, State> {
     }
   }
 
+  /** ⚠️ this is not going to be sufficient! There is a deeper bug that is causing eventForm to re-render all the time! */
+  shouldComponentUpdate(nextProps, nextState) {
+    // if (nextProps.threads !== this.props.threads)
+    return false;
+  }
+
   handleThreadChange = threadName => {
     this.setState({ threadName });
   };
@@ -137,61 +143,7 @@ class EventForm extends Component<Props, State> {
   }
 }
 
-// mutation returns an event!
-// export const BeginActivity = gql`
-//   mutation BeginActivity($timestamp: DateTime!, $trace_id: ID! $message: String, $threadId: ID!, $activityName: String!, $activityDescription: String, $categoryIds: [ID!]) {
-//     createEvent(
-//       trace_id:  $trace_id,
-//       timestamp: $timestamp,
-//       phase: "B",
-//       activity: {
-//         name: $activityName,
-//         description: $activityDescription,
-//         threadId: $threadId,
-//         categoriesIds: $categoryIds
-//       },
-//       message: $message
-//     ) {
-//       id
-//       phase
-//       timestamp
-//       activity {
-//         id
-//         name
-//         description
-//         thread {
-//           name
-//           id
-//         }
-//       }
-//     }
-//   }
-// `;
-
-// mutation returns an event!
-// export const EndActivity = gql`
-//   mutation EndActivity($timestamp: DateTime!, $trace_id: ID!, $message: String, $activityId: ID!) {
-//     createEvent(
-//       timestamp: $timestamp,
-//       phase: "E",
-//       activityId: $activityId,
-//       message: $message,
-//       trace_id: $trace_id,
-//     ) {
-//       id
-//     }
-//   }
-// `;
-
-export default /* compose(
-  graphql(BeginActivity, {
-    name: 'beginActivity',
-    options: {
-      // not very efficient
-      refetchQueries: ['AllEventsInTrace'],
-    },
-  }) */
-connect(null, dispatch => ({
+export default connect(null, dispatch => ({
   createActivity: ({
     name,
     timestamp,

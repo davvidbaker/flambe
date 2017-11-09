@@ -15,7 +15,7 @@ export {
   deepArrayIsEqual,
 };
 
-// Everything below is borrowed with ❤️ from Chrome DevTools.
+// Everything below (as well as other stuff dispersed throughout 😜) is borrowed with ❤️ from Chrome DevTools.
 /**
  * @param {number} num
  * @param {number} min
