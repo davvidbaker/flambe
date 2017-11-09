@@ -12,6 +12,7 @@ import {
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
   THREAD_CREATE,
+  THREAD_DELETE,
   THREAD_UPDATE,
   TODO_CREATE,
   TODO_BEGIN,
@@ -219,6 +220,15 @@ function* updateThread({ type, id, updates }) {
   });
 }
 
+function* deleteThread({ type, id }) {
+  yield fetchResource(type, {
+    resource: { path: 'threads', id },
+    params: {
+      method: 'DELETE',
+    },
+  });
+}
+
 function* createTrace({ type, name }) {
   const user = yield select(getUser);
   yield fetchResource(type, {
@@ -302,6 +312,7 @@ function* mainSaga() {
   yield takeLatest(`${TRACE_FETCH}_SUCCEEDED`, processFetchedTrace);
 
   yield takeEvery(THREAD_CREATE, createThread);
+  yield takeEvery(THREAD_DELETE, deleteThread);
   yield takeEvery(THREAD_UPDATE, updateThread);
 
   yield takeLatest(USER_FETCH, fetchUser);

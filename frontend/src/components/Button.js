@@ -33,7 +33,9 @@ const Button = styled.button`
     .darken(10)
     .toString()};
   }
+
   ${props => (props.looksLikeButton ? 'border-color: #ccc' : '')};
+  ${props => (props.additionalStyles ? props.additionalStyles : '')};
 `;
 
 const StyledInputFromButton = styled.input`

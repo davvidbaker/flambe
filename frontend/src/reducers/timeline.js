@@ -1,5 +1,6 @@
 import mapKeys from 'lodash/mapKeys';
 import mapValues from 'lodash/mapValues';
+import omit from 'lodash/omit';
 
 import {
   ACTIVITY_CREATE,
@@ -13,6 +14,7 @@ import {
   UPDATE_THREAD_LEVEL,
   DELETE_CURRENT_TRACE,
   THREAD_CREATE,
+  THREAD_DELETE,
   THREAD_UPDATE,
   TIMELINE_ZOOM,
   TIMELINE_PAN,
@@ -263,6 +265,10 @@ function timeline(state = initialState, action) {
           ...state.threads,
           { name: action.name, rank: action.rank, id: 'optimisticThread' },
         ],
+        threadLevels: {
+          ...state.threadLevels,
+          optimisticThread: { current: 0, max: 0 },
+        },
       };
 
     case `${THREAD_CREATE}_SUCCEEDED`:
@@ -274,8 +280,26 @@ function timeline(state = initialState, action) {
               ? { ...thread, id: action.data.id }
               : thread)
         ),
+        threadLevels: mapKeys(
+          state.threadLevels,
+          (_val, key) => (key === 'optimisticThread' ? action.data.id : key)
+        ),
       };
+    /** ⚠️ need to handle failures */
+    case THREAD_DELETE:
+      const activs = {};
+      Object.entries(state.activities).forEach(([key, val]) => {
+        if (val.thread.id !== action.id) {
+          activs[key] = val;
+        }
+      });
 
+      return {
+        ...state,
+        threads: state.threads.filter(thread => thread.id !== action.id),
+        activities: activs,
+        threadLevels: omit(state.threadLevels, action.id),
+      };
     /** ⚠️ need to handle failures */
     case THREAD_UPDATE:
       return {

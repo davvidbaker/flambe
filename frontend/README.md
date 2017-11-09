@@ -63,16 +63,21 @@ ___
 - `E`: End
   - When work ends on an activity.
   - 1 activity per event
-- `S`: Spark
+
+### Not implemented
+- `S`: Spark/Conception
   - When an activity is thought up (sparked).
   - 1 activity per event (I think this makes most sense).
+
+- `H`: Hiatus/Table/break
+
 
 ___
 
 ## Dependent shoutouts
 *add links later*
 - React DnD
-- React Color(?)
+- React Color
 - Styled Components
 - Redux
-- Apollo (maybe, might abandon)
+- Downshift
