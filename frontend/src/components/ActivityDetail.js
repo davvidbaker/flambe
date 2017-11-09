@@ -9,7 +9,6 @@ import Category, { AddCategory } from 'components/Category';
 import DeleteButton from 'components/DeleteButton';
 import Grid from 'components/Grid';
 import { InputFromButton } from 'components/Button';
-// import { EndActivity } from 'components/EventForm';
 import {
   deleteActivity,
   endActivity,
@@ -135,6 +134,7 @@ class ActivityDetail extends React.Component<Props> {
           submit={(value: string) => {
             updateActivity(activity.id, {
               name: value,
+              thread_id: activity.thread.id,
             });
           }}
         >
@@ -200,13 +200,6 @@ class ActivityDetail extends React.Component<Props> {
   }
 }
 
-const options = props => ({
-  variables: {
-    activityId: props.activity.id,
-    traceId: props.traceId,
-  },
-});
-
 export default // flow-ignore
 connect(
   state => ({
@@ -218,7 +211,8 @@ connect(
     createCategory: ({ activity_id, name, color }) =>
       dispatch(createCategory({ activity_id, name, color })),
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
-    updateActivity: (id, { name }) => dispatch(updateActivity(id, { name })),
+    updateActivity: (id, { name, thread_id }) =>
+      dispatch(updateActivity(id, { name, thread_id })),
     deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
     endActivity: (id, timestamp, message, thread_id) =>
       dispatch(endActivity(id, timestamp, message, thread_id)),

@@ -18,7 +18,7 @@ const todoTarget = {
         monitor.getClientOffset().y > 250
           ? props.threads.find(thread => thread.name === 'Main').id
           : 12,
-      traceId: props.traceId,
+      trace_id: props.trace_id,
     };
   },
 };
