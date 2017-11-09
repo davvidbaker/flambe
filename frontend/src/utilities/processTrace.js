@@ -46,9 +46,10 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
   let leftTime = trace[0].timestamp;
   let rightTime = trace[0].timestamp;
-  let lastCategory;
+  let lastCategory_id;
+  let lastThread_id;
 
-  orderedTrace.forEach(event => {
+  orderedTrace.forEach((event, ind) => {
     // If an event's activity is null, don't process it as part of trace.
     if (!event.activity) {
       return;
@@ -110,17 +111,22 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     if (event.timestamp < leftTime) {
       leftTime = event.timestamp;
     }
-    lastCategory =
+    lastCategory_id =
       activity.categories.length > 0 ? activity.categories[0] : null;
+
+    if (ind === orderedTrace.length - 1) {
+      lastThread_id = activity.thread.id;
+    }
   });
 
   return {
     activities,
+    lastCategory_id,
+    lastThread_id,
     min: leftTime,
     max: rightTime,
     threadLevels,
     threads,
-    lastCategory,
   };
 }
 

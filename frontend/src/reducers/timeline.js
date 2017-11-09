@@ -36,6 +36,8 @@ const initialState = {
   leftBoundaryTime: 0,
   rightBoundaryTime: 0,
   flameChartTopOffset: 0,
+  lastThread: null,
+  lastCategory_id: null,
 };
 
 function timeline(state = initialState, action) {
@@ -82,18 +84,20 @@ function timeline(state = initialState, action) {
         max,
         threadLevels,
         threads,
-        lastCategory,
+        lastCategory_id,
+        lastThread_id,
       } = processTrace(action.events, action.threads);
 
       return {
         ...state,
-        focusedActivityId: null,
+        focusedActivity_id: null,
         minTime: min,
         maxTime: max,
         activities,
         threadLevels,
         threads,
-        lastCategory,
+        lastCategory_id,
+        lastThread_id,
       };
 
     case TRACE_SELECT:
@@ -126,6 +130,7 @@ function timeline(state = initialState, action) {
     case ACTIVITY_CREATE:
       return {
         ...state,
+        lastThread_id: action.thread_id,
         activities: {
           ...state.activities,
           optimisticActivity: {
@@ -182,7 +187,8 @@ function timeline(state = initialState, action) {
       return {
         ...state,
         activities: acts,
-        focusedActivityId: null,
+        focusedActivity_id: null,
+        lastThread_id: action.thread_id,
         /** 💁 if the activity hasn't ended, we need to adjust thread level for the future */
         threadLevels: state.activities[action.id].endTime
           ? state.threadLevels
@@ -197,7 +203,6 @@ function timeline(state = initialState, action) {
       };
     // 😃 optimism!
     case ACTIVITY_END:
-      console.log(state);
       return {
         ...state,
         activities: {
@@ -207,6 +212,7 @@ function timeline(state = initialState, action) {
             endTime: action.timestamp,
           },
         },
+        lastThread_id: action.thread_id,
         threadLevels: {
           ...state.threadLevels,
           [action.thread_id]: {
@@ -219,6 +225,7 @@ function timeline(state = initialState, action) {
     case ACTIVITY_UPDATE:
       return {
         ...state,
+        lastThread_id: action.thread_id,
         activities: {
           ...state.activities,
           /** ⚠️ right now you can only change activity name, not description */
@@ -315,13 +322,13 @@ function timeline(state = initialState, action) {
     case FOCUS_ACTIVITY:
       return {
         ...state,
-        focusedActivityId: action.id,
+        focusedActivity_id: action.id,
       };
 
     case HOVER_ACTIVITY:
       return {
         ...state,
-        hoveredActivityId: action.id,
+        hoveredActivity_id: action.id,
       };
 
     default:
