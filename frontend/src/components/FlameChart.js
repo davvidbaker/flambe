@@ -12,6 +12,7 @@ import sortBy from 'lodash/sortBy';
 // ⚠️ abstract into parts of react-flame-chart
 import HoverActivity from 'components/HoverActivity';
 import FocusActivity from 'components/FocusActivity';
+import Tooltip from 'components/Tooltip';
 
 import { constrain, trimTextMiddle, deepArrayIsEqual } from 'utilities';
 import { focusActivity, hoverActivity } from 'actions';
@@ -43,11 +44,13 @@ type State = {
   ratio: number, // window.devicePixelRatio (ie, it is 2 on my laptop, but 1 on my external monitor)
   hoverThreadEllipsis: number, // the id of the thread whose details ellipsis is being hovered
   offsets: {},
+  cursor: { x: number, y: number },
 };
 
 class FlameChart extends Component<Props, State> {
   ctx: CanvasRenderingContext2D;
   canvas: ?HTMLCanvasElement;
+  tooltip: ?HTMLElement;
   minTextWidth: number;
   topOffset = 0;
 
@@ -62,6 +65,10 @@ class FlameChart extends Component<Props, State> {
     ratio: 1,
     offsets: {},
     hoverThreadEllipsis: null,
+    cursor: {
+      x: 0,
+      y: 0,
+    },
   };
 
   constructor(props) {
@@ -114,7 +121,8 @@ class FlameChart extends Component<Props, State> {
       }, 0);
 
       return offsets;
-    } return {};
+    }
+    return {};
   };
 
   setCanvasSize = () => {
@@ -196,6 +204,10 @@ class FlameChart extends Component<Props, State> {
   };
 
   onMouseMove = e => {
+    this.setState({
+      cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
+    });
+
     const hit = this.hitTest(e);
     if (hit) {
       switch (hit.type) {
@@ -312,9 +324,61 @@ class FlameChart extends Component<Props, State> {
               width={hoveredActivityBlock.barWidth || 400}
               height={this.activityHeight}
             />,
+
+          <Tooltip
+            tooltipRef={t => {
+              this.tooltip = t;
+            }}
+            name={
+              this.props.hoveredActivity_id
+                ? this.props.activities[this.props.hoveredActivity_id].name
+                : null
+            }
+            {...this.calcTooltipOffset()}
+          />,
         ]}
       </div>
     );
+  }
+
+  calcTooltipOffset() {
+    marky.mark('calctooltip')
+    /** borrowed directly from ChromeDevTools */
+    if (this.tooltip) {
+      const tooltipWidth = this.tooltip.clientWidth;
+      const tooltipHeight = this.tooltip.clientHeight;
+
+      const parentWidth = this.tooltip.parentElement.clientWidth;
+      const parentHeight = this.tooltip.parentElement.clientHeight;
+
+      let x,
+        y;
+      for (let quadrant = 0; quadrant < 4; ++quadrant) {
+        const dx = quadrant & 2 ? -10 - tooltipWidth : 10;
+        const dy = quadrant & 1 ? -6 - tooltipHeight : 6;
+        x = constrain(this.state.cursor.x + dx, 0, parentWidth - tooltipWidth);
+        y = constrain(
+          this.state.cursor.y + dy,
+          0,
+          parentHeight - tooltipHeight
+        );
+        if (
+          x >= this.state.cursor.x ||
+          this.state.cursor.x >= x + tooltipWidth ||
+          y >= this.state.cursor.y ||
+          this.state.cursor.y >= y + tooltipHeight
+        ) {
+          break;
+        }
+      }
+
+    marky.stop('calctooltip')
+    
+      return {
+        left: `${x}px`,
+        top: `${y}px`,
+      };
+    }
   }
 
   draw() {
