@@ -153,12 +153,13 @@ function* deleteActivity({ type, id }) {
   });
 }
 
-function* updateActivity({ type, id, name }) {
+// { name, thread_id, category_ids = [] }
+function* updateActivity({ type, id, updates }) {
   yield fetchResource(type, {
     resource: { path: 'activities', id },
     params: {
       method: 'PUT',
-      body: JSON.stringify({ activity: { name } }),
+      body: JSON.stringify({ activity: { ...updates } }),
     },
   });
 }
