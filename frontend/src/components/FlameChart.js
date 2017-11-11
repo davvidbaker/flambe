@@ -326,12 +326,13 @@ class FlameChart extends Component<Props, State> {
             />,
 
           <Tooltip
+            key="tooltip"
             tooltipRef={t => {
               this.tooltip = t;
             }}
             name={
               this.props.hoveredActivity_id
-                ? this.props.activities[this.props.hoveredActivity_id].name
+                ? this.props.activities[this.props.hoveredActivity_id] && this.props.activities[this.props.hoveredActivity_id].name
                 : null
             }
             {...this.calcTooltipOffset()}

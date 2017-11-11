@@ -184,12 +184,11 @@ export function deleteActivity(id, thread_id) {
 }
 
 /** 💁 the thread_id is just being used here for lastThread_id */
-export function updateActivity(id, { name, thread_id }) {
+export function updateActivity(id, updates) {
   return {
     type: ACTIVITY_UPDATE,
     id,
-    name,
-    thread_id,
+    updates,
   };
 }
 

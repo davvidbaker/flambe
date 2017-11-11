@@ -229,7 +229,12 @@ function timeline(state = initialState, action) {
         activities: {
           ...state.activities,
           /** ⚠️ right now you can only change activity name, not description */
-          [action.id]: { ...state.activities[action.id], name: action.name },
+          [action.id]: {
+            ...state.activities[action.id],
+            name: action.updates.name
+              ? action.updates.name
+              : state.activities[action.id].name,
+          },
         },
       };
     /** 😃 optimism */

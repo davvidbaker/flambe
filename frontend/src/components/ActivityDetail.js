@@ -106,12 +106,9 @@ class ActivityDetail extends React.Component<Props> {
     });
   };
 
-  addExistingCategory = (categoryId: string) => {
-    this.props.addCategory({
-      variables: {
-        activityId: this.props.activity.id,
-        categoryId,
-      },
+  addExistingCategory = (category_id: string) => {
+    this.props.updateActivity(this.props.activity.id, {
+      category_ids: [category_id],
     });
   };
 
@@ -172,11 +169,11 @@ class ActivityDetail extends React.Component<Props> {
           <ul>
             {activity.categories &&
               categories &&
-              activity.categories.map(categoryId => {
+              activity.categories.map(category_id => {
                 const category =
-                  categories.find(cat => cat.id === categoryId) || {};
+                  categories.find(cat => cat.id === category_id) || {};
                 return (
-                  <li key={category.name}>
+                  <li key={category.id}>
                     <Category
                       id={category.id}
                       name={category.name}
@@ -211,8 +208,7 @@ connect(
     createCategory: ({ activity_id, name, color }) =>
       dispatch(createCategory({ activity_id, name, color })),
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
-    updateActivity: (id, { name, thread_id }) =>
-      dispatch(updateActivity(id, { name, thread_id })),
+    updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
     endActivity: (id, timestamp, message, thread_id) =>
       dispatch(endActivity(id, timestamp, message, thread_id)),
