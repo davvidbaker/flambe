@@ -43,7 +43,7 @@ class unenhancedDropTarget extends Component<Props> {
     const { children, connectDropTarget, isOver, canDrop } = this.props;
 
     return connectDropTarget(
-      <div style={{ position: 'relative', height: '90%' }}>
+      <div style={{ position: 'relative', height: '70%' }}>
         {children}
         {canDrop && (
           <StyledDropTarget isOver={isOver}>

@@ -14,7 +14,7 @@ class Todos extends Component {
   };
   render() {
     return (
-      <Panel>
+      <Panel style={{ position: 'absolute', bottom: 0, right: 0 }}>
         <h1>To Dos List</h1>
         <InputFromButton submit={this.createTodo}>New Item</InputFromButton>
         <ul>

@@ -70,7 +70,7 @@ class Category extends Component<{
 type Props = {
   categories: Category[],
   addNewCategory: (name: string, color: string) => mixed,
-  addExistingCategory: (id: string) => mixed,
+  addExistingCategory: (id: number) => mixed,
 };
 
 type State = {
@@ -116,7 +116,7 @@ export class AddCategory extends Component<Props, State> {
     return (
       <div>
         <InputFromButton looksLikeButton submit={this.showColorPicker}>
-          Add Category
+          New Category
         </InputFromButton>
         <Downshift onChange={this.selectExistingCategory}>
           {({
