@@ -6,7 +6,7 @@ npm start
 
 ___
 
-# Flame Graph - for keeping track of where I am and making sure I come back up for air(✍️)
+# Flame Chart - for keeping track of where I am and making sure I come back up for air(✍️)
 - easy color changing UI
 - easy editing, drag and drop?
 	- add child
