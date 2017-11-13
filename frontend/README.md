@@ -57,12 +57,27 @@ Trace Event possible phase values from ChromeDevTools
 ___
 
 ## Events
+**Each event only points to a single activity.**
+
+Events that start a new activity:
 - `B`: Begin
-  - When work begins on an activity.
-  - 1 activity per event
+  - begin a task
+- `Q`: question
+  - ask a question
+
+Events that end an activity:
 - `E`: End
-  - When work ends on an activity.
-  - 1 activity per event
+  - end an activity
+- `L`: Resolve
+  - successfully complete an activity
+- `J`: Reject
+  - abandon an activity
+
+Other
+- `S`: Suspend
+  - suspend work on an activity
+- `R`: Resume
+  - resume work on an activity
 
 ### Not implemented
 - `S`: Spark/Conception
