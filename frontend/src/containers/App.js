@@ -8,12 +8,15 @@ import { Route } from 'react-router';
 import { DragDropContext, DragDropManager } from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
 import { injectGlobal } from 'styled-components';
+import CommandPalette from 'react-command-palette';
+
 // flow-ignore
 import { compose, gql, graphql } from 'react-apollo';
 import Timeline from 'containers/Timeline';
 import Todos from 'containers/Todos';
 import Header from 'components/Header';
 import Grid from 'components/Grid';
+import WithEventListeners from 'components/WithEventListeners';
 import { history } from 'store';
 import {
   keyDown,
@@ -23,7 +26,9 @@ import {
   selectTrace,
   deleteCurrentTrace,
   fetchUser,
+  runCommand,
 } from 'actions';
+import COMMANDS from 'constants/commands';
 import { getTimeline } from 'reducers/timeline';
 import { getUser } from 'reducers/user';
 
@@ -42,15 +47,22 @@ html {
 `;
 
 // @DragDropContext(HTML5Backend)
-class App extends Component<{
-  keyDown: () => mixed,
-  keyUp: () => mixed,
-  selectTrace: (trace: Trace) => mixed,
-  trace: ?Trace,
-  user: { id: string, name: string },
-  userTraces: (?Trace)[],
-  userTodos: (?Todo)[],
-}> {
+class App extends Component<
+  {
+    keyDown: () => mixed,
+    keyUp: () => mixed,
+    selectTrace: (trace: Trace) => mixed,
+    trace: ?Trace,
+    user: { id: string, name: string },
+    userTraces: (?Trace)[],
+    userTodos: (?Todo)[],
+  },
+  { commandPaletteVisible: boolean },
+> {
+  state = {
+    commandPaletteVisible: false,
+  };
+
   componentWillMount() {
     console.log('main component will mount');
     /** ⚠️ come back */
@@ -84,6 +96,18 @@ class App extends Component<{
     createKeyEvent('keyup', this.props.keyUp);
   }
 
+  submitCommand = command => {
+    this.props.runCommand(this.props.operand, command);
+  };
+
+  showCommandPalette = () => {
+    this.setState({ commandPaletteVisible: true });
+  };
+
+  hideCommandPalette = () => {
+    this.setState({ commandPaletteVisible: false });
+  };
+
   renderTimeline = route => {
     const trace_id = route.match.params.trace_id
       ? route.match.params.trace_id
@@ -94,74 +118,54 @@ class App extends Component<{
     ) : null;
   };
 
+  getCommands = operand => COMMANDS;
+
   render() {
+    const eventListeners = [
+      [
+        'keydown',
+        e => {
+          if (e.shiftKey && (e.metaKey || e.ctrlKey) && e.key === 'p') {
+            /** 💁 By default, if chrome devtools are open, this will pull up their command palette, even if focus is in the page, not dev tools. */
+            e.preventDefault();
+            this.showCommandPalette();
+          }
+        },
+      ],
+    ];
     return (
       <ConnectedRouter history={history}>
-        <div>
-          <Header
-            traces={this.props.user.traces}
-            currentTrace={this.props.trace}
-            selectTrace={this.props.selectTrace}
-            deleteTrace={this.props.deleteTrace}
-            deleteCurrentTrace={this.props.deleteCurrentTrace}
-          />
+        <WithEventListeners eventListeners={eventListeners} node={document}>
+          {() => (
+            <div>
+              <Header
+                traces={this.props.user.traces}
+                currentTrace={this.props.trace}
+                selectTrace={this.props.selectTrace}
+                deleteTrace={this.props.deleteTrace}
+                deleteCurrentTrace={this.props.deleteCurrentTrace}
+              />
 
-          <Grid rows={'4fr 1fr'}>
-            <Route path="/traces/:trace_id" render={this.renderTimeline} />
-            <Route exact path="/" render={this.renderTimeline} />
+              <Grid rows={'4fr 1fr'}>
+                <Route path="/traces/:trace_id" render={this.renderTimeline} />
+                <Route exact path="/" render={this.renderTimeline} />
 
-            <Todos todos={this.props.user.todos} />
-          </Grid>
-        </div>
+                <Todos todos={this.props.user.todos} />
+              </Grid>
+              <CommandPalette
+                isOnlyPrompt={false}
+                isOpen={this.state.commandPaletteVisible}
+                commands={this.getCommands(this.props.operand)}
+                onSubmit={this.submitCommand}
+                hideCommandPalette={this.hideCommandPalette}
+              />
+            </div>
+          )}
+        </WithEventListeners>
       </ConnectedRouter>
     );
   }
 }
-
-export const AllTraces = gql`
-  query AllTraces($user: ID) {
-    User(id: $user) {
-      id
-      traces {
-        id
-        name
-      }
-    }
-  }
-`;
-
-export const AllCategories = gql`
-  query AllCategories($user: ID) {
-    User(id: $user) {
-      categories {
-        id
-        name
-        color
-      }
-    }
-  }
-`;
-
-export const AllTodos = gql`
-  query AllTodos($user: ID) {
-    User(id: $user) {
-      id
-      todos {
-        id
-        name
-        description
-        categories {
-          id
-          name
-          color
-        }
-        event {
-          id
-        }
-      }
-    }
-  }
-`;
 
 export default compose(
   DragDropContext(HTML5Backend),
@@ -171,6 +175,7 @@ export default compose(
       user: getUser(state),
       userTraces: getUser(state).traces,
       trace: getTimeline(state).trace,
+      operand: state.operand,
     }),
     dispatch => ({
       keyDown: key => dispatch(keyDown(key)),
@@ -180,48 +185,7 @@ export default compose(
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       deleteTrace: (id: number) => dispatch(deleteTrace(id)),
       fetchUser: user_id => dispatch(fetchUser(user_id)),
+      runCommand: (operand, command) => dispatch(runCommand(operand, command)),
     }),
   ),
-  // graphql(AllTraces, {
-  //   options: props => ({
-  //     variables: {
-  //       user: 'cj75obgc8kecq0120mb7l3bej', // props.user.id,
-  //     },
-  //     fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
-  //   }),
-  //   props: ({ data }) => ({
-  //     // User,
-  //     // user: data.User.id,
-  //     userTraces: data.User && data.User.traces,
-  //     // traces: User && User.traces,
-  //   }),
-  // }),
-  // graphql(AllCategories, {
-  //   options: props => ({
-  //     variables: {
-  //       user: 'cj75obgc8kecq0120mb7l3bej', // props.user.id,
-  //     },
-  //     fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
-  //   }),
-  //   props: ({ data }) => ({
-  //     // User,
-  //     // user: data.User.id,
-  //     userCategories: data.User && data.User.categories,
-  //     // traces: User && User.traces,
-  //   }),
-  // }),
-  // graphql(AllTodos, {
-  //   options: props => ({
-  //     variables: {
-  //       user: 'cj75obgc8kecq0120mb7l3bej', // props.user.id,
-  //     },
-  //     fetchPolicy: 'network-only', // probably not great idea, but I was having trouble with the apollo cache not getting new events, was still too nooby to figure out why.
-  //   }),
-  //   props: ({ data }) => ({
-  //     // User,
-  //     // user: data.User.id,
-  //     userTodos: data.User && data.User.todos,
-  //     // traces: User && User.traces,
-  //   }),
-  // })
 )(App);

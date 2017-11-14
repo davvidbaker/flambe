@@ -6,7 +6,7 @@ import createSagaMiddleware from 'redux-saga';
 import { routerReducer, routerMiddleware } from 'react-router-redux';
 import createHistory from 'history/createBrowserHistory';
 
-import { timeline, modifiers, user } from 'reducers';
+import { timeline, modifiers, user, operand } from 'reducers';
 import { getTimeline } from 'reducers/timeline';
 import { loadState, saveState } from 'utilities';
 import mainSaga from 'sagas';
@@ -35,6 +35,7 @@ const rootReducer = combineReducers({
   timeline,
   modifiers,
   user,
+  operand,
   router: routerReducer,
   apollo: client.reducer(),
 });

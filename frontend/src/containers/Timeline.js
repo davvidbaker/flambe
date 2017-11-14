@@ -14,7 +14,7 @@ import WithDropTarget from 'containers/WithDropTarget';
 import WithEventListeners from 'components/WithEventListeners';
 import { InputFromButton } from 'components/Button';
 
-import { MAX_TIME_INTO_FUTURE } from 'constants.js';
+import { MAX_TIME_INTO_FUTURE } from 'constants/defaultParameters';
 import { updateActivity, createThread } from 'actions';
 import { getTimeline } from 'reducers/timeline';
 import { layout } from 'styles';
