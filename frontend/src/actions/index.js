@@ -23,6 +23,8 @@ export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
 export const CATEGORY_CREATE = 'CATEGORY_CREATE';
 export const CATEGORY_UPDATE = 'CATEGORY_UPDATE';
 
+export const COMMAND_RUN = 'COMMAND_RUN';
+
 export const TODO_BEGIN = 'TODO_BEGIN';
 export const TODO_CREATE = 'TODO_CREATE';
 
@@ -43,6 +45,14 @@ export function processTimelineTrace(events, threads) {
     type: PROCESS_TIMELINE_TRACE,
     events,
     threads,
+  };
+}
+
+export function runCommand(operand, command) {
+  return {
+    type: COMMAND_RUN,
+    operand,
+    command,
   };
 }
 

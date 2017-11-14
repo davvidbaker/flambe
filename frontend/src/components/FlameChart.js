@@ -287,7 +287,7 @@ class FlameChart extends Component<Props, State> {
     return (
       <div
         style={{
-          height: '50%',
+          height: '80%',
           position: 'relative',
         }}
       >
