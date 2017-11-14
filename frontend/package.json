@@ -6,7 +6,7 @@
   "scripts": {
     "analyze": "webpack-bundle-analyzer stats.json",
     "build": "webpack --config webpack.prod.js",
-    "start": "webpack-dev-server --open --config webpack.dev.js",
+    "start": "webpack-dev-server --config webpack.dev.js",
     "stats": "webpack --config webpack.prod.js --profile --json > stats.json",
     "test": "jest",
     "test:watch": "npm test -- --watch",
@@ -32,7 +32,6 @@
     "react": "^16.1.1",
     "react-apollo": "^1.4.15",
     "react-color": "^2.13.5",
-    "react-command-palette": "^1.0.0",
     "react-dnd": "^2.5.1",
     "react-dnd-html5-backend": "^2.5.1",
     "react-dom": "^16.1.1",
@@ -45,7 +44,7 @@
     "redux": "3.7.2",
     "redux-saga": "^0.16.0",
     "redux-thunk": "^2.2.0",
-    "styled-components": "^2.1.2",
+    "styled-components": "^2.2.3",
     "tinycolor2": "^1.4.1"
   },
   "devDependencies": {
@@ -84,8 +83,6 @@
     "ws": "^3.1.0"
   },
   "jest": {
-    "modulePaths": [
-      "src"
-    ]
+    "modulePaths": ["src"]
   }
 }
