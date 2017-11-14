@@ -4,7 +4,13 @@ const COMMANDS = [
   {
     action: 'chain',
     copy: 'start a new task/activity',
-    chain: [],
+    parameters: [
+      {
+        key: 'name',
+        placeholder: 'gist description of the activity',
+        isOnlyPrompt: true,
+      },
+    ],
   },
 ];
 
