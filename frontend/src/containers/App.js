@@ -8,7 +8,7 @@ import { Route } from 'react-router';
 import { DragDropContext, DragDropManager } from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
 import { injectGlobal } from 'styled-components';
-import CommandPalette from 'react-command-palette';
+import Commander from 'react-commander';
 
 // flow-ignore
 import { compose, gql, graphql } from 'react-apollo';
@@ -57,10 +57,10 @@ class App extends Component<
     userTraces: (?Trace)[],
     userTodos: (?Todo)[],
   },
-  { commandPaletteVisible: boolean },
+  { commanderVisible: boolean },
 > {
   state = {
-    commandPaletteVisible: false,
+    commanderVisible: false,
   };
 
   componentWillMount() {
@@ -97,15 +97,16 @@ class App extends Component<
   }
 
   submitCommand = command => {
+    this.hideCommander();
     this.props.runCommand(this.props.operand, command);
   };
 
-  showCommandPalette = () => {
-    this.setState({ commandPaletteVisible: true });
+  showCommander = () => {
+    this.setState({ commanderVisible: true });
   };
 
-  hideCommandPalette = () => {
-    this.setState({ commandPaletteVisible: false });
+  hideCommander = () => {
+    this.setState({ commanderVisible: false });
   };
 
   renderTimeline = route => {
@@ -128,7 +129,7 @@ class App extends Component<
           if (e.shiftKey && (e.metaKey || e.ctrlKey) && e.key === 'p') {
             /** 💁 By default, if chrome devtools are open, this will pull up their command palette, even if focus is in the page, not dev tools. */
             e.preventDefault();
-            this.showCommandPalette();
+            this.showCommander();
           }
         },
       ],
@@ -152,12 +153,11 @@ class App extends Component<
 
                 <Todos todos={this.props.user.todos} />
               </Grid>
-              <CommandPalette
-                isOnlyPrompt={false}
-                isOpen={this.state.commandPaletteVisible}
+              <Commander
+                isOpen={this.state.commanderVisible}
                 commands={this.getCommands(this.props.operand)}
                 onSubmit={this.submitCommand}
-                hideCommandPalette={this.hideCommandPalette}
+                hideCommander={this.hideCommander}
               />
             </div>
           )}
