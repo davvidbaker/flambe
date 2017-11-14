@@ -397,10 +397,10 @@ class FlameChart extends Component<Props, State> {
       // draw vertical bars
       this.drawGrid(this.ctx);
 
-      this.ctx.font = '11px sans-serif';
-
+      
       if (this.props.activities) {
         Object.values(this.props.activities).forEach(activity => {
+          this.ctx.font = `${activity.endTime ? '' : 'bold'} 11px sans-serif`;
           // marky.mark(`name ${activity.name}`);
           // 👇 I called it a transform for lack of a better term, even though it doesn't tell you everything a transform usually does
           const { barX, barY, barWidth } = this.getBarTransform(
