@@ -16,6 +16,7 @@ defmodule Stitch.Traces.Event do
 
   @doc false
   def changeset(%Event{} = event, attrs) do
+    # ⚠️ phase might not be the best descriptor
     event
     |> cast(attrs, [:timestamp_integer, :phase, :message])
     |> validate_required([:timestamp_integer, :phase])

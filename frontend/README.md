@@ -83,9 +83,8 @@ Other
 - `S`: Spark/Conception
   - When an activity is thought up (sparked).
   - 1 activity per event (I think this makes most sense).
-
-- `H`: Hiatus/Table/break
-
+- `Z`: Sleep
+- `W`: Wake
 
 ___
 
