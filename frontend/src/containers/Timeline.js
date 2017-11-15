@@ -9,7 +9,6 @@ import sortBy from 'lodash/sortBy';
 import FlameChart from 'components/FlameChart';
 import ActivityDetail from 'components/ActivityDetail';
 import ThreadDetail from 'components/ThreadDetail';
-import EventForm from 'components/EventForm';
 import WithDropTarget from 'containers/WithDropTarget';
 import WithEventListeners from 'components/WithEventListeners';
 import { InputFromButton } from 'components/Button';
@@ -222,15 +221,6 @@ class Timeline extends Component<Props, State> {
                 threadLevels={props.threadLevels}
               />
             )}
-            <div>
-              <EventForm
-                categories={props.categories}
-                lastCategory_id={props.lastCategory_id}
-                lastThread_id={props.lastThread_id}
-                threads={props.threads}
-                trace_id={props.trace_id}
-              />
-            </div>
           </div>
         )}
       </WithEventListeners>
