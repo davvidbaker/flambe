@@ -123,7 +123,7 @@ function* createActivity({
   });
 }
 
-function* endActivity({ type, id, timestamp, message }) {
+function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -136,7 +136,7 @@ function* endActivity({ type, id, timestamp, message }) {
         event: {
           timestamp_integer: timestamp,
           message,
-          phase: 'E',
+          phase: eventFlavor,
         },
       }),
     },

@@ -95,9 +95,13 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           threadLevels[thread_id].max,
         );
         break;
-      // E for End
+
+      // E for End, J for Reject, V for Resolve
       case 'E':
+      case 'J':
+      case 'V':
         activity.endTime = event.timestamp;
+        activity.ending = event.phase; // ⚠️ need the message!
         threadLevels[thread_id].current--;
         break;
 

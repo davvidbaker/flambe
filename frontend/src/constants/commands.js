@@ -1,6 +1,8 @@
 import {
   ACTIVITY_CREATE,
   ACTIVITY_END,
+  ACTIVITY_REJECT,
+  ACTIVITY_RESOLVE,
   THREAD_CREATE,
   TODOS_TOGGLE,
 } from 'actions';
@@ -53,9 +55,20 @@ const COMMANDS = [
   },
 ];
 
+const messageParam = { key: 'message', placeholder: 'why?' };
 /** 💁 For when the operand is an activity. */
 export const ACTIVITY_COMMANDS = [
   { action: ACTIVITY_END, copy: 'end activity' },
+  {
+    action: ACTIVITY_REJECT,
+    copy: 'end activity by rejection',
+    parameters: [messageParam],
+  },
+  {
+    action: ACTIVITY_RESOLVE,
+    copy: 'end activity by resolution',
+    parameters: [messageParam],
+  },
 ];
 
 export default COMMANDS;

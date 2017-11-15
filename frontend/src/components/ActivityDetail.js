@@ -147,7 +147,12 @@ class ActivityDetail extends React.Component<Props> {
               canBeBlank
               placeholder="why?"
               submit={value => {
-                endActivity(activity.id, Date.now(), value, activity.thread.id);
+                endActivity({
+                  id: activity.id,
+                  timestamp: Date.now(),
+                  message: value,
+                  thread_id: activity.thread.id,
+                });
               }}
             >
               End Activity
@@ -210,7 +215,7 @@ connect(
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
-    endActivity: (id, timestamp, message, thread_id) =>
-      dispatch(endActivity(id, timestamp, message, thread_id)),
+    endActivity: ({ id, timestamp, message, thread_id }) =>
+      dispatch(endActivity({ id, timestamp, message, thread_id })),
   }),
 )(ActivityDetail);
