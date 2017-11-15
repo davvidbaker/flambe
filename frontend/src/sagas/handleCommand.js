@@ -1,5 +1,10 @@
 import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
-import { ACTIVITY_CREATE, createActivity } from 'actions';
+import {
+  ACTIVITY_CREATE,
+  THREAD_CREATE,
+  createActivity,
+  createThread,
+} from 'actions';
 
 import { getTimeline } from 'reducers/timeline';
 
@@ -15,6 +20,15 @@ function* handleCommand({ type, operand, command }) {
           // category_id: command.category_id
         }),
       );
+      break;
+
+    case THREAD_CREATE:
+      const timeline = yield select(getTimeline);
+      const rank = timeline.threads.length;
+      console.log('timeline, rank', timeline, rank);
+      yield put(createThread(command.name, rank));
+      break;
+
     default:
       break;
   }

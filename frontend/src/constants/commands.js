@@ -1,4 +1,4 @@
-import { ACTIVITY_CREATE } from 'actions';
+import { ACTIVITY_CREATE, THREAD_CREATE } from 'actions';
 
 const COMMANDS = [
   {
@@ -8,7 +8,6 @@ const COMMANDS = [
       {
         key: 'name',
         placeholder: 'gist description of the activity',
-        isOnlyPrompt: true,
       },
       {
         key: 'thread_id',
@@ -16,6 +15,17 @@ const COMMANDS = [
         selector: props => props.threads,
         itemStringKey: 'name',
         itemReturnKey: 'id',
+      },
+    ],
+  },
+  /** ⚠️ TODO make sure the thread name is unique */
+  {
+    action: THREAD_CREATE,
+    copy: 'new thread',
+    parameters: [
+      {
+        key: 'name',
+        placeholder: 'thread name',
       },
     ],
   },
