@@ -193,14 +193,6 @@ class Timeline extends Component<Props, State> {
                 zoom={this.zoom}
               />
             </WithDropTarget>
-            <InputFromButton
-              submit={(name: string) => {
-                console.log('name', name);
-                props.createThread(name, props.threads.length);
-              }}
-            >
-              New Thread
-            </InputFromButton>
             <ThreadDetail
               closeThreadDetail={this.closeThreadDetail}
               id={this.state.threadModal_id}

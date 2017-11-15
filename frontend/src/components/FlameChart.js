@@ -41,7 +41,7 @@ type Props = {
 type State = {
   canvasWidth: number, // in pixels
   canvasHeight: number, // in pixels
-  ratio: number, // window.devicePixelRatio (ie, it is 2 on my laptop, but 1 on my external monitor)
+  devicePixelRatio: number, // window.devicePixelRatio (ie, it is 2 on my laptop, but 1 on my external monitor)
   hoverThreadEllipsis: number, // the id of the thread whose details ellipsis is being hovered
   offsets: {},
   cursor: { x: number, y: number },
@@ -127,16 +127,16 @@ class FlameChart extends Component<Props, State> {
 
   setCanvasSize = () => {
     if (this.canvas) {
-      const ratio = window.devicePixelRatio;
-      this.canvas.width = this.canvas.clientWidth * ratio;
-      this.canvas.height = this.canvas.clientHeight * ratio;
+      const devicePixelRatio = window.devicePixelRatio;
+      this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
+      this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
 
       this.ctx = this.canvas.getContext('2d');
       this.minTextWidth =
         FlameChart.textPadding.x + this.ctx.measureText('\u2026').textWidth;
 
       this.setState({
-        ratio,
+        devicePixelRatio,
         canvasWidth: this.canvas.width,
         canvasHeight: this.canvas.height,
       });
@@ -168,7 +168,10 @@ class FlameChart extends Component<Props, State> {
 
     /** 💁 this is the header (hitLevel === -1) */
     if (hitLevel === -1) {
-      if (e.nativeEvent.offsetX > this.state.canvasWidth - 30) {
+      if (
+        e.nativeEvent.offsetX >
+        this.state.canvasWidth / this.state.devicePixelRatio - 30
+      ) {
         return { type: 'thread_ellipsis', value: hitThread_id };
       }
     }
@@ -287,7 +290,7 @@ class FlameChart extends Component<Props, State> {
     return (
       <div
         style={{
-          height: '80%',
+          height: '100%',
           position: 'relative',
         }}
       >
@@ -332,7 +335,8 @@ class FlameChart extends Component<Props, State> {
             }}
             name={
               this.props.hoveredActivity_id
-                ? this.props.activities[this.props.hoveredActivity_id] && this.props.activities[this.props.hoveredActivity_id].name
+                ? this.props.activities[this.props.hoveredActivity_id] &&
+                    this.props.activities[this.props.hoveredActivity_id].name
                 : null
             }
             {...this.calcTooltipOffset()}
@@ -343,7 +347,7 @@ class FlameChart extends Component<Props, State> {
   }
 
   calcTooltipOffset() {
-    marky.mark('calctooltip')
+    marky.mark('calctooltip');
     /** borrowed directly from ChromeDevTools */
     if (this.tooltip) {
       const tooltipWidth = this.tooltip.clientWidth;
@@ -373,8 +377,8 @@ class FlameChart extends Component<Props, State> {
         }
       }
 
-    marky.stop('calctooltip')
-    
+      marky.stop('calctooltip');
+
       return {
         left: `${x}px`,
         top: `${y}px`,
@@ -386,7 +390,7 @@ class FlameChart extends Component<Props, State> {
     if (this.canvas) {
       this.ctx.save();
 
-      this.ctx.scale(this.state.ratio, this.state.ratio);
+      this.ctx.scale(this.state.devicePixelRatio, this.state.devicePixelRatio);
 
       // clear the canvas
       this.ctx.fillStyle = colors.background;
@@ -397,7 +401,6 @@ class FlameChart extends Component<Props, State> {
       // draw vertical bars
       this.drawGrid(this.ctx);
 
-      
       if (this.props.activities) {
         Object.values(this.props.activities).forEach(activity => {
           this.ctx.font = `${activity.endTime ? '' : 'bold'} 11px sans-serif`;
@@ -478,7 +481,7 @@ class FlameChart extends Component<Props, State> {
   timeToPixels(timestamp: number) {
     return (
       (timestamp - this.props.leftBoundaryTime) *
-      (this.state.canvasWidth / this.state.ratio) /
+      (this.state.canvasWidth / this.state.devicePixelRatio) /
       (this.props.rightBoundaryTime - this.props.leftBoundaryTime)
     );
   }
@@ -489,7 +492,7 @@ class FlameChart extends Component<Props, State> {
         this.props.leftBoundaryTime +
         x *
           (this.props.rightBoundaryTime - this.props.leftBoundaryTime) /
-          (this.state.canvasWidth / this.state.ratio)
+          (this.state.canvasWidth / this.state.devicePixelRatio)
       );
     }
   }
@@ -534,7 +537,7 @@ class FlameChart extends Component<Props, State> {
       for (let i = 0; i < 3; i++) {
         ctx.beginPath();
         ctx.arc(
-          this.state.canvasWidth - 30 + 6 * i,
+          this.state.canvasWidth / this.state.devicePixelRatio - 30 + 6 * i,
           this.state.offsets[thread.id] + 10,
           2,
           0,
