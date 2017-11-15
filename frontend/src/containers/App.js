@@ -96,6 +96,10 @@ class App extends Component<
     createKeyEvent('keyup', this.props.keyUp);
   }
 
+  getItems = selector => {
+    return selector(this.props)
+  }
+
   submitCommand = command => {
     this.hideCommander();
     this.props.runCommand(this.props.operand, command);
@@ -158,6 +162,7 @@ class App extends Component<
                 commands={this.getCommands(this.props.operand)}
                 onSubmit={this.submitCommand}
                 hideCommander={this.hideCommander}
+                getItems={this.getItems}
               />
             </div>
           )}
@@ -176,6 +181,7 @@ export default compose(
       userTraces: getUser(state).traces,
       trace: getTimeline(state).trace,
       operand: state.operand,
+      threads: getTimeline(state).threads
     }),
     dispatch => ({
       keyDown: key => dispatch(keyDown(key)),

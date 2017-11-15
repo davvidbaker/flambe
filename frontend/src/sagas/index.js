@@ -25,7 +25,7 @@ import {
 } from 'actions';
 import { getUser } from 'reducers/user';
 import { getTimeline } from 'reducers/timeline';
-import commandChain from './commandChain';
+import handleCommand from './handleCommand';
 
 // function* respondToQuery(action) {
 //   switch (action.operationName) {
@@ -101,7 +101,7 @@ function* createActivity({
   type,
   name,
   timestamp,
-  description,
+  description, // 👈 not currently using this
   thread_id /* message */,
   category_id,
   todo_id = null,
@@ -306,7 +306,7 @@ function* mainSaga() {
   yield takeEvery(CATEGORY_UPDATE, updateCategory);
 
   // 🤔 A saga might be overkill for this, but maybe not because the command palette doesn't know what the state of selected activities is, so it wouldn't know what activity to apply your command to...ehhhh maybe not...still not <sure className=""></sure>
-  yield takeEvery(COMMAND_RUN, commandChain);
+  yield takeEvery(COMMAND_RUN, handleCommand);
 
   yield takeEvery(TODO_BEGIN, createActivity);
   yield takeEvery(TODO_CREATE, createTodo);
