@@ -57,12 +57,11 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
     activities[event.activity.id] = activities[event.activity.id] || {};
 
-    const threadId = event.activity.thread.id;
+    const thread_id = event.activity.thread.id;
 
-    if (!threadLevels[threadId]) {
-      threadLevels[threadId] = { current: 0, max: 0 };
+    if (!threadLevels[thread_id]) {
+      threadLevels[thread_id] = { current: 0, max: 0 };
     }
-    console.log('threadId', threadId);
 
     const activity: Activity = activities[event.activity.id];
 
@@ -79,27 +78,31 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       // S for spark
       case 'S':
         break;
-      // B for begin
+
+      // B for begin, Q for question
+      case 'Q':
       case 'B':
         activity.startTime = event.timestamp;
-        activity.level = threadLevels[threadId].current;
+        activity.level = threadLevels[thread_id].current;
         activity.name = event.activity.name;
         activity.description = event.activity.description;
         activity.thread = event.activity.thread;
+        activity.flavor = event.phase === 'Q' ? 'question' : 'task';
 
-        threadLevels[threadId].current++;
-        threadLevels[threadId].max = Math.max(
-          threadLevels[threadId].current,
-          threadLevels[threadId].max,
+        threadLevels[thread_id].current++;
+        threadLevels[thread_id].max = Math.max(
+          threadLevels[thread_id].current,
+          threadLevels[thread_id].max,
         );
         break;
       // E for End
       case 'E':
         activity.endTime = event.timestamp;
-        threadLevels[threadId].current--;
+        threadLevels[thread_id].current--;
         break;
 
       default:
+        console.log('event.phase', event.phase);
         break;
     }
 

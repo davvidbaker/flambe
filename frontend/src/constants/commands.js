@@ -1,4 +1,17 @@
-import { ACTIVITY_CREATE, THREAD_CREATE } from 'actions';
+import {
+  ACTIVITY_CREATE,
+  ACTIVITY_END,
+  THREAD_CREATE,
+  TODOS_TOGGLE,
+} from 'actions';
+
+const threadParam = {
+  key: 'thread_id',
+  placeholder: 'thread',
+  selector: props => props.threads,
+  itemStringKey: 'name',
+  itemReturnKey: 'id',
+};
 
 const COMMANDS = [
   {
@@ -9,13 +22,18 @@ const COMMANDS = [
         key: 'name',
         placeholder: 'gist description of the activity',
       },
+      threadParam,
+    ],
+  },
+  {
+    action: ACTIVITY_CREATE,
+    copy: 'ask a question',
+    parameters: [
       {
-        key: 'thread_id',
-        placeholder: 'thread',
-        selector: props => props.threads,
-        itemStringKey: 'name',
-        itemReturnKey: 'id',
+        key: 'name',
+        placeholder: 'what the fuck is happening?',
       },
+      threadParam,
     ],
   },
   /** ⚠️ TODO make sure the thread name is unique */
@@ -29,6 +47,15 @@ const COMMANDS = [
       },
     ],
   },
+  {
+    action: TODOS_TOGGLE,
+    copy: 'toggle todo list',
+  },
+];
+
+/** 💁 For when the operand is an activity. */
+export const ACTIVITY_COMMANDS = [
+  { action: ACTIVITY_END, copy: 'end activity' },
 ];
 
 export default COMMANDS;

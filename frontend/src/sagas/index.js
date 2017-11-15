@@ -105,6 +105,7 @@ function* createActivity({
   thread_id /* message */,
   category_id,
   todo_id = null,
+  phase = 'B',
 }) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
@@ -115,7 +116,7 @@ function* createActivity({
         trace_id: timeline.trace.id,
         thread_id,
         todo_id,
-        event: { timestamp_integer: timestamp },
+        event: { timestamp_integer: timestamp, phase },
         activity: { name, description },
       }),
     },

@@ -28,9 +28,6 @@ defmodule StitchWeb.TraceView do
             phase: evt_in.phase, 
             id: evt_in.id,
           }
-          IO.puts "😃"
-          IO.inspect Map.keys(evt_in)
-          IO.inspect Map.has_key?(evt_in, :activity)
           evt_out = case is_nil evt_in.activity do
             true -> evt_out
             false -> Map.put(
@@ -46,14 +43,11 @@ defmodule StitchWeb.TraceView do
                 categories: Enum.map(evt_in.activity.categories, fn cat -> cat.id end)
               })
           end
-          IO.inspect evt_out
         end)
         
         
         false -> []
       end
-
-    IO.inspect events
 
     %{id: trace.id,
       name: trace.name,
