@@ -6,11 +6,13 @@ import {
   ACTIVITY_CREATE,
   ACTIVITY_DELETE,
   ACTIVITY_END,
+  ACTIVITY_RESUME,
+  ACTIVITY_SUSPEND,
   ACTIVITY_UPDATE,
+  BLOCK_FOCUS,
+  BLOCK_HOVER,
   CATEGORY_CREATE,
   PROCESS_TIMELINE_TRACE,
-  FOCUS_ACTIVITY,
-  HOVER_ACTIVITY,
   UPDATE_THREAD_LEVEL,
   DELETE_CURRENT_TRACE,
   THREAD_CREATE,
@@ -24,6 +26,7 @@ import {
 } from 'actions';
 
 import { zoom, pan, processTrace } from 'utilities';
+import { terminateBlock } from 'utilities/processTrace';
 
 export const getTimeline = state => state.timeline;
 
@@ -39,6 +42,29 @@ const initialState = {
   lastThread: null,
   lastCategory_id: null,
 };
+
+function createBlock(blocks, thread_id, timestamp, threadLevels) {
+  return {
+    blocks: [
+      ...blocks,
+      {
+        level: threadLevels[thread_id].current,
+        startTime: timestamp,
+        activity_id: 'optimisticActivity',
+      },
+    ],
+    threadLevels: {
+      ...threadLevels,
+      [thread_id]: {
+        current: threadLevels[thread_id].current + 1,
+        max: Math.max(
+          threadLevels[thread_id].current + 1,
+          threadLevels[thread_id].max
+        ),
+      },
+    },
+  };
+}
 
 function timeline(state = initialState, action) {
   switch (action.type) {
@@ -80,6 +106,7 @@ function timeline(state = initialState, action) {
     case PROCESS_TIMELINE_TRACE:
       const {
         activities,
+        blocks,
         min,
         max,
         threadLevels,
@@ -90,10 +117,11 @@ function timeline(state = initialState, action) {
 
       return {
         ...state,
-        focusedActivity_id: null,
+        focusedBlockIndex: null,
         minTime: min,
         maxTime: max,
         activities,
+        blocks,
         threadLevels,
         threads,
         lastCategory_id,
@@ -138,61 +166,101 @@ function timeline(state = initialState, action) {
             flavor: action.phase === 'Q' ? 'question' : 'task',
             startTime: action.timestamp,
             categories: [action.category_id],
-            level: state.threadLevels[action.thread_id].current,
+            status: 'active',
             thread: {
               id: action.thread_id,
             },
           },
         },
-        threadLevels: {
-          ...state.threadLevels,
-          [action.thread_id]: {
-            current: state.threadLevels[action.thread_id].current + 1,
-            max: Math.max(
-              state.threadLevels[action.thread_id].current + 1,
-              state.threadLevels[action.thread_id].max
-            ),
-          },
-        },
+        ...createBlock(
+          state.blocks,
+          action.thread_id,
+          action.timestamp,
+          state.threadLevels
+        ),
       };
 
     case `${TODO_BEGIN}_SUCCEEDED`:
     case `${ACTIVITY_CREATE}_SUCCEEDED`:
       return {
         ...state,
+        blocks: state.blocks.map(
+          block =>
+            (block.activity_id === 'optimisticActivity'
+              ? { ...block, activity_id: action.data.id }
+              : block)
+        ),
         activities: mapKeys(
           state.activities,
           (_val, key) => (key === 'optimisticActivity' ? action.data.id : key)
         ),
       };
 
+    case ACTIVITY_RESUME:
+      return {
+        ...state,
+        activities: {
+          ...state.activities,
+          [action.id]: {
+            ...state.activities[action.id],
+            endTime: action.timestamp,
+            status: 'active',
+          },
+        },
+        ...createBlock(
+          state.blocks,
+          action.thread_id,
+          action.timestamp,
+          state.threadLevels
+        ),
+      };
+
     case ACTIVITY_DELETE:
       const acts = {};
-      /** 💁 we need to adjust the levels of any affected activities */
+      const remainingBlocks = state.blocks.filter(
+        block => block.activity_id !== action.id
+      );
+      const activityBlocks = state.blocks.filter(
+        block => block.activity_id === action.id
+      );
+      /** 💁 we need to adjust the levels of any affected blocks */
       Object.entries(state.activities).forEach(([key, val]) => {
         if (key !== action.id) {
           acts[key] = val;
-          if (val.thread.id === action.thread_id) {
-            if (!state.activities[action.id].endTime) {
-              if (val.startTime > state.activities[action.id].startTime) {
-                acts[key].level--;
+        }
+      });
+
+      for (let i = 0; i < remainingBlocks.length; i++) {
+        if (
+          state.activities[remainingBlocks[i].activity_id].thread.id ===
+          action.thread_id
+        ) {
+          for (let j = 0; j < activityBlocks.length; j++) {
+            // if the deleted block hasn't ended...
+            if (!activityBlocks[j].endTime) {
+              // ... and there are blocks below it...
+              if (activityBlocks[j].startTime < remainingBlocks[i].startTime) {
+                // ... those blocks need to move down a level
+                remainingBlocks[i].level--;
               }
             } else if (
-              val.startTime > state.activities[action.id].startTime &&
-              val.endTime < state.activities[action.id].endTime
+              activityBlocks[j].startTime < remainingBlocks[i].startTime &&
+              activityBlocks[j].endTime > remainingBlocks[i].endTime
             ) {
-              acts[key].level--;
+              remainingBlocks[i].level--;
             }
           }
         }
-      });
+      }
 
       return {
         ...state,
         activities: acts,
-        focusedActivity_id: null,
+        focusedBlockIndex: null,
+        focusedBlockActivity_id: null,
         lastThread_id: action.thread_id,
         /** 💁 if the activity hasn't ended, we need to adjust thread level for the future */
+        blocks: remainingBlocks,
         threadLevels: state.activities[action.id].endTime
           ? state.threadLevels
           : {
@@ -213,8 +281,45 @@ function timeline(state = initialState, action) {
           [action.id]: {
             ...state.activities[action.id],
             endTime: action.timestamp,
+            status: 'complete',
           },
         },
+        blocks: terminateBlock(
+          state.blocks,
+          action.id,
+          action.timestamp,
+          'E',
+          action.message
+        ),
+        lastThread_id: action.thread_id,
+        threadLevels: {
+          ...state.threadLevels,
+          [action.thread_id]: {
+            current: state.threadLevels[action.thread_id].current - 1,
+            max: state.threadLevels[action.thread_id].max,
+          },
+        },
+      };
+    // 😃 optimism!
+    /** ⚠️ TODO make sure the activity is suspendable! */
+    case ACTIVITY_SUSPEND:
+      return {
+        ...state,
+        activities: {
+          ...state.activities,
+          [action.id]: {
+            ...state.activities[action.id],
+            endTime: action.timestamp,
+            status: 'suspended',
+          },
+        },
+        blocks: terminateBlock(
+          state.blocks,
+          action.id,
+          action.timestamp,
+          'S',
+          action.message
+        ),
         lastThread_id: action.thread_id,
         threadLevels: {
           ...state.threadLevels,
@@ -327,17 +432,19 @@ function timeline(state = initialState, action) {
         ),
       };
 
-    case FOCUS_ACTIVITY:
+    case BLOCK_FOCUS:
       return {
         ...state,
-        focusedActivity_id: action.id,
-        thread_id: action.thread_id
+        focusedBlockIndex: action.index,
+        focusedBlockActivity_id: action.activity_id,
+        thread_id: action.thread_id,
       };
 
-    case HOVER_ACTIVITY:
+    case BLOCK_HOVER:
       return {
         ...state,
-        hoveredActivity_id: action.id,
+        hoveredBlockIndex: action.index,
+        hoveredBlockActivity_id: action.activity_id,
       };
 
     default:

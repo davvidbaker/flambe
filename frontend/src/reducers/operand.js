@@ -1,11 +1,12 @@
-import { FOCUS_ACTIVITY } from 'actions';
+import { BLOCK_FOCUS } from 'actions';
 
 function operand(state = null, action) {
   switch (action.type) {
-    case FOCUS_ACTIVITY:
+    case BLOCK_FOCUS:
       return {
-        type: action.id ? 'activity' : null,
-        id: action.id,
+        type: action.index !== null ? 'activity' : null,
+        activity_id: action.activity_id,
+        activityStatus: action.activityStatus,
         thread_id: action.thread_id,
       };
 

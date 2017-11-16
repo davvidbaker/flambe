@@ -2,10 +2,31 @@
 // flow-ignore
 import sortBy from 'lodash/fp/sortBy';
 import uniq from 'lodash/uniq';
+import last from 'lodash/last';
 
 import type { Activity } from 'types/Activity';
 import type { TraceEvent } from 'types/TraceEvent';
 import type { Thread } from 'types/Thread';
+
+export function lastActivityBlock(blocks, activity_id) {
+  return last(blocks.filter(block => block.activity_id === activity_id));
+}
+
+/** ⚠️ kinda sorta definitely mutates blocks array/maybe the objects inside, right? */
+export function terminateBlock(
+  blocks,
+  activity_id,
+  timestamp,
+  phase,
+  message = '',
+) {
+  const block = lastActivityBlock(blocks, activity_id);
+  block.endTime = timestamp;
+  block.ending = phase;
+  block.endMessage = message;
+
+  return blocks;
+}
 
 function pushToMaybeNullArray(arr, ...items) {
   if (arr) {
@@ -41,8 +62,9 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
   // ⚠️ maybe one day don't have this redundancy.
   // Activities on client are slightly different than how they are stored on server. On client, activities have fields for their start and end times, while activities on server do not. Originally I was calling them entries on the client, but I stopped because the confusion around that being a keyword for objects in javascript. (Object.entries()...).
-  // 1 "activity" on the timeline is 1 block, start to end.
+  // 1 "activity" is made up of 1 or more blocks which happen from suspending and resuming the activity
   const activities = {};
+  let blocks = [];
 
   let leftTime = trace[0].timestamp;
   let rightTime = trace[0].timestamp;
@@ -75,19 +97,52 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
     // ⚠️ TODO more phases like async
     switch (event.phase) {
-      // S for spark
+      // S for suspend
       case 'S':
+        blocks = terminateBlock(
+          blocks,
+          event.activity.id,
+          event.timestamp,
+          event.phase,
+          event.message,
+        );
+        threadLevels[thread_id].current--;
+        activity.status = 'suspended';
+        break;
+
+      // R for resume
+      case 'R':
+        console.log('event.phase', event.phase);
+        blocks.push({
+          startTime: event.timestamp,
+          level: threadLevels[thread_id].current,
+          activity_id: event.activity.id,
+          beginning: event.phase,
+        });
+        threadLevels[thread_id].current++;
+        threadLevels[thread_id].max = Math.max(
+          threadLevels[thread_id].current,
+          threadLevels[thread_id].max,
+        );
+        activity.status = 'active';
         break;
 
       // B for begin, Q for question
       case 'Q':
       case 'B':
-        activity.startTime = event.timestamp;
-        activity.level = threadLevels[thread_id].current;
+        activity.startTime = event.timestamp; // 👈 do i need this?
+        activity.status = 'active';
+        // activity.level = threadLevels[thread_id].current;
         activity.name = event.activity.name;
         activity.description = event.activity.description;
         activity.thread = event.activity.thread;
         activity.flavor = event.phase === 'Q' ? 'question' : 'task';
+        blocks.push({
+          startTime: event.timestamp,
+          level: threadLevels[thread_id].current,
+          activity_id: event.activity.id,
+          beginning: event.phase,
+        });
 
         threadLevels[thread_id].current++;
         threadLevels[thread_id].max = Math.max(
@@ -102,6 +157,13 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       case 'V':
         activity.endTime = event.timestamp;
         activity.ending = event.phase; // ⚠️ need the message!
+        activity.status = 'complete';
+        blocks = terminateBlock(
+          blocks,
+          event.activity.id,
+          event.timestamp,
+          event.phase,
+        );
         threadLevels[thread_id].current--;
         break;
 
@@ -128,6 +190,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
   return {
     activities,
+    blocks,
     lastCategory_id,
     lastThread_id,
     min: leftTime,

@@ -8,6 +8,8 @@ import {
   ACTIVITY_CREATE,
   ACTIVITY_DELETE,
   ACTIVITY_END,
+  ACTIVITY_RESUME,
+  ACTIVITY_SUSPEND,
   ACTIVITY_UPDATE,
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
@@ -26,42 +28,6 @@ import {
 import { getUser } from 'reducers/user';
 import { getTimeline } from 'reducers/timeline';
 import handleCommand from './handleCommand';
-
-// function* respondToQuery(action) {
-//   switch (action.operationName) {
-//     case 'AllEventsInTrace':
-//       const trace = action.result.data.Trace;
-//       if (trace.events.length === 0) {
-//         console.warn('trace had 0 events!', trace);
-//       } else {
-//         yield put(
-//           processTimelineTrace(
-//             trace.events.map(event => ({
-//               ...event,
-//               timestamp: new Date(event.timestamp).getTime(),
-//             })),
-//             trace.threads
-//           )
-//         );
-//       }
-//       break;
-
-//     case 'AllCategories':
-//       const categories = action.result.data.User.categories;
-
-//       if (categories.length > 0) {
-//         // ⚠️ make an action creator
-//         yield put({
-//           type: 'SET_CATEGORIES',
-//           categories, // .map(cat => cat.id),
-//         });
-//       }
-//       break;
-
-//     default:
-//       break;
-//   }
-// }
 
 async function hitNetwork({ resource, params = {} }) {
   const response = await fetch(
@@ -137,6 +103,26 @@ function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }) {
           timestamp_integer: timestamp,
           message,
           phase: eventFlavor,
+        },
+      }),
+    },
+  });
+}
+
+function* suspendActivity({ type, id, timestamp, message }) {
+  const timeline = yield select(getTimeline);
+  yield fetchResource(type, {
+    /** 💁 path of 'events' is not a mistake */
+    resource: { path: 'events' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        trace_id: timeline.trace.id,
+        activity_id: id,
+        event: {
+          timestamp_integer: timestamp,
+          message,
+          phase: 'S',
         },
       }),
     },
@@ -291,6 +277,25 @@ function* createThread({ type, name, rank }) {
   });
 }
 
+function* resumeActivity({ type, id, timestamp, message }) {
+  const timeline = yield select(getTimeline);
+  yield fetchResource(type, {
+    /** 💁 path of 'events' is not a mistake */
+    resource: { path: 'events' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        trace_id: timeline.trace.id,
+        activity_id: id,
+        event: {
+          timestamp_integer: timestamp,
+          message,
+          phase: 'R',
+        },
+      }),
+    },
+  });
+}
 // // // // // // // // // // // // // // // // // // // // // // // //
 
 function* mainSaga() {
@@ -301,6 +306,8 @@ function* mainSaga() {
   yield takeEvery(ACTIVITY_CREATE, createActivity);
   yield takeEvery(ACTIVITY_DELETE, deleteActivity);
   yield takeEvery(ACTIVITY_END, endActivity);
+  yield takeEvery(ACTIVITY_RESUME, resumeActivity);
+  yield takeEvery(ACTIVITY_SUSPEND, suspendActivity);
   yield takeEvery(ACTIVITY_UPDATE, updateActivity);
 
   yield takeEvery(CATEGORY_CREATE, createCategory);
