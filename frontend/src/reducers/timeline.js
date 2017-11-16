@@ -135,10 +135,13 @@ function timeline(state = initialState, action) {
           ...state.activities,
           optimisticActivity: {
             name: action.name,
+            flavor: action.phase === 'Q' ? 'question' : 'task',
             startTime: action.timestamp,
             categories: [action.category_id],
             level: state.threadLevels[action.thread_id].current,
-            thread: { id: action.thread_id },
+            thread: {
+              id: action.thread_id,
+            },
           },
         },
         threadLevels: {
@@ -328,6 +331,7 @@ function timeline(state = initialState, action) {
       return {
         ...state,
         focusedActivity_id: action.id,
+        thread_id: action.thread_id
       };
 
     case HOVER_ACTIVITY:

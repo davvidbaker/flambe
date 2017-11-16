@@ -6,6 +6,7 @@ function operand(state = null, action) {
       return {
         type: 'activity',
         id: action.id,
+        thread_id: action.thread_id,
       };
 
     default:

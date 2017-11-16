@@ -28,7 +28,7 @@ import {
   fetchUser,
   runCommand,
 } from 'actions';
-import COMMANDS from 'constants/commands';
+import COMMANDS, { ACTIVITY_COMMANDS } from 'constants/commands';
 import { getTimeline } from 'reducers/timeline';
 import { getUser } from 'reducers/user';
 
@@ -39,6 +39,7 @@ injectGlobal`
 html {
   box-sizing: border-box;
   font-family: sans-serif;
+  overflow: hidden;
 }
 
 * {
@@ -56,6 +57,7 @@ class App extends Component<
     user: { id: string, name: string },
     userTraces: (?Trace)[],
     userTodos: (?Todo)[],
+    todosVisible: boolean,
   },
   { commanderVisible: boolean },
 > {
@@ -96,9 +98,7 @@ class App extends Component<
     createKeyEvent('keyup', this.props.keyUp);
   }
 
-  getItems = selector => {
-    return selector(this.props)
-  }
+  getItems = selector => selector(this.props);
 
   submitCommand = command => {
     this.hideCommander();
@@ -123,7 +123,17 @@ class App extends Component<
     ) : null;
   };
 
-  getCommands = operand => COMMANDS;
+  getCommands = operand => {
+    if (operand) {
+      switch (operand.type) {
+        case 'activity':
+          return [...ACTIVITY_COMMANDS, ...COMMANDS];
+        default:
+          return COMMANDS;
+      }
+    }
+    return COMMANDS;
+  };
 
   render() {
     const eventListeners = [
@@ -151,12 +161,16 @@ class App extends Component<
                 deleteCurrentTrace={this.props.deleteCurrentTrace}
               />
 
-              <Grid rows={'4fr 1fr'}>
+              {/* <Grid rows={'4fr 1fr'}> */}
+              <main>
                 <Route path="/traces/:trace_id" render={this.renderTimeline} />
                 <Route exact path="/" render={this.renderTimeline} />
 
-                <Todos todos={this.props.user.todos} />
-              </Grid>
+                {this.props.todosVisible && (
+                  <Todos todos={this.props.user.todos} />
+                )}
+              </main>
+              {/* </Grid> */}
               <Commander
                 isOpen={this.state.commanderVisible}
                 commands={this.getCommands(this.props.operand)}
@@ -181,7 +195,8 @@ export default compose(
       userTraces: getUser(state).traces,
       trace: getTimeline(state).trace,
       operand: state.operand,
-      threads: getTimeline(state).threads
+      threads: getTimeline(state).threads,
+      todosVisible: state.todosVisible,
     }),
     dispatch => ({
       keyDown: key => dispatch(keyDown(key)),

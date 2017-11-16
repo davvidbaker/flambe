@@ -21,7 +21,7 @@ const Div = styled.div`
 const Tooltip = ({ tooltipRef, name, left, top }) => (
   <Div
     innerRef={tooltipRef}
-    style={left && top && name ? { left, top } : { opacity: 0 }}
+    style={left && top && name ? { left, top } : { top: 0, opacity: 0 }}
   >
     <p>{name}</p>
   </Div>

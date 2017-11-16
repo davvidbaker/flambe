@@ -27,6 +27,7 @@ export const COMMAND_RUN = 'COMMAND_RUN';
 
 export const TODO_BEGIN = 'TODO_BEGIN';
 export const TODO_CREATE = 'TODO_CREATE';
+export const TODOS_TOGGLE = 'TODOS_TOGGLE';
 
 export const THREAD_CREATE = 'THREAD_CREATE';
 export const THREAD_DELETE = 'THREAD_DELETE';
@@ -38,6 +39,13 @@ export const TRACE_SELECT = 'TRACE_SELECT';
 export const TRACE_FETCH = 'TRACE_FETCH';
 
 export const USER_FETCH = 'USER_FETCH';
+
+export function toggleTodos(bool) {
+  return {
+    type: TODOS_TOGGLE,
+    bool,
+  };
+}
 
 // trace array of events -> object of activities
 export function processTimelineTrace(events, threads) {
@@ -156,12 +164,14 @@ export function createActivity({
   description,
   thread_id /* message */,
   category_id,
+  phase,
 }: {
   name: string,
   timestamp: number,
   description: string,
   thread_id: number /* message */,
   category_id: ?number,
+  phase: string,
 }) {
   return {
     type: ACTIVITY_CREATE,
@@ -170,6 +180,7 @@ export function createActivity({
     description,
     thread_id,
     category_id,
+    phase,
   };
 }
 
@@ -202,10 +213,12 @@ export function updateActivity(id, updates) {
   };
 }
 
-export function focusActivity(id: string) {
+/** 💁 the thread_id is just being used here for optimistic updates when a command is run that operated on the activity */
+export function focusActivity(id: number, thread_id: number) {
   return {
     type: FOCUS_ACTIVITY,
     id,
+    thread_id,
   };
 }
 

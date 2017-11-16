@@ -22,7 +22,7 @@ import { colors } from 'styles';
 import type { Activity } from 'types/Activity';
 
 type Props = {
-  focusActivity: ?string => mixed,
+  focusActivity: (id: number, thread_id: number) => mixed,
   hoverActivity: ?string => mixed,
   showThreadDetail: number => mixed,
   activities?: { [id: string]: Activity },
@@ -148,8 +148,6 @@ class FlameChart extends Component<Props, State> {
     const hitThread_id = this.pixelsToThread_id(e.nativeEvent.offsetY);
     const hitLevel = this.pixelsToLevel(e.nativeEvent.offsetY);
 
-    console.log(hitLevel);
-
     const filterByTime = pickBy(
       activity =>
         ts > activity.startTime &&
@@ -182,9 +180,8 @@ class FlameChart extends Component<Props, State> {
       throw new Error('multiple hits! something is wrong!', hitActivities);
     }
 
-    const hitActivityKey: string = Object.keys(hitActivities)[0];
-
-    return { type: 'activity_block', value: hitActivityKey };
+    const hitActivity = Object.entries(hitActivities)[0];
+    return { type: 'activity_block', value: hitActivity };
   };
 
   onClick = e => {
@@ -195,14 +192,15 @@ class FlameChart extends Component<Props, State> {
           this.props.showThreadDetail(hit.value);
           break;
 
+        /** 💁 hit.value is array like [key, val] */
         case 'activity_block':
-          this.props.focusActivity(hit.value);
+          this.props.focusActivity(hit.value[0], hit.value[1].thread.id);
           break;
 
         default:
       }
     } else {
-      this.props.focusActivity(null);
+      this.props.focusActivity(null, null);
     }
   };
 
@@ -221,8 +219,9 @@ class FlameChart extends Component<Props, State> {
           });
           break;
 
+          /** 💁 hit.value is array like [key, val] */
         case 'activity_block':
-          this.props.hoverActivity(hit.value);
+          this.props.hoverActivity(hit.value[0]);
           this.canvas.style.cursor = 'default';
           this.setState({ hoverThreadEllipsis: null });
           break;
@@ -634,7 +633,7 @@ connect(
     hoveredActivity_id: getTimeline(state).hoveredActivity_id,
   }),
   dispatch => ({
-    focusActivity: id => dispatch(focusActivity(id)),
+    focusActivity: (id, thread_id) => dispatch(focusActivity(id, thread_id)),
     hoverActivity: id => dispatch(hoverActivity(id)),
   })
 )(FlameChart);

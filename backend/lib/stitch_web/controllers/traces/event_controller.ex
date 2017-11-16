@@ -7,7 +7,8 @@ defmodule StitchWeb.EventController do
   action_fallback StitchWeb.FallbackController
   
     def create(conn, %{"trace_id" => trace_id, "activity_id" => activity_id, "event" => event_params}) do
-      
+    IO.inspect "first 💯 create"
+    
       # ⚠️ 🔒 this is bad. Should rely on the connection or token for authentication
       with {:ok, %Event{} = event} <- Traces.create_event(trace_id, activity_id, event_params) do
         # with {:ok, %Trace{} = trace} <- Traces.create_trace(conn.assigns.current_user, trace_params) do
@@ -18,6 +19,7 @@ defmodule StitchWeb.EventController do
     end
 
   def create(conn, %{"trace_id" => trace_id, "event" => event_params}) do
+    IO.inspect "second create"
     # ⚠️ 🔒 this is bad. Should rely on the connection or token for authentication
     with {:ok, %Event{} = event} <- Traces.create_event(trace_id, event_params) do
       # with {:ok, %Trace{} = trace} <- Traces.create_trace(conn.assigns.current_user, trace_params) do
