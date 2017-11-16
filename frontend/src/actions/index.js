@@ -6,8 +6,6 @@ export const REFLECT_PROCESSED_TRACE = 'REFLECT_PROCESSED_TRACE';
 export const ADD_EVENT = 'ADD_EVENT';
 export const TIMELINE_ZOOM = 'TIMELINE_ZOOM';
 export const TIMELINE_PAN = 'TIMELINE_PAN';
-export const FOCUS_ACTIVITY = 'FOCUS_ACTIVITY';
-export const HOVER_ACTIVITY = 'HOVER_ACTIVITY';
 export const UPDATE_ACTIVITY = 'UPDATE_ACTIVITY';
 export const UPDATE_THREAD_LEVEL = 'UPDATE_THREAD_LEVEL';
 export const DELETE_CURRENT_TRACE = 'DELETE_CURRENT_TRACE';
@@ -20,7 +18,12 @@ export const ACTIVITY_DELETE = 'ACTIVITY_DELETE';
 export const ACTIVITY_END = 'ACTIVITY_END'; // 👈 legacy
 export const ACTIVITY_REJECT = 'ACTIVITY_REJECT';
 export const ACTIVITY_RESOLVE = 'ACTIVITY_RESOLVE';
+export const ACTIVITY_RESUME = 'ACTIVITY_RESUME';
+export const ACTIVITY_SUSPEND = 'ACTIVITY_SUSPEND';
 export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
+
+export const BLOCK_FOCUS = 'BLOCK_FOCUS';
+export const BLOCK_HOVER = 'BLOCK_HOVER';
 
 export const CATEGORY_CREATE = 'CATEGORY_CREATE';
 export const CATEGORY_UPDATE = 'CATEGORY_UPDATE';
@@ -204,6 +207,28 @@ export function endActivity({
   };
 }
 
+/** 💁 the thread_id is just being used here for optimystical updating threadLevels */
+export function suspendActivity({ id, timestamp, message, thread_id }) {
+  return {
+    type: ACTIVITY_SUSPEND,
+    id,
+    timestamp,
+    message,
+    thread_id,
+  };
+}
+
+/** 💁 the thread_id is just being used here for optimystical updating threadLevels */
+export function resumeActivity({ id, timestamp, message, thread_id }) {
+  return {
+    type: ACTIVITY_RESUME,
+    id,
+    timestamp,
+    message,
+    thread_id,
+  };
+}
+
 // /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
 // export function rejectActivity(id, timestamp, message, thread_id) {
 //   return {
@@ -245,18 +270,20 @@ export function updateActivity(id, updates) {
 }
 
 /** 💁 the thread_id is just being used here for optimistic updates when a command is run that operated on the activity */
-export function focusActivity(id: number, thread_id: number) {
+export function focusBlock({ index, activity_id, activityStatus, thread_id }) {
   return {
-    type: FOCUS_ACTIVITY,
-    id,
+    type: BLOCK_FOCUS,
+    index,
+    activity_id,
+    activityStatus,
     thread_id,
   };
 }
 
-export function hoverActivity(id: string) {
+export function hoverBlock(index: number) {
   return {
-    type: HOVER_ACTIVITY,
-    id,
+    type: BLOCK_HOVER,
+    index,
   };
 }
 

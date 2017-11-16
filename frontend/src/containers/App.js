@@ -127,7 +127,12 @@ class App extends Component<
     if (operand) {
       switch (operand.type) {
         case 'activity':
-          return [...ACTIVITY_COMMANDS, ...COMMANDS];
+          return [
+            ...ACTIVITY_COMMANDS.filter(
+              cmd => cmd.status.indexOf(operand.activityStatus) >= 0,
+            ),
+            ...COMMANDS,
+          ];
         default:
           return COMMANDS;
       }

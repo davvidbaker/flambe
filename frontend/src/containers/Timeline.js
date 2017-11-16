@@ -39,7 +39,7 @@ type Props = {
   trace_id: string,
   minTime: number,
   maxTime: number,
-  focusedActivity_id: ?string,
+  focusedBlockActivity_id: ?string,
   activities: { [string]: Activity },
   threads: (?Thread)[],
 };
@@ -148,7 +148,8 @@ class Timeline extends Component<Props, State> {
   render() {
     const props = this.props;
     const focusedActivity =
-      props.focusedActivity_id && props.activities[props.focusedActivity_id];
+      props.focusedBlockActivity_id &&
+      props.activities[props.focusedBlockActivity_id];
 
     return (
       <WithEventListeners
@@ -178,6 +179,7 @@ class Timeline extends Component<Props, State> {
             >
               <FlameChart
                 activities={props.activities}
+                blocks={props.blocks}
                 threads={props.threads}
                 threadLevels={props.threadLevels}
                 categories={props.user.categories}
@@ -201,12 +203,15 @@ class Timeline extends Component<Props, State> {
                 props.threads.find(t => t.id === this.state.threadModal_id).name
               }
             />
-            {props.focusedActivity_id && (
+            {props.focusedBlockActivity_id && (
               <ActivityDetail
                 activity={{
-                  id: props.focusedActivity_id,
+                  id: props.focusedBlockActivity_id,
                   ...focusedActivity,
                 }}
+                activityBlocks={props.blocks.filter(
+                  block => block.activity_id === props.focusedBlockActivity_id,
+                )}
                 categories={props.user.categories}
                 updateActivity={props.updateActivity}
                 trace_id={props.trace_id}
@@ -224,7 +229,8 @@ export default // flow-ignore
 connect(
   state => ({
     activities: getTimeline(state).activities,
-    focusedActivity_id: getTimeline(state).focusedActivity_id,
+    blocks: getTimeline(state).blocks,
+    focusedBlockActivity_id: getTimeline(state).focusedBlockActivity_id,
     minTime: getTimeline(state).minTime,
     maxTime: getTimeline(state).maxTime,
     threadLevels: getTimeline(state).threadLevels,

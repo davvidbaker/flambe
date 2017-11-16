@@ -23,13 +23,15 @@ import type { Category as CategoryType } from 'types/Category';
 
 const P = styled.p`margin: 0;`;
 
-// Activity is only endable if it is on the tip of the icicle.
-function isEndable(activity, threadLevels) {
+// Activity (Block) is only endable if it is on the tip of the icicle.
+function isEndable(activity, activityBlocks, threadLevels) {
   if (!activity.thread) {
     console.warn('activity missing thread!', activity);
-    return;
+    // debugger;
+    return false;
   }
-  if (activity.level + 1 === threadLevels[activity.thread.id].current) {
+  const lastBlock = activityBlocks[activityBlocks.length - 1];
+  if (lastBlock.level + 1 === threadLevels[activity.thread.id].current) {
     return true;
   }
   return false;
@@ -115,6 +117,7 @@ class ActivityDetail extends React.Component<Props> {
   render() {
     const {
       activity,
+      activityBlocks,
       updateActivity,
       endActivity,
       deleteActivity,
@@ -138,7 +141,7 @@ class ActivityDetail extends React.Component<Props> {
           {activity.name}
         </InputFromButton>
         {!activity.endTime &&
-          isEndable(activity, threadLevels) && (
+          isEndable(activity, activityBlocks, threadLevels) && (
             <InputFromButton
               ref={endButton => {
                 this.endButton = endButton;

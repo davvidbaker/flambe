@@ -1,14 +1,20 @@
 import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
 import {
   ACTIVITY_CREATE,
+  ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_REJECT,
   ACTIVITY_RESOLVE,
+  ACTIVITY_RESUME,
+  ACTIVITY_SUSPEND,
   THREAD_CREATE,
   TODOS_TOGGLE,
   createActivity,
   createThread,
+  deleteActivity,
   endActivity,
+  resumeActivity,
+  suspendActivity,
   toggleTodos,
 } from 'actions';
 
@@ -29,6 +35,17 @@ function* handleCommand({ type, operand, command }) {
       );
       break;
 
+    case ACTIVITY_RESUME:
+      yield put(
+        resumeActivity({
+          id: operand.activity_id,
+          timestamp: Date.now(),
+          message: command.message,
+          thread_id: command.thread_id,
+        }),
+      );
+      break;
+
     case ACTIVITY_END:
     case ACTIVITY_REJECT:
     case ACTIVITY_RESOLVE:
@@ -38,11 +55,26 @@ function* handleCommand({ type, operand, command }) {
         : command.action.includes('RESOLVE') ? 'V' : 'E';
       yield put(
         endActivity({
-          id: operand.id,
+          id: operand.activity_id,
           timestamp: Date.now(),
           message,
           thread_id: operand.thread_id,
           eventFlavor,
+        }),
+      );
+      break;
+
+    case ACTIVITY_DELETE:
+      yield put(deleteActivity(operand.activity_id, operand.thread_id));
+      break;
+    /** 💁 if this isn't obvious, suspension can only happen on the most recent block of an activity (for activities that may have been suspended and resumed already) */
+    case ACTIVITY_SUSPEND:
+      yield put(
+        suspendActivity({
+          id: operand.activity_id,
+          timestamp: Date.now(),
+          message: command.message ? command.message : '',
+          thread_id: operand.thread_id,
         }),
       );
       break;

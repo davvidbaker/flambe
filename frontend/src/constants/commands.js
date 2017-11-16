@@ -1,8 +1,11 @@
 import {
   ACTIVITY_CREATE,
+  ACTIVITY_DELETE,
   ACTIVITY_END,
+  ACTIVITY_SUSPEND,
   ACTIVITY_REJECT,
   ACTIVITY_RESOLVE,
+  ACTIVITY_RESUME,
   THREAD_CREATE,
   TODOS_TOGGLE,
 } from 'actions';
@@ -58,16 +61,39 @@ const COMMANDS = [
 const messageParam = { key: 'message', placeholder: 'why?' };
 /** 💁 For when the operand is an activity. */
 export const ACTIVITY_COMMANDS = [
-  { action: ACTIVITY_END, copy: 'end activity' },
+  {
+    action: ACTIVITY_END,
+    copy: 'Activity: Just fucking end it.',
+    status: ['active'],
+  },
   {
     action: ACTIVITY_REJECT,
-    copy: 'end activity by rejection',
+    copy: 'Activity: End by Rejection',
     parameters: [messageParam],
+    status: ['active'],
   },
   {
     action: ACTIVITY_RESOLVE,
-    copy: 'end activity by resolution',
+    copy: 'Activity: End by Resolution',
     parameters: [messageParam],
+    status: ['active'],
+  },
+  {
+    action: ACTIVITY_RESUME,
+    copy: 'Activity: Resume',
+    parameters: [messageParam],
+    status: ['suspended'],
+  },
+  {
+    action: ACTIVITY_SUSPEND,
+    copy: 'Activity: Suspend',
+    parameters: [messageParam],
+    status: ['active'],
+  },
+  {
+    action: ACTIVITY_DELETE,
+    copy: 'Activity: Delete',
+    status: ['active', 'suspended', 'complete'],
   },
 ];
 
