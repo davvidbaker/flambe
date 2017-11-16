@@ -39,6 +39,7 @@ module.exports = {
     'no-case-declarations': 'off',
     'no-console': 'off',
     'no-debugger': 'off',
+    'no-nested-ternary': 'off',
     'no-plusplus': 'off',
     'no-unused-vars': 'error',
     indent: [

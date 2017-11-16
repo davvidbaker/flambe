@@ -17,7 +17,9 @@ export const FETCH_RESOURCE = 'FETCH_RESOURCE';
 
 export const ACTIVITY_CREATE = 'ACTIVITY_CREATE';
 export const ACTIVITY_DELETE = 'ACTIVITY_DELETE';
-export const ACTIVITY_END = 'ACTIVITY_END';
+export const ACTIVITY_END = 'ACTIVITY_END'; // 👈 legacy
+export const ACTIVITY_REJECT = 'ACTIVITY_REJECT';
+export const ACTIVITY_RESOLVE = 'ACTIVITY_RESOLVE';
 export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
 
 export const CATEGORY_CREATE = 'CATEGORY_CREATE';
@@ -185,15 +187,44 @@ export function createActivity({
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function endActivity(id, timestamp, message, thread_id) {
+export function endActivity({
+  id,
+  timestamp,
+  message,
+  thread_id,
+  eventFlavor = 'E',
+}) {
   return {
     type: ACTIVITY_END,
     id,
     timestamp,
     message,
     thread_id,
+    eventFlavor,
   };
 }
+
+// /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
+// export function rejectActivity(id, timestamp, message, thread_id) {
+//   return {
+//     type: ACTIVITY_REJECT,
+//     id,
+//     timestamp,
+//     message,
+//     thread_id,
+//   };
+// }
+
+// /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
+// export function resolveActivity(id, timestamp, message = '', thread_id) {
+//   return {
+//     type: ACTIVITY_RESOLVE,
+//     id,
+//     timestamp,
+//     message,
+//     thread_id,
+//   };
+// }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
 export function deleteActivity(id, thread_id) {

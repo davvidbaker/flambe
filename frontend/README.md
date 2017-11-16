@@ -68,7 +68,7 @@ Events that start a new activity:
 Events that end an activity:
 - `E`: End
   - end an activity
-- `L`: Resolve
+- `V`: Resolve
   - successfully complete an activity
 - `J`: Reject
   - abandon an activity

@@ -2,6 +2,8 @@ import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
 import {
   ACTIVITY_CREATE,
   ACTIVITY_END,
+  ACTIVITY_REJECT,
+  ACTIVITY_RESOLVE,
   THREAD_CREATE,
   TODOS_TOGGLE,
   createActivity,
@@ -28,7 +30,21 @@ function* handleCommand({ type, operand, command }) {
       break;
 
     case ACTIVITY_END:
-      yield put(endActivity(operand.id, Date.now(), '', operand.thread_id));
+    case ACTIVITY_REJECT:
+    case ACTIVITY_RESOLVE:
+      const message = command.message ? command.message : '';
+      const eventFlavor = command.action.includes('REJECT')
+        ? 'J'
+        : command.action.includes('RESOLVE') ? 'V' : 'E';
+      yield put(
+        endActivity({
+          id: operand.id,
+          timestamp: Date.now(),
+          message,
+          thread_id: operand.thread_id,
+          eventFlavor,
+        }),
+      );
       break;
 
     case THREAD_CREATE:
