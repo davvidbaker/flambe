@@ -43,11 +43,9 @@ function mapToGrid(obj, { columns }) {
       {Object.entries(obj).map(([key, val]) => [
         <P key={`key-${key}`}>{key}</P>,
         <div key={`val-${key}`}>
-          {val !== null && typeof val === 'object' ? (
-            mapToGrid(val, { columns: '1fr 3fr' })
-          ) : (
-            <P>{val}</P>
-          )}
+          {val !== null && typeof val === 'object'
+            ? mapToGrid(val, { columns: '1fr 3fr' })
+            : <P>{val}</P>}
         </div>,
       ])}
     </Grid>
@@ -61,7 +59,7 @@ type Props = {
   endActivity: (
     activity_id: number,
     timestamp: number,
-    message: string,
+    message: string
   ) => mixed,
   DeleteButton: ({ variables: {} }) => mixed,
   deleteActivity: (id, thread_id) => mixed,
@@ -78,6 +76,7 @@ class ActivityDetail extends React.Component<Props> {
   // ⚠️ potentially bad code ahead. Is this how I should be doing keyboard events? or should they bed higher level? Needs research.
   state = {
     eventListener: null,
+    endEventFlavor: null,
   };
 
   componentDidMount() {
@@ -88,6 +87,13 @@ class ActivityDetail extends React.Component<Props> {
           // ⚠️ this might not be the bets way to handle this.
           if (e.key === 'e' && e.target.nodeName !== 'INPUT') {
             this.endButton.focus();
+            this.setState({ endEventFlavor: 'E' });
+          } else if (e.key === 'v' && e.target.nodeName !== 'INPUT') {
+            this.endButton.focus();
+            this.setState({ endEventFlavor: 'V' });
+          } else if (e.key === 'j' && e.target.nodeName !== 'INPUT') {
+            this.endButton.focus();
+            this.setState({ endEventFlavor: 'J' });
           }
         }
       }),
@@ -141,26 +147,26 @@ class ActivityDetail extends React.Component<Props> {
           {activity.name}
         </InputFromButton>
         {!activity.endTime &&
-          isEndable(activity, activityBlocks, threadLevels) && (
-            <InputFromButton
-              ref={endButton => {
-                this.endButton = endButton;
-              }}
-              looksLikeButton
-              canBeBlank
-              placeholder="why?"
-              submit={value => {
-                endActivity({
-                  id: activity.id,
-                  timestamp: Date.now(),
-                  message: value,
-                  thread_id: activity.thread.id,
-                });
-              }}
-            >
-              End Activity
-            </InputFromButton>
-          )}
+          isEndable(activity, activityBlocks, threadLevels) &&
+          <InputFromButton
+            ref={endButton => {
+              this.endButton = endButton;
+            }}
+            looksLikeButton
+            canBeBlank
+            placeholder="why?"
+            submit={value => {
+              endActivity({
+                id: activity.id,
+                timestamp: Date.now(),
+                message: value,
+                thread_id: activity.thread.id,
+                eventFlavor: this.state.endEventFlavor,
+              });
+            }}
+          >
+            End Activity
+          </InputFromButton>}
 
         {/* abstract out the delete functionality */}
         <DeleteButton
@@ -178,8 +184,9 @@ class ActivityDetail extends React.Component<Props> {
             {activity.categories &&
               categories &&
               activity.categories.map(category_id => {
-                const category =
-                  categories.find(cat => cat.id === category_id) || {};
+                const category = categories.find(
+                  cat => cat.id === category_id
+                ) || {};
                 return (
                   <li key={category.id}>
                     <Category
@@ -218,7 +225,7 @@ connect(
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
-    endActivity: ({ id, timestamp, message, thread_id }) =>
-      dispatch(endActivity({ id, timestamp, message, thread_id })),
-  }),
+    endActivity: ({ id, timestamp, message, thread_id, eventFlavor = 'E' }) =>
+      dispatch(endActivity({ id, timestamp, message, thread_id, eventFlavor })),
+  })
 )(ActivityDetail);

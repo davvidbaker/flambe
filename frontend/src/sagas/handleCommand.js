@@ -41,7 +41,7 @@ function* handleCommand({ type, operand, command }) {
           id: operand.activity_id,
           timestamp: Date.now(),
           message: command.message,
-          thread_id: command.thread_id,
+          thread_id: operand.thread_id,
         }),
       );
       break;

@@ -417,11 +417,14 @@ class FlameChart extends Component<Props, State> {
       // draw vertical bars
       this.drawGrid(this.ctx);
 
+      console.log('this.props.blocks', this.props.blocks);
+
       if (this.props.blocks) {
         // Object.values(this.props.activities).forEach(activity => {
         for (let i = 0; i < this.props.blocks.length; i++) {
           const block = this.props.blocks[i];
           const activity = this.props.activities[block.activity_id];
+          if (!activity) console.log('block missing activity ^😲', block);
           this.ctx.font = `${block.endTime ? '' : 'bold'} 11px sans-serif`;
           // marky.mark(`name ${activity.name}`);
           // 👇 I called it a transform for lack of a better term, even though it doesn't tell you everything a transform usually does
