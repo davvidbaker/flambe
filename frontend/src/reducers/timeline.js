@@ -331,7 +331,6 @@ function timeline(state = initialState, action) {
       };
     /** ⚠️ need to handle network failures */
     case ACTIVITY_UPDATE:
-    debugger;
       return {
         ...state,
         lastThread_id: action.thread_id,

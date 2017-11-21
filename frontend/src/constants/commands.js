@@ -32,7 +32,7 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'gist description of the activity',
+        placeholder: 'gist/description of the activity',
       },
       threadParam,
     ],

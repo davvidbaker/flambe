@@ -10,6 +10,7 @@ import ToggleButton from 'components/ToggleButton';
 import Popup from 'components/Popup';
 import { InputFromButton } from 'components/Button';
 import { colors } from 'styles';
+import Fuzzy from 'components/Fuzzy';
 
 import type { Category as CategoryType } from 'types/Category';
 
@@ -113,52 +114,24 @@ export class AddCategory extends Component<Props, State> {
   };
 
   render() {
+    console.log('this.props.categories', this.props.categories);
     return (
       <div>
         <InputFromButton looksLikeButton submit={this.showColorPicker}>
           New Category
         </InputFromButton>
-        <Downshift onChange={this.selectExistingCategory}>
-          {({
-            getInputProps,
-            getItemProps,
-            getLabelProps,
-            isOpen,
-            inputValue,
-            highlightedIndex,
-            selectedItem,
-          }) => (
-            <div>
-              <label {...getLabelProps()}>Enter a fruit</label>
-              <input {...getInputProps()} />
-              {isOpen ? (
-                <div>
-                  {this.props.categories
-                    .filter(i => !inputValue || i.name.includes(inputValue))
-                    .map((item, index) => (
-                      <div
-                        {...getItemProps({
-                          key: item.id,
-                          index,
-                          item,
-                          style: {
-                            backgroundColor:
-                              highlightedIndex === index
-                                ? 'lightgray'
-                                : 'white',
-                            fontWeight:
-                              selectedItem === item ? 'bold' : 'normal',
-                          },
-                        })}
-                      >
-                        {item.name}
-                      </div>
-                    ))}
-                </div>
-              ) : null}
-            </div>
-          )}
-        </Downshift>
+        <Fuzzy
+          itemStringKey="name"
+          onChange={this.selectExistingCategory}
+          placeholder="Category"
+          items={this.props.categories.map(cat => ({
+            ...cat,
+            label: {
+              background: cat.color || colors.flame.main,
+              copy: ' ', // 👈 U+2003 EM space
+            },
+          }))}
+        />
         <Popup
           isOpen={this.state.colorPickerVisible}
           onClose={this.closeColorPicker}
