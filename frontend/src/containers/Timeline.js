@@ -180,17 +180,18 @@ class Timeline extends Component<Props, State> {
               <FlameChart
                 activities={props.activities}
                 blocks={props.blocks}
-                threads={props.threads}
-                threadLevels={props.threadLevels}
                 categories={props.user.categories}
+                leftBoundaryTime={this.state.leftBoundaryTime || props.minTime}
                 maxTime={props.maxTime}
                 minTime={props.minTime}
-                leftBoundaryTime={this.state.leftBoundaryTime || props.minTime}
+                modifiers={props.modifiers}
+                pan={this.pan}
                 rightBoundaryTime={
                   this.state.rightBoundaryTime || props.maxTime
                 }
-                pan={this.pan}
                 showThreadDetail={this.showThreadDetail}
+                threadLevels={props.threadLevels}
+                threads={props.threads}
                 topOffset={this.state.topOffset || 0}
                 zoom={this.zoom}
               />
@@ -233,6 +234,7 @@ connect(
     focusedBlockActivity_id: getTimeline(state).focusedBlockActivity_id,
     minTime: getTimeline(state).minTime,
     maxTime: getTimeline(state).maxTime,
+    modifiers: state.modifiers,
     threadLevels: getTimeline(state).threadLevels,
     threads: sortBy(getTimeline(state).threads, t => t.rank),
     lastCategory_id: getTimeline(state).lastCategory_id,
