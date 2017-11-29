@@ -4,6 +4,7 @@ import processTrace from './processTrace';
 import { saveState, loadState } from './localStorage';
 import trimTextMiddle from './trimText';
 import deepArrayIsEqual from './deepArrayIsEqual';
+import shortEnglishHumanizer from './shortEnglishHumanizer';
 
 export {
   zoom,
@@ -13,6 +14,7 @@ export {
   loadState,
   trimTextMiddle,
   deepArrayIsEqual,
+  shortEnglishHumanizer,
 };
 
 // Everything below (as well as other stuff dispersed throughout 😜) is borrowed with ❤️ from Chrome DevTools.
