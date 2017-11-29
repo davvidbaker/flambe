@@ -12,7 +12,10 @@ import { loadState, saveState } from 'utilities';
 import mainSaga from 'sagas';
 
 // eslint-disable-next-line no-underscore-dangle
-const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
+const composeEnhancers =
+  window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
+    actionsBlacklist: ['BLOCK_HOVER'],
+  }) || compose;
 
 const networkInterface = createNetworkInterface({
   uri: 'https://api.graph.cool/simple/v1/cj74c95q70fab0177fwxnf7k3',
