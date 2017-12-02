@@ -315,6 +315,7 @@ class FlameChart extends Component<Props, State> {
   getBlockDetails = blockIndex => {
     if (blockIndex !== null && blockIndex !== undefined) {
       const block = this.props.blocks[blockIndex];
+      console.log('block', block);
       if (!block) return false;
       const activity =
         this.props.activities && this.props.activities[block.activity_id];
@@ -325,10 +326,15 @@ class FlameChart extends Component<Props, State> {
         this.topOffset + this.state.offsets[activity.thread.id]
       );
 
+      const { startMessage, endMessage, ending } = block;
+
       return {
+        blockWidth,
         blockX,
         blockY,
-        blockWidth,
+        startMessage,
+        ending,
+        endMessage,
       };
     }
   };
@@ -358,6 +364,8 @@ class FlameChart extends Component<Props, State> {
     const hoveredBlock = this.getBlockDetails(
       this.canvas && this.props.activities && this.props.hoveredBlockIndex
     );
+
+    console.log('hoveredBlock', hoveredBlock);
     const hoveredActivity = hoveredBlock
       ? this.props.activities[
         this.props.blocks[this.props.hoveredBlockIndex].activity_id
@@ -412,11 +420,14 @@ class FlameChart extends Component<Props, State> {
             />,
 
           <Tooltip
+            ending={hoveredBlock ? hoveredBlock.ending : null}
+            endMessage={hoveredBlock ? hoveredBlock.endMessage : null}
             key="tooltip"
+            name={hoveredActivity ? hoveredActivity.name : null}
+            startMessage={hoveredBlock ? hoveredBlock.startmessage : null}
             tooltipRef={t => {
               this.tooltip = t;
             }}
-            name={hoveredActivity ? hoveredActivity.name : null}
             {...this.calcTooltipOffset()}
           />,
         ]}
@@ -707,7 +718,8 @@ class FlameChart extends Component<Props, State> {
       ctx.fillText(
         txt,
         txtX,
-        this.state.canvasHeight / this.state.devicePixelRatio - (FlameChart.textPadding.y - 11)
+        this.state.canvasHeight / this.state.devicePixelRatio -
+          (FlameChart.textPadding.y - 11)
       );
     }
     ctx.restore();

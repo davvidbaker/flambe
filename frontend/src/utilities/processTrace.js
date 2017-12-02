@@ -95,7 +95,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     );
     activity.categories = uniq(activity.categories);
 
-    // ⚠️ TODO more phases like async
+    // 🔮 more phases like async
     switch (event.phase) {
       // S for suspend
       case 'S':
@@ -142,6 +142,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           level: threadLevels[thread_id].current,
           activity_id: event.activity.id,
           beginning: event.phase,
+          startMessage: event.message
         });
 
         threadLevels[thread_id].current++;
@@ -163,6 +164,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           event.activity.id,
           event.timestamp,
           event.phase,
+          event.message,
         );
         threadLevels[thread_id].current--;
         break;

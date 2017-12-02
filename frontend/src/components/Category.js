@@ -114,7 +114,6 @@ export class AddCategory extends Component<Props, State> {
   };
 
   render() {
-    console.log('this.props.categories', this.props.categories);
     return (
       <div>
         <InputFromButton looksLikeButton submit={this.showColorPicker}>

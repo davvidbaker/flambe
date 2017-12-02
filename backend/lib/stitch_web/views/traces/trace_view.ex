@@ -27,6 +27,7 @@ defmodule StitchWeb.TraceView do
             timestamp: evt_in.timestamp,
             phase: evt_in.phase, 
             id: evt_in.id,
+            message: evt_in.message
           }
           evt_out = case is_nil evt_in.activity do
             true -> evt_out

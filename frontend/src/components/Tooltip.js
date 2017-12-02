@@ -12,19 +12,96 @@ const Div = styled.div`
   position: absolute;
   pointer-events: none;
 
-  p {
+  p,
+  span,
+  div {
     font-size: 11px;
     margin: 0;
   }
+
+  .ending-container {
+    display: grid;
+    grid-template-columns: 10px 1fr;
+    margin-top: 5px;
+    border: 1px solid lightgray;
+    width: 100%;
+    min-height: 5px;
+
+    > div {
+      display: flex;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .endString {
+    padding: 5px;
+    color: white;
+  }
+
+  .endMessage {
+    padding: 5px;
+    background: white;
+    opacity: 0.9;
+  }
+
+  .V {
+    background: mediumseagreen;
+  }
+
+  .E {
+    background: lightgrey;
+  }
+
+  .J {
+    background: #D9646A;
+  }
+
+  .S {
+    background: #6746a3;
+  }
 `;
 
-const Tooltip = ({ tooltipRef, name, left, top }) => (
-  <Div
-    innerRef={tooltipRef}
-    style={left && top && name ? { left, top } : { top: 0, opacity: 0 }}
-  >
-    <p>{name}</p>
-  </Div>
-);
-
+const Tooltip = ({
+  tooltipRef,
+  ending,
+  name,
+  left,
+  top,
+  startMessage,
+  endMessage,
+}) => {
+  let endString;
+  switch (ending) {
+    case 'V':
+      endString = '✓';
+      break;
+    case 'J':
+      endString = 'X';
+      break;
+    case 'S':
+      endString = '/ /'; // 👈 nbsp
+      break;
+    case 'E':
+    default:
+      break;
+  }
+  return (
+    <Div
+      innerRef={tooltipRef}
+      style={left && top && name ? { left, top } : { top: 0, opacity: 0 }}
+    >
+      <p>{name}</p>
+      {startMessage && <p>{startMessage}</p>}
+      {ending ? (
+        <div className={`ending-container ${ending}`}>
+          {ending && <div className={ending} />}
+          {endMessage &&
+            endMessage.length > 0 && <p className="endMessage">{endMessage}</p>}
+        </div>
+      ) : null}
+    </Div>
+  );
+};
 export default Tooltip;
