@@ -32,9 +32,13 @@ defmodule Stitch.Traces do
 
   """
   def list_user_traces(user_id) do
-    query = from trace in "traces", 
-      where: trace.user_id == ^user_id, 
-      select: map(trace, [:name, :id])
+    query =
+      from(
+        trace in "traces",
+        where: trace.user_id == ^user_id,
+        select: map(trace, [:name, :id])
+      )
+
     Repo.all(query)
   end
 
@@ -48,21 +52,27 @@ defmodule Stitch.Traces do
 
   """
   def list_trace_events(%Trace{} = trace) do
-    query = from event in "events", 
-      where: event.trace_id == ^trace.id, 
-      select: map(event, [:timestamp, :phase, :message])
+    query =
+      from(
+        event in "events",
+        where: event.trace_id == ^trace.id,
+        select: map(event, [:timestamp, :phase, :message])
+      )
+
     Repo.all(query)
   end
 
   # ⚠️ needs doc
   def list_trace_threads(%Trace{} = trace) do
-    query = from thread in "threads", 
-      where: thread.trace_id == ^trace.id, 
-      select: map(thread, [:name, :id])
+    query =
+      from(
+        thread in "threads",
+        where: thread.trace_id == ^trace.id,
+        select: map(thread, [:name, :id])
+      )
+
     Repo.all(query)
   end
-
-
 
   @doc """
   Gets a single trace.
@@ -193,16 +203,16 @@ defmodule Stitch.Traces do
       {:error, %Ecto.Changeset{}}
 
   """
-#   ⚠️ need to do validation to make sure trace exists
-#   something like ... Traces.get_trace!(trace_id)...
+  #   ⚠️ need to do validation to make sure trace exists
+  #   something like ... Traces.get_trace!(trace_id)...
   def create_event(trace_id, attrs \\ %{}) do
     %Event{}
     |> Event.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:trace, Stitch.Traces.get_trace!(trace_id))    
+    |> Ecto.Changeset.put_assoc(:trace, Stitch.Traces.get_trace!(trace_id))
     |> Repo.insert()
   end
 
-   @doc """
+  @doc """
   Creates an event that is tied to a particular activity.
 
   ## Examples
@@ -214,12 +224,12 @@ defmodule Stitch.Traces do
       {:error, %Ecto.Changeset{}}
 
   """
-#   ⚠️ need to do validation on trace_id and activity_id
+  #   ⚠️ need to do validation on trace_id and activity_id
   def create_event(trace_id, activity_id, attrs) do
     %Event{}
     |> Event.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:trace, Stitch.Traces.get_trace!(trace_id))    
-    |> Ecto.Changeset.put_assoc(:activity, Stitch.Traces.get_activity!(activity_id))    
+    |> Ecto.Changeset.put_assoc(:trace, Stitch.Traces.get_trace!(trace_id))
+    |> Ecto.Changeset.put_assoc(:activity, Stitch.Traces.get_activity!(activity_id))
     |> Repo.insert()
   end
 
@@ -400,7 +410,7 @@ defmodule Stitch.Traces do
   def create_thread(trace_id, attrs \\ %{}) do
     %Thread{}
     |> Thread.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:trace, Stitch.Traces.get_trace!(trace_id))    
+    |> Ecto.Changeset.put_assoc(:trace, Stitch.Traces.get_trace!(trace_id))
     |> Repo.insert()
   end
 
