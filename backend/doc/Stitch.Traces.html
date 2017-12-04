@@ -8,7 +8,7 @@
     <title>Stitch.Traces – stitch v0.0.1</title>
     <link rel="stylesheet" href="dist/app-c922dbe7ef.css" />
     
-    <script src="dist/sidebar_items-039b02cf3f.js"></script>
+    <script src="dist/sidebar_items-a650d36194.js"></script>
     
     
     
@@ -94,15 +94,6 @@
       <a href="#functions">Functions</a>
     </h2>
     <div class="summary-row">
-  <div class="summary-signature">
-    <a href="#change_activity/1">change_activity(activity)</a>
-  </div>
-  
-    <div class="summary-synopsis"><p>Returns an <code class="inline">%Ecto.Changeset{}</code> for tracking activity changes</p>
-</div>
-  
-</div>
-<div class="summary-row">
   <div class="summary-signature">
     <a href="#change_event/1">change_event(event)</a>
   </div>
@@ -299,7 +290,7 @@
 </div>
 <div class="summary-row">
   <div class="summary-signature">
-    <a href="#list_user_traces/1">list_user_traces(user)</a>
+    <a href="#list_user_traces/1">list_user_traces(user_id)</a>
   </div>
   
     <div class="summary-synopsis"><p>Returns the list of traces for a particular user</p>
@@ -362,32 +353,7 @@
             </a>
             Functions
           </h1>
-          <div class="detail" id="change_activity/1">
-  
-  
-  <div class="detail-header">
-    <a href="#change_activity/1" class="detail-link" title="Link to this function">
-      <span class="icon-link" aria-hidden="true"></span>
-      <span class="sr-only">Link to this function</span>
-    </a>
-    <span class="signature">change_activity(activity)</span>
-    
-    
-    
-  </div>
-  <section class="docstring">
-    <p>Returns an <code class="inline">%Ecto.Changeset{}</code> for tracking activity changes.</p>
-<h2 id="change_activity/1-examples" class="section-heading">
-  <a href="#change_activity/1-examples" class="hover-link"><span class="icon-link" aria-hidden="true"></span></a>
-  Examples
-</h2>
-
-<pre><code class="iex elixir">iex&gt; change_activity(activity)
-%Ecto.Changeset{source: %Activity{}}</code></pre>
-
-  </section>
-</div>
-<div class="detail" id="change_event/1">
+          <div class="detail" id="change_event/1">
   
   
   <div class="detail-header">
@@ -988,7 +954,7 @@ iex&gt; get_trace!(456)
       <span class="icon-link" aria-hidden="true"></span>
       <span class="sr-only">Link to this function</span>
     </a>
-    <span class="signature">list_user_traces(user)</span>
+    <span class="signature">list_user_traces(user_id)</span>
     
     
     
