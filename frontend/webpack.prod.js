@@ -12,7 +12,7 @@ module.exports = merge(common, {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].[hash].js', // use npm run build to build production bundle
-    publicPath: '/dist/',
+    publicPath: '',
   },
 
   plugins: [

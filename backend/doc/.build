@@ -4,7 +4,7 @@ fonts/icomoon.eot
 fonts/icomoon.svg
 fonts/icomoon.ttf
 fonts/icomoon.woff
-dist/sidebar_items-039b02cf3f.js
+dist/sidebar_items-a650d36194.js
 api-reference.html
 search.html
 404.html
@@ -12,6 +12,7 @@ Stitch.html
 Stitch.Accounts.html
 Stitch.Accounts.Category.html
 Stitch.Accounts.Credential.html
+Stitch.Accounts.Todo.html
 Stitch.Accounts.User.html
 Stitch.Application.html
 Stitch.Repo.html
@@ -42,6 +43,8 @@ StitchWeb.SessionController.html
 StitchWeb.SessionView.html
 StitchWeb.ThreadController.html
 StitchWeb.ThreadView.html
+StitchWeb.TodoController.html
+StitchWeb.TodoView.html
 StitchWeb.TraceController.html
 StitchWeb.TraceView.html
 StitchWeb.UserController.html
