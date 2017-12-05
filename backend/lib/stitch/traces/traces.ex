@@ -91,7 +91,17 @@ defmodule Stitch.Traces do
   def get_trace!(id) do
     Trace
     |> Repo.get!(id)
-    |> Repo.preload(:events)
+    |> Repo.preload(:threads)
+  end
+
+  def get_trace_with_events(id) do
+    query = from e in Stitch.Traces.Event, where: e.trace_id == ^id, preload: [activity: :categories]
+
+    events = Repo.all(query)
+
+    trace = get_trace!(id)
+
+    {events, trace}
   end
 
   @doc """

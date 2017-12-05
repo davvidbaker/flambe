@@ -1,10 +1,6 @@
 node_modules
 npm-debug.log
 
-backend/doc
-**/doc
-**/backend/doc/**
-
 # App artifacts
 **/_build
 **/_build/**
@@ -30,4 +26,3 @@ erl_crash.dump
 # secrets files as long as you replace their contents by environment
 # variables.
 **/config/*.secret.exs
-backend/doc/

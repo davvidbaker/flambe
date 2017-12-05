@@ -23,19 +23,19 @@ defmodule Stitch.Traces.Activity do
     |> Stitch.Repo.preload(:categories)
     |> cast(attrs, [:name, :description])
     |> validate_required([:name])
-    # ⚠️ really not sure if this is the right way to do this...👇
+    # ⚠️ really not sure if this is the right way to do this..., it is working though...👇
     |> put_assoc(:categories, upsert_categories(attrs))
   end
 
   defp upsert_categories(attrs) do
-    (attrs["category_ids"] || [])
+    (attrs["categories"] || [])
     |> insert_and_get_all()
   end
 
   defp insert_and_get_all([]) do
     []
   end
-  defp insert_and_get_all(category_ids) do
-    Stitch.Repo.all from c in Stitch.Accounts.Category, where: c.id in ^category_ids
+  defp insert_and_get_all(categories) do
+    Stitch.Repo.all from c in Stitch.Accounts.Category, where: c.id in ^categories
   end
 end
