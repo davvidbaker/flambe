@@ -288,7 +288,7 @@ function timeline(state = initialState, action) {
           state.blocks,
           action.id,
           action.timestamp,
-          'E',
+          action.eventFlavor || 'E',
           action.message
         ),
         lastThread_id: action.thread_id,
