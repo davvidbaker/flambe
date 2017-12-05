@@ -74,6 +74,7 @@ function* createActivity({
   phase = 'B',
 }) {
   const timeline = yield select(getTimeline);
+
   yield fetchResource(type, {
     resource: { path: 'activities' },
     params: {
@@ -83,7 +84,11 @@ function* createActivity({
         thread_id,
         todo_id,
         event: { timestamp_integer: timestamp, phase },
-        activity: { name, description },
+        activity: {
+          name,
+          description,
+          categories: category_id ? [category_id] : [],
+        },
       }),
     },
   });

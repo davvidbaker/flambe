@@ -25,8 +25,8 @@ defmodule StitchWeb.TraceController do
   end
 
   def show(conn, %{"id" => id}) do
-    trace = Traces.get_trace!(id)
-    render(conn, "show.json", trace: trace)
+    {events, trace} = Traces.get_trace_with_events(id)
+    render(conn, "show.json", %{trace: trace, events: events})
   end
 
   def update(conn, %{"id" => id, "trace" => trace_params}) do

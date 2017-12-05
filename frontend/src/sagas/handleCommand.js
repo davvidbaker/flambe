@@ -30,7 +30,7 @@ function* handleCommand({ type, operand, command }) {
           description: '',
           thread_id: command.thread_id,
           phase: command.copy.includes('question') ? 'Q' : 'B',
-          // category_id: command.category_id
+          category_id: command.category_id,
         }),
       );
       break;

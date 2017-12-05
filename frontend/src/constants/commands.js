@@ -9,6 +9,7 @@ import {
   THREAD_CREATE,
   TODOS_TOGGLE,
 } from 'actions';
+import { getUser } from 'reducers/user';
 
 import { colors } from 'styles';
 
@@ -16,6 +17,17 @@ const threadParam = {
   key: 'thread_id',
   placeholder: 'thread',
   selector: props => props.threads,
+  itemStringKey: 'name',
+  itemReturnKey: 'id',
+};
+
+const categoryParam = {
+  key: 'category_id',
+  placeholder: 'category',
+  selector: props => {
+    console.log('props', props);
+    return [{ name: 'none', id: null }, ...props.user.categories];
+  },
   itemStringKey: 'name',
   itemReturnKey: 'id',
 };
@@ -35,6 +47,7 @@ const COMMANDS = [
         placeholder: 'gist/description of the activity',
       },
       threadParam,
+      categoryParam,
     ],
   },
   {
@@ -46,6 +59,7 @@ const COMMANDS = [
         placeholder: 'what the fuck is happening?',
       },
       threadParam,
+      categoryParam,
     ],
   },
   /** ⚠️ TODO make sure the thread name is unique */
