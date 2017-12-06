@@ -72,8 +72,8 @@ class FlameChart extends Component<Props, State> {
 
   blockHeight = 20; // px
   state = {
-    canvasWidth: 0,
-    canvasHeight: 0,
+    canvasWidth: null,
+    canvasHeight: null,
     cursor: {
       x: 0,
       y: 0,
@@ -97,10 +97,8 @@ class FlameChart extends Component<Props, State> {
   }
 
   componentDidMount() {
-    window.addEventListener('resize', this.setCanvasSize);
-    if (this.canvas) {
-      this.setCanvasSize();
-    }
+    window.addEventListener('resize', this.setCanvasSize.bind(this));
+    this.setCanvasSize();
   }
 
   componentWillReceiveProps(nextProps) {
@@ -146,19 +144,27 @@ class FlameChart extends Component<Props, State> {
 
   setCanvasSize = () => {
     if (this.canvas) {
+      const header = document.querySelector('header');
       const devicePixelRatio = window.devicePixelRatio;
-      this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
-      this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
+      // this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
+      // this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
+      console.log('in setcanvassize');
+      console.log('this.canvas.height', this.canvas.height);
+      console.log('this.canvas.getBoundingClientRect().height', this.canvas.getBoundingClientRect().height);
+      
 
       this.ctx = this.canvas.getContext('2d');
       this.minTextWidth =
         FlameChart.textPadding.x + this.ctx.measureText('\u2026').textWidth;
 
-      this.setState({
-        devicePixelRatio,
-        canvasWidth: this.canvas.width,
-        canvasHeight: this.canvas.height,
-      });
+      this.setState(
+        {
+          devicePixelRatio,
+          canvasWidth: window.innerWidth * devicePixelRatio,
+          canvasHeight: window.innerHeight - header.clientHeight
+        },
+       this.render
+      );
     }
   };
 
@@ -393,9 +399,11 @@ class FlameChart extends Component<Props, State> {
           onDrag={this.onDrag}
           onWheel={this.onWheel}
           style={{
-            width: '100%',
-            height: '100%',
+            width: `${this.state.canvasWidth}px` || '100%',
+            height: `${this.state.canvasHeight}px` || '100%',
           }}
+          height={this.state.canvasHeight}
+          width={this.state.canvasWidth}
         />
 
         {/* Probably want to lift FocusActivty and HoverActivity up so updating it doesn't cause entire re-render... */}
@@ -477,6 +485,9 @@ class FlameChart extends Component<Props, State> {
 
   draw() {
     if (this.canvas) {
+      console.log('this.canvas.clientHeight', this.canvas.clientHeight);
+      console.log('this.canvas.height', this.canvas.height);
+      console.log('this.state.canvasHeight', this.state.canvasHeight);
       this.ctx.save();
 
       this.ctx.scale(this.state.devicePixelRatio, this.state.devicePixelRatio);
