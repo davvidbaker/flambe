@@ -36,6 +36,8 @@ export const TODOS_TOGGLE = 'TODOS_TOGGLE';
 
 export const THREAD_CREATE = 'THREAD_CREATE';
 export const THREAD_DELETE = 'THREAD_DELETE';
+export const THREAD_MINIMIZE = 'THREAD_MINIMIZE';
+export const THREAD_MAXIMIZE = 'THREAD_MAXIMIZE';
 export const THREAD_UPDATE = 'THREAD_UPDATE';
 
 export const TRACE_CREATE = 'TRACE_CREATE';
@@ -48,7 +50,7 @@ export const USER_FETCH = 'USER_FETCH';
 export function toggleTodos(bool) {
   return {
     type: TODOS_TOGGLE,
-    bool,
+    bool
   };
 }
 
@@ -57,7 +59,7 @@ export function processTimelineTrace(events, threads) {
   return {
     type: PROCESS_TIMELINE_TRACE,
     events,
-    threads,
+    threads
   };
 }
 
@@ -65,7 +67,7 @@ export function runCommand(operand, command) {
   return {
     type: COMMAND_RUN,
     operand,
-    command,
+    command
   };
 }
 
@@ -73,7 +75,21 @@ export function createThread(name, rank) {
   return {
     type: THREAD_CREATE,
     name,
-    rank,
+    rank
+  };
+}
+
+export function minimizeThread(id) {
+  return {
+    type: THREAD_MINIMIZE,
+    id
+  };
+}
+
+export function maximizeThread(id) {
+  return {
+    type: THREAD_MAXIMIZE,
+    id
   };
 }
 
@@ -81,7 +97,7 @@ export function createTodo(name, description) {
   return {
     type: TODO_CREATE,
     name,
-    description,
+    description
   };
 }
 
@@ -90,7 +106,7 @@ export function beginTodo({
   thread_id,
   name,
   description,
-  timestamp,
+  timestamp
 }) {
   return {
     type: TODO_BEGIN,
@@ -98,24 +114,24 @@ export function beginTodo({
     name,
     description,
     timestamp,
-    thread_id,
+    thread_id
   };
 }
 
 export function createCategory({
   activity_id,
   name,
-  color,
+  color
 }: {
   activity_id: string,
   name: string,
-  color: string,
+  color: string
 }) {
   return {
     type: CATEGORY_CREATE,
     activity_id,
     name,
-    color,
+    color
   };
 }
 
@@ -123,7 +139,7 @@ export function updateCategory(id, updates) {
   return {
     type: CATEGORY_UPDATE,
     id,
-    updates,
+    updates
   };
 }
 
@@ -131,35 +147,35 @@ export function updateThread(id, updates) {
   return {
     type: THREAD_UPDATE,
     id,
-    updates,
+    updates
   };
 }
 
 export function fetchUser(id) {
   return {
     type: USER_FETCH,
-    id,
+    id
   };
 }
 
 export function createTrace(name: string) {
   return {
     type: TRACE_CREATE,
-    name,
+    name
   };
 }
 
 export function deleteTrace(id: number) {
   return {
     type: TRACE_DELETE,
-    id,
+    id
   };
 }
 
 export function deleteThread(id: number) {
   return {
     type: THREAD_DELETE,
-    id,
+    id
   };
 }
 
@@ -169,14 +185,14 @@ export function createActivity({
   description,
   thread_id /* message */,
   category_id,
-  phase,
+  phase
 }: {
   name: string,
   timestamp: number,
   description: string,
   thread_id: number /* message */,
   category_id: ?number,
-  phase: string,
+  phase: string
 }) {
   return {
     type: ACTIVITY_CREATE,
@@ -185,7 +201,7 @@ export function createActivity({
     description,
     thread_id,
     category_id,
-    phase,
+    phase
   };
 }
 
@@ -195,7 +211,7 @@ export function endActivity({
   timestamp,
   message,
   thread_id,
-  eventFlavor = 'E',
+  eventFlavor = 'E'
 }) {
   return {
     type: ACTIVITY_END,
@@ -203,7 +219,7 @@ export function endActivity({
     timestamp,
     message,
     thread_id,
-    eventFlavor,
+    eventFlavor
   };
 }
 
@@ -214,7 +230,7 @@ export function suspendActivity({ id, timestamp, message, thread_id }) {
     id,
     timestamp,
     message,
-    thread_id,
+    thread_id
   };
 }
 
@@ -225,7 +241,7 @@ export function resumeActivity({ id, timestamp, message, thread_id }) {
     id,
     timestamp,
     message,
-    thread_id,
+    thread_id
   };
 }
 
@@ -256,7 +272,7 @@ export function deleteActivity(id, thread_id) {
   return {
     type: ACTIVITY_DELETE,
     id,
-    thread_id,
+    thread_id
   };
 }
 
@@ -265,7 +281,7 @@ export function updateActivity(id, updates) {
   return {
     type: ACTIVITY_UPDATE,
     id,
-    updates,
+    updates
   };
 }
 
@@ -276,14 +292,14 @@ export function focusBlock({ index, activity_id, activityStatus, thread_id }) {
     index,
     activity_id,
     activityStatus,
-    thread_id,
+    thread_id
   };
 }
 
 export function hoverBlock(index: number) {
   return {
     type: BLOCK_HOVER,
-    index,
+    index
   };
 }
 
@@ -299,58 +315,58 @@ export function updateThreadLevel(id, inc) {
   return {
     type: UPDATE_THREAD_LEVEL,
     id,
-    inc,
+    inc
   };
 }
 
 export function keyDown(key: string) {
   return {
     type: KEY_DOWN,
-    key,
+    key
   };
 }
 
 export function keyUp(key: string) {
   return {
     type: KEY_UP,
-    key,
+    key
   };
 }
 
 export function selectTrace(trace: Trace) {
   return {
     type: TRACE_SELECT,
-    trace,
+    trace
   };
 }
 
 export function fetchTrace(trace: Trace) {
   return {
     type: TRACE_FETCH,
-    trace,
+    trace
   };
 }
 
 export function deleteCurrentTrace() {
   return {
-    type: DELETE_CURRENT_TRACE,
+    type: DELETE_CURRENT_TRACE
   };
 }
 
 export function fetchResource(
   resource: ?{ type: string, id: string },
-  params: ?{} = { method: 'GET' },
+  params: ?{} = { method: 'GET' }
 ) {
   return {
     type: FETCH_RESOURCE,
     params,
-    resource,
+    resource
   };
 }
 
 /**
- * 
- * 
+ *
+ *
  * @export
  * @param {number} deltaY - scroll amount in pixels
  * @param {number} zoomCenter - pixels
@@ -360,7 +376,7 @@ export function fetchResource(
  * @param {number} width - in pixels of element being zoomed
  * @param {number} nowTime - current Time - UTC
  * @param {number} minTime - min time on timeline - UTC
- * @returns 
+ * @returns
  */
 export function zoomTimeline(
   deltaY: number,
@@ -370,7 +386,7 @@ export function zoomTimeline(
   rightBoundaryTime: number,
   width: number,
   nowTime: number,
-  minTime: number,
+  minTime: number
 ) {
   return {
     type: TIMELINE_ZOOM,
@@ -381,7 +397,7 @@ export function zoomTimeline(
     rightBoundaryTime,
     width,
     nowTime,
-    minTime,
+    minTime
   };
 }
 
@@ -393,7 +409,7 @@ export function panTimeline(
   width: number,
   topOffset: number,
   nowTime: number,
-  minTime: number,
+  minTime: number
 ) {
   return {
     type: TIMELINE_PAN,
@@ -404,6 +420,6 @@ export function panTimeline(
     width,
     topOffset,
     nowTime,
-    minTime,
+    minTime
   };
 }

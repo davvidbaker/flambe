@@ -25,7 +25,7 @@ module.exports = merge(common, {
 
   plugins: [
     new webpack.DefinePlugin({
-      SERVER: "'http://localhost:4000'",
+      SERVER: "'http://10.0.0.139:4000'",
       NODE_ENV: "'development'",
     }),
 
@@ -35,7 +35,7 @@ module.exports = merge(common, {
     new webpack.HotModuleReplacementPlugin({}),
     new HtmlWebpackPlugin({
       template: './index.dev.ejs',
-      title: 'Flame-Chart'
+      title: 'Flame-Chart',
     }),
   ],
 });

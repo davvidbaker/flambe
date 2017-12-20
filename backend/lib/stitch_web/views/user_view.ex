@@ -24,7 +24,7 @@ defmodule StitchWeb.UserView do
     %{
       id: user.id,
       name: user.name,
-      email: user.credential.email,
+      # email: user.credential.email,
       traces: traces,
       categories: categories,
       todos: todos

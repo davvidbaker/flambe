@@ -15,7 +15,7 @@ use Mix.Config
 # which you typically run after static files are built.
 config :stitch, StitchWeb.Endpoint,
   load_from_system_env: true,
-  url: [host: "example.com", port: 80],
+  url: [host: "stitch-postgres-1.cer3mpahz070.us-west-2.rds.amazonaws.com", port: 80],
   cache_static_manifest: "priv/static/cache_manifest.json"
 
 # Do not print debug messages in production
