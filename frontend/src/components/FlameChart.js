@@ -165,8 +165,8 @@ class FlameChart extends Component<Props, State> {
       this.setState(
         {
           devicePixelRatio,
-          canvasWidth: window.innerWidth * devicePixelRatio,
-          canvasHeight: window.innerHeight * devicePixelRatio -
+          canvasWidth: window.innerWidth,
+          canvasHeight: window.innerHeight -
             header.clientHeight,
         },
         this.render
@@ -836,7 +836,7 @@ class FlameChart extends Component<Props, State> {
       ctx.fillText(
         txt,
         txtX,
-        this.state.canvasHeight / this.state.devicePixelRatio -
+        this.state.canvasHeight -
           (FlameChart.textPadding.y - 11)
       );
     }
