@@ -344,11 +344,13 @@ function timeline(state = initialState, action) {
             name: action.updates.name
               ? action.updates.name
               : state.activities[action.id].name,
-            categories: action.updates.category_ids.length > 0
-              ? [
-                ...state.activities[action.id].categories,
-                ...action.updates.category_ids,
-              ]
+            categories: action.updates.category_ids
+              ? action.updates.category_ids.length > 0
+                ? [
+                  ...state.activities[action.id].categories,
+                  ...action.updates.category_ids,
+                ]
+                : state.activities[action.id].categories
               : state.activities[action.id].categories,
           },
         },
@@ -443,7 +445,7 @@ function timeline(state = initialState, action) {
         ),
       };
 
-      case THREAD_MAXIMIZE:
+    case THREAD_MAXIMIZE:
       return {
         ...state,
         threads: state.threads.map(
@@ -451,7 +453,6 @@ function timeline(state = initialState, action) {
             (thread.id === action.id ? { ...thread, minimized: false } : thread)
         ),
       };
-
     /** ⚠️ need to handle failures */
     case THREAD_UPDATE:
       return {
