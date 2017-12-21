@@ -9,7 +9,7 @@ function pan(
   width: number,
   topOffset: number,
   nowTime: number,
-  minTime: number
+  minTime: number,
 ) {
   const widthTime = rightBoundaryTime - leftBoundaryTime;
 
@@ -20,7 +20,7 @@ function pan(
   // todo make that 10 minutes number configurable
   newRightBoundaryTime = Math.min(
     newRightBoundaryTime,
-    nowTime + MAX_TIME_INTO_FUTURE
+    nowTime + MAX_TIME_INTO_FUTURE,
   );
 
   let newLeftBoundaryTime = newRightBoundaryTime - widthTime;
@@ -32,6 +32,8 @@ function pan(
 
   let newTopOffset = topOffset + deltaY;
   newTopOffset = Math.max(newTopOffset, 0);
+
+  console.log('newLeftBoundaryTime', newLeftBoundaryTime - leftBoundaryTime);
 
   return {
     leftBoundaryTime: newLeftBoundaryTime,

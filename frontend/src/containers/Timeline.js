@@ -14,7 +14,12 @@ import WithEventListeners from 'components/WithEventListeners';
 import { InputFromButton } from 'components/Button';
 
 import { MAX_TIME_INTO_FUTURE } from 'constants/defaultParameters';
-import { updateActivity, createThread } from 'actions';
+import {
+  updateActivity,
+  createThread,
+  minimizeThread,
+  maximizeThread
+} from 'actions';
 import { getTimeline } from 'reducers/timeline';
 import { layout } from 'styles';
 
@@ -32,7 +37,7 @@ type Thread = {
   id: string,
   name: string,
   __typename: 'Thread',
-  activities: (?Activity)[],
+  activities: (?Activity)[]
 };
 
 type Props = {
@@ -42,6 +47,7 @@ type Props = {
   focusedBlockActivity_id: ?string,
   activities: { [string]: Activity },
   threads: (?Thread)[],
+  toggleThread: () => mixed
 };
 
 type State = {
@@ -49,7 +55,7 @@ type State = {
   rightBoundaryTime: number,
   topOffset: number,
 
-  threadModal_id: ?number,
+  threadModal_id: ?number
 };
 
 class Timeline extends Component<Props, State> {
@@ -57,14 +63,14 @@ class Timeline extends Component<Props, State> {
     leftBoundaryTime: 1506456399223.1394,
     rightBoundaryTime: 1506482474608.5562,
     topOffset: 0,
-    eventListeners: null,
+    eventListeners: null
   };
 
   constructor(props) {
     super(props);
     const savedTimes = {
       lbt: localStorage.getItem('lbt'),
-      rbt: localStorage.getItem('rbt'),
+      rbt: localStorage.getItem('rbt')
     };
     const lbt = savedTimes.lbt && Number.parseFloat(savedTimes.lbt);
     const rbt = savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
@@ -79,7 +85,7 @@ class Timeline extends Component<Props, State> {
   showRightNow() {
     this.setState({
       leftBoundaryTime: Date.now() - 10 * 60 * 1000,
-      rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
+      rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
     });
   }
 
@@ -92,12 +98,12 @@ class Timeline extends Component<Props, State> {
       this.state.rightBoundaryTime,
       canvasWidth,
       Date.now(),
-      this.props.minTime,
+      this.props.minTime
     );
 
     this.setState(
       { leftBoundaryTime, rightBoundaryTime },
-      this.setLocalStorage,
+      this.setLocalStorage
     );
   };
 
@@ -110,11 +116,11 @@ class Timeline extends Component<Props, State> {
       canvasWidth,
       this.state.topOffset,
       Date.now(),
-      this.props.minTime,
+      this.props.minTime
     );
     this.setState(
       { leftBoundaryTime, rightBoundaryTime, topOffset },
-      this.setLocalStorage,
+      this.setLocalStorage
     );
   };
 
@@ -128,7 +134,7 @@ class Timeline extends Component<Props, State> {
   };
 
   /**
-   * 💁 I didn't want left and right boundary times to be part of redux, because they were changing too fast for a super silky smooth animation, but I did want them to persist through reloads. So, when this component will mount, if they exist in localStorage, they will take that initial value. They are then set in localStorage at most once a second. 
+   * 💁 I didn't want left and right boundary times to be part of redux, because they were changing too fast for a super silky smooth animation, but I did want them to persist through reloads. So, when this component will mount, if they exist in localStorage, they will take that initial value. They are then set in localStorage at most once a second.
    *
    */
   setLocalStorage = throttle(() => {
@@ -161,15 +167,15 @@ class Timeline extends Component<Props, State> {
               if (e.key === 'n' && e.target.nodeName !== 'INPUT') {
                 this.showRightNow();
               }
-            },
-          ],
+            }
+          ]
         ]}
       >
         {() => (
           <div
             style={{
               position: 'relative',
-              height: `calc(${window.innerHeight}px - ${layout.headerHeight})`,
+              height: `calc(${window.innerHeight}px - ${layout.headerHeight})`
             }}
           >
             <WithDropTarget
@@ -192,6 +198,7 @@ class Timeline extends Component<Props, State> {
                 showThreadDetail={this.showThreadDetail}
                 threadLevels={props.threadLevels}
                 threads={props.threads}
+                toggleThread={props.toggleThread}
                 topOffset={this.state.topOffset || 0}
                 zoom={this.zoom}
               />
@@ -208,10 +215,10 @@ class Timeline extends Component<Props, State> {
               <ActivityDetail
                 activity={{
                   id: props.focusedBlockActivity_id,
-                  ...focusedActivity,
+                  ...focusedActivity
                 }}
                 activityBlocks={props.blocks.filter(
-                  block => block.activity_id === props.focusedBlockActivity_id,
+                  block => block.activity_id === props.focusedBlockActivity_id
                 )}
                 categories={props.user.categories}
                 updateActivity={props.updateActivity}
@@ -238,10 +245,12 @@ connect(
     threadLevels: getTimeline(state).threadLevels,
     threads: sortBy(getTimeline(state).threads, t => t.rank),
     lastCategory_id: getTimeline(state).lastCategory_id,
-    lastThread_id: getTimeline(state).lastThread_id,
+    lastThread_id: getTimeline(state).lastThread_id
   }),
   dispatch => ({
     createThread: (name, rank) => dispatch(createThread(name, rank)),
-    updateActivity: (id, obj) => dispatch(updateActivity(id, obj)),
-  }),
+    toggleThread: (id, isMinimized = false) =>
+      dispatch(isMinimized ? maximizeThread(id) : minimizeThread(id)),
+    updateActivity: (id, obj) => dispatch(updateActivity(id, obj))
+  })
 )(Timeline);

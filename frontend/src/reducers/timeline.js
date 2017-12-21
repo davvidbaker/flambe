@@ -17,6 +17,8 @@ import {
   DELETE_CURRENT_TRACE,
   THREAD_CREATE,
   THREAD_DELETE,
+  THREAD_MINIMIZE,
+  THREAD_MAXIMIZE,
   THREAD_UPDATE,
   TIMELINE_ZOOM,
   TIMELINE_PAN,
@@ -389,7 +391,12 @@ function timeline(state = initialState, action) {
         ...state,
         threads: [
           ...state.threads,
-          { name: action.name, rank: action.rank, id: 'optimisticThread' },
+          {
+            name: action.name,
+            rank: action.rank,
+            id: 'optimisticThread',
+            minimized: false,
+          },
         ],
         threadLevels: {
           ...state.threadLevels,
@@ -426,6 +433,25 @@ function timeline(state = initialState, action) {
         activities: activs,
         threadLevels: omit(state.threadLevels, action.id),
       };
+
+    case THREAD_MINIMIZE:
+      return {
+        ...state,
+        threads: state.threads.map(
+          thread =>
+            (thread.id === action.id ? { ...thread, minimized: true } : thread)
+        ),
+      };
+
+      case THREAD_MAXIMIZE:
+      return {
+        ...state,
+        threads: state.threads.map(
+          thread =>
+            (thread.id === action.id ? { ...thread, minimized: false } : thread)
+        ),
+      };
+
     /** ⚠️ need to handle failures */
     case THREAD_UPDATE:
       return {

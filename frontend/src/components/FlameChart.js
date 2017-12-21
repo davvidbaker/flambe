@@ -14,6 +14,13 @@ import mapValues from 'lodash/mapValues';
 import HoverActivity from 'components/HoverActivity';
 import FocusActivity from 'components/FocusActivity';
 import Tooltip from 'components/Tooltip';
+import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData';
+// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
+// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
+// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
+// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
+// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
+// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
 
 import {
   constrain,
@@ -37,13 +44,14 @@ type Props = {
   hoveredBlockIndex?: string,
   rightBoundaryTime: number,
   threadLevels: { id: { current: number, max: number } }[],
-  threads: { name: string, id: number, rank: number }[],
+  threads: { name: string, id: number, rank: number, minimized: boolean }[],
   topOffset: number,
   // functions
   activities?: { [id: string]: Activity },
   categories: { id: string, name: string, color: string },
   focusBlock: (id: number, thread_id: number) => mixed,
-  showThreadDetail: number => mixed,
+  showThreadDetail: (id: number) => mixed,
+  toggleThread: (id: number, isMinimized: boolean) => mixed,
 };
 
 type State = {
@@ -131,9 +139,10 @@ class FlameChart extends Component<Props, State> {
       threads.reduce((acc, thread, ind) => {
         const spacer = ind > 0 ? 4 : 0;
         offsets[thread.id] = acc + spacer; // FlameChart.foldedThreadHeight;
-        const add =
-          (this.blockHeight + 1) * threadLevels[thread.id].max +
-          FlameChart.threadHeaderHeight;
+        const add = thread.minimized
+          ? FlameChart.threadHeaderHeight
+          : (this.blockHeight + 1) * threadLevels[thread.id].max +
+              FlameChart.threadHeaderHeight;
         return acc + add + spacer;
       }, 0);
 
@@ -148,10 +157,6 @@ class FlameChart extends Component<Props, State> {
       const devicePixelRatio = window.devicePixelRatio;
       // this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
       // this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
-      console.log('in setcanvassize');
-      console.log('this.canvas.height', this.canvas.height);
-      console.log('this.canvas.getBoundingClientRect().height', this.canvas.getBoundingClientRect().height);
-      
 
       this.ctx = this.canvas.getContext('2d');
       this.minTextWidth =
@@ -161,9 +166,10 @@ class FlameChart extends Component<Props, State> {
         {
           devicePixelRatio,
           canvasWidth: window.innerWidth * devicePixelRatio,
-          canvasHeight: window.innerHeight - header.clientHeight
+          canvasHeight: window.innerHeight * devicePixelRatio -
+            header.clientHeight,
         },
-       this.render
+        this.render
       );
     }
   };
@@ -198,6 +204,7 @@ class FlameChart extends Component<Props, State> {
       ) {
         return { type: 'thread_ellipsis', value: hitThread_id };
       }
+      return { type: 'thread_header', value: hitThread_id };
     }
 
     if (Object.keys(hitBlocks).length === 0) {
@@ -216,6 +223,13 @@ class FlameChart extends Component<Props, State> {
       switch (hit.type) {
         case 'thread_ellipsis':
           this.props.showThreadDetail(hit.value);
+          break;
+        case 'thread_header':
+          console.log('hit thread header', hit.value);
+          this.props.toggleThread(
+            hit.value,
+            this.props.threads.find(thread => thread.id === hit.value).minimized
+          );
           break;
         /** 💁 hit.value is array like [key, val] */
         case 'block':
@@ -241,7 +255,82 @@ class FlameChart extends Component<Props, State> {
     }
   };
 
+  onTouchMove = e => {
+    const touch = e.touches[0];
+
+    if (this.lastTouch) {
+      this.props.pan(
+        this.lastTouch.x - touch.screenX,
+        0,
+        this.state.canvasWidth
+      );
+      requestAnimationFrame(this.draw.bind(this));
+    }
+
+    this.lastTouch = { x: touch.screenX, y: touch.screenY };
+
+    // this.setState({
+    //   cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
+    // });
+
+    // const hit = this.hitTest(e);
+    // if (hit) {
+    //   switch (hit.type) {
+    //     case 'thread_ellipsis':
+    //       this.canvas.style.cursor = 'pointer';
+    //       this.setState({
+    //         hoverThreadEllipsis: hit.value,
+    //       });
+    //       break;
+    //     /** 💁 hit.value is array like [key, val] */
+    //     case 'block':
+    //       this.props.hoverBlock(hit.value[0]);
+    //       this.canvas.style.cursor = 'default';
+    //       this.setState({ hoverThreadEllipsis: null });
+    //       break;
+
+    //     default:
+    //   }
+    // } else {
+    //   this.props.hoverBlock(null);
+
+    //   if (this.state.hoverThreadEllipsis) {
+    //     this.canvas.style.cursor = 'default';
+    //     this.setState({ hoverThreadEllipsis: null });
+    //   }
+    // }
+
+    // if (this.state.measuring) {
+    //   const eTimeX = this.pixelsToTime(e.nativeEvent.offsetX);
+    //   if (this.state.mousedown) {
+    //     if (eTimeX < this.state.mousedownX) {
+    //       this.setState({
+    //         measurement: {
+    //           left: eTimeX,
+    //           right: this.state.mousedownX,
+    //         },
+    //       });
+    //     } else {
+    //       this.setState({
+    //         measurement: {
+    //           left: this.state.mousedownX,
+    //           right: eTimeX,
+    //         },
+    //       });
+    //     }
+    //   } else {
+    //     this.setState({ measurement: { left: eTimeX, right: null } });
+    //   }
+    // } else {
+    //   this.setState({ measurement: { left: null, right: null } });
+    // }
+  };
+  onTouchStart = e => {
+    this.lastTouch = null;
+  };
+
   onMouseMove = e => {
+    console.log('onMousemMove');
     this.setState({
       cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
     });
@@ -255,6 +344,9 @@ class FlameChart extends Component<Props, State> {
             hoverThreadEllipsis: hit.value,
           });
           break;
+        case 'thread_header':
+          this.canvas.style.cursor = 'pointer';
+          break;
         /** 💁 hit.value is array like [key, val] */
         case 'block':
           this.props.hoverBlock(hit.value[0]);
@@ -263,12 +355,14 @@ class FlameChart extends Component<Props, State> {
           break;
 
         default:
+          this.canvas.style.cursor = 'default';
+          break;
       }
     } else {
       this.props.hoverBlock(null);
+      this.canvas.style.cursor = 'default';
 
       if (this.state.hoverThreadEllipsis) {
-        this.canvas.style.cursor = 'default';
         this.setState({ hoverThreadEllipsis: null });
       }
     }
@@ -321,11 +415,12 @@ class FlameChart extends Component<Props, State> {
   getBlockDetails = blockIndex => {
     if (blockIndex !== null && blockIndex !== undefined) {
       const block = this.props.blocks[blockIndex];
-      console.log('block', block);
       if (!block) return false;
       const activity =
         this.props.activities && this.props.activities[block.activity_id];
 
+      if (this.props.threads.find(thread => thread.id === activity.thread.id).minimized) return false;
+      
       const { blockX, blockY, blockWidth } = this.getBlockTransform(
         block,
         this.blockHeight,
@@ -371,7 +466,6 @@ class FlameChart extends Component<Props, State> {
       this.canvas && this.props.activities && this.props.hoveredBlockIndex
     );
 
-    console.log('hoveredBlock', hoveredBlock);
     const hoveredActivity = hoveredBlock
       ? this.props.activities[
         this.props.blocks[this.props.hoveredBlockIndex].activity_id
@@ -393,6 +487,8 @@ class FlameChart extends Component<Props, State> {
             this.canvas = canvas;
           }}
           onMouseMove={this.onMouseMove}
+          onTouchMove={this.onTouchMove}
+          onTouchStart={this.onTouchStart}
           onMouseDown={this.onMouseDown}
           onMouseUp={this.onMouseUp}
           onClick={this.onClick}
@@ -402,8 +498,8 @@ class FlameChart extends Component<Props, State> {
             width: `${this.state.canvasWidth}px` || '100%',
             height: `${this.state.canvasHeight}px` || '100%',
           }}
-          height={this.state.canvasHeight}
-          width={this.state.canvasWidth}
+          height={this.state.canvasHeight * this.state.devicePixelRatio || 300}
+          width={this.state.canvasWidth * this.state.devicePixelRatio || 450}
         />
 
         {/* Probably want to lift FocusActivty and HoverActivity up so updating it doesn't cause entire re-render... */}
@@ -485,9 +581,6 @@ class FlameChart extends Component<Props, State> {
 
   draw() {
     if (this.canvas) {
-      console.log('this.canvas.clientHeight', this.canvas.clientHeight);
-      console.log('this.canvas.height', this.canvas.height);
-      console.log('this.state.canvasHeight', this.state.canvasHeight);
       this.ctx.save();
 
       this.ctx.scale(this.state.devicePixelRatio, this.state.devicePixelRatio);
@@ -506,104 +599,118 @@ class FlameChart extends Component<Props, State> {
         for (let i = 0; i < this.props.blocks.length; i++) {
           const block = this.props.blocks[i];
           const activity = this.props.activities[block.activity_id];
-          if (!activity) console.log('block missing activity ^😲', block);
+          if (!activity) console.log('block missing activity 😲', block);
           this.ctx.font = `${block.endTime ? '' : 'bold'} 11px sans-serif`;
           // marky.mark(`name ${activity.name}`);
-          // 👇 I called it a transform for lack of a better term, even though it doesn't tell you everything a transform usually does
-          const { blockX, blockY, blockWidth } = this.getBlockTransform(
-            block,
-            this.blockHeight,
-            this.topOffset + this.state.offsets[activity.thread.id]
-          );
 
-          // don't draw bar if whole thing is this.left of view
-          if (blockX + blockWidth < 0) {
-            continue;
-          }
-
-          // don't draw bar if whole thing is this.right of view
-          if (blockX > this.state.canvasWidth) {
-            continue;
-          }
-
-          this.ctx.fillStyle = colors.flames.main;
-
-          /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
-          if (activity.categories.length > 0 && activity.categories[0]) {
-            // ⚠️ don't always just show the color belonging to category 0... need a better way
-            const cat = this.props.categories.find(
-              element => element.id === activity.categories[0]
-            );
-            if (cat) {
-              this.ctx.fillStyle = cat.color;
-            }
-          }
-          this.ctx.fillRect(blockX, blockY, blockWidth, this.blockHeight);
-
-          // don't even think about drawing text if bar is too small
-          if (blockWidth < this.minTextWidth) {
-            continue;
-          }
-          // marky.mark(`text ${activity.name}`);
-          const { textWidth } = this.ctx.measureText(activity.name);
-
-          if (textWidth + FlameChart.textPadding.x > blockWidth) {
-            continue;
-          }
-
-          // ⚠️ chrome devtools caches the text widths for perf. If I notice that becoming an issue, I will look into doing the same.
-          /** ⚠️ Emoji's need fixing in here. */
-          const text = trimTextMiddle(
-            this.ctx,
-            activity.name || '',
-            blockWidth - 2 * FlameChart.textPadding.x
-          );
-
-          this.ctx.fillStyle = colors.text;
-          this.ctx.fillText(
-            text,
-            blockX + FlameChart.textPadding.x,
-            blockY + FlameChart.textPadding.y
-          );
-
-          // visually denote a resumed activity
-          if (block.beginning === 'R') {
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.beginPath();
-            this.ctx.moveTo(blockX - 1, blockY);
-            const jagDepth = constrain(blockWidth / 5, 5, 15);
-            for (let j = 0; j < 6; j++) {
-              this.ctx.lineTo(
-                blockX + (j % 2 ? jagDepth : -1),
-                blockY + j * this.blockHeight / 6
-              );
-            }
-            this.ctx.lineTo(blockX - 1, blockY + this.blockHeight);
-            this.ctx.fill();
-          }
-
-          // visually denote suspended activity
-          if (block.ending === 'S') {
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.beginPath();
-            this.ctx.moveTo(blockX + blockWidth + 1, blockY);
-            const jagDepth = constrain(blockWidth / 5, 5, 15);
-            for (let j = 0; j < 6; j++) {
-              this.ctx.lineTo(
-                blockX + blockWidth - (j % 2 ? jagDepth : -1),
-                blockY + j * this.blockHeight / 6
-              );
-            }
-            this.ctx.lineTo(blockX + blockWidth + 1, blockY + this.blockHeight);
-            this.ctx.fill();
-          }
+            this.drawBlock(block, activity);
+         
         }
       }
       this.drawFutureWindow(this.ctx);
       this.drawThreadHeaders(this.ctx);
       this.drawMeasurementWindow(this.ctx, this.state.measurement);
 
+      this.ctx.scale(0.5, 0.5);
       this.ctx.restore();
+    }
+  }
+
+  drawMinimizedBlock(block, activity) {
+    this.ctx.globalAlpha = 0.1;
+  }
+
+  drawBlock(block, activity) {
+    const minimized = (this.props.threads.find(thread => thread.id === activity.thread.id).minimized)
+     // 👇 I called it a transform for lack of a better term, even though it doesn't tell you everything a transform usually does
+     const { blockX, blockY, blockWidth } = this.getBlockTransform(
+      minimized ? {...block, level: -1 } : block,
+      this.blockHeight,
+      (minimized ? 1 : 0) + this.topOffset + this.state.offsets[activity.thread.id]
+    );
+
+    // don't draw bar if whole thing is this.left of view
+    if (blockX + blockWidth < 0) {
+      return;
+    }
+
+    // don't draw bar if whole thing is this.right of view
+    if (blockX > this.state.canvasWidth) {
+      return;
+    }
+    
+    this.ctx.globalAlpha = minimized ? 0.2 : 1;
+    this.ctx.fillStyle = colors.flames.main;
+
+    /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
+    if (activity.categories.length > 0 && activity.categories[0]) {
+      // ⚠️ don't always just show the color belonging to category 0... need a better way
+      const cat = this.props.categories.find(
+        element => element.id === activity.categories[0]
+      );
+      if (cat) {
+        this.ctx.fillStyle = cat.color;
+      }
+    }
+    this.ctx.fillRect(blockX, blockY, blockWidth, this.blockHeight);
+
+    // don't even think about drawing text if bar is too small
+    if (blockWidth < this.minTextWidth) {
+      return;
+    }
+    // marky.mark(`text ${activity.name}`);
+    const { textWidth } = this.ctx.measureText(activity.name);
+
+    if (textWidth + FlameChart.textPadding.x > blockWidth) {
+      return;
+    }
+
+    if (minimized) return;
+    // ⚠️ chrome devtools caches the text widths for perf. If I notice that becoming an issue, I will look into doing the same.
+    /** ⚠️ Emoji's need fixing in here. */
+    const text = trimTextMiddle(
+      this.ctx,
+      activity.name || '',
+      blockWidth - 2 * FlameChart.textPadding.x
+    );
+
+    this.ctx.fillStyle = colors.text;
+    this.ctx.fillText(
+      text,
+      blockX + FlameChart.textPadding.x,
+      blockY + FlameChart.textPadding.y
+    );
+
+    // visually denote a resumed activity
+    if (block.beginning === 'R') {
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.beginPath();
+      this.ctx.moveTo(blockX - 1, blockY);
+      const jagDepth = constrain(blockWidth / 5, 5, 15);
+      for (let j = 0; j < 6; j++) {
+        this.ctx.lineTo(
+          blockX + (j % 2 ? jagDepth : -1),
+          blockY + j * this.blockHeight / 6
+        );
+      }
+      this.ctx.lineTo(blockX - 1, blockY + this.blockHeight);
+      this.ctx.fill();
+    }
+
+    // visually denote suspended activity
+    if (block.ending === 'S') {
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.beginPath();
+      this.ctx.moveTo(blockX + blockWidth + 1, blockY);
+      const jagDepth = constrain(blockWidth / 5, 5, 15);
+      for (let j = 0; j < 6; j++) {
+        this.ctx.lineTo(
+          blockX + blockWidth - (j % 2 ? jagDepth : -1),
+          blockY + j * this.blockHeight / 6
+        );
+      }
+      this.ctx.lineTo(blockX + blockWidth + 1, blockY + this.blockHeight);
+      this.ctx.fill();
     }
   }
 
