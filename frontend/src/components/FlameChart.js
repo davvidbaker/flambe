@@ -166,8 +166,7 @@ class FlameChart extends Component<Props, State> {
         {
           devicePixelRatio,
           canvasWidth: window.innerWidth,
-          canvasHeight: window.innerHeight -
-            header.clientHeight,
+          canvasHeight: window.innerHeight - header.clientHeight,
         },
         this.render
       );
@@ -200,7 +199,7 @@ class FlameChart extends Component<Props, State> {
     if (hitLevel === -1) {
       if (
         e.nativeEvent.offsetX >
-        this.state.canvasWidth / this.state.devicePixelRatio - 30
+        this.state.canvasWidth - 30
       ) {
         return { type: 'thread_ellipsis', value: hitThread_id };
       }
@@ -419,8 +418,11 @@ class FlameChart extends Component<Props, State> {
       const activity =
         this.props.activities && this.props.activities[block.activity_id];
 
-      if (this.props.threads.find(thread => thread.id === activity.thread.id).minimized) return false;
-      
+      if (
+        this.props.threads.find(thread => thread.id === activity.thread.id)
+          .minimized
+      ) { return false; }
+
       const { blockX, blockY, blockWidth } = this.getBlockTransform(
         block,
         this.blockHeight,
@@ -603,8 +605,7 @@ class FlameChart extends Component<Props, State> {
           this.ctx.font = `${block.endTime ? '' : 'bold'} 11px sans-serif`;
           // marky.mark(`name ${activity.name}`);
 
-            this.drawBlock(block, activity);
-         
+          this.drawBlock(block, activity);
         }
       }
       this.drawFutureWindow(this.ctx);
@@ -621,12 +622,16 @@ class FlameChart extends Component<Props, State> {
   }
 
   drawBlock(block, activity) {
-    const minimized = (this.props.threads.find(thread => thread.id === activity.thread.id).minimized)
-     // 👇 I called it a transform for lack of a better term, even though it doesn't tell you everything a transform usually does
-     const { blockX, blockY, blockWidth } = this.getBlockTransform(
-      minimized ? {...block, level: -1 } : block,
+    const minimized = this.props.threads.find(
+      thread => thread.id === activity.thread.id
+    ).minimized;
+    // 👇 I called it a transform for lack of a better term, even though it doesn't tell you everything a transform usually does
+    const { blockX, blockY, blockWidth } = this.getBlockTransform(
+      minimized ? { ...block, level: -1 } : block,
       this.blockHeight,
-      (minimized ? 1 : 0) + this.topOffset + this.state.offsets[activity.thread.id]
+      (minimized ? 1 : 0) +
+        this.topOffset +
+        this.state.offsets[activity.thread.id]
     );
 
     // don't draw bar if whole thing is this.left of view
@@ -638,7 +643,7 @@ class FlameChart extends Component<Props, State> {
     if (blockX > this.state.canvasWidth) {
       return;
     }
-    
+
     this.ctx.globalAlpha = minimized ? 0.2 : 1;
     this.ctx.fillStyle = colors.flames.main;
 
@@ -722,7 +727,7 @@ class FlameChart extends Component<Props, State> {
   timeToPixels(timestamp: number) {
     return (
       (timestamp - this.props.leftBoundaryTime) *
-      (this.state.canvasWidth / this.state.devicePixelRatio) /
+      (this.state.canvasWidth) /
       (this.props.rightBoundaryTime - this.props.leftBoundaryTime)
     );
   }
@@ -733,7 +738,7 @@ class FlameChart extends Component<Props, State> {
         this.props.leftBoundaryTime +
         x *
           (this.props.rightBoundaryTime - this.props.leftBoundaryTime) /
-          (this.state.canvasWidth / this.state.devicePixelRatio)
+          (this.state.canvasWidth)
       );
     }
   }
@@ -778,7 +783,7 @@ class FlameChart extends Component<Props, State> {
       for (let i = 0; i < 3; i++) {
         ctx.beginPath();
         ctx.arc(
-          this.state.canvasWidth / this.state.devicePixelRatio - 30 + 6 * i,
+          this.state.canvasWidth - 30 + 6 * i,
           this.state.offsets[thread.id] + 10,
           2,
           0,
@@ -836,8 +841,7 @@ class FlameChart extends Component<Props, State> {
       ctx.fillText(
         txt,
         txtX,
-        this.state.canvasHeight -
-          (FlameChart.textPadding.y - 11)
+        this.state.canvasHeight - (FlameChart.textPadding.y - 11)
       );
     }
     ctx.restore();
@@ -845,7 +849,7 @@ class FlameChart extends Component<Props, State> {
 
   hLine(ctx, y) {
     ctx.moveTo(0, y);
-    ctx.lineTo(this.state.canvasWidth, y);
+    ctx.lineTo(this.state.canvasWidth * this.state.devicePixelRatio, y);
   }
 
   vLine(ctx, x, length = this.state.canvasHeight) {
