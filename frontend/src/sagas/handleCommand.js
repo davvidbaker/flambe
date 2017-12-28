@@ -7,6 +7,7 @@ import {
   ACTIVITY_RESOLVE,
   ACTIVITY_RESUME,
   ACTIVITY_SUSPEND,
+  ACTIVITY_DETAILS_SHOW,
   THREAD_CREATE,
   TODOS_TOGGLE,
   createActivity,
@@ -14,8 +15,9 @@ import {
   deleteActivity,
   endActivity,
   resumeActivity,
+  showActivityDetails,
   suspendActivity,
-  toggleTodos,
+  toggleTodos
 } from 'actions';
 
 import { getTimeline } from 'reducers/timeline';
@@ -30,8 +32,8 @@ function* handleCommand({ type, operand, command }) {
           description: '',
           thread_id: command.thread_id,
           phase: command.copy.includes('question') ? 'Q' : 'B',
-          category_id: command.category_id,
-        }),
+          category_id: command.category_id
+        })
       );
       break;
 
@@ -41,8 +43,8 @@ function* handleCommand({ type, operand, command }) {
           id: operand.activity_id,
           timestamp: Date.now(),
           message: command.message,
-          thread_id: operand.thread_id,
-        }),
+          thread_id: operand.thread_id
+        })
       );
       break;
 
@@ -59,8 +61,8 @@ function* handleCommand({ type, operand, command }) {
           timestamp: Date.now(),
           message,
           thread_id: operand.thread_id,
-          eventFlavor,
-        }),
+          eventFlavor
+        })
       );
       break;
 
@@ -74,9 +76,13 @@ function* handleCommand({ type, operand, command }) {
           id: operand.activity_id,
           timestamp: Date.now(),
           message: command.message ? command.message : '',
-          thread_id: operand.thread_id,
-        }),
+          thread_id: operand.thread_id
+        })
       );
+      break;
+
+    case ACTIVITY_DETAILS_SHOW:
+      yield put(showActivityDetails());
       break;
 
     case THREAD_CREATE:

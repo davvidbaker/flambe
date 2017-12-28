@@ -6,7 +6,14 @@ import createSagaMiddleware from 'redux-saga';
 import { routerReducer, routerMiddleware } from 'react-router-redux';
 import createHistory from 'history/createBrowserHistory';
 
-import { timeline, modifiers, user, operand, todosVisible } from 'reducers';
+import {
+  timeline,
+  modifiers,
+  user,
+  operand,
+  todosVisible,
+  activityDetailsVisible
+} from 'reducers';
 import { getTimeline } from 'reducers/timeline';
 import { loadState, saveState } from 'utilities';
 import mainSaga from 'sagas';
@@ -15,12 +22,12 @@ import mainSaga from 'sagas';
 const composeEnhancers =
   (window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ &&
     window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
-      actionsBlacklist: ['BLOCK_HOVER'],
+      actionsBlacklist: ['BLOCK_HOVER']
     })) ||
   compose;
 
 const networkInterface = createNetworkInterface({
-  uri: 'https://api.graph.cool/simple/v1/cj74c95q70fab0177fwxnf7k3',
+  uri: 'https://api.graph.cool/simple/v1/cj74c95q70fab0177fwxnf7k3'
 });
 
 // create the saga middleware
@@ -42,8 +49,9 @@ const rootReducer = combineReducers({
   user,
   operand,
   todosVisible,
+  activityDetailsVisible,
   router: routerReducer,
-  apollo: client.reducer(),
+  apollo: client.reducer()
 });
 const store = createStore(
   rootReducer,
@@ -52,8 +60,8 @@ const store = createStore(
     applyMiddleware(thunk),
     applyMiddleware(client.middleware()),
     applyMiddleware(rMiddleware),
-    applyMiddleware(sagaMiddleware),
-  ),
+    applyMiddleware(sagaMiddleware)
+  )
 );
 
 sagaMiddleware.run(mainSaga);
@@ -61,7 +69,7 @@ sagaMiddleware.run(mainSaga);
 store.subscribe(() => {
   saveState({
     timeline: getTimeline(store.getState()),
-    apollo: store.getState().apollo,
+    apollo: store.getState().apollo
   });
 });
 
