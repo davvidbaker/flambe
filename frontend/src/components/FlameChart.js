@@ -329,7 +329,6 @@ class FlameChart extends Component<Props, State> {
   };
 
   onMouseMove = e => {
-    console.log('onMousemMove');
     this.setState({
       cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
     });

@@ -1,4 +1,8 @@
-import { TODOS_TOGGLE } from 'actions';
+import {
+  TODOS_TOGGLE,
+  ACTIVITY_DETAILS_SHOW,
+  ACTIVITY_DETAILS_HIDE
+} from 'actions';
 
 import timeline from './timeline';
 import modifiers from './modifiers';
@@ -14,4 +18,22 @@ function todosVisible(state = false, action) {
   }
 }
 
-export { timeline, modifiers, user, operand, todosVisible };
+function activityDetailsVisible(state = false, action) {
+  switch (action.type) {
+    case ACTIVITY_DETAILS_SHOW:
+      return true;
+    case ACTIVITY_DETAILS_HIDE:
+      return false;
+    default:
+      return state;
+  }
+}
+
+export {
+  timeline,
+  modifiers,
+  user,
+  operand,
+  todosVisible,
+  activityDetailsVisible
+};

@@ -6,8 +6,9 @@ import {
   ACTIVITY_REJECT,
   ACTIVITY_RESOLVE,
   ACTIVITY_RESUME,
+  ACTIVITY_DETAILS_SHOW,
   THREAD_CREATE,
-  TODOS_TOGGLE,
+  TODOS_TOGGLE
 } from 'actions';
 import { getUser } from 'reducers/user';
 
@@ -18,7 +19,7 @@ const threadParam = {
   placeholder: 'thread',
   selector: props => props.threads,
   itemStringKey: 'name',
-  itemReturnKey: 'id',
+  itemReturnKey: 'id'
 };
 
 const categoryParam = {
@@ -29,12 +30,12 @@ const categoryParam = {
     return [{ name: 'none', id: null }, ...props.user.categories];
   },
   itemStringKey: 'name',
-  itemReturnKey: 'id',
+  itemReturnKey: 'id'
 };
 
 const activityLabel = {
   copy: 'Activity',
-  background: colors.flames.main,
+  background: colors.flames.main
 };
 
 const COMMANDS = [
@@ -44,11 +45,11 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'gist/description of the activity',
+        placeholder: 'gist/description of the activity'
       },
       threadParam,
-      categoryParam,
-    ],
+      categoryParam
+    ]
   },
   {
     action: ACTIVITY_CREATE,
@@ -56,11 +57,11 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'what the fuck is happening?',
+        placeholder: 'what the fuck is happening?'
       },
       threadParam,
-      categoryParam,
-    ],
+      categoryParam
+    ]
   },
   /** ⚠️ TODO make sure the thread name is unique */
   {
@@ -69,14 +70,14 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'thread name',
-      },
-    ],
+        placeholder: 'thread name'
+      }
+    ]
   },
   {
     action: TODOS_TOGGLE,
-    copy: 'toggle todo list',
-  },
+    copy: 'toggle todo list'
+  }
 ];
 
 const messageParam = { key: 'message', placeholder: 'why?' };
@@ -87,7 +88,7 @@ export const ACTIVITY_COMMANDS = [
     copy: 'Just fucking end it.',
     status: ['active'],
     label: activityLabel,
-    shortcut: 'E',
+    shortcut: 'E'
   },
   {
     action: ACTIVITY_REJECT,
@@ -95,7 +96,7 @@ export const ACTIVITY_COMMANDS = [
     parameters: [messageParam],
     status: ['active'],
     label: activityLabel,
-    shortcut: 'J',
+    shortcut: 'J'
   },
   {
     action: ACTIVITY_RESOLVE,
@@ -103,28 +104,35 @@ export const ACTIVITY_COMMANDS = [
     parameters: [messageParam],
     status: ['active'],
     label: activityLabel,
-    shortcut: 'V',
+    shortcut: 'V'
   },
   {
     action: ACTIVITY_RESUME,
     copy: 'Resume',
     parameters: [messageParam],
     status: ['suspended'],
-    label: activityLabel,
+    label: activityLabel
   },
   {
     action: ACTIVITY_SUSPEND,
     copy: 'Suspend',
     parameters: [messageParam],
     status: ['active'],
-    label: activityLabel,
+    label: activityLabel
   },
   {
     action: ACTIVITY_DELETE,
     copy: 'Delete',
     status: ['active', 'suspended', 'complete'],
-    label: activityLabel,
+    label: activityLabel
   },
+  {
+    action: ACTIVITY_DETAILS_SHOW,
+    copy: 'Edit/View Details',
+    status: ['active', 'suspended', 'complete'],
+    label: activityLabel,
+    shortcut: 'Space'
+  }
 ];
 
 export default COMMANDS;

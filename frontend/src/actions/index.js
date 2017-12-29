@@ -22,6 +22,9 @@ export const ACTIVITY_RESUME = 'ACTIVITY_RESUME';
 export const ACTIVITY_SUSPEND = 'ACTIVITY_SUSPEND';
 export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
 
+export const ACTIVITY_DETAILS_SHOW = 'ACTIVITY_DETAILS_SHOW';
+export const ACTIVITY_DETAILS_HIDE = 'ACTIVITY_DETAILS_HIDE';
+
 export const BLOCK_FOCUS = 'BLOCK_FOCUS';
 export const BLOCK_HOVER = 'BLOCK_HOVER';
 
@@ -282,6 +285,18 @@ export function updateActivity(id, updates) {
     type: ACTIVITY_UPDATE,
     id,
     updates
+  };
+}
+
+export function showActivityDetails(id) {
+  return {
+    type: ACTIVITY_DETAILS_SHOW
+  };
+}
+
+export function hideActivityDetails(id) {
+  return {
+    type: ACTIVITY_DETAILS_HIDE
   };
 }
 
