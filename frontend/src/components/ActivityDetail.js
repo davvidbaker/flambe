@@ -16,7 +16,6 @@ import {
   updateActivity,
   createCategory,
   updateCategory,
-  showActivityDetails,
   hideActivityDetails
 } from 'actions';
 import { getUser } from 'reducers/user';
@@ -27,20 +26,6 @@ import type { Category as CategoryType } from 'types/Category';
 const P = styled.p`
   margin: 0;
 `;
-
-// Activity (Block) is only endable if it is on the tip of the icicle.
-function isEndable(activity, activityBlocks, threadLevels) {
-  if (!activity.thread) {
-    console.warn('activity missing thread!', activity);
-    // debugger;
-    return false;
-  }
-  const lastBlock = activityBlocks[activityBlocks.length - 1];
-  if (lastBlock.level + 1 === threadLevels[activity.thread.id].current) {
-    return true;
-  }
-  return false;
-}
 
 function mapToGrid(obj, { columns }) {
   return (
@@ -82,43 +67,6 @@ type Props = {
 };
 
 class ActivityDetail extends React.Component<Props> {
-  state = {
-    // ⚠️ potentially bad code ahead. Is this how I should be doing keyboard events? or should they bed higher level? Needs research.
-    eventListener: null,
-    endEventFlavor: null
-  };
-
-  componentDidMount() {
-    this.setState({
-      // flow-ignore
-      eventListener: document.addEventListener('keyup', e => {
-        if (e.code === 'Space' && e.target.nodeName !== 'INPUT') {
-          this.props.showActivityDetails();
-        }
-
-        if (this.endButton) {
-          // ⚠️ this might not be the bets way to handle this.
-          if (e.key === 'e' && e.target.nodeName !== 'INPUT') {
-            this.endButton.focus();
-            this.setState({ endEventFlavor: 'E' });
-          } else if (e.key === 'v' && e.target.nodeName !== 'INPUT') {
-            this.endButton.focus();
-            this.setState({ endEventFlavor: 'V' });
-          } else if (e.key === 'j' && e.target.nodeName !== 'INPUT') {
-            this.endButton.focus();
-            this.setState({ endEventFlavor: 'J' });
-          }
-        }
-      })
-    });
-  }
-
-  componentWillUnmount() {
-    if (this.state.eventListener) {
-      document.removeEventListener('keyup', this.state.eventListener);
-    }
-  }
-
   addNewCategory = (name, hexString) => {
     this.props.createCategory({
       activity_id: this.props.activity.id,
@@ -162,29 +110,6 @@ class ActivityDetail extends React.Component<Props> {
         >
           {activity.name}
         </InputFromButton>
-        {!activity.endTime &&
-          isEndable(activity, activityBlocks, threadLevels) && (
-            <InputFromButton
-              ref={endButton => {
-                this.endButton = endButton;
-              }}
-              looksLikeButton
-              canBeBlank
-              placeholder="why?"
-              submit={value => {
-                endActivity({
-                  id: activity.id,
-                  timestamp: Date.now(),
-                  message: value,
-                  thread_id: activity.thread.id,
-                  eventFlavor: this.state.endEventFlavor
-                });
-              }}
-            >
-              End Activity
-            </InputFromButton>
-          )}
-
         {/* abstract out the delete functionality */}
         <DeleteButton
           onConfirm={() => {
@@ -240,7 +165,6 @@ connect(
     createCategory: ({ activity_id, name, color }) =>
       dispatch(createCategory({ activity_id, name, color })),
     hideActivityDetails: () => dispatch(hideActivityDetails()),
-    showActivityDetails: () => dispatch(showActivityDetails()),
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
