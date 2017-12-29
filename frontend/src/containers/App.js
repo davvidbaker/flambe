@@ -27,10 +27,12 @@ import {
   deleteCurrentTrace,
   fetchUser,
   runCommand,
+  showActivityDetails,
 } from 'actions';
 import COMMANDS, { ACTIVITY_COMMANDS } from 'constants/commands';
 import { getTimeline } from 'reducers/timeline';
 import { getUser } from 'reducers/user';
+import isEndable from 'utilities/isEndable';
 
 import type { Trace } from 'types/Trace';
 import type { Todo } from 'types/Todo';
@@ -48,19 +50,20 @@ html {
 `;
 
 // @DragDropContext(HTML5Backend)
-class App extends Component<
-  {
-    keyDown: () => mixed,
-    keyUp: () => mixed,
-    selectTrace: (trace: Trace) => mixed,
-    trace: ?Trace,
-    user: { id: string, name: string },
-    userTraces: (?Trace)[],
-    userTodos: (?Todo)[],
-    todosVisible: boolean,
-  },
-  { commanderVisible: boolean },
-> {
+class App
+  extends Component<
+    {
+      keyDown: () => mixed,
+      keyUp: () => mixed,
+      selectTrace: (trace: Trace) => mixed,
+      trace: ?Trace,
+      user: { id: string, name: string },
+      userTraces: (?Trace)[],
+      userTodos: (?Todo)[],
+      todosVisible: boolean,
+    },
+    { commanderVisible: boolean }
+  > {
   state = {
     commanderVisible: false,
   };
@@ -118,9 +121,9 @@ class App extends Component<
       ? route.match.params.trace_id
       : this.props.trace && this.props.trace.id;
 
-    return trace_id ? (
-      <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
-    ) : null;
+    return trace_id
+      ? <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
+      : null;
   };
 
   getCommands = operand => {
@@ -129,7 +132,7 @@ class App extends Component<
         case 'activity':
           return [
             ...ACTIVITY_COMMANDS.filter(
-              cmd => cmd.status.indexOf(operand.activityStatus) >= 0,
+              cmd => cmd.status.indexOf(operand.activityStatus) >= 0
             ),
             ...COMMANDS,
           ];
@@ -152,6 +155,49 @@ class App extends Component<
           }
         },
       ],
+      [
+        'keyup',
+        e => {
+          if (this.props.operand && e.target.nodeName !== 'INPUT') {
+            switch (this.props.operand.type) {
+              case 'activity':
+                if (e.code === 'Space') {
+                  this.props.showActivityDetails();
+                } else {
+                  switch (e.key) {
+                    case 'e':
+                    case 'v':
+                    case 'j':
+                      if (
+                        isEndable(
+                          this.props.activities[this.props.operand.activity_id],
+                          this.props.blocks.filter(
+                            block =>
+                              block.activity_id ===
+                              this.props.operand.activity_id
+                          ),
+                          this.props.threadLevels
+                        )
+                      ) {
+                        this.showCommander();
+                        this.commander.enterCommand(
+                          this.getCommands(this.props.operand).find(
+                            cmd => cmd.shortcut === e.key.toUpperCase()
+                          )
+                        );
+                      }
+                      break;
+                    default:
+                      break;
+                  }
+                }
+                break;
+              default:
+                break;
+            }
+          }
+        },
+      ],
     ];
     return (
       <ConnectedRouter history={history}>
@@ -166,22 +212,20 @@ class App extends Component<
                 deleteCurrentTrace={this.props.deleteCurrentTrace}
               />
 
-              {/* <Grid rows={'4fr 1fr'}> */}
               <main>
                 <Route path="/traces/:trace_id" render={this.renderTimeline} />
                 <Route exact path="/" render={this.renderTimeline} />
 
-                {this.props.todosVisible && (
-                  <Todos todos={this.props.user.todos} />
-                )}
+                {this.props.todosVisible &&
+                  <Todos todos={this.props.user.todos} />}
               </main>
-              {/* </Grid> */}
               <Commander
                 isOpen={this.state.commanderVisible}
                 commands={this.getCommands(this.props.operand)}
                 onSubmit={this.submitCommand}
                 hideCommander={this.hideCommander}
                 getItems={this.getItems}
+                ref={c => this.commander = c}
               />
             </div>
           )}
@@ -196,12 +240,15 @@ export default compose(
   // flow-ignore
   connect(
     state => ({
+      activities: getTimeline(state).activities,
+      blocks: getTimeline(state).blocks,
+      threadLevels: getTimeline(state).threadLevels,
+      threads: getTimeline(state).threads,
+      operand: state.operand,
+      todosVisible: state.todosVisible,
+      trace: getTimeline(state).trace,
       user: getUser(state),
       userTraces: getUser(state).traces,
-      trace: getTimeline(state).trace,
-      operand: state.operand,
-      threads: getTimeline(state).threads,
-      todosVisible: state.todosVisible,
     }),
     dispatch => ({
       keyDown: key => dispatch(keyDown(key)),
@@ -211,7 +258,8 @@ export default compose(
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       deleteTrace: (id: number) => dispatch(deleteTrace(id)),
       fetchUser: user_id => dispatch(fetchUser(user_id)),
+      showActivityDetails: () => dispatch(showActivityDetails()),
       runCommand: (operand, command) => dispatch(runCommand(operand, command)),
-    }),
-  ),
+    })
+  )
 )(App);
