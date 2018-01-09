@@ -70,7 +70,6 @@ class App extends Component<
   };
 
   componentWillMount() {
-    console.log('main component will mount');
     /** ⚠️ come back */
     this.props.fetchUser(this.props.user.id);
 
@@ -149,7 +148,6 @@ class App extends Component<
       [
         'keydown',
         e => {
-          console.log(e.key, e);
           if (e.shiftKey && (e.metaKey || e.ctrlKey) && e.key === 'p') {
             /** 💁 By default, if chrome devtools are open, this will pull up their command palette, even if focus is in the page, not dev tools. */
             e.preventDefault();
@@ -263,10 +261,10 @@ export default compose(
       userTraces: getUser(state).traces
     }),
     dispatch => ({
-      collapseThread: (id) => dispatch(collapseThread(id)),
+      collapseThread: id => dispatch(collapseThread(id)),
       deleteCurrentTrace: () => dispatch(deleteCurrentTrace()),
       deleteTrace: (id: number) => dispatch(deleteTrace(id)),
-      expandThread: (id) => dispatch(expandThread(id)),
+      expandThread: id => dispatch(expandThread(id)),
       fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
       keyDown: key => dispatch(keyDown(key)),
       keyUp: key => dispatch(keyUp(key)),
