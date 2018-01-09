@@ -20,7 +20,7 @@ defmodule Stitch.Mixfile do
   def application do
     [
       mod: {Stitch.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :ueberauth, :ueberauth_github]
     ]
   end
 
@@ -42,7 +42,9 @@ defmodule Stitch.Mixfile do
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
       {:ex_doc, "~> 0.13"},
-      {:cors_plug, "~> 1.2"}
+      {:cors_plug, "~> 1.2"},
+      {:ueberauth, "~> 0.4"},
+      {:ueberauth_github, "~> 0.6"}
     ]
   end
 

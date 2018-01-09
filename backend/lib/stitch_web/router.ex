@@ -1,7 +1,9 @@
 defmodule StitchWeb.Router do
   use StitchWeb, :router
+  require Ueberauth
 
   pipeline :browser do
+    plug Ueberauth
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_flash
@@ -47,6 +49,15 @@ defmodule StitchWeb.Router do
     #     |> put_resp_header("access-control-allow-origin", "*")
     #     assign(conn, :current_user, Stitch.Accounts.get_user!(user_id))
     # end
+  end
+
+  scope "/auth", StitchWeb do
+    pipe_through [:browser]
+
+    get "/:provider", AuthController, :request
+    get "/:provider/callback", AuthController, :callback
+    post "/:provider/callback", AuthController, :callback
+    delete "/logout", AuthController, :delete
   end
 
   # Other scopes may use custom stacks.

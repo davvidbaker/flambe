@@ -19,15 +19,17 @@ import Grid from 'components/Grid';
 import WithEventListeners from 'components/WithEventListeners';
 import { history } from 'store';
 import {
+  collapseThread,
+  deleteCurrentTrace,
+  deleteTrace,
+  expandThread,
+  fetchTrace,
+  fetchUser,
   keyDown,
   keyUp,
-  deleteTrace,
-  fetchTrace,
-  selectTrace,
-  deleteCurrentTrace,
-  fetchUser,
   runCommand,
-  showActivityDetails,
+  selectTrace,
+  showActivityDetails
 } from 'actions';
 import COMMANDS, { ACTIVITY_COMMANDS } from 'constants/commands';
 import { getTimeline } from 'reducers/timeline';
@@ -50,22 +52,21 @@ html {
 `;
 
 // @DragDropContext(HTML5Backend)
-class App
-  extends Component<
-    {
-      keyDown: () => mixed,
-      keyUp: () => mixed,
-      selectTrace: (trace: Trace) => mixed,
-      trace: ?Trace,
-      user: { id: string, name: string },
-      userTraces: (?Trace)[],
-      userTodos: (?Todo)[],
-      todosVisible: boolean,
-    },
-    { commanderVisible: boolean }
-  > {
+class App extends Component<
+  {
+    keyDown: () => mixed,
+    keyUp: () => mixed,
+    selectTrace: (trace: Trace) => mixed,
+    trace: ?Trace,
+    user: { id: string, name: string },
+    userTraces: (?Trace)[],
+    userTodos: (?Todo)[],
+    todosVisible: boolean
+  },
+  { commanderVisible: boolean }
+> {
   state = {
-    commanderVisible: false,
+    commanderVisible: false
   };
 
   componentWillMount() {
@@ -121,9 +122,9 @@ class App
       ? route.match.params.trace_id
       : this.props.trace && this.props.trace.id;
 
-    return trace_id
-      ? <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
-      : null;
+    return trace_id ? (
+      <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
+    ) : null;
   };
 
   getCommands = operand => {
@@ -134,7 +135,7 @@ class App
             ...ACTIVITY_COMMANDS.filter(
               cmd => cmd.status.indexOf(operand.activityStatus) >= 0
             ),
-            ...COMMANDS,
+            ...COMMANDS
           ];
         default:
           return COMMANDS;
@@ -148,12 +149,22 @@ class App
       [
         'keydown',
         e => {
+          console.log(e.key, e);
           if (e.shiftKey && (e.metaKey || e.ctrlKey) && e.key === 'p') {
             /** 💁 By default, if chrome devtools are open, this will pull up their command palette, even if focus is in the page, not dev tools. */
             e.preventDefault();
             this.showCommander();
           }
-        },
+          if (e.shiftKey && e.key === '}') {
+            this.props.threads.forEach(thread => {
+              this.props.expandThread(thread.id);
+            });
+          } else if (e.shiftKey && e.key === '{') {
+            this.props.threads.forEach(thread => {
+              this.props.collapseThread(thread.id);
+            });
+          }
+        }
       ],
       [
         'keyup',
@@ -196,8 +207,8 @@ class App
                 break;
             }
           }
-        },
-      ],
+        }
+      ]
     ];
     return (
       <ConnectedRouter history={history}>
@@ -216,8 +227,9 @@ class App
                 <Route path="/traces/:trace_id" render={this.renderTimeline} />
                 <Route exact path="/" render={this.renderTimeline} />
 
-                {this.props.todosVisible &&
-                  <Todos todos={this.props.user.todos} />}
+                {this.props.todosVisible && (
+                  <Todos todos={this.props.user.todos} />
+                )}
               </main>
               <Commander
                 isOpen={this.state.commanderVisible}
@@ -225,7 +237,7 @@ class App
                 onSubmit={this.submitCommand}
                 hideCommander={this.hideCommander}
                 getItems={this.getItems}
-                ref={c => this.commander = c}
+                ref={c => (this.commander = c)}
               />
             </div>
           )}
@@ -248,18 +260,20 @@ export default compose(
       todosVisible: state.todosVisible,
       trace: getTimeline(state).trace,
       user: getUser(state),
-      userTraces: getUser(state).traces,
+      userTraces: getUser(state).traces
     }),
     dispatch => ({
+      collapseThread: (id) => dispatch(collapseThread(id)),
+      deleteCurrentTrace: () => dispatch(deleteCurrentTrace()),
+      deleteTrace: (id: number) => dispatch(deleteTrace(id)),
+      expandThread: (id) => dispatch(expandThread(id)),
+      fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
       keyDown: key => dispatch(keyDown(key)),
       keyUp: key => dispatch(keyUp(key)),
-      deleteCurrentTrace: () => dispatch(deleteCurrentTrace()),
-      fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
-      deleteTrace: (id: number) => dispatch(deleteTrace(id)),
       fetchUser: user_id => dispatch(fetchUser(user_id)),
       showActivityDetails: () => dispatch(showActivityDetails()),
-      runCommand: (operand, command) => dispatch(runCommand(operand, command)),
+      runCommand: (operand, command) => dispatch(runCommand(operand, command))
     })
   )
 )(App);
