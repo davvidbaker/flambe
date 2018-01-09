@@ -17,8 +17,8 @@ import { MAX_TIME_INTO_FUTURE } from 'constants/defaultParameters';
 import {
   updateActivity,
   createThread,
-  minimizeThread,
-  maximizeThread
+  collapseThread,
+  expandThread
 } from 'actions';
 import { getTimeline } from 'reducers/timeline';
 import { layout } from 'styles';
@@ -249,8 +249,8 @@ connect(
   }),
   dispatch => ({
     createThread: (name, rank) => dispatch(createThread(name, rank)),
-    toggleThread: (id, isMinimized = false) =>
-      dispatch(isMinimized ? maximizeThread(id) : minimizeThread(id)),
+    toggleThread: (id, isCollapsed = false) =>
+      dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
     updateActivity: (id, obj) => dispatch(updateActivity(id, obj))
   })
 )(Timeline);

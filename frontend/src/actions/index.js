@@ -39,9 +39,12 @@ export const TODOS_TOGGLE = 'TODOS_TOGGLE';
 
 export const THREAD_CREATE = 'THREAD_CREATE';
 export const THREAD_DELETE = 'THREAD_DELETE';
-export const THREAD_MINIMIZE = 'THREAD_MINIMIZE';
-export const THREAD_MAXIMIZE = 'THREAD_MAXIMIZE';
+export const THREAD_COLLAPSE = 'THREAD_COLLAPSE';
+export const THREAD_EXPAND = 'THREAD_EXPAND';
 export const THREAD_UPDATE = 'THREAD_UPDATE';
+
+export const THREADS_COLLAPSE = 'THREADS_COLLAPSE';
+export const THREADS_EXPAND = 'THREADS_EXPAND';
 
 export const TRACE_CREATE = 'TRACE_CREATE';
 export const TRACE_DELETE = 'TRACE_DELETE';
@@ -82,16 +85,16 @@ export function createThread(name, rank) {
   };
 }
 
-export function minimizeThread(id) {
+export function collapseThread(id) {
   return {
-    type: THREAD_MINIMIZE,
+    type: THREAD_COLLAPSE,
     id
   };
 }
 
-export function maximizeThread(id) {
+export function expandThread(id) {
   return {
-    type: THREAD_MAXIMIZE,
+    type: THREAD_EXPAND,
     id
   };
 }

@@ -7,7 +7,11 @@ use Mix.Config
 # watchers to your application. For example, we use it
 # with brunch.io to recompile .js and .css sources.
 config :stitch, StitchWeb.Endpoint,
-  http: [port: 4000],
+  http: [port: 4000, protocol_options: [
+    max_header_name_length: 640000,
+    max_header_value_length: 40960000,
+    max_headers: 1000000
+  ]],
   debug_errors: true,
   code_reloader: true,
   check_origin: false,
@@ -58,3 +62,5 @@ config :stitch, Stitch.Repo,
   database: "stitch_dev",
   hostname: "localhost",
   pool_size: 10
+
+import_config "dev.secret.exs"

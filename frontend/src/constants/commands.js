@@ -8,9 +8,10 @@ import {
   ACTIVITY_RESUME,
   ACTIVITY_DETAILS_SHOW,
   THREAD_CREATE,
+  THREADS_COLLAPSE,
+  THREADS_EXPAND,
   TODOS_TOGGLE
 } from 'actions';
-import { getUser } from 'reducers/user';
 
 import { colors } from 'styles';
 
@@ -77,6 +78,16 @@ const COMMANDS = [
   {
     action: TODOS_TOGGLE,
     copy: 'toggle todo list'
+  },
+  {
+    action: THREADS_COLLAPSE,
+    copy: 'Collapse all threads',
+    shortcut: '⇧ {'
+  },
+  {
+    action: THREADS_EXPAND,
+    copy: 'Expand all threads',
+    shortcut: '⇧ }'
   }
 ];
 

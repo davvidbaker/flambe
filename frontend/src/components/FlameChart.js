@@ -44,14 +44,14 @@ type Props = {
   hoveredBlockIndex?: string,
   rightBoundaryTime: number,
   threadLevels: { id: { current: number, max: number } }[],
-  threads: { name: string, id: number, rank: number, minimized: boolean }[],
+  threads: { name: string, id: number, rank: number, collapsed: boolean }[],
   topOffset: number,
   // functions
   activities?: { [id: string]: Activity },
   categories: { id: string, name: string, color: string },
   focusBlock: (id: number, thread_id: number) => mixed,
   showThreadDetail: (id: number) => mixed,
-  toggleThread: (id: number, isMinimized: boolean) => mixed,
+  toggleThread: (id: number, isCollapsed: boolean) => mixed,
 };
 
 type State = {
@@ -139,7 +139,7 @@ class FlameChart extends Component<Props, State> {
       threads.reduce((acc, thread, ind) => {
         const spacer = ind > 0 ? 4 : 0;
         offsets[thread.id] = acc + spacer; // FlameChart.foldedThreadHeight;
-        const add = thread.minimized
+        const add = thread.collapsed
           ? FlameChart.threadHeaderHeight
           : (this.blockHeight + 1) * threadLevels[thread.id].max +
               FlameChart.threadHeaderHeight;
@@ -227,7 +227,7 @@ class FlameChart extends Component<Props, State> {
           console.log('hit thread header', hit.value);
           this.props.toggleThread(
             hit.value,
-            this.props.threads.find(thread => thread.id === hit.value).minimized
+            this.props.threads.find(thread => thread.id === hit.value).collapsed
           );
           break;
         /** 💁 hit.value is array like [key, val] */
@@ -419,7 +419,7 @@ class FlameChart extends Component<Props, State> {
 
       if (
         this.props.threads.find(thread => thread.id === activity.thread.id)
-          .minimized
+          .collapsed
       ) { return false; }
 
       const { blockX, blockY, blockWidth } = this.getBlockTransform(
@@ -621,14 +621,14 @@ class FlameChart extends Component<Props, State> {
   }
 
   drawBlock(block, activity) {
-    const minimized = this.props.threads.find(
+    const collapsed = this.props.threads.find(
       thread => thread.id === activity.thread.id
-    ).minimized;
+    ).collapsed;
     // 👇 I called it a transform for lack of a better term, even though it doesn't tell you everything a transform usually does
     const { blockX, blockY, blockWidth } = this.getBlockTransform(
-      minimized ? { ...block, level: -1 } : block,
+      collapsed ? { ...block, level: -1 } : block,
       this.blockHeight,
-      (minimized ? 1 : 0) +
+      (collapsed ? 1 : 0) +
         this.topOffset +
         this.state.offsets[activity.thread.id]
     );
@@ -643,7 +643,7 @@ class FlameChart extends Component<Props, State> {
       return;
     }
 
-    this.ctx.globalAlpha = minimized ? 0.2 : 1;
+    this.ctx.globalAlpha = collapsed ? 0.2 : 1;
     this.ctx.fillStyle = colors.flames.main;
 
     /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
@@ -669,7 +669,7 @@ class FlameChart extends Component<Props, State> {
       return;
     }
 
-    if (minimized) return;
+    if (collapsed) return;
     // ⚠️ chrome devtools caches the text widths for perf. If I notice that becoming an issue, I will look into doing the same.
     /** ⚠️ Emoji's need fixing in here. */
     const text = trimTextMiddle(

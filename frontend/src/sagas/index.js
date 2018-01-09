@@ -256,13 +256,13 @@ function* deleteTrace({ type, id }) {
   });
 }
 
-function isMinimized(persistedThreads, thread) {
+function isCollapsed(persistedThreads, thread) {
   if (!persistedThreads) return false;
 
   const found = persistedThreads.find(thr => thr.id === thread.id);
   console.log('foundIndex', found);
   if (found) {
-    return found.minimized;
+    return found.collapsed;
   }
   return false;
 }
@@ -281,7 +281,7 @@ function* processFetchedTrace({ data }) {
       })),
       data.threads.map(thread => ({
         ...thread,
-        minimized: isMinimized(persistedThreads, thread)
+        collapsed: isCollapsed(persistedThreads, thread)
       }))
     )
   );
