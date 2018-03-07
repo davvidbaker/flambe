@@ -10,7 +10,7 @@ defmodule Stitch.Repo.Migrations.CreateActivities do
     end
 
     alter table(:events) do
-      add :activity_id, references(:activities)
+      add :activity_id, references(:activities, on_delete: :delete_all), null: true
     end
   end
 end
