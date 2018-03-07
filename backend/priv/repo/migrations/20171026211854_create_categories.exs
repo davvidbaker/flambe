@@ -9,5 +9,7 @@ defmodule Stitch.Repo.Migrations.CreateCategories do
 
       timestamps()
     end
+
+    create unique_index(:categories, [:name, :user_id], name: :user_category_index)
   end
 end
