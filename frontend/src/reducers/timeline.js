@@ -46,6 +46,8 @@ const initialState = {
 };
 
 function createBlock(blocks, thread_id, timestamp, threadLevels) {
+  // eslint-disable-next-line no-param-reassign
+  blocks = blocks || [];
   return {
     blocks: [
       ...blocks,

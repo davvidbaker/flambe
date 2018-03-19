@@ -1,6 +1,4 @@
-const path = require('path');
 
-const chalk = require('chalk');
 const webpack = require('webpack');
 
 module.exports = {
@@ -8,7 +6,6 @@ module.exports = {
     vendor: [
       'history',
       'react',
-      'react-apollo',
       'react-color',
       'react-dom',
       'react-dnd',

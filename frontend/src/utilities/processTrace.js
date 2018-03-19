@@ -12,13 +12,22 @@ export function lastActivityBlock(blocks, activity_id) {
   return last(blocks.filter(block => block.activity_id === activity_id));
 }
 
+export function removeActivity(activity_id, thread_id, nonTerminatedBlocks) {
+  return {
+    ...nonTerminatedBlocks,
+    [thread_id]: nonTerminatedBlocks[thread_id].filter(
+      id => activity_id !== id
+    ),
+  };
+}
+
 /** ⚠️ kinda sorta definitely mutates blocks array/maybe the objects inside, right? */
 export function terminateBlock(
   blocks,
   activity_id,
   timestamp,
   phase,
-  message = '',
+  message = ''
 ) {
   const block = lastActivityBlock(blocks, activity_id);
   block.endTime = timestamp;
@@ -37,13 +46,15 @@ function pushToMaybeNullArray(arr, ...items) {
 
 function processTrace(trace: TraceEvent[], threads: Thread[]) {
   const threadLevels = {};
+  let threadNonTerminatedBlocks = {};
+  // const threadStatuses = {};
   threads.forEach(thread => {
     threadLevels[thread.id] = {
       current: 0,
       max: 0,
     };
+    threadNonTerminatedBlocks[thread.id] = [];
   });
-  console.log('processing trace events...');
 
   if (!trace || trace.length <= 0) {
     return {
@@ -57,7 +68,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
   // 👇 The trace from the database is not necessarily ordered.
   const orderedTrace: TraceEvent[] = sortBy(
-    (event: TraceEvent) => event.timestamp,
+    (event: TraceEvent) => event.timestamp
   )(trace);
 
   // ⚠️ maybe one day don't have this redundancy.
@@ -91,12 +102,14 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
     activity.categories = pushToMaybeNullArray(
       activity.categories,
-      ...event.activity.categories,
+      ...event.activity.categories
     );
     activity.categories = uniq(activity.categories);
+    activity.suspendedChildren = activity.suspendedChildren || [];
 
     // 🔮 more phases like async
     switch (event.phase) {
+      /* 💁 If an activity is suspended, so are its child activities */
       // S for suspend
       case 'S':
         blocks = terminateBlock(
@@ -104,12 +117,40 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           event.activity.id,
           event.timestamp,
           event.phase,
-          event.message,
+          event.message
         );
         threadLevels[thread_id].current--;
+        // threadStatuses[thread_id].status = 'suspended';
+        // threadStatuses[thread_id].suspendedAt = event.timestamp;
         activity.status = 'suspended';
-        break;
+        threadNonTerminatedBlocks = removeActivity(
+          event.activity.id,
+          thread_id,
+          threadNonTerminatedBlocks
+        );
 
+        threadNonTerminatedBlocks[thread_id].forEach(activity_id => {
+          if (
+            blocks.find(block => block.activity_id === activity_id).startTime >
+            blocks.find(block => block.activity_id === event.activity.id)
+              .startTime
+          ) {
+            activity.suspendedChildren.push(activity_id);
+            terminateBlock(
+              blocks,
+              activity_id,
+              event.timestamp,
+              event.phase,
+              event.message
+            );
+            threadLevels[thread_id].current--;
+            threadNonTerminatedBlocks[thread_id] = threadNonTerminatedBlocks[
+              thread_id
+            ].filter(id => id !== activity_id);
+          }
+        });
+
+        break;
       // R for resume
       case 'R':
         console.log('event.phase', event.phase);
@@ -122,11 +163,26 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         threadLevels[thread_id].current++;
         threadLevels[thread_id].max = Math.max(
           threadLevels[thread_id].current,
-          threadLevels[thread_id].max,
+          threadLevels[thread_id].max
         );
+        if (activity.suspendedChildren.length > 0) {
+          activity.suspendedChildren.forEach(activity_id => {
+            blocks.push({
+              startTime: event.timestamp,
+              level: threadLevels[thread_id].current,
+              activity_id,
+              beginning: event.phase,
+            });
+            threadLevels[thread_id].current++;
+            threadLevels[thread_id].max = Math.max(
+              threadLevels[thread_id].current,
+              threadLevels[thread_id].max
+            );
+          });
+          activity.suspendedChildren = [];
+        }
         activity.status = 'active';
         break;
-
       // B for begin, Q for question
       case 'Q':
       case 'B':
@@ -142,16 +198,26 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           level: threadLevels[thread_id].current,
           activity_id: event.activity.id,
           beginning: event.phase,
-          startMessage: event.message
+          startMessage: event.message,
         });
+        threadNonTerminatedBlocks[thread_id].push(event.activity.id);
+
+        // if (threadStatuses[thread_id].status === 'suspended') {
+        //   blocks = terminateBlock(
+        //     blocks,
+        //     event.activity.id,
+        //     threadStatuses[thread_id].suspendedAt,
+        //     'S',
+        //     'Suspended because parent is suspended.'
+        //   );
+        // }
 
         threadLevels[thread_id].current++;
         threadLevels[thread_id].max = Math.max(
           threadLevels[thread_id].current,
-          threadLevels[thread_id].max,
+          threadLevels[thread_id].max
         );
         break;
-
       // E for End, J for Reject, V for Resolve
       case 'E':
       case 'J':
@@ -164,9 +230,14 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           event.activity.id,
           event.timestamp,
           event.phase,
-          event.message,
+          event.message
         );
         threadLevels[thread_id].current--;
+        threadNonTerminatedBlocks = removeActivity(
+          event.activity.id,
+          thread_id,
+          threadNonTerminatedBlocks
+        );
         break;
 
       default:
@@ -182,8 +253,9 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     if (event.timestamp < leftTime) {
       leftTime = event.timestamp;
     }
-    lastCategory_id =
-      activity.categories.length > 0 ? activity.categories[0] : null;
+    lastCategory_id = activity.categories.length > 0
+      ? activity.categories[0]
+      : null;
 
     if (ind === orderedTrace.length - 1) {
       lastThread_id = activity.thread.id;

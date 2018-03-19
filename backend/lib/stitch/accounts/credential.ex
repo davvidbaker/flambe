@@ -3,9 +3,12 @@ defmodule Stitch.Accounts.Credential do
   import Ecto.Changeset
   alias Stitch.Accounts.{Credential, User}
 
-
   schema "credentials" do
     field :email, :string
+    field :uid, :integer
+    field :avatar, :string
+    field :name, :string
+    field :provider, :string # something like "github"
     belongs_to :user, User
 
     timestamps()
@@ -13,9 +16,24 @@ defmodule Stitch.Accounts.Credential do
 
   @doc false
   def changeset(%Credential{} = credential, attrs) do
+    IO.puts "\ncredentialll😍"
+    IO.inspect(credential)
+    IO.inspect(attrs)
     credential
-    |> cast(attrs, [:email])
-    |> validate_required([:email])
-    |> unique_constraint(:email)
+    |> cast(attrs, [:email, :uid, :avatar, :name, :provider])
+    # |> validate_something_required(attrs)
+    |> validate_required([:uid, :avatar, :name, :provider])
+    |> IO.inspect
+    # 🔮 add unique constraint
+    |> unique_constraint(:uid, name: :credentials_uid_provider_index)
   end
+
+  # defp validate_something_required(changeset, attrs) do
+  #   IO.puts "\nchangeset"
+  #   IO.inspect changeset
+  #   changeset = 
+  #     with {:error} <- validate_required(changeset, [:email]),
+  #          do: validate_required(changeset, [:uid, :avatar, :name, :strategy])
+  #   changeset
+  # end
 end

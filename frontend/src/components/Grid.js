@@ -3,11 +3,7 @@ import styled from 'styled-components';
 const gridColumns = columns => {
   switch (typeof columns) {
     case 'number':
-      let str = '';
-      for (let i = 0; i < columns; i++) {
-        str += '1fr ';
-      }
-      return str;
+    return `repeat(${columns}, 1fr)`;
 
     case 'string':
       return columns;

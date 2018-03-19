@@ -61,6 +61,21 @@ defmodule Stitch.Accounts do
     |> Repo.preload(:credential)
   end
 
+  def get_user_from_credential_info(%{provider: provider, uid: uid}) do
+
+    query = from c in "credentials",
+      where: c.provider == ^provider, 
+      where: c.uid == ^uid,
+      select: %{user_id: c.user_id}
+
+      # ⚠️ This is probably inefficent
+      case Repo.one(query) do
+        %{user_id: user_id} -> {:ok, get_user!(user_id)}
+        # %Credential{} = credential -> get_user!(credential.user_id)
+        nil -> {:error, :does_not_exist}
+      end
+  end
+
   @doc """
   Creates a user.
 
@@ -74,10 +89,14 @@ defmodule Stitch.Accounts do
 
   """
   def create_user(attrs \\ %{}) do
-    %User{}
+    IO.inspect(attrs)
+    {:ok, user} = %User{}
     |> User.changeset(attrs)
-    |> Ecto.Changeset.cast_assoc(:credential, with: &Credential.changeset/2)
     |> Repo.insert()
+    
+    user |> Ecto.build_assoc(:credential, attrs) |> IO.inspect |> Repo.insert()
+
+    {:ok, user}
   end
 
   @doc """
@@ -226,7 +245,7 @@ defmodule Stitch.Accounts do
 
   def authenticate_by_email_password(email, _password) do
     query = 
-      from u in User,
+      from u in "users",
         inner_join: c in assoc(u, :credential),
         where: c.email == ^email
 

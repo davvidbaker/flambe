@@ -2,6 +2,7 @@
 
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
+import { compose } from 'redux'
 // flow-ignore
 import { ConnectedRouter } from 'react-router-redux';
 import { Route } from 'react-router';
@@ -11,7 +12,6 @@ import { injectGlobal } from 'styled-components';
 import Commander from 'react-commander';
 
 // flow-ignore
-import { compose, gql, graphql } from 'react-apollo';
 import Timeline from 'containers/Timeline';
 import Todos from 'containers/Todos';
 import Header from 'components/Header';
