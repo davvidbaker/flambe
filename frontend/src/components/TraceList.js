@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
-import { gql, graphql } from 'react-apollo';
 
 import Dropdown from './Dropdown';
 import NewTrace from './NewTrace';

@@ -19,7 +19,9 @@ event listening lamda functions...
 
 ## Need to do a bunch of things to make it multi-user friendly
 
-* unique constraints shuold be per user, not global
+* Right now to make a user go localhost:4000/auth/github
+
+- unique constraints shuold be per user, not global
   * I am only doing this a little bit right now. I think I am doing it properly
     for user categories.
 

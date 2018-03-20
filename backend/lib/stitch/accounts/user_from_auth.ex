@@ -3,16 +3,23 @@ defmodule Stitch.Accounts.UserFromAuth do
   Retrieve user info from auth request
   """
   alias Ueberauth.Auth
+  alias Stitch.Accounts
+  alias Stitch.Accounts.User
 
   def find_or_create(%Auth{} = auth) do
-    {:ok, basic_info(auth)}
+    basic_info = basic_info(auth)
+
+    case Accounts.get_user_from_credential_info(basic_info) do
+      {:ok, user} -> {:ok, user} |> IO.inspect
+      {:error, :does_not_exist} -> basic_info |> Accounts.create_user |> IO.inspect
+    end
   end
 
   # github does it this way
   defp avatar_from_auth(%{info: %{urls: %{avatar_url: image}}}), do: image
 
   defp basic_info(auth) do
-    %{id: auth.uid, name: name_from_auth(auth), avatar: avatar_from_auth(auth)}
+    %{provider: Atom.to_string(auth.provider), uid: auth.uid, name: name_from_auth(auth), avatar: avatar_from_auth(auth)}
   end
 
   defp name_from_auth(auth) do

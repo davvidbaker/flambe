@@ -101,6 +101,7 @@ class ActivityDetail extends React.Component<Props> {
       >
         {/* // flow-ignore */}
         <InputFromButton
+          placeholderIsDefaultValue
           submit={(value: string) => {
             updateActivity(activity.id, {
               name: value,
@@ -129,7 +130,8 @@ class ActivityDetail extends React.Component<Props> {
                 const category =
                   categories.find(cat => cat.id === category_id) || {};
                 return (
-                  <li key={category.id}>
+                  /* ⚠️ FIX THIS */
+                  <li key={category.id + Math.random()}>
                     <Category
                       id={category.id}
                       name={category.name}

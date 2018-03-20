@@ -1,6 +1,4 @@
 import { createStore, applyMiddleware, compose, combineReducers } from 'redux';
-import { createNetworkInterface, ApolloClient } from 'react-apollo';
-import thunk from 'redux-thunk'; // ⚠️ do I still need thunks ever, now that I am using apollo client?
 import 'regenerator-runtime/runtime';
 import createSagaMiddleware from 'redux-saga';
 import { routerReducer, routerMiddleware } from 'react-router-redux';
@@ -26,10 +24,6 @@ const composeEnhancers =
     })) ||
   compose;
 
-const networkInterface = createNetworkInterface({
-  uri: 'https://api.graph.cool/simple/v1/cj74c95q70fab0177fwxnf7k3'
-});
-
 // create the saga middleware
 const sagaMiddleware = createSagaMiddleware();
 
@@ -38,8 +32,6 @@ export const history = createHistory();
 
 // Build the middleware for intercepting and dispatching navigation actions
 const rMiddleware = routerMiddleware(history);
-
-export const client = new ApolloClient({ networkInterface });
 
 const persistedState = loadState();
 
@@ -50,15 +42,12 @@ const rootReducer = combineReducers({
   operand,
   todosVisible,
   activityDetailsVisible,
-  router: routerReducer,
-  apollo: client.reducer()
+  router: routerReducer
 });
 const store = createStore(
   rootReducer,
   persistedState,
   composeEnhancers(
-    applyMiddleware(thunk),
-    applyMiddleware(client.middleware()),
     applyMiddleware(rMiddleware),
     applyMiddleware(sagaMiddleware)
   )
@@ -68,8 +57,7 @@ sagaMiddleware.run(mainSaga);
 
 store.subscribe(() => {
   saveState({
-    timeline: getTimeline(store.getState()),
-    apollo: store.getState().apollo
+    timeline: getTimeline(store.getState())
   });
 });
 

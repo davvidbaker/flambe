@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import { gql, graphql } from 'react-apollo';
 import { connect } from 'react-redux';
 
 import { AllTraces } from 'containers/App';
@@ -7,18 +6,9 @@ import { createTrace } from 'actions';
 
 import { InputFromButton } from './Button';
 
-const CreateTrace = gql`
-  mutation CreateTraceWithMainThread($name: String!) {
-    createTrace(userId: "cj75obgc8kecq0120mb7l3bej", name: $name, threads: { name: "Main" }) {
-      id
-      name
-    }
-  }
-`;
-
 class NewTrace extends Component {
   state = {
-    isInput: false,
+    isInput: false
   };
 
   transformIntoInput = () => {
@@ -79,5 +69,5 @@ export default graphql(CreateTrace, {
  */
 
 export default connect(null, dispatch => ({
-  createTrace: name => dispatch(createTrace(name)),
+  createTrace: name => dispatch(createTrace(name))
 }))(NewTrace);

@@ -12,7 +12,7 @@ type Props = {
   deleteThread: (id: number) => mixed,
   closeThreadDetail: () => mixed,
   id: number,
-  name: string,
+  name: string
 };
 
 class ThreadDetail extends Component<Props> {
@@ -34,7 +34,7 @@ class ThreadDetail extends Component<Props> {
         onRequestClose={this.props.closeThreadDetail}
       >
         <h1>Thread Details</h1>
-        <InputFromButton submit={this.updateName}>
+        <InputFromButton submit={this.updateName} placeholderIsDefaultValue>
           {this.props.name}
         </InputFromButton>
         <DeleteButton
@@ -49,5 +49,5 @@ class ThreadDetail extends Component<Props> {
 
 export default connect(null, dispatch => ({
   updateThread: (id, updates) => dispatch(updateThread(id, updates)),
-  deleteThread: (id: number) => dispatch(deleteThread(id)),
+  deleteThread: (id: number) => dispatch(deleteThread(id))
 }))(ThreadDetail);

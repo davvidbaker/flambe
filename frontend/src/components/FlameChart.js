@@ -34,6 +34,21 @@ import { colors } from 'styles';
 
 import type { Activity } from 'types/Activity';
 
+const SUSPENDED = 0;
+
+function activityIsSuspended(
+  status,
+  blockStartTime,
+  blockEndTime,
+  suspendedActivityStartTime,
+  suspendedActivityEndTime
+) {
+  if (!suspendedActivityStartTime) {
+    return false;
+  }
+  return status === SUSPENDED && (blockStartTime > suspendedActivityStartTime && blockStartTime < suspendedActivityEndTime);
+}
+
 type Props = {
   hoverBlock: ?string => mixed,
   focusedBlockIndex?: string,
@@ -65,6 +80,7 @@ type State = {
   mousedown: boolean,
   mousedownX: number,
   offsets: {},
+  threadStatuses: {},
 };
 
 class FlameChart extends Component<Props, State> {
@@ -100,8 +116,18 @@ class FlameChart extends Component<Props, State> {
 
   constructor(props) {
     super(props);
+
     const offsets = this.setOffsets(props.threads, props.threadLevels);
     this.state.offsets = offsets;
+
+    this.threadStatuses = {};
+    props.threads.forEach(({ id }) => {
+      this.threadStatuses[id] = {
+        status: 'ok',
+        suspendedActivity: { startTime: null, endTime: null },
+      };
+    });
+    console.log('this.threadStatuses', this.threadStatuses);
   }
 
   componentDidMount() {
@@ -197,10 +223,7 @@ class FlameChart extends Component<Props, State> {
 
     /** 💁 this is the header (hitLevel === -1) */
     if (hitLevel === -1) {
-      if (
-        e.nativeEvent.offsetX >
-        this.state.canvasWidth - 30
-      ) {
+      if (e.nativeEvent.offsetX > this.state.canvasWidth - 30) {
         return { type: 'thread_ellipsis', value: hitThread_id };
       }
       return { type: 'thread_header', value: hitThread_id };
@@ -420,7 +443,9 @@ class FlameChart extends Component<Props, State> {
       if (
         this.props.threads.find(thread => thread.id === activity.thread.id)
           .collapsed
-      ) { return false; }
+      ) {
+        return false;
+      }
 
       const { blockX, blockY, blockWidth } = this.getBlockTransform(
         block,
@@ -616,14 +641,15 @@ class FlameChart extends Component<Props, State> {
     }
   }
 
-  drawMinimizedBlock(block, activity) {
-    this.ctx.globalAlpha = 0.1;
-  }
-
   drawBlock(block, activity) {
     const collapsed = this.props.threads.find(
       thread => thread.id === activity.thread.id
     ).collapsed;
+
+    const threadStatus = this.threadStatuses[activity.thread.id];
+
+    // block = activn
+
     // 👇 I called it a transform for lack of a better term, even though it doesn't tell you everything a transform usually does
     const { blockX, blockY, blockWidth } = this.getBlockTransform(
       collapsed ? { ...block, level: -1 } : block,
@@ -702,7 +728,26 @@ class FlameChart extends Component<Props, State> {
     }
 
     // visually denote suspended activity
-    if (block.ending === 'S') {
+    if (
+      block.ending === 'S' /* ||
+      activityIsSuspended(
+        threadStatus.status,
+        block.startTime,
+        block.endTime,
+        threadStatus.suspendedActivity.startTime,
+        threadStatus.suspendedActivity.endTime
+      ) */
+    ) {
+      // if (block.ending === 'S') {
+      //   this.threadStatuses[activity.thread.id] = {
+      //     status: SUSPENDED,
+      //     suspendedActivity: {
+      //       startTime: block.startTime,
+      //       endTime: block.endTime,
+      //     },
+      //   };
+      // }
+      console.log('this.threadStatuses', this.threadStatuses);
       this.ctx.fillStyle = '#ffffff';
       this.ctx.beginPath();
       this.ctx.moveTo(blockX + blockWidth + 1, blockY);
@@ -726,7 +771,7 @@ class FlameChart extends Component<Props, State> {
   timeToPixels(timestamp: number) {
     return (
       (timestamp - this.props.leftBoundaryTime) *
-      (this.state.canvasWidth) /
+      this.state.canvasWidth /
       (this.props.rightBoundaryTime - this.props.leftBoundaryTime)
     );
   }
@@ -737,7 +782,7 @@ class FlameChart extends Component<Props, State> {
         this.props.leftBoundaryTime +
         x *
           (this.props.rightBoundaryTime - this.props.leftBoundaryTime) /
-          (this.state.canvasWidth)
+          this.state.canvasWidth
       );
     }
   }

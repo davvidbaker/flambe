@@ -13,6 +13,7 @@ const commonStyles = `
   padding: 1px 7px 2px;
   border-radius: 4px;
   text-align: center;
+  min-width: 100px;
 
   &:focus {
     border: 1px solid ${colors.flames.main};
@@ -39,7 +40,8 @@ const Button = styled.button`
 `;
 
 const StyledInputFromButton = styled.input`
-  min-width: unset;
+  /* min-width: unset; */
+  /* width: unset; */
   ${commonStyles};
 `;
 
@@ -47,23 +49,37 @@ type Props = {
   canBeBlank: boolean,
   looksLikeButton: boolean,
   children: Component<*>,
-  placeholder: ?string,
-  submit: (value: string) => mixed,
+  placeholder?: string,
+  placeholderIsDefaultValue?: boolean,
+  submit: (value: string) => mixed
 };
 
-export class InputFromButton extends Component<Props, { isInput: boolean }> {
+/* 💁 aka MagicButton */
+export class InputFromButton extends Component<
+  Props,
+  { isInput: boolean, width: number }
+> {
   state = {
-    isInput: false,
+    isInput: false
   };
 
-  focus = () => {
-    this.transformIntoInput();
-  };
+  // focus = () => {
+  //   this.setState({ width: this.button.getBoundingClientRect().width }, () => {
+  //     this.transformIntoInput();
+  //   });
+  // };
 
   transformIntoInput = () => {
-    this.setState({ isInput: true }, () => {
-      this.transformedInput.focus();
-    });
+    this.setState(
+      { isInput: true, width: this.button.getBoundingClientRect().width },
+      () => {
+        this.transformedInput.focus();
+        this.transformedInput.setSelectionRange(
+          0,
+          this.transformedInput.value.length
+        );
+      }
+    );
   };
 
   onKeyPress = e => {
@@ -83,6 +99,9 @@ export class InputFromButton extends Component<Props, { isInput: boolean }> {
   render() {
     return this.state.isInput === false ? (
       <Button
+        innerRef={b => {
+          this.button = b;
+        }}
         onClick={this.transformIntoInput}
         looksLikeButton={this.props.looksLikeButton}
       >
@@ -91,9 +110,16 @@ export class InputFromButton extends Component<Props, { isInput: boolean }> {
     ) : (
       <StyledInputFromButton
         type="text"
+        style={{ width: `${this.state.width}px` }}
         placeholder={this.props.placeholder || this.props.children}
         onBlur={this.transformIntoButton}
         onKeyPress={this.onKeyPress}
+        size={1}
+        defaultValue={
+          this.props.placeholderIsDefaultValue
+            ? this.props.placeholder || this.props.children
+            : undefined
+        }
         innerRef={input => {
           this.transformedInput = input;
         }}

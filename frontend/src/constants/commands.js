@@ -23,15 +23,24 @@ const threadParam = {
   itemReturnKey: 'id'
 };
 
+const categoryLabel = color => ({
+  copy: ' ',
+  background: color
+});
+
 const categoryParam = {
   key: 'category_id',
   placeholder: 'category',
   selector: props => {
-    console.log('props', props);
-    return [{ name: 'none', id: null }, ...props.user.categories];
+    const cats = props.user.categories.map(cat => ({
+      ...cat,
+      label: categoryLabel(cat.color)
+    }));
+    return [{ name: 'none', id: null, label: categoryLabel(null) }, ...cats];
   },
   itemStringKey: 'name',
-  itemReturnKey: 'id'
+  itemReturnKey: 'id',
+  label: item => categoryLabel(item.color)
 };
 
 const activityLabel = {
@@ -42,7 +51,7 @@ const activityLabel = {
 const COMMANDS = [
   {
     action: ACTIVITY_CREATE,
-    copy: 'start a new task/activity',
+    copy: 'start a new task/activity...',
     parameters: [
       {
         key: 'name',
@@ -54,7 +63,7 @@ const COMMANDS = [
   },
   {
     action: ACTIVITY_CREATE,
-    copy: 'ask a question',
+    copy: 'ask a question...',
     parameters: [
       {
         key: 'name',
@@ -67,7 +76,7 @@ const COMMANDS = [
   /** ⚠️ TODO make sure the thread name is unique */
   {
     action: THREAD_CREATE,
-    copy: 'new thread',
+    copy: 'new thread...',
     parameters: [
       {
         key: 'name',
@@ -81,12 +90,12 @@ const COMMANDS = [
   },
   {
     action: THREADS_COLLAPSE,
-    copy: 'Collapse all threads',
+    copy: 'collapse all threads',
     shortcut: '⇧ {'
   },
   {
     action: THREADS_EXPAND,
-    copy: 'Expand all threads',
+    copy: 'expand all threads',
     shortcut: '⇧ }'
   }
 ];
@@ -96,14 +105,14 @@ const messageParam = { key: 'message', placeholder: 'why?' };
 export const ACTIVITY_COMMANDS = [
   {
     action: ACTIVITY_END,
-    copy: 'Just fucking end it.',
+    copy: 'just end it',
     status: ['active'],
     label: activityLabel,
     shortcut: 'E'
   },
   {
     action: ACTIVITY_REJECT,
-    copy: 'End by Rejection',
+    copy: 'end by rejection...',
     parameters: [messageParam],
     status: ['active'],
     label: activityLabel,
@@ -111,7 +120,7 @@ export const ACTIVITY_COMMANDS = [
   },
   {
     action: ACTIVITY_RESOLVE,
-    copy: 'End by Resolution',
+    copy: 'end by resolution...',
     parameters: [messageParam],
     status: ['active'],
     label: activityLabel,
@@ -119,27 +128,27 @@ export const ACTIVITY_COMMANDS = [
   },
   {
     action: ACTIVITY_RESUME,
-    copy: 'Resume',
+    copy: 'resume',
     parameters: [messageParam],
     status: ['suspended'],
     label: activityLabel
   },
   {
     action: ACTIVITY_SUSPEND,
-    copy: 'Suspend',
+    copy: 'suspend',
     parameters: [messageParam],
     status: ['active'],
     label: activityLabel
   },
   {
     action: ACTIVITY_DELETE,
-    copy: 'Delete',
+    copy: 'delete',
     status: ['active', 'suspended', 'complete'],
     label: activityLabel
   },
   {
     action: ACTIVITY_DETAILS_SHOW,
-    copy: 'Edit/View Details',
+    copy: 'edit/view details',
     status: ['active', 'suspended', 'complete'],
     label: activityLabel,
     shortcut: 'Space'

@@ -5,7 +5,7 @@ defmodule Stitch.Accounts.User do
 
   schema "users" do
     field :name, :string
-    has_one :credential, Credential, on_replace: :delete # ⚠️ not sure if on_replace: :delete is correct/idk what it does
+    has_many :credential, Credential, on_replace: :delete # ⚠️ not sure if on_replace: :delete is correct/idk what it does
     has_many :traces, Stitch.Traces.Trace
     has_many :categories, Category
     
