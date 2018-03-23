@@ -13,6 +13,7 @@ import {
   activityDetailsVisible
 } from 'reducers';
 import { getTimeline } from 'reducers/timeline';
+import { getUser } from 'reducers/user';
 import { loadState, saveState } from 'utilities';
 import mainSaga from 'sagas';
 
@@ -57,6 +58,7 @@ sagaMiddleware.run(mainSaga);
 
 store.subscribe(() => {
   saveState({
+    user: getUser(store.getState()),
     timeline: getTimeline(store.getState())
   });
 });
