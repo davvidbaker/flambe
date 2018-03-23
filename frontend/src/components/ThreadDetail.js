@@ -1,16 +1,21 @@
 import React, { Component } from 'react';
 import Modal from 'react-modal';
 import { connect } from 'react-redux';
+import filter from 'lodash/fp/filter';
+import pipe from 'lodash/fp/pipe';
 
 import { updateThread, deleteThread } from 'actions';
 
 import { InputFromButton } from './Button';
 import DeleteButton from './DeleteButton';
 
+import type { Activity } from '../types/Activity';
+
 type Props = {
   updateThread: (name: string) => mixed,
   deleteThread: (id: number) => mixed,
   closeThreadDetail: () => mixed,
+  activities: Activity[],
   id: number,
   name: string
 };
@@ -26,6 +31,12 @@ class ThreadDetail extends Component<Props> {
   };
 
   render() {
+    const suspendedActivities = pipe(
+      filter(activity => activity.thread.id === this.props.id),
+      filter(activity => activity.status === 'suspended')
+    )(this.props.activities);
+
+    console.log('suspendedActivities', suspendedActivities);
     return (
       <Modal
         contentLabel="Thread Details"
@@ -42,6 +53,8 @@ class ThreadDetail extends Component<Props> {
           message="All activities will be removed from the thread and lost forever. There is no undo."
           onConfirm={this.delete}
         />
+        <h2>Suspended Activities</h2>
+        <ul>{suspendedActivities.map(a => <li key={a.name}>{a.name}</li>)}</ul>
       </Modal>
     );
   }

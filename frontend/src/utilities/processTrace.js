@@ -120,8 +120,6 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           event.message
         );
         threadLevels[thread_id].current--;
-        // threadStatuses[thread_id].status = 'suspended';
-        // threadStatuses[thread_id].suspendedAt = event.timestamp;
         activity.status = 'suspended';
         threadNonTerminatedBlocks = removeActivity(
           event.activity.id,
