@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 
 import ToggleButton from './ToggleButton';
+import { InputFromButton } from './Button';
 import TraceList from './TraceList';
 import { colors, layout } from 'styles';
 
@@ -39,6 +40,8 @@ const Header = ({
   selectTrace,
   deleteTrace,
   deleteCurrentTrace,
+  noteToSelf,
+  updateNoteToSelf
 }) => (
   <StyledHeader>
     {traces && (
@@ -59,6 +62,11 @@ const Header = ({
       </ToggleButton>
     )}
     {currentTrace && <h1>{currentTrace.name}</h1>}
+    {
+      <InputFromButton submit={updateNoteToSelf} placeholderIsDefaultValue>
+        {noteToSelf || 'Note to self'}
+      </InputFromButton>
+    }
     <div style={{ width: '50px' }} />
   </StyledHeader>
 );

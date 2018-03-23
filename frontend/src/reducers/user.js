@@ -1,19 +1,27 @@
 import {
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
+  NOTE_TO_SELF_UPDATE,
   TODO_BEGIN,
   TODO_CREATE,
   TRACE_DELETE,
   TRACE_CREATE,
-  USER_FETCH,
+  USER_FETCH
 } from 'actions';
 
 export const getUser = state => state.user;
 
 // ⚠️ TODO change
 function user(
-  state = { name: 'david', id: '1', traces: [], categories: [], todos: [] },
-  action,
+  state = {
+    name: 'david',
+    id: '1',
+    traces: [],
+    categories: [],
+    todos: [],
+    noteToSelf: null
+  },
+  action
 ) {
   switch (action.type) {
     // 😃 optimism!
@@ -22,10 +30,15 @@ function user(
         ...state,
         categories: [
           ...state.categories,
-          { name: action.name, id: 'optimisticCategory', color: action.color },
-        ],
+          { name: action.name, id: 'optimisticCategory', color: action.color }
+        ]
       };
-
+    // this is optimistic, need to handle failure
+    case NOTE_TO_SELF_UPDATE:
+      return {
+        ...state,
+        noteToSelf: action.note
+      };
     /** ⚠️ need to make sure the user doesn't do anything before this tho...
      */
     case `${CATEGORY_CREATE}_SUCCEEDED`:
@@ -35,8 +48,8 @@ function user(
           cat =>
             (cat.id === 'optimisticCategory'
               ? { ...cat, id: action.data.id }
-              : cat),
-        ),
+              : cat)
+        )
       };
     /** ⚠️ TODO handle category failure (AND OTHER TYPES TOO!) */
 
@@ -44,10 +57,9 @@ function user(
       return {
         ...state,
         categories: state.categories.map(
-          cat => (cat.id === action.id ? { ...cat, ...action.updates } : cat),
-        ),
+          cat => (cat.id === action.id ? { ...cat, ...action.updates } : cat)
+        )
       };
-
     // 😃 optimism!
     case TODO_CREATE:
       return {
@@ -57,9 +69,9 @@ function user(
           {
             name: action.name,
             description: action.description,
-            id: 'optimisticTodo',
-          },
-        ],
+            id: 'optimisticTodo'
+          }
+        ]
       };
 
     case `${TODO_CREATE}_SUCCEEDED`:
@@ -69,30 +81,29 @@ function user(
           todo =>
             (todo.id === 'optimisticTodo'
               ? { ...todo, id: action.data.id }
-              : todo),
-        ),
+              : todo)
+        )
       };
 
     case TODO_BEGIN:
-
       return {
         ...state,
-        todos: state.todos.filter(todo => todo.id !== action.todo_id),
+        todos: state.todos.filter(todo => todo.id !== action.todo_id)
       };
 
     case TRACE_DELETE:
       return {
         ...state,
-        traces: state.traces.filter(trace => trace.id !== action.id),
+        traces: state.traces.filter(trace => trace.id !== action.id)
       };
     /** 💁 optimistic update... */
     case TRACE_CREATE:
       return {
         ...state,
-        traces: [...state.traces, { name: action.name, id: -1 }],
+        traces: [...state.traces, { name: action.name, id: -1 }]
       };
-    /** ...then update id when received 
-     * 
+    /** ...then update id when received
+     *
      * ⚠️ need to make sure the user doesn't do anything before this tho...
      */
     case `${TRACE_CREATE}_SUCCEEDED`:
@@ -102,13 +113,13 @@ function user(
           trace =>
             (trace.name === action.data.name
               ? { ...trace, id: action.data.id }
-              : trace),
-        ),
+              : trace)
+        )
       };
     /** ⚠️ TODO handle TRACE_CREATE_FAILED */
 
     case `${USER_FETCH}_SUCCEEDED`:
-      return action.data;
+      return { noteToSelf: action.data.note_to_self, ...action.data };
 
     case `${USER_FETCH}_FAILED`:
       return state;

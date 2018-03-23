@@ -33,6 +33,8 @@ export const CATEGORY_UPDATE = 'CATEGORY_UPDATE';
 
 export const COMMAND_RUN = 'COMMAND_RUN';
 
+export const NOTE_TO_SELF_UPDATE = 'NOTE_TO_SELF_UPDATE';
+
 export const TODO_BEGIN = 'TODO_BEGIN';
 export const TODO_CREATE = 'TODO_CREATE';
 export const TODOS_TOGGLE = 'TODOS_TOGGLE';
@@ -147,6 +149,14 @@ export function updateCategory(id, updates) {
     id,
     updates
   };
+}
+
+export function updateNoteToSelf(id, note) {
+  return {
+    type: NOTE_TO_SELF_UPDATE,
+    id, // 👈 user_id
+    note
+  }
 }
 
 export function updateThread(id, updates) {
@@ -381,6 +391,8 @@ export function fetchResource(
     resource
   };
 }
+
+
 
 /**
  *

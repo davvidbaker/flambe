@@ -2,7 +2,7 @@
 
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import { compose } from 'redux'
+import { compose } from 'redux';
 // flow-ignore
 import { ConnectedRouter } from 'react-router-redux';
 import { Route } from 'react-router';
@@ -29,7 +29,8 @@ import {
   keyUp,
   runCommand,
   selectTrace,
-  showActivityDetails
+  showActivityDetails,
+  updateNoteToSelf,
 } from 'actions';
 import COMMANDS, { ACTIVITY_COMMANDS } from 'constants/commands';
 import { getTimeline } from 'reducers/timeline';
@@ -52,21 +53,22 @@ html {
 `;
 
 // @DragDropContext(HTML5Backend)
-class App extends Component<
-  {
-    keyDown: () => mixed,
-    keyUp: () => mixed,
-    selectTrace: (trace: Trace) => mixed,
-    trace: ?Trace,
-    user: { id: string, name: string },
-    userTraces: (?Trace)[],
-    userTodos: (?Todo)[],
-    todosVisible: boolean
-  },
-  { commanderVisible: boolean }
-> {
+class App
+  extends Component<
+    {
+      keyDown: () => mixed,
+      keyUp: () => mixed,
+      selectTrace: (trace: Trace) => mixed,
+      trace: ?Trace,
+      user: { id: string, name: string },
+      userTraces: (?Trace)[],
+      userTodos: (?Todo)[],
+      todosVisible: boolean,
+    },
+    { commanderVisible: boolean }
+  > {
   state = {
-    commanderVisible: false
+    commanderVisible: false,
   };
 
   componentWillMount() {
@@ -121,9 +123,9 @@ class App extends Component<
       ? route.match.params.trace_id
       : this.props.trace && this.props.trace.id;
 
-    return trace_id ? (
-      <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
-    ) : null;
+    return trace_id
+      ? <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
+      : null;
   };
 
   getCommands = operand => {
@@ -134,7 +136,7 @@ class App extends Component<
             ...ACTIVITY_COMMANDS.filter(
               cmd => cmd.status.indexOf(operand.activityStatus) >= 0
             ),
-            ...COMMANDS
+            ...COMMANDS,
           ];
         default:
           return COMMANDS;
@@ -164,7 +166,7 @@ class App extends Component<
               });
             }
           }
-        }
+        },
       ],
       [
         'keyup',
@@ -207,8 +209,8 @@ class App extends Component<
                 break;
             }
           }
-        }
-      ]
+        },
+      ],
     ];
     return (
       <ConnectedRouter history={history}>
@@ -221,15 +223,17 @@ class App extends Component<
                 selectTrace={this.props.selectTrace}
                 deleteTrace={this.props.deleteTrace}
                 deleteCurrentTrace={this.props.deleteCurrentTrace}
+                noteToSelf={this.props.user.noteToSelf}
+                updateNoteToSelf={note =>
+                  this.props.updateNoteToSelf(this.props.user.id, note)}
               />
 
               <main>
                 <Route path="/traces/:trace_id" render={this.renderTimeline} />
                 <Route exact path="/" render={this.renderTimeline} />
 
-                {this.props.todosVisible && (
-                  <Todos todos={this.props.user.todos} />
-                )}
+                {this.props.todosVisible &&
+                  <Todos todos={this.props.user.todos} />}
               </main>
               <Commander
                 isOpen={this.state.commanderVisible}
@@ -237,7 +241,7 @@ class App extends Component<
                 onSubmit={this.submitCommand}
                 hideCommander={this.hideCommander}
                 getItems={this.getItems}
-                ref={c => (this.commander = c)}
+                ref={c => this.commander = c}
               />
             </div>
           )}
@@ -260,7 +264,7 @@ export default compose(
       todosVisible: state.todosVisible,
       trace: getTimeline(state).trace,
       user: getUser(state),
-      userTraces: getUser(state).traces
+      userTraces: getUser(state).traces,
     }),
     dispatch => ({
       collapseThread: id => dispatch(collapseThread(id)),
@@ -268,12 +272,13 @@ export default compose(
       deleteTrace: (id: number) => dispatch(deleteTrace(id)),
       expandThread: id => dispatch(expandThread(id)),
       fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
+      fetchUser: user_id => dispatch(fetchUser(user_id)),
       keyDown: key => dispatch(keyDown(key)),
       keyUp: key => dispatch(keyUp(key)),
+      runCommand: (operand, command) => dispatch(runCommand(operand, command)),
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
-      fetchUser: user_id => dispatch(fetchUser(user_id)),
       showActivityDetails: () => dispatch(showActivityDetails()),
-      runCommand: (operand, command) => dispatch(runCommand(operand, command))
+      updateNoteToSelf: (id, note) => dispatch(updateNoteToSelf(id, note)),
     })
   )
 )(App);
