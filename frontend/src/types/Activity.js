@@ -11,7 +11,8 @@ type Activity = {
   thread: Thread,
   id: string,
   events: (?string)[], // just contains the ids
-  categories: (?string)[] // just contains the ids
+  categories: (?string)[], // just contains the ids
+  status: 'active' | 'complete' | 'suspended'
 };
 
 export type { Activity };

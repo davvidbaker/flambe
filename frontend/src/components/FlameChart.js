@@ -1,10 +1,11 @@
 // @flow
 
 import React, { Component } from 'react';
+
+import emojiRegex from 'emoji-regex';
 import { connect } from 'react-redux';
 // flow-ignore
 import pickBy from 'lodash/fp/pickBy';
-// flow-ignore
 import compose from 'lodash/fp/compose';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
@@ -46,7 +47,11 @@ function activityIsSuspended(
   if (!suspendedActivityStartTime) {
     return false;
   }
-  return status === SUSPENDED && (blockStartTime > suspendedActivityStartTime && blockStartTime < suspendedActivityEndTime);
+  return (
+    status === SUSPENDED &&
+    (blockStartTime > suspendedActivityStartTime &&
+      blockStartTime < suspendedActivityEndTime)
+  );
 }
 
 type Props = {
@@ -127,7 +132,6 @@ class FlameChart extends Component<Props, State> {
         suspendedActivity: { startTime: null, endTime: null },
       };
     });
-    console.log('this.threadStatuses', this.threadStatuses);
   }
 
   componentDidMount() {
@@ -140,12 +144,6 @@ class FlameChart extends Component<Props, State> {
       !deepArrayIsEqual(this.props.threads, nextProps.threads) ||
       !isEqual(this.props.threadLevels, nextProps.threadLevels)
     ) {
-      console.log(
-        'nextprops notequals',
-        deepArrayIsEqual(this.props.threads, nextProps.threads),
-        isEqual(this.props.threadLevels, nextProps.threadLevels)
-      );
-      console.log(this.props.threads, nextProps.threads);
       const offsets = this.setOffsets(
         nextProps.threads,
         nextProps.threadLevels
@@ -247,7 +245,6 @@ class FlameChart extends Component<Props, State> {
           this.props.showThreadDetail(hit.value);
           break;
         case 'thread_header':
-          console.log('hit thread header', hit.value);
           this.props.toggleThread(
             hit.value,
             this.props.threads.find(thread => thread.id === hit.value).collapsed
@@ -729,25 +726,9 @@ class FlameChart extends Component<Props, State> {
 
     // visually denote suspended activity
     if (
-      block.ending === 'S' /* ||
-      activityIsSuspended(
-        threadStatus.status,
-        block.startTime,
-        block.endTime,
-        threadStatus.suspendedActivity.startTime,
-        threadStatus.suspendedActivity.endTime
-      ) */
+      block.ending ===
+      'S'
     ) {
-      // if (block.ending === 'S') {
-      //   this.threadStatuses[activity.thread.id] = {
-      //     status: SUSPENDED,
-      //     suspendedActivity: {
-      //       startTime: block.startTime,
-      //       endTime: block.endTime,
-      //     },
-      //   };
-      // }
-      console.log('this.threadStatuses', this.threadStatuses);
       this.ctx.fillStyle = '#ffffff';
       this.ctx.beginPath();
       this.ctx.moveTo(blockX + blockWidth + 1, blockY);
@@ -809,14 +790,34 @@ class FlameChart extends Component<Props, State> {
 
     return Math.floor(distFromBottomOfThreadHeader / (1 + this.blockHeight));
   }
-
   drawThreadHeaders(ctx) {
     ctx.fillStyle = colors.text;
     ctx.globalAlpha = 1;
     this.props.threads.forEach(thread => {
+      const regex = emojiRegex();
+      let match;
+
+      /* eslint-disable */
+      /* 🤔 🤯 HOW THE HELL IS CANVAS SO DARN FAST? */
+      /* 🔮 memoize this/cache these results. Which is the term I am looking for? I think memoize, but caching makes some sense also. Caching isn't straight wrong. */
+      let emoji = [];
+      while ((match = regex.exec(thread.name))) {
+        emoji.push(match[0]);
+      }
+      ctx.font = 'bold 18px sans-serif';
+      
+      ctx.fillText(
+        emoji.toString(),
+        FlameChart.textPadding.x - 2,
+        this.state.offsets[thread.id] + FlameChart.textPadding.y + 3
+      );
+      
+      /* eslint-enable */
+      ctx.font = 'bold 11px sans-serif';
+
       ctx.fillText(
         thread.name,
-        FlameChart.textPadding.x,
+        FlameChart.textPadding.x + 20,
         this.state.offsets[thread.id] + FlameChart.textPadding.y
       );
 

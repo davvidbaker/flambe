@@ -11,7 +11,6 @@ import ActivityDetail from 'components/ActivityDetail';
 import ThreadDetail from 'components/ThreadDetail';
 import WithDropTarget from 'containers/WithDropTarget';
 import WithEventListeners from 'components/WithEventListeners';
-import { InputFromButton } from 'components/Button';
 
 import { MAX_TIME_INTO_FUTURE } from 'constants/defaultParameters';
 import {
@@ -210,6 +209,7 @@ class Timeline extends Component<Props, State> {
                 this.state.threadModal_id &&
                 props.threads.find(t => t.id === this.state.threadModal_id).name
               }
+              activities={props.activities}
             />
             {props.focusedBlockActivity_id && (
               <ActivityDetail
