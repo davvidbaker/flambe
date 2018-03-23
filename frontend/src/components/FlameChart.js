@@ -11,17 +11,11 @@ import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import mapValues from 'lodash/mapValues';
 
-// ⚠️ abstract into parts of react-flame-chart
+/* 🔮  abstract into parts of react-flame-chart? */
 import HoverActivity from 'components/HoverActivity';
 import FocusActivity from 'components/FocusActivity';
 import Tooltip from 'components/Tooltip';
 import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData';
-// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
-// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
-// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
-// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
-// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
-// import SAMPLE_SEARCH_DATA from 'constants/sampleSearchData'
 
 import {
   constrain,
@@ -287,63 +281,8 @@ class FlameChart extends Component<Props, State> {
     }
 
     this.lastTouch = { x: touch.screenX, y: touch.screenY };
-
-    // this.setState({
-    //   cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
-    // });
-
-    // const hit = this.hitTest(e);
-    // if (hit) {
-    //   switch (hit.type) {
-    //     case 'thread_ellipsis':
-    //       this.canvas.style.cursor = 'pointer';
-    //       this.setState({
-    //         hoverThreadEllipsis: hit.value,
-    //       });
-    //       break;
-    //     /** 💁 hit.value is array like [key, val] */
-    //     case 'block':
-    //       this.props.hoverBlock(hit.value[0]);
-    //       this.canvas.style.cursor = 'default';
-    //       this.setState({ hoverThreadEllipsis: null });
-    //       break;
-
-    //     default:
-    //   }
-    // } else {
-    //   this.props.hoverBlock(null);
-
-    //   if (this.state.hoverThreadEllipsis) {
-    //     this.canvas.style.cursor = 'default';
-    //     this.setState({ hoverThreadEllipsis: null });
-    //   }
-    // }
-
-    // if (this.state.measuring) {
-    //   const eTimeX = this.pixelsToTime(e.nativeEvent.offsetX);
-    //   if (this.state.mousedown) {
-    //     if (eTimeX < this.state.mousedownX) {
-    //       this.setState({
-    //         measurement: {
-    //           left: eTimeX,
-    //           right: this.state.mousedownX,
-    //         },
-    //       });
-    //     } else {
-    //       this.setState({
-    //         measurement: {
-    //           left: this.state.mousedownX,
-    //           right: eTimeX,
-    //         },
-    //       });
-    //     }
-    //   } else {
-    //     this.setState({ measurement: { left: eTimeX, right: null } });
-    //   }
-    // } else {
-    //   this.setState({ measurement: { left: null, right: null } });
-    // }
   };
+
   onTouchStart = e => {
     this.lastTouch = null;
   };
@@ -452,6 +391,25 @@ class FlameChart extends Component<Props, State> {
 
       const { startMessage, endMessage, ending } = block;
 
+      // ⚠️ ahead rough draft
+      const activityBlocks = this.props.blocks.filter(
+        b => block.activity_id === b.activity_id
+      );
+
+      const otherActivityBlocks = this.props.blocks.filter(
+        (b, index) =>
+          block.activity_id === b.activity_id && Number(blockIndex) !== index
+      );
+
+      const otherMessages = otherActivityBlocks.map(({
+        startMessage,
+        endMessage,
+      }) => ({ startMessage, endMessage }));
+
+      console.log('otherActivityBlocks', otherActivityBlocks);
+      console.log('activityBlocks', activityBlocks);
+      console.log('otherMessages', otherMessages);
+
       return {
         blockWidth,
         blockX,
@@ -459,6 +417,7 @@ class FlameChart extends Component<Props, State> {
         startMessage,
         ending,
         endMessage,
+        otherMessages,
       };
     }
   };
@@ -552,6 +511,7 @@ class FlameChart extends Component<Props, State> {
             key="tooltip"
             name={hoveredActivity ? hoveredActivity.name : null}
             startMessage={hoveredBlock ? hoveredBlock.startmessage : null}
+            otherMessages={hoveredBlock ? hoveredBlock.otherMessages : null}
             tooltipRef={t => {
               this.tooltip = t;
             }}
@@ -725,10 +685,7 @@ class FlameChart extends Component<Props, State> {
     }
 
     // visually denote suspended activity
-    if (
-      block.ending ===
-      'S'
-    ) {
+    if (block.ending === 'S') {
       this.ctx.fillStyle = '#ffffff';
       this.ctx.beginPath();
       this.ctx.moveTo(blockX + blockWidth + 1, blockY);
@@ -805,13 +762,13 @@ class FlameChart extends Component<Props, State> {
         emoji.push(match[0]);
       }
       ctx.font = 'bold 18px sans-serif';
-      
+
       ctx.fillText(
         emoji.toString(),
         FlameChart.textPadding.x - 2,
         this.state.offsets[thread.id] + FlameChart.textPadding.y + 3
       );
-      
+
       /* eslint-enable */
       ctx.font = 'bold 11px sans-serif';
 

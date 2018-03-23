@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Fragment } from 'react';
 import styled from 'styled-components';
 
 import { colors } from 'styles';
@@ -21,7 +21,7 @@ const Div = styled.div`
 
   .ending-container {
     display: grid;
-    grid-template-columns: 10px 1fr;
+    grid-template-columns: 5px 1fr;
     margin-top: 5px;
     border: 1px solid lightgray;
     width: 100%;
@@ -55,7 +55,7 @@ const Div = styled.div`
   }
 
   .J {
-    background: #D9646A;
+    background: #d9646a;
   }
 
   .S {
@@ -71,7 +71,12 @@ const Tooltip = ({
   top,
   startMessage,
   endMessage,
+  otherMessages
 }) => {
+  console.log('startMessage', startMessage);
+  console.log('endMessage', endMessage);
+  console.log('otherMessages', otherMessages);
+
   let endString;
   switch (ending) {
     case 'V':
@@ -94,13 +99,20 @@ const Tooltip = ({
     >
       <p>{name}</p>
       {startMessage && <p>{startMessage}</p>}
-      {ending ? (
+      {ending && (
         <div className={`ending-container ${ending}`}>
           {ending && <div className={ending} />}
           {endMessage &&
             endMessage.length > 0 && <p className="endMessage">{endMessage}</p>}
         </div>
-      ) : null}
+      )}
+      {otherMessages &&
+        otherMessages.map(({ startMessage, endMessage }) => (
+          <Fragment>
+            {startMessage && startMessage}
+            {endMessage && endMessage}
+          </Fragment>
+        ))}
     </Div>
   );
 };

@@ -14,6 +14,7 @@ import {
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
   COMMAND_RUN,
+  NOTE_TO_SELF_UPDATE,
   THREAD_CREATE,
   THREAD_DELETE,
   THREAD_UPDATE,
@@ -203,6 +204,16 @@ function* updateCategory({ type, id, updates }) {
   });
 }
 
+function* updateNoteToSelf({ type, id, note }) {
+  yield fetchResource(type, {
+    resource: { path: 'users', id },
+    params: {
+      method: 'PUT',
+      body: JSON.stringify({ user: { note_to_self: note } })
+    }
+  });
+}
+
 function* updateThread({ type, id, updates }) {
   yield fetchResource(type, {
     resource: { path: 'threads', id },
@@ -336,6 +347,8 @@ function* mainSaga() {
 
   yield takeEvery(CATEGORY_CREATE, createCategory);
   yield takeEvery(CATEGORY_UPDATE, updateCategory);
+
+  yield takeEvery(NOTE_TO_SELF_UPDATE, updateNoteToSelf);
 
   // 🤔 A saga might be overkill for this, but maybe not because the command palette doesn't know what the state of selected activities is, so it wouldn't know what activity to apply your command to...ehhhh maybe not...still not <sure className=""></sure>
   yield takeEvery(COMMAND_RUN, handleCommand);
