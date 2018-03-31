@@ -71,7 +71,8 @@ defmodule StitchWeb.Router do
     resources "/categories", CategoryController, except: [:new, :edit]
     resources "/threads", ThreadController, except: [:new, :edit]
     resources "/todos", TodoController, except: [:new, :edit]
-    
+    resources "/mantras", MantraController, except: [:new, :edit]
+    resources "/attentions", AttentionController, except: [:new, :edit]
     # resources "/events" EventController, only: [:new]
   end
 end

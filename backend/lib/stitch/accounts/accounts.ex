@@ -6,7 +6,7 @@ defmodule Stitch.Accounts do
   import Ecto.Query, warn: false
   alias Stitch.Repo
 
-  alias Stitch.Accounts.{User, Credential}
+  alias Stitch.Accounts.{User, Credential, Attention, Mantra}
 
   @doc """
   Returns the list of todos for a particular user.
@@ -24,6 +24,43 @@ defmodule Stitch.Accounts do
     Repo.all(query)
   end
 
+  @doc """
+  Returns the list of mantras for a particular user.
+
+  ## Examples
+
+      iex> list_user_todos(%User{})
+      [%{id: integer, name: "my trace"}, ...]
+
+  """
+  def list_user_mantras(user_id) do
+    query = from mantra in Stitch.Accounts.Mantra, 
+      where: mantra.user_id == ^user_id,
+      select: map(mantra, [:name, :timestamp])
+
+    Repo.all(query)
+  end
+
+  @doc """
+  # ⚠️ this is not correct comment
+  Returns the list of mantras for a particular user.
+
+  ## Examples
+
+      iex> list_user_todos(%User{})
+      [%{id: integer, name: "my trace"}, ...]
+
+  """
+  def list_user_attentions(user_id) do
+    query = from attention in Stitch.Accounts.Attention, 
+      where: attention.user_id == ^user_id,
+      select: map(attention, [:thread_id, :timestamp])
+
+    Repo.all(query)
+  end
+
+
+  
 
 
   @doc """
@@ -449,5 +486,197 @@ defmodule Stitch.Accounts do
   """
   def change_todo(%Todo{} = todo) do
     Todo.changeset(todo, %{})
+  end
+
+
+  @doc """
+  Returns the list of mantras.
+
+  ## Examples
+
+      iex> list_mantras()
+      [%Mantra{}, ...]
+
+  """
+  def list_mantras do
+    Repo.all(Mantra)
+  end
+
+  @doc """
+  Gets a single mantra.
+
+  Raises `Ecto.NoResultsError` if the Mantra does not exist.
+
+  ## Examples
+
+      iex> get_mantra!(123)
+      %Mantra{}
+
+      iex> get_mantra!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_mantra!(id), do: Repo.get!(Mantra, id)
+
+  @doc """
+  Creates a mantra.
+# ⚠️  example is not correct
+  ## Examples
+
+      iex> create_mantra(%{field: value})
+      {:ok, %Mantra{}}
+
+      iex> create_mantra(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_mantra(user_id, attrs \\ %{}) do
+    %Mantra{}
+    |> Mantra.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))    
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a mantra.
+
+  ## Examples
+
+      iex> update_mantra(mantra, %{field: new_value})
+      {:ok, %Mantra{}}
+
+      iex> update_mantra(mantra, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_mantra(%Mantra{} = mantra, attrs) do
+    mantra
+    |> Mantra.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a Mantra.
+
+  ## Examples
+
+      iex> delete_mantra(mantra)
+      {:ok, %Mantra{}}
+
+      iex> delete_mantra(mantra)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_mantra(%Mantra{} = mantra) do
+    Repo.delete(mantra)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking mantra changes.
+
+  ## Examples
+
+      iex> change_mantra(mantra)
+      %Ecto.Changeset{source: %Mantra{}}
+
+  """
+  def change_mantra(%Mantra{} = mantra) do
+    Mantra.changeset(mantra, %{})
+  end
+
+
+  @doc """
+  Returns the list of mantras.
+
+  ## Examples
+
+      iex> list_mantras()
+      [%Mantra{}, ...]
+
+  """
+  def list_mantras do
+    Repo.all(Mantra)
+  end
+
+  @doc """
+  Gets a single mantra.
+
+  Raises `Ecto.NoResultsError` if the Mantra does not exist.
+
+  ## Examples
+
+      iex> get_mantra!(123)
+      %Mantra{}
+
+      iex> get_mantra!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_attention!(id), do: Repo.get!(Attention, id)
+
+  @doc """
+  Creates an attenion (shift).
+# ⚠️  example is not correct
+  ## Examples
+
+      iex> create_mantra(%{field: value})
+      {:ok, %Mantra{}}
+
+      iex> create_mantra(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_attention(user_id, attrs \\ %{}) do
+    %Attention{}
+    |> Attention.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))    
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a mantra.
+
+  ## Examples
+
+      iex> update_mantra(mantra, %{field: new_value})
+      {:ok, %Mantra{}}
+
+      iex> update_mantra(mantra, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_attention(%Attention{} = attention, attrs) do
+    attention
+    |> Attention.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a Mantra.
+
+  ## Examples
+
+      iex> delete_mantra(mantra)
+      {:ok, %Mantra{}}
+
+      iex> delete_mantra(mantra)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_attention(%Attention{} = attention) do
+    Repo.delete(attention)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking mantra changes.
+
+  ## Examples
+
+      iex> change_mantra(mantra)
+      %Ecto.Changeset{source: %Mantra{}}
+
+  """
+  def change_attention(%Attention{} = attention) do
+    Attention.changeset(attention, %{})
   end
 end

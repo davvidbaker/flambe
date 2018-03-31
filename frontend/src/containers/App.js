@@ -3,6 +3,8 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { compose } from 'redux';
+import first from 'lodash/fp/first';
+
 // flow-ignore
 import { ConnectedRouter } from 'react-router-redux';
 import { Route } from 'react-router';
@@ -15,7 +17,6 @@ import Commander from 'react-commander';
 import Timeline from 'containers/Timeline';
 import Todos from 'containers/Todos';
 import Header from 'components/Header';
-import Grid from 'components/Grid';
 import WithEventListeners from 'components/WithEventListeners';
 import { history } from 'store';
 import {
@@ -30,7 +31,7 @@ import {
   runCommand,
   selectTrace,
   showActivityDetails,
-  updateNoteToSelf,
+  createMantra
 } from 'actions';
 import COMMANDS, { ACTIVITY_COMMANDS } from 'constants/commands';
 import { getTimeline } from 'reducers/timeline';
@@ -40,11 +41,16 @@ import isEndable from 'utilities/isEndable';
 import type { Trace } from 'types/Trace';
 import type { Todo } from 'types/Todo';
 
+// eslint-disable-next-line no-unused-expressions
 injectGlobal`
 html {
   box-sizing: border-box;
   font-family: sans-serif;
   overflow: hidden;
+}
+
+*::before, *::after {
+  box-sizing: border-box;
 }
 
 * {
@@ -53,22 +59,21 @@ html {
 `;
 
 // @DragDropContext(HTML5Backend)
-class App
-  extends Component<
-    {
-      keyDown: () => mixed,
-      keyUp: () => mixed,
-      selectTrace: (trace: Trace) => mixed,
-      trace: ?Trace,
-      user: { id: string, name: string },
-      userTraces: (?Trace)[],
-      userTodos: (?Todo)[],
-      todosVisible: boolean,
-    },
-    { commanderVisible: boolean }
-  > {
+class App extends Component<
+  {
+    keyDown: () => mixed,
+    keyUp: () => mixed,
+    selectTrace: (trace: Trace) => mixed,
+    trace: ?Trace,
+    user: { id: string, name: string },
+    userTraces: (?Trace)[],
+    userTodos: (?Todo)[],
+    todosVisible: boolean
+  },
+  { commanderVisible: boolean }
+> {
   state = {
-    commanderVisible: false,
+    commanderVisible: false
   };
 
   componentWillMount() {
@@ -123,9 +128,9 @@ class App
       ? route.match.params.trace_id
       : this.props.trace && this.props.trace.id;
 
-    return trace_id
-      ? <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
-      : null;
+    return trace_id ? (
+      <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
+    ) : null;
   };
 
   getCommands = operand => {
@@ -136,7 +141,7 @@ class App
             ...ACTIVITY_COMMANDS.filter(
               cmd => cmd.status.indexOf(operand.activityStatus) >= 0
             ),
-            ...COMMANDS,
+            ...COMMANDS
           ];
         default:
           return COMMANDS;
@@ -166,7 +171,7 @@ class App
               });
             }
           }
-        },
+        }
       ],
       [
         'keyup',
@@ -209,8 +214,8 @@ class App
                 break;
             }
           }
-        },
-      ],
+        }
+      ]
     ];
     return (
       <ConnectedRouter history={history}>
@@ -223,25 +228,26 @@ class App
                 selectTrace={this.props.selectTrace}
                 deleteTrace={this.props.deleteTrace}
                 deleteCurrentTrace={this.props.deleteCurrentTrace}
-                noteToSelf={this.props.user.noteToSelf}
-                updateNoteToSelf={note =>
-                  this.props.updateNoteToSelf(this.props.user.id, note)}
+                currentMantra={this.props.user && first(this.props.user.mantras).name}
+                createMantra={name => this.props.createMantra(name)}
               />
 
               <main>
                 <Route path="/traces/:trace_id" render={this.renderTimeline} />
                 <Route exact path="/" render={this.renderTimeline} />
 
-                {this.props.todosVisible &&
-                  <Todos todos={this.props.user.todos} />}
+                {this.props.todosVisible && (
+                  <Todos todos={this.props.user.todos} />
+                )}
               </main>
               <Commander
+                withBuildup
                 isOpen={this.state.commanderVisible}
                 commands={this.getCommands(this.props.operand)}
                 onSubmit={this.submitCommand}
                 hideCommander={this.hideCommander}
                 getItems={this.getItems}
-                ref={c => this.commander = c}
+                ref={c => (this.commander = c)}
               />
             </div>
           )}
@@ -264,7 +270,7 @@ export default compose(
       todosVisible: state.todosVisible,
       trace: getTimeline(state).trace,
       user: getUser(state),
-      userTraces: getUser(state).traces,
+      userTraces: getUser(state).traces
     }),
     dispatch => ({
       collapseThread: id => dispatch(collapseThread(id)),
@@ -278,7 +284,7 @@ export default compose(
       runCommand: (operand, command) => dispatch(runCommand(operand, command)),
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       showActivityDetails: () => dispatch(showActivityDetails()),
-      updateNoteToSelf: (id, note) => dispatch(updateNoteToSelf(id, note)),
+      createMantra: (id, note) => dispatch(createMantra(id, note))
     })
   )
 )(App);

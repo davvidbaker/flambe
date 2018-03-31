@@ -1,7 +1,8 @@
 import {
+  ATTENTION_SHIFT,
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
-  NOTE_TO_SELF_UPDATE,
+  MANTRA_CREATE,
   TODO_BEGIN,
   TODO_CREATE,
   TRACE_DELETE,
@@ -11,15 +12,15 @@ import {
 
 export const getUser = state => state.user;
 
-// ⚠️ TODO change
 function user(
   state = {
-    name: 'david',
+    name: 'david' /* ⚠️ TODO change */,
     id: '1',
     traces: [],
     categories: [],
     todos: [],
-    noteToSelf: null
+    mantras: [],
+    attentionShifts: []
   },
   action
 ) {
@@ -34,10 +35,13 @@ function user(
         ]
       };
     // this is optimistic, need to handle failure
-    case NOTE_TO_SELF_UPDATE:
+    case MANTRA_CREATE:
       return {
         ...state,
-        noteToSelf: action.note
+        mantras: [
+          { name: action.name, timestamp: Date.now() },
+          ...state.mantras
+        ]
       };
     /** ⚠️ need to make sure the user doesn't do anything before this tho...
      */
@@ -60,7 +64,19 @@ function user(
           cat => (cat.id === action.id ? { ...cat, ...action.updates } : cat)
         )
       };
+    /* ⚠️ this is optimistic, need to handle failure */
+    case ATTENTION_SHIFT:
+      console.log('state.attentionShifts', state.attentionShifts);
+      console.log('action', action);
+      return {
+        ...state,
+        attentionShifts: [
+          ...state.attentionShifts,
+          { timestamp: action.timestamp, thread_id: action.thread_id }
+        ]
+      };
     // 😃 optimism!
+
     case TODO_CREATE:
       return {
         ...state,
@@ -119,12 +135,21 @@ function user(
     /** ⚠️ TODO handle TRACE_CREATE_FAILED */
 
     case `${USER_FETCH}_SUCCEEDED`:
-      return { noteToSelf: action.data.note_to_self, ...action.data };
+      return {
+        ...action.data,
+        attentionShifts: action.data.attentionShifts.map(
+          ({ thread_id, timestamp }) => ({
+            timestamp: new Date(timestamp).getTime(),
+            thread_id
+          })
+        )
+      };
 
     case `${USER_FETCH}_FAILED`:
       return state;
 
     default:
+      console.log('default state', state);
       return state;
   }
 }

@@ -6,17 +6,22 @@ defmodule StitchWeb.UserView do
     %{data: render_many(users, UserView, "user.json")}
   end
 
-  def render("show.json", %{user: user}) do
-    %{data: render_one(user, UserView, "user.json")}
+  def render("show.json", %{user: user, mantras: mantras}) do
+    %{data: render_one(%{user: user, mantras: mantras}, UserView, "user.json")}
   end
 
+  # ⚠️ things are getting a little messy. user is a map that has keys [:user, :mantras]  
   def render("user.json", %{user: user}) do
     # ⚠️ this might not be how you're supposed to do this, email is really not part of the user, but the user credentials. This could be refactored.
-    user = Stitch.Repo.preload(user, [:credential, :categories])
+    mantras = user.mantras
+    user = Stitch.Repo.preload(user.user, [:credential, :categories])
 
     # ⚠️ Is this where this should happen? I doubt it.
     traces = Stitch.Traces.list_user_traces(user.id)
     todos = Stitch.Accounts.list_user_todos(user.id)
+    attentions = Stitch.Accounts.list_user_attentions(user.id)
+    IO.puts "\nattentions"
+    IO.inspect attentions
 
     categories =
       Enum.map(user.categories, fn cat -> %{id: cat.id, color: cat.color, name: cat.name} end)
@@ -28,7 +33,8 @@ defmodule StitchWeb.UserView do
       traces: traces,
       categories: categories,
       todos: todos,
-      note_to_self: user.note_to_self
+      mantras: mantras,
+      attentionShifts: attentions
     }
   end
 end

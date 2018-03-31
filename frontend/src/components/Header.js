@@ -14,10 +14,12 @@ const StyledHeader = styled.header`
   padding: 5px;
   background: #eee;
   display: flex;
+  justify-content: space-between;
   align-items: center;
   height: ${layout.headerHeight};
   box-sizing: border-box;
-  e input,
+
+  input,
   button {
     font-weight: bold;
     font-size: large;
@@ -25,7 +27,7 @@ const StyledHeader = styled.header`
 
   h1 {
     margin: 0;
-    flex: 1;
+    /* flex: 1; */
     text-align: center;
     font-size: large;
     color: ${tinycolor(colors.background)
@@ -40,8 +42,8 @@ const Header = ({
   selectTrace,
   deleteTrace,
   deleteCurrentTrace,
-  noteToSelf,
-  updateNoteToSelf
+  currentMantra,
+  createMantra
 }) => (
   <StyledHeader>
     {traces && (
@@ -61,13 +63,11 @@ const Header = ({
         🔥 Traces
       </ToggleButton>
     )}
+    <InputFromButton submit={createMantra} placeholderIsDefaultValue>
+      {currentMantra || 'Note to self'}
+    </InputFromButton>
     {currentTrace && <h1>{currentTrace.name}</h1>}
-    {
-      <InputFromButton submit={updateNoteToSelf} placeholderIsDefaultValue>
-        {noteToSelf || 'Note to self'}
-      </InputFromButton>
-    }
-    <div style={{ width: '50px' }} />
+    {/* <div style={{ width: '50px' }} /> */}
   </StyledHeader>
 );
 

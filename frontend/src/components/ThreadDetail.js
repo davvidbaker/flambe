@@ -36,7 +36,6 @@ class ThreadDetail extends Component<Props> {
       filter(activity => activity.status === 'suspended')
     )(this.props.activities);
 
-    console.log('suspendedActivities', suspendedActivities);
     return (
       <Modal
         contentLabel="Thread Details"

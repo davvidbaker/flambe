@@ -22,7 +22,9 @@ defmodule StitchWeb.UserController do
 
   def show(conn, %{"id" => id}) do
     user = Accounts.get_user!(id)
-    render(conn, "show.json", user: user)
+    mantras = Accounts.list_user_mantras(id)
+    
+    render(conn, "show.json", user: user, mantras: mantras)
   end
 
   def edit(conn, %{"id" => id}) do
