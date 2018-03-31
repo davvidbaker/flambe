@@ -4,7 +4,8 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 // flow-ignore
 import throttle from 'lodash/throttle';
-import sortBy from 'lodash/sortBy';
+import sortBy from 'lodash/fp/sortBy';
+import last from 'lodash/last';
 
 import FlameChart from 'components/FlameChart';
 import ActivityDetail from 'components/ActivityDetail';
@@ -20,6 +21,7 @@ import {
   expandThread
 } from 'actions';
 import { getTimeline } from 'reducers/timeline';
+import { getUser } from 'reducers/user';
 import { layout } from 'styles';
 
 import zoom from 'utilities/zoom';
@@ -128,7 +130,6 @@ class Timeline extends Component<Props, State> {
   };
 
   closeThreadDetail = () => {
-    console.log('trying to close thread detail');
     this.setState({ threadModal_id: null });
   };
 
@@ -137,14 +138,12 @@ class Timeline extends Component<Props, State> {
    *
    */
   setLocalStorage = throttle(() => {
-    console.log(typeof this.state.leftBoundaryTime === 'number');
     if (
       typeof this.state.leftBoundaryTime === 'number' &&
       this.state.leftBoundaryTime !== NaN &&
       typeof this.state.rightBoundaryTime === 'number' &&
       this.state.rightBoundaryTime !== NaN
     ) {
-      console.log('setting ls');
       localStorage.setItem('lbt', this.state.leftBoundaryTime);
       localStorage.setItem('rbt', this.state.rightBoundaryTime);
     }
@@ -184,8 +183,10 @@ class Timeline extends Component<Props, State> {
             >
               <FlameChart
                 activities={props.activities}
+                attentionShifts={props.attentionShifts}
                 blocks={props.blocks}
                 categories={props.user.categories}
+                currentAttention={last(props.attentionShifts).thread_id}
                 leftBoundaryTime={this.state.leftBoundaryTime || props.minTime}
                 maxTime={props.maxTime}
                 minTime={props.minTime}
@@ -243,9 +244,10 @@ connect(
     maxTime: getTimeline(state).maxTime,
     modifiers: state.modifiers,
     threadLevels: getTimeline(state).threadLevels,
-    threads: sortBy(getTimeline(state).threads, t => t.rank),
+    threads: sortBy(t => t.rank, getTimeline(state).threads),
     lastCategory_id: getTimeline(state).lastCategory_id,
-    lastThread_id: getTimeline(state).lastThread_id
+    lastThread_id: getTimeline(state).lastThread_id,
+    attentionShifts: getUser(state).attentionShifts
   }),
   dispatch => ({
     createThread: (name, rank) => dispatch(createThread(name, rank)),

@@ -73,10 +73,6 @@ const Tooltip = ({
   endMessage,
   otherMessages
 }) => {
-  console.log('startMessage', startMessage);
-  console.log('endMessage', endMessage);
-  console.log('otherMessages', otherMessages);
-
   let endString;
   switch (ending) {
     case 'V':
@@ -108,7 +104,7 @@ const Tooltip = ({
       )}
       {otherMessages &&
         otherMessages.map(({ startMessage, endMessage }) => (
-          <Fragment>
+          <Fragment key={startMessage || endMessage}>
             {startMessage && startMessage}
             {endMessage && endMessage}
           </Fragment>

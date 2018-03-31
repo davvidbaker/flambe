@@ -7,6 +7,7 @@ import {
   ACTIVITY_RESOLVE,
   ACTIVITY_RESUME,
   ACTIVITY_DETAILS_SHOW,
+  ATTENTION_SHIFT,
   THREAD_CREATE,
   THREADS_COLLAPSE,
   THREADS_EXPAND,
@@ -97,6 +98,11 @@ const COMMANDS = [
     action: THREADS_EXPAND,
     copy: 'expand all threads',
     shortcut: '⇧ }'
+  },
+  {
+    action: ATTENTION_SHIFT,
+    copy: 'shift attention to...',
+    parameters: [threadParam]
   }
 ];
 

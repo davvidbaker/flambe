@@ -25,6 +25,8 @@ export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
 export const ACTIVITY_DETAILS_SHOW = 'ACTIVITY_DETAILS_SHOW';
 export const ACTIVITY_DETAILS_HIDE = 'ACTIVITY_DETAILS_HIDE';
 
+export const ATTENTION_SHIFT = 'ATTENTION_SHIFT';
+
 export const BLOCK_FOCUS = 'BLOCK_FOCUS';
 export const BLOCK_HOVER = 'BLOCK_HOVER';
 
@@ -33,7 +35,7 @@ export const CATEGORY_UPDATE = 'CATEGORY_UPDATE';
 
 export const COMMAND_RUN = 'COMMAND_RUN';
 
-export const NOTE_TO_SELF_UPDATE = 'NOTE_TO_SELF_UPDATE';
+export const MANTRA_CREATE = 'MANTRA_CREATE';
 
 export const TODO_BEGIN = 'TODO_BEGIN';
 export const TODO_CREATE = 'TODO_CREATE';
@@ -151,12 +153,11 @@ export function updateCategory(id, updates) {
   };
 }
 
-export function updateNoteToSelf(id, note) {
+export function createMantra(name) {
   return {
-    type: NOTE_TO_SELF_UPDATE,
-    id, // 👈 user_id
-    note
-  }
+    type: MANTRA_CREATE,
+    name
+  };
 }
 
 export function updateThread(id, updates) {
@@ -392,8 +393,6 @@ export function fetchResource(
   };
 }
 
-
-
 /**
  *
  *
@@ -451,5 +450,14 @@ export function panTimeline(
     topOffset,
     nowTime,
     minTime
+  };
+}
+
+// shifting your attention to this thread
+export function shiftAttention(thread_id, timestamp) {
+  return {
+    type: ATTENTION_SHIFT,
+    thread_id,
+    timestamp
   };
 }

@@ -8,8 +8,11 @@ import { connect } from 'react-redux';
 import pickBy from 'lodash/fp/pickBy';
 import compose from 'lodash/fp/compose';
 import isEqual from 'lodash/isEqual';
-import sortBy from 'lodash/sortBy';
-import mapValues from 'lodash/mapValues';
+import sortBy from 'lodash/fp/sortBy';
+import identity from 'lodash/fp/identity';
+import pipe from 'lodash/fp/pipe';
+import reverse from 'lodash/fp/reverse';
+import mapValues from 'lodash/fp/mapValues';
 
 /* 🔮  abstract into parts of react-flame-chart? */
 import HoverActivity from 'components/HoverActivity';
@@ -406,10 +409,6 @@ class FlameChart extends Component<Props, State> {
         endMessage,
       }) => ({ startMessage, endMessage }));
 
-      console.log('otherActivityBlocks', otherActivityBlocks);
-      console.log('activityBlocks', activityBlocks);
-      console.log('otherMessages', otherMessages);
-
       return {
         blockWidth,
         blockX,
@@ -586,11 +585,14 @@ class FlameChart extends Component<Props, State> {
           this.ctx.font = `${block.endTime ? '' : 'bold'} 11px sans-serif`;
           // marky.mark(`name ${activity.name}`);
 
-          this.drawBlock(block, activity);
+          if (activity) {
+            this.drawBlock(block, activity);
+          }
         }
       }
       this.drawFutureWindow(this.ctx);
       this.drawThreadHeaders(this.ctx);
+      this.drawAttention(this.ctx);
       this.drawMeasurementWindow(this.ctx, this.state.measurement);
 
       this.ctx.scale(0.5, 0.5);
@@ -726,17 +728,17 @@ class FlameChart extends Component<Props, State> {
   }
 
   pixelsToThread_id(y: number): number {
-    const reverseOffsets = sortBy(this.state.offsets).reverse();
+    const reverseOffsets = pipe(sortBy(identity), reverse)(this.state.offsets);
     let i = 0;
     while (y < reverseOffsets[i]) {
       i++;
     }
-    /** 💁 fucking reverse mutates in javascript */
-    return [...this.props.threads].reverse()[i].id;
+    const thread = reverse(this.props.threads)[i];
+    return thread ? thread.id : null;
   }
 
   pixelsToLevel(y: number): number {
-    const reverseOffsets = sortBy(this.state.offsets).reverse();
+    const reverseOffsets = pipe(sortBy(identity), reverse)(this.state.offsets);
     let i = 0;
     while (y < reverseOffsets[i]) {
       i++;
@@ -747,6 +749,7 @@ class FlameChart extends Component<Props, State> {
 
     return Math.floor(distFromBottomOfThreadHeader / (1 + this.blockHeight));
   }
+
   drawThreadHeaders(ctx) {
     ctx.fillStyle = colors.text;
     ctx.globalAlpha = 1;
@@ -779,6 +782,19 @@ class FlameChart extends Component<Props, State> {
       );
 
       ctx.save();
+
+      if (this.props.currentAttention === thread.id) {
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(
+          this.state.canvasWidth - 7.5,
+          this.state.offsets[thread.id] + 10,
+          2,
+          0,
+          360
+        );
+        ctx.fill();
+      }
       ctx.fillStyle = this.state.hoverThreadEllipsis === thread.id
         ? '#000000'
         : '#dddddd';
@@ -794,6 +810,34 @@ class FlameChart extends Component<Props, State> {
         ctx.fill();
       }
       ctx.restore();
+    });
+  }
+
+  /* 💁 ⚠️ Not as in "The explosion outside drew my attention". */
+  drawAttention(ctx) {
+    this.props.attentionShifts.forEach(({ thread_id, timestamp }, ind) => {
+      console.log('attentionShifts', this.props.attentionShifts);
+      const y = this.state.offsets[thread_id];
+      const x = this.timeToPixels(timestamp);
+      console.log(
+        'this.props.leftBoundaryTime < timestamp',
+        this.props.leftBoundaryTime < timestamp
+      );
+
+      const x2 = ind < this.props.attentionShifts.length - 1
+        ? this.timeToPixels(this.props.attentionShifts[ind + 1].timestamp)
+        : this.timeToPixels(this.props.rightBoundaryTime);
+
+      console.log('x, y', x, y);
+      console.log('x2 > x', x2 > x);
+
+      ctx.strokeStyle = '#ff0000';
+
+      // ctx.fillStyle = '#ff0000';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x2, y);
+      ctx.stroke();
     });
   }
 
@@ -817,8 +861,9 @@ class FlameChart extends Component<Props, State> {
   }
 
   drawMeasurementWindow(ctx, measurement) {
-    const { left, right } = mapValues(measurement, val =>
-      this.timeToPixels(val)
+    const { left, right } = mapValues(
+      val => this.timeToPixels(val),
+      measurement
     );
     ctx.save();
     ctx.lineWidth = 2;
@@ -862,7 +907,6 @@ class FlameChart extends Component<Props, State> {
   }
 
   drawFutureWindow(ctx) {
-    // ctx.save();
     ctx.globalAlpha = 0.2;
     ctx.fillStyle = '#B6C8E8';
     ctx.strokeStyle = '#7B9EDE';
@@ -883,7 +927,6 @@ class FlameChart extends Component<Props, State> {
         this.state.canvasHeight
       );
     }
-    // ctx.restore();
   }
 
   getBlockTransform(

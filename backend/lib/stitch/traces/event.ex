@@ -2,6 +2,7 @@ defmodule Stitch.Traces.Event do
   use Ecto.Schema
   import Ecto.Changeset
   alias Stitch.Traces.{Event, Trace, Activity}
+  alias Stitch.Utilities
 
   schema "events" do
     field :message, :string
@@ -20,18 +21,7 @@ defmodule Stitch.Traces.Event do
     event
     |> cast(attrs, [:timestamp_integer, :phase, :message])
     |> validate_required([:timestamp_integer, :phase])
-    |> convert_timestamp_integer_to_datetime
+    |> Utilities.convert_timestamp_integer_to_datetime
   end
-
-  def convert_timestamp_integer_to_datetime(changeset) do
-    timestamp_integer = get_field(changeset, :timestamp_integer)
-    case is_integer timestamp_integer do
-      true -> 
-        timestamp = Ecto.DateTime.from_unix!(timestamp_integer, 1000)
-        put_change(changeset, :timestamp, timestamp)
-      false -> add_error(changeset, :timestamp, "input not valid")
-    end
-  end
-
 
 end

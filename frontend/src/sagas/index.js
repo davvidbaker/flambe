@@ -11,10 +11,11 @@ import {
   ACTIVITY_RESUME,
   ACTIVITY_SUSPEND,
   ACTIVITY_UPDATE,
+  ATTENTION_SHIFT,
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
   COMMAND_RUN,
-  NOTE_TO_SELF_UPDATE,
+  MANTRA_CREATE,
   THREAD_CREATE,
   THREAD_DELETE,
   THREAD_UPDATE,
@@ -24,7 +25,7 @@ import {
   TRACE_FETCH,
   TRACE_SELECT,
   TRACE_DELETE,
-  USER_FETCH
+  USER_FETCH,
 } from 'actions';
 import { getUser } from 'reducers/user';
 import { getTimeline } from 'reducers/timeline';
@@ -38,9 +39,9 @@ async function hitNetwork({ resource, params = {} }) {
     {
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      ...params
+      ...params,
     }
   );
   if (!response.ok) throw response;
@@ -54,10 +55,9 @@ function* fetchResource(actionType, { resource, params }) {
   try {
     const json = yield call(hitNetwork, { resource, params });
     const data = json.data;
-    console.log('json success, data:', data);
     yield put({ type: `${actionType}_SUCCEEDED`, data });
   } catch (e) {
-    console.log('failed response', `${actionType}_FAILED`, e, e.statusText);
+    console.error('failed response', `${actionType}_FAILED`, e, e.statusText);
   }
 }
 
@@ -72,7 +72,7 @@ function* createActivity({
   thread_id /* message */,
   category_id,
   todo_id = null,
-  phase = 'B'
+  phase = 'B',
 }) {
   const timeline = yield select(getTimeline);
 
@@ -88,10 +88,10 @@ function* createActivity({
         activity: {
           name,
           description,
-          categories: category_id ? [category_id] : []
-        }
-      })
-    }
+          categories: category_id ? [category_id] : [],
+        },
+      }),
+    },
   });
 }
 
@@ -108,10 +108,10 @@ function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }) {
         event: {
           timestamp_integer: timestamp,
           message,
-          phase: eventFlavor
-        }
-      })
-    }
+          phase: eventFlavor,
+        },
+      }),
+    },
   });
 }
 
@@ -128,10 +128,10 @@ function* suspendActivity({ type, id, timestamp, message }) {
         event: {
           timestamp_integer: timestamp,
           message,
-          phase: 'S'
-        }
-      })
-    }
+          phase: 'S',
+        },
+      }),
+    },
   });
 }
 
@@ -142,9 +142,9 @@ function* deleteActivity({ type, id }) {
     params: {
       method: 'DELETE',
       body: JSON.stringify({
-        delete_events: true
-      })
-    }
+        delete_events: true,
+      }),
+    },
   });
 }
 
@@ -154,8 +154,8 @@ function* updateActivity({ type, id, updates }) {
     resource: { path: 'activities', id },
     params: {
       method: 'PUT',
-      body: JSON.stringify({ activity: { ...updates } })
-    }
+      body: JSON.stringify({ activity: { ...updates } }),
+    },
   });
 }
 
@@ -169,9 +169,9 @@ function* createCategory({ type, activity_id, name, color }) {
         user_id: user.id,
         /** 🔮 <-(first crystal ball use) if you want to be able to set a bunch of activities to a new category, this will have to change, like with highlighting a big section */
         activity_ids: [activity_id],
-        category: { name, color }
-      })
-    }
+        category: { name, color },
+      }),
+    },
   });
 }
 
@@ -185,10 +185,10 @@ function* createTodo({ type, name, description }) {
         user_id: user.id,
         todo: {
           name,
-          description
-        }
-      })
-    }
+          description,
+        },
+      }),
+    },
   });
 }
 
@@ -198,19 +198,43 @@ function* updateCategory({ type, id, updates }) {
     params: {
       method: 'PUT',
       body: JSON.stringify({
-        category: { ...updates }
-      })
-    }
+        category: { ...updates },
+      }),
+    },
   });
 }
 
-function* updateNoteToSelf({ type, id, note }) {
+function* createMantra({ type, name }) {
+  const user = yield select(getUser);
   yield fetchResource(type, {
-    resource: { path: 'users', id },
+    resource: { path: 'mantras' },
     params: {
-      method: 'PUT',
-      body: JSON.stringify({ user: { note_to_self: note } })
-    }
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: user.id,
+        mantra: {
+          name,
+          timestamp_integer: Date.now(),
+        },
+      }),
+    },
+  });
+}
+
+function* shiftAttention({ type, thread_id, timestamp }) {
+  const user = yield select(getUser);
+  yield fetchResource(type, {
+    resource: { path: 'attentions' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: user.id,
+        attention: {
+          thread_id,
+          timestamp_integer: timestamp,
+        },
+      }),
+    },
   });
 }
 
@@ -220,9 +244,9 @@ function* updateThread({ type, id, updates }) {
     params: {
       method: 'PUT',
       body: JSON.stringify({
-        thread: { ...updates }
-      })
-    }
+        thread: { ...updates },
+      }),
+    },
   });
 }
 
@@ -230,8 +254,8 @@ function* deleteThread({ type, id }) {
   yield fetchResource(type, {
     resource: { path: 'threads', id },
     params: {
-      method: 'DELETE'
-    }
+      method: 'DELETE',
+    },
   });
 }
 
@@ -241,20 +265,20 @@ function* createTrace({ type, name }) {
     resource: { path: 'traces' },
     params: {
       method: 'POST',
-      body: JSON.stringify({ user_id: user.id, trace: { name } })
-    }
+      body: JSON.stringify({ user_id: user.id, trace: { name } }),
+    },
   });
 }
 
 function* fetchUser({ type, id }) {
   yield fetchResource(type, {
-    resource: { path: 'users', id }
+    resource: { path: 'users', id },
   });
 }
 
 function* fetchTrace({ trace }) {
   yield fetchResource(TRACE_FETCH, {
-    resource: { path: 'traces', id: trace.id }
+    resource: { path: 'traces', id: trace.id },
   });
 }
 
@@ -262,8 +286,8 @@ function* deleteTrace({ type, id }) {
   yield fetchResource(type, {
     resource: { path: 'traces', id },
     params: {
-      method: 'DELETE'
-    }
+      method: 'DELETE',
+    },
   });
 }
 
@@ -271,7 +295,6 @@ function isCollapsed(persistedThreads, thread) {
   if (!persistedThreads) return false;
 
   const found = persistedThreads.find(thr => thr.id === thread.id);
-  console.log('foundIndex', found);
   if (found) {
     return found.collapsed;
   }
@@ -281,18 +304,16 @@ function isCollapsed(persistedThreads, thread) {
 function* processFetchedTrace({ data }) {
   const timeline = yield select(getTimeline);
   const persistedThreads = timeline.threads;
-  console.log('persistedThreads', persistedThreads);
-  console.log('timeline', timeline);
 
   yield put(
     processTimelineTrace(
       data.events.map(event => ({
         ...event,
-        timestamp: new Date(event.timestamp).getTime()
+        timestamp: new Date(event.timestamp).getTime(),
       })),
       data.threads.map(thread => ({
         ...thread,
-        collapsed: isCollapsed(persistedThreads, thread)
+        collapsed: isCollapsed(persistedThreads, thread),
       }))
     )
   );
@@ -306,9 +327,9 @@ function* createThread({ type, name, rank }) {
       method: 'POST',
       body: JSON.stringify({
         trace_id: timeline.trace.id,
-        thread: { name, rank }
-      })
-    }
+        thread: { name, rank },
+      }),
+    },
   });
 }
 
@@ -325,10 +346,10 @@ function* resumeActivity({ type, id, timestamp, message }) {
         event: {
           timestamp_integer: timestamp,
           message,
-          phase: 'R'
-        }
-      })
-    }
+          phase: 'R',
+        },
+      }),
+    },
   });
 }
 // // // // // // // // // // // // // // // // // // // // // // // //
@@ -348,7 +369,9 @@ function* mainSaga() {
   yield takeEvery(CATEGORY_CREATE, createCategory);
   yield takeEvery(CATEGORY_UPDATE, updateCategory);
 
-  yield takeEvery(NOTE_TO_SELF_UPDATE, updateNoteToSelf);
+  yield takeEvery(MANTRA_CREATE, createMantra);
+
+  yield takeEvery(ATTENTION_SHIFT, shiftAttention);
 
   // 🤔 A saga might be overkill for this, but maybe not because the command palette doesn't know what the state of selected activities is, so it wouldn't know what activity to apply your command to...ehhhh maybe not...still not <sure className=""></sure>
   yield takeEvery(COMMAND_RUN, handleCommand);

@@ -39,7 +39,7 @@ const Button = styled.button`
   ${props => (props.additionalStyles ? props.additionalStyles : '')};
 `;
 
-const StyledInputFromButton = styled.input`
+const StyledInputFromButton = styled.textarea`
   /* min-width: unset; */
   /* width: unset; */
   ${commonStyles};
@@ -62,12 +62,6 @@ export class InputFromButton extends Component<
   state = {
     isInput: false
   };
-
-  // focus = () => {
-  //   this.setState({ width: this.button.getBoundingClientRect().width }, () => {
-  //     this.transformIntoInput();
-  //   });
-  // };
 
   transformIntoInput = () => {
     this.setState(

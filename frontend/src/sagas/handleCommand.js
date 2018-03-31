@@ -8,6 +8,7 @@ import {
   ACTIVITY_RESUME,
   ACTIVITY_SUSPEND,
   ACTIVITY_DETAILS_SHOW,
+  ATTENTION_SHIFT,
   THREAD_CREATE,
   THREADS_COLLAPSE,
   THREADS_EXPAND,
@@ -19,6 +20,7 @@ import {
   deleteActivity,
   endActivity,
   resumeActivity,
+  shiftAttention,
   showActivityDetails,
   suspendActivity,
   toggleTodos
@@ -85,6 +87,11 @@ function* handleCommand({ type, operand, command }) {
           thread_id: operand.thread_id
         })
       );
+      break;
+
+    case ATTENTION_SHIFT:
+      console.log('command', command);
+      yield put(shiftAttention(command.thread_id, Date.now()));
       break;
 
     case ACTIVITY_DETAILS_SHOW:

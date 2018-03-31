@@ -247,4 +247,122 @@ defmodule Stitch.AccountsTest do
       assert %Ecto.Changeset{} = Accounts.change_todo(todo)
     end
   end
+
+  describe "mantras" do
+    alias Stitch.Accounts.Mantra
+
+    @valid_attrs %{name: "some name"}
+    @update_attrs %{name: "some updated name"}
+    @invalid_attrs %{name: nil}
+
+    def mantra_fixture(attrs \\ %{}) do
+      {:ok, mantra} =
+        attrs
+        |> Enum.into(@valid_attrs)
+        |> Accounts.create_mantra()
+
+      mantra
+    end
+
+    test "list_mantras/0 returns all mantras" do
+      mantra = mantra_fixture()
+      assert Accounts.list_mantras() == [mantra]
+    end
+
+    test "get_mantra!/1 returns the mantra with given id" do
+      mantra = mantra_fixture()
+      assert Accounts.get_mantra!(mantra.id) == mantra
+    end
+
+    test "create_mantra/1 with valid data creates a mantra" do
+      assert {:ok, %Mantra{} = mantra} = Accounts.create_mantra(@valid_attrs)
+      assert mantra.name == "some name"
+    end
+
+    test "create_mantra/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Accounts.create_mantra(@invalid_attrs)
+    end
+
+    test "update_mantra/2 with valid data updates the mantra" do
+      mantra = mantra_fixture()
+      assert {:ok, mantra} = Accounts.update_mantra(mantra, @update_attrs)
+      assert %Mantra{} = mantra
+      assert mantra.name == "some updated name"
+    end
+
+    test "update_mantra/2 with invalid data returns error changeset" do
+      mantra = mantra_fixture()
+      assert {:error, %Ecto.Changeset{}} = Accounts.update_mantra(mantra, @invalid_attrs)
+      assert mantra == Accounts.get_mantra!(mantra.id)
+    end
+
+    test "delete_mantra/1 deletes the mantra" do
+      mantra = mantra_fixture()
+      assert {:ok, %Mantra{}} = Accounts.delete_mantra(mantra)
+      assert_raise Ecto.NoResultsError, fn -> Accounts.get_mantra!(mantra.id) end
+    end
+
+    test "change_mantra/1 returns a mantra changeset" do
+      mantra = mantra_fixture()
+      assert %Ecto.Changeset{} = Accounts.change_mantra(mantra)
+    end
+  end
+
+  describe "attentions" do
+    alias Stitch.Accounts.Attention
+
+    @valid_attrs %{}
+    @update_attrs %{}
+    @invalid_attrs %{}
+
+    def attention_fixture(attrs \\ %{}) do
+      {:ok, attention} =
+        attrs
+        |> Enum.into(@valid_attrs)
+        |> Accounts.create_attention()
+
+      attention
+    end
+
+    test "list_attentions/0 returns all attentions" do
+      attention = attention_fixture()
+      assert Accounts.list_attentions() == [attention]
+    end
+
+    test "get_attention!/1 returns the attention with given id" do
+      attention = attention_fixture()
+      assert Accounts.get_attention!(attention.id) == attention
+    end
+
+    test "create_attention/1 with valid data creates a attention" do
+      assert {:ok, %Attention{} = attention} = Accounts.create_attention(@valid_attrs)
+    end
+
+    test "create_attention/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Accounts.create_attention(@invalid_attrs)
+    end
+
+    test "update_attention/2 with valid data updates the attention" do
+      attention = attention_fixture()
+      assert {:ok, attention} = Accounts.update_attention(attention, @update_attrs)
+      assert %Attention{} = attention
+    end
+
+    test "update_attention/2 with invalid data returns error changeset" do
+      attention = attention_fixture()
+      assert {:error, %Ecto.Changeset{}} = Accounts.update_attention(attention, @invalid_attrs)
+      assert attention == Accounts.get_attention!(attention.id)
+    end
+
+    test "delete_attention/1 deletes the attention" do
+      attention = attention_fixture()
+      assert {:ok, %Attention{}} = Accounts.delete_attention(attention)
+      assert_raise Ecto.NoResultsError, fn -> Accounts.get_attention!(attention.id) end
+    end
+
+    test "change_attention/1 returns a attention changeset" do
+      attention = attention_fixture()
+      assert %Ecto.Changeset{} = Accounts.change_attention(attention)
+    end
+  end
 end
