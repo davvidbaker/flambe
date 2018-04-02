@@ -1,3 +1,5 @@
+import last from 'lodash/fp/last';
+
 import {
   ATTENTION_SHIFT,
   CATEGORY_CREATE,
@@ -31,7 +33,12 @@ function user(
         ...state,
         categories: [
           ...state.categories,
-          { name: action.name, id: 'optimisticCategory', color: action.color }
+          {
+            name: action.name,
+            id: 'optimisticCategory',
+            color_background: action.color_background,
+            color_text: action.color_text || '#000000'
+          }
         ]
       };
     // this is optimistic, need to handle failure
@@ -68,13 +75,15 @@ function user(
     case ATTENTION_SHIFT:
       console.log('state.attentionShifts', state.attentionShifts);
       console.log('action', action);
-      return {
-        ...state,
-        attentionShifts: [
-          ...state.attentionShifts,
-          { timestamp: action.timestamp, thread_id: action.thread_id }
-        ]
-      };
+      return action.thread_id === last(state.attentionShifts.thread_id)
+        ? state
+        : {
+          ...state,
+          attentionShifts: [
+            ...state.attentionShifts,
+            { timestamp: action.timestamp, thread_id: action.thread_id }
+          ]
+        };
     // 😃 optimism!
 
     case TODO_CREATE:
@@ -149,7 +158,6 @@ function user(
       return state;
 
     default:
-      console.log('default state', state);
       return state;
   }
 }

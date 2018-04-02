@@ -6,7 +6,7 @@ defmodule Stitch.Accounts do
   import Ecto.Query, warn: false
   alias Stitch.Repo
 
-  alias Stitch.Accounts.{User, Credential, Attention, Mantra}
+  alias Stitch.Accounts.{User, Credential, Attention, Mantra, Category}
 
   @doc """
   Returns the list of todos for a particular user.
@@ -292,8 +292,6 @@ defmodule Stitch.Accounts do
       nil -> {:error, :unauthorized}
     end
   end
-
-  alias Stitch.Accounts.Category
 
   @doc """
   Returns the list of categories.

@@ -9,6 +9,7 @@ import {
   ACTIVITY_SUSPEND,
   ACTIVITY_DETAILS_SHOW,
   ATTENTION_SHIFT,
+  CATEGORY_MANAGER_SHOW,
   THREAD_CREATE,
   THREADS_COLLAPSE,
   THREADS_EXPAND,
@@ -22,6 +23,7 @@ import {
   resumeActivity,
   shiftAttention,
   showActivityDetails,
+  showCategoryManager,
   suspendActivity,
   toggleTodos
 } from 'actions';
@@ -43,6 +45,7 @@ function* handleCommand({ type, operand, command }) {
           category_id: command.category_id
         })
       );
+      yield put(shiftAttention(command.thread_id, Date.now()));
       break;
 
     case ACTIVITY_RESUME:
@@ -96,6 +99,10 @@ function* handleCommand({ type, operand, command }) {
 
     case ACTIVITY_DETAILS_SHOW:
       yield put(showActivityDetails());
+      break;
+
+    case CATEGORY_MANAGER_SHOW:
+      yield put(showCategoryManager());
       break;
 
     case THREAD_CREATE:

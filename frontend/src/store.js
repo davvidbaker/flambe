@@ -10,7 +10,8 @@ import {
   user,
   operand,
   todosVisible,
-  activityDetailsVisible
+  activityDetailsVisible,
+  categoryManagerVisible
 } from 'reducers';
 import { getTimeline } from 'reducers/timeline';
 import { getUser } from 'reducers/user';
@@ -43,6 +44,7 @@ const rootReducer = combineReducers({
   operand,
   todosVisible,
   activityDetailsVisible,
+  categoryManagerVisible,
   router: routerReducer
 });
 const store = createStore(

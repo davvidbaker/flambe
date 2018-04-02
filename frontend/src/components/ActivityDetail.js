@@ -135,7 +135,8 @@ class ActivityDetail extends React.Component<Props> {
                     <Category
                       id={category.id}
                       name={category.name}
-                      color={category.color}
+                      color_background={category.color_background}
+                      color_text={category.color_text}
                       updateCategory={updateCategory}
                     />
                   </li>

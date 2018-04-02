@@ -11,8 +11,11 @@ defmodule StitchWeb.CategoryView do
   end
 
   def render("category.json", %{category: category}) do
-    %{id: category.id,
+    %{
+      id: category.id,
       name: category.name,
-      color: category.color}
+      color_background: category.color_background,
+      color_text: category.color_text
+    }
   end
 end
