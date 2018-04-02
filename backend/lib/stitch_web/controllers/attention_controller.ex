@@ -7,6 +7,7 @@ defmodule StitchWeb.AttentionController do
   action_fallback StitchWeb.FallbackController
 
   def index(conn, _params) do
+  # ⚠️ next Accounts.list_attentions() is not a function
     attentions = Accounts.list_attentions()
     render(conn, "index.json", attentions: attentions)
   end

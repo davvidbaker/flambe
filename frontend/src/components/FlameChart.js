@@ -31,6 +31,7 @@ import { getTimeline } from 'reducers/timeline';
 import { colors } from 'styles';
 
 import type { Activity } from 'types/Activity';
+import type { Category as CategoryType } from 'types/Category';
 
 const SUSPENDED = 0;
 
@@ -65,7 +66,7 @@ type Props = {
   topOffset: number,
   // functions
   activities?: { [id: string]: Activity },
-  categories: { id: string, name: string, color: string },
+  categories: CategoryType[],
   focusBlock: (id: number, thread_id: number) => mixed,
   showThreadDetail: (id: number) => mixed,
   toggleThread: (id: number, isCollapsed: boolean) => mixed,
@@ -638,7 +639,7 @@ class FlameChart extends Component<Props, State> {
         element => element.id === activity.categories[0]
       );
       if (cat) {
-        this.ctx.fillStyle = cat.color;
+        this.ctx.fillStyle = cat.color_background;
       }
     }
     this.ctx.fillRect(blockX, blockY, blockWidth, this.blockHeight);
@@ -663,7 +664,19 @@ class FlameChart extends Component<Props, State> {
       blockWidth - 2 * FlameChart.textPadding.x
     );
 
-    this.ctx.fillStyle = colors.text;
+    /* ⚠️ this is redundant, we do it up above. need to refactor a little */
+    /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
+    if (activity.categories.length > 0 && activity.categories[0]) {
+      // ⚠️ don't always just show the color belonging to category 0... need a better way
+      const cat = this.props.categories.find(
+        element => element.id === activity.categories[0]
+      );
+      if (cat) {
+        this.ctx.fillStyle = cat.color_text || '#000000';
+      }
+    } else {
+      this.ctx.fillStyle = colors.text;
+    }
     this.ctx.fillText(
       text,
       blockX + FlameChart.textPadding.x,
@@ -816,24 +829,15 @@ class FlameChart extends Component<Props, State> {
   /* 💁 ⚠️ Not as in "The explosion outside drew my attention". */
   drawAttention(ctx) {
     this.props.attentionShifts.forEach(({ thread_id, timestamp }, ind) => {
-      console.log('attentionShifts', this.props.attentionShifts);
       const y = this.state.offsets[thread_id];
       const x = this.timeToPixels(timestamp);
-      console.log(
-        'this.props.leftBoundaryTime < timestamp',
-        this.props.leftBoundaryTime < timestamp
-      );
 
       const x2 = ind < this.props.attentionShifts.length - 1
         ? this.timeToPixels(this.props.attentionShifts[ind + 1].timestamp)
         : this.timeToPixels(this.props.rightBoundaryTime);
 
-      console.log('x, y', x, y);
-      console.log('x2 > x', x2 > x);
-
       ctx.strokeStyle = '#ff0000';
 
-      // ctx.fillStyle = '#ff0000';
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x2, y);

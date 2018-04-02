@@ -20,11 +20,16 @@ defmodule StitchWeb.UserView do
     traces = Stitch.Traces.list_user_traces(user.id)
     todos = Stitch.Accounts.list_user_todos(user.id)
     attentions = Stitch.Accounts.list_user_attentions(user.id)
-    IO.puts "\nattentions"
-    IO.inspect attentions
+    
 
     categories =
-      Enum.map(user.categories, fn cat -> %{id: cat.id, color: cat.color, name: cat.name} end)
+      Enum.map(user.categories, fn cat -> %{id: cat.id, color_background: cat.color_background, color_text: cat.color_text, name: cat.name} end)
+
+    IO.puts "\ncategories"
+    IO.inspect categories
+
+    IO.puts "\nuser.categories"
+    IO.inspect user.categories
 
     %{
       id: user.id,

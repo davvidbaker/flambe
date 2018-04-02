@@ -33,6 +33,9 @@ export const BLOCK_HOVER = 'BLOCK_HOVER';
 export const CATEGORY_CREATE = 'CATEGORY_CREATE';
 export const CATEGORY_UPDATE = 'CATEGORY_UPDATE';
 
+export const CATEGORY_MANAGER_SHOW = 'CATEGORY_MANAGER_SHOW';
+export const CATEGORY_MANAGER_HIDE = 'CATEGORY_MANAGER_HIDE';
+
 export const COMMAND_RUN = 'COMMAND_RUN';
 
 export const MANTRA_CREATE = 'MANTRA_CREATE';
@@ -302,15 +305,27 @@ export function updateActivity(id, updates) {
   };
 }
 
-export function showActivityDetails(id) {
+export function showActivityDetails() {
   return {
     type: ACTIVITY_DETAILS_SHOW
   };
 }
 
-export function hideActivityDetails(id) {
+export function hideActivityDetails() {
   return {
     type: ACTIVITY_DETAILS_HIDE
+  };
+}
+
+export function showCategoryManager() {
+  return {
+    type: CATEGORY_MANAGER_SHOW
+  };
+}
+
+export function hideCategoryManager() {
+  return {
+    type: CATEGORY_MANAGER_HIDE
   };
 }
 

@@ -8,6 +8,7 @@ import {
   ACTIVITY_RESUME,
   ACTIVITY_DETAILS_SHOW,
   ATTENTION_SHIFT,
+  CATEGORY_MANAGER_SHOW,
   THREAD_CREATE,
   THREADS_COLLAPSE,
   THREADS_EXPAND,
@@ -35,7 +36,7 @@ const categoryParam = {
   selector: props => {
     const cats = props.user.categories.map(cat => ({
       ...cat,
-      label: categoryLabel(cat.color)
+      label: categoryLabel(cat.color_background)
     }));
     return [{ name: 'none', id: null, label: categoryLabel(null) }, ...cats];
   },
@@ -103,6 +104,10 @@ const COMMANDS = [
     action: ATTENTION_SHIFT,
     copy: 'shift attention to...',
     parameters: [threadParam]
+  },
+  {
+    action: CATEGORY_MANAGER_SHOW,
+    copy: 'manage categories'
   }
 ];
 

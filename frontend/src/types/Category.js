@@ -3,8 +3,8 @@
 type Category = {
   id: string,
   name: string,
-  color: string,
-  // activities ? 
+  color_background: string,
+  color_text: string
 };
 
 export type { Category };

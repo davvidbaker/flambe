@@ -26,8 +26,6 @@ defmodule StitchWeb.TraceController do
 
   def show(conn, %{"id" => id}) do
     {events, trace} = Traces.get_trace_with_events(id)
-    IO.puts "\nevents"
-    IO.inspect events
     render(conn, "show.json", %{trace: trace, events: events})
   end
 

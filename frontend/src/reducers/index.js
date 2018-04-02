@@ -1,7 +1,9 @@
 import {
   TODOS_TOGGLE,
   ACTIVITY_DETAILS_SHOW,
-  ACTIVITY_DETAILS_HIDE
+  ACTIVITY_DETAILS_HIDE,
+  CATEGORY_MANAGER_SHOW,
+  CATEGORY_MANAGER_HIDE
 } from 'actions';
 
 import timeline from './timeline';
@@ -29,11 +31,22 @@ function activityDetailsVisible(state = false, action) {
   }
 }
 
+function categoryManagerVisible(state = false, action) {
+  switch (action.type) {
+    case CATEGORY_MANAGER_SHOW:
+      return true;
+    case CATEGORY_MANAGER_HIDE:
+      return false;
+    default:
+      return state;
+  }
+}
 export {
   timeline,
   modifiers,
   user,
   operand,
   todosVisible,
-  activityDetailsVisible
+  activityDetailsVisible,
+  categoryManagerVisible
 };

@@ -6,7 +6,8 @@ defmodule Stitch.Accounts.Category do
 
 
   schema "categories" do
-    field :color, :string
+    field :color_background, :string
+    field :color_text, :string
     field :name, :string
     belongs_to :user, User
     many_to_many :activities, Activity, join_through: "activities_categories"
@@ -17,8 +18,8 @@ defmodule Stitch.Accounts.Category do
   @doc false
   def changeset(%Category{} = category, attrs) do
     category
-    |> cast(attrs, [:name, :color])
-    |> validate_required([:name, :color])
+    |> cast(attrs, [:name, :color_background, :color_text])
+    |> validate_required([:name, :color_background])
     # 💁 the :name atom and name: key are not related! beware!
     |> unique_constraint(:name, name: :user_category_index)
   end
