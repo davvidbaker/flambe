@@ -134,17 +134,17 @@ export function beginTodo({
 export function createCategory({
   activity_id,
   name,
-  color
+  color_background
 }: {
   activity_id: string,
   name: string,
-  color: string
+  color_background: string
 }) {
   return {
     type: CATEGORY_CREATE,
     activity_id,
     name,
-    color
+    color_background
   };
 }
 

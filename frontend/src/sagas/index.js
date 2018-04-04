@@ -159,7 +159,7 @@ function* updateActivity({ type, id, updates }) {
   });
 }
 
-function* createCategory({ type, activity_id, name, color }) {
+function* createCategory({ type, activity_id, name, color_background }) {
   const user = yield select(getUser);
   yield fetchResource(type, {
     resource: { path: 'categories' },
@@ -169,7 +169,7 @@ function* createCategory({ type, activity_id, name, color }) {
         user_id: user.id,
         /** 🔮 <-(first crystal ball use) if you want to be able to set a bunch of activities to a new category, this will have to change, like with highlighting a big section */
         activity_ids: [activity_id],
-        category: { name, color },
+        category: { name, color_background },
       }),
     },
   });

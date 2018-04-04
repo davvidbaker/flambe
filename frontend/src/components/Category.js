@@ -1,13 +1,12 @@
 // @flow
-
 import React, { Component } from 'react';
+
 import ColorPicker from 'components/ColorPicker';
 import ColorCircle from 'components/ColorCircle';
 import Popup from 'components/Popup';
-import { InputFromButton } from 'components/Button';
-import { colors } from 'styles';
-import Fuzzy from 'components/Fuzzy';
 import styled from 'styled-components';
+
+import type { Category as CategoryType } from 'types/Category';
 
 const Preview = styled.div`
   font-size: 12px;
@@ -16,8 +15,6 @@ const Preview = styled.div`
   background-color: ${props => props.background};
   color: ${props => props.color};
 `;
-
-import type { Category as CategoryType } from 'types/Category';
 
 class Category extends Component<{
   id: number,
@@ -97,85 +94,6 @@ class Category extends Component<{
         <button onClick={() => this.openColorPicker('text')}>
           <ColorCircle background={this.props.color_text || '#000000'} />
         </button>
-      </div>
-    );
-  }
-}
-
-type Props = {
-  categories: Category[],
-  addNewCategory: (name: string, color: string) => mixed,
-  addExistingCategory: (id: number) => mixed
-};
-
-type State = {
-  colorPickerVisible: boolean,
-  color: string,
-  name: ?string
-};
-
-export class AddCategory extends Component<Props, State> {
-  state = {
-    colorPickerVisible: false,
-    color: { hex: colors.flames.main },
-    name: null
-  };
-
-  submit = (name: string) => {
-    this.showColorPicker(name);
-  };
-
-  showColorPicker = (name: string) => {
-    this.setState({
-      name
-    });
-    this.setState({ colorPickerVisible: true });
-  };
-
-  closeColorPicker = () => {
-    this.setState({ colorPickerVisible: false });
-    this.props.addNewCategory(this.state.name, this.state.color.hex, true);
-  };
-
-  selectExistingCategory = ({ id, name, color }: CategoryType) => {
-    console.log('selected existing category', id, name, color);
-    this.props.addExistingCategory(id);
-  };
-
-  // idk what shape of color object is 🤷‍
-  setColor = (color: any) => {
-    this.setState({ [`color_${this.state.colorPickerFlavor}`]: color });
-  };
-
-  render() {
-    return (
-      <div>
-        <InputFromButton looksLikeButton submit={this.showColorPicker}>
-          New Category
-        </InputFromButton>
-        <Fuzzy
-          itemStringKey="name"
-          onChange={this.selectExistingCategory}
-          placeholder="Category"
-          items={this.props.categories.map(cat => ({
-            ...cat,
-            label: {
-              background: cat.color_background || colors.flame.main,
-              copy: ' ' // 👈 U+2003 EM space
-            }
-          }))}
-        />
-        <Popup
-          isOpen={this.state.colorPickerVisible}
-          onClose={this.closeColorPicker}
-        >
-          {() => (
-            <ColorPicker
-              color={this.state.color}
-              onChangeComplete={this.setColor}
-            />
-          )}
-        </Popup>
       </div>
     );
   }

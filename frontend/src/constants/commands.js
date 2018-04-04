@@ -139,14 +139,14 @@ export const ACTIVITY_COMMANDS = [
   },
   {
     action: ACTIVITY_RESUME,
-    copy: 'resume',
+    copy: 'resume...',
     parameters: [messageParam],
     status: ['suspended'],
     label: activityLabel
   },
   {
     action: ACTIVITY_SUSPEND,
-    copy: 'suspend',
+    copy: 'suspend...',
     parameters: [messageParam],
     status: ['active'],
     label: activityLabel
