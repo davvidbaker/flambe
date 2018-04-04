@@ -13,6 +13,7 @@ import identity from 'lodash/fp/identity';
 import pipe from 'lodash/fp/pipe';
 import reverse from 'lodash/fp/reverse';
 import mapValues from 'lodash/fp/mapValues';
+import memoize from 'lodash/fp/memoize';
 
 /* 🔮  abstract into parts of react-flame-chart? */
 import HoverActivity from 'components/HoverActivity';
@@ -181,6 +182,12 @@ class FlameChart extends Component<Props, State> {
       // this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
 
       this.ctx = this.canvas.getContext('2d');
+
+      /* ⚠️ Not sure if I want to do this...
+        initial testing showed basically no perf gain
+       */
+      // this.ctx.measureText = memoize(this.ctx.measureText)
+
       this.minTextWidth =
         FlameChart.textPadding.x + this.ctx.measureText('\u2026').textWidth;
 
@@ -610,14 +617,25 @@ class FlameChart extends Component<Props, State> {
 
     // block = activn
 
-    // 👇 I called it a transform for lack of a better term, even though it doesn't tell you everything a transform usually does
-    const { blockX, blockY, blockWidth } = this.getBlockTransform(
-      collapsed ? { ...block, level: -1 } : block,
-      this.blockHeight,
-      (collapsed ? 1 : 0) +
-        this.topOffset +
-        this.state.offsets[activity.thread.id]
-    );
+    // const { blockX, blockY, blockWidth } = this.getBlockTransform(
+    //   collapsed ? { ...block, level: -1 } : block,
+    //   this.blockHeight,
+    //   (collapsed ? 1 : 0) +
+    //     this.topOffset +
+    //     this.state.offsets[activity.thread.id]
+    // );
+
+    const { blockX, blockY, blockWidth } = collapsed
+      ? this.getBlockTransform(
+        { ...block, level: -1 },
+        this.blockHeight,
+        1 + this.topOffset + this.state.offsets[activity.thread.id]
+      )
+      : this.getBlockTransform(
+        block,
+        this.blockHeight,
+        this.topOffset + this.state.offsets[activity.thread.id]
+      );
 
     // don't draw bar if whole thing is this.left of view
     if (blockX + blockWidth < 0) {
@@ -629,7 +647,7 @@ class FlameChart extends Component<Props, State> {
       return;
     }
 
-    this.ctx.globalAlpha = collapsed ? 0.2 : 1;
+    this.ctx.globalAlpha = collapsed ? 0.8 : 1;
     this.ctx.fillStyle = colors.flames.main;
 
     /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
@@ -642,7 +660,19 @@ class FlameChart extends Component<Props, State> {
         this.ctx.fillStyle = cat.color_background;
       }
     }
-    this.ctx.fillRect(blockX, blockY, blockWidth, this.blockHeight);
+    this.ctx.fillRect(
+      blockX,
+      collapsed
+        ? blockY +
+            block.level *
+              this.blockHeight /
+              this.props.threadLevels[activity.thread.id].max
+        : blockY,
+      blockWidth,
+      collapsed
+        ? this.blockHeight / this.props.threadLevels[activity.thread.id].max
+        : this.blockHeight
+    );
 
     // don't even think about drawing text if bar is too small
     if (blockWidth < this.minTextWidth) {
@@ -764,7 +794,6 @@ class FlameChart extends Component<Props, State> {
   }
 
   drawThreadHeaders(ctx) {
-    ctx.fillStyle = colors.text;
     ctx.globalAlpha = 1;
     this.props.threads.forEach(thread => {
       const regex = emojiRegex();
@@ -777,6 +806,19 @@ class FlameChart extends Component<Props, State> {
       while ((match = regex.exec(thread.name))) {
         emoji.push(match[0]);
       }
+
+      ctx.globalAlpha = 0.75;
+      ctx.fillStyle = 'white';
+      const { width, height } = ctx.measureText(thread.name);
+      ctx.fillRect(
+        0,
+        this.state.offsets[thread.id],
+        width + 25,
+        this.blockHeight
+      );
+
+      ctx.fillStyle = colors.text;
+      ctx.globalAlpha = 1;
       ctx.font = 'bold 18px sans-serif';
 
       ctx.fillText(
@@ -793,6 +835,10 @@ class FlameChart extends Component<Props, State> {
         FlameChart.textPadding.x + 20,
         this.state.offsets[thread.id] + FlameChart.textPadding.y
       );
+
+      marky.mark('measureText');
+      ctx.measureText(thread.name);
+      marky.stop('measureText');
 
       ctx.save();
 
