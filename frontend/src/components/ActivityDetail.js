@@ -6,7 +6,8 @@ import Modal from 'react-modal';
 // flow-ignore
 import { connect } from 'react-redux';
 
-import Category, { AddCategory } from 'components/Category';
+import Category from 'components/Category';
+import AddCategory from 'components/AddCategory';
 import DeleteButton from 'components/DeleteButton';
 import Grid from 'components/Grid';
 import { InputFromButton } from 'components/Button';
@@ -71,7 +72,7 @@ class ActivityDetail extends React.Component<Props> {
     this.props.createCategory({
       activity_id: this.props.activity.id,
       name,
-      color: hexString
+      color_background: hexString
     });
   };
 
@@ -165,8 +166,8 @@ connect(
   dispatch => ({
     // updateThreadLevels: (id: string, inc: number) =>
     // dispatch(updateThreadLevel(id, inc)),
-    createCategory: ({ activity_id, name, color }) =>
-      dispatch(createCategory({ activity_id, name, color })),
+    createCategory: ({ activity_id, name, color_background }) =>
+      dispatch(createCategory({ activity_id, name, color_background })),
     hideActivityDetails: () => dispatch(hideActivityDetails()),
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
