@@ -13,16 +13,19 @@ const trimMiddle = (str, maxLength) => {
     ++leftHalf;
   }
   if (leftHalf > 0 && str.codePointAt(leftHalf - 1) >= 0x10000) --leftHalf;
-  return `${str.substr(0, leftHalf)}\u2026${str.substr(str.length - rightHalf, rightHalf)}`;
+  return `${str.substr(0, leftHalf)}\u2026${str.substr(
+    str.length - rightHalf,
+    rightHalf
+  )}`;
 };
 
 /**
-* @param {!CanvasRenderingContext2D} context
-* @param {string} text
-* @param {number} maxWidth
-* @param {function(string, number):string} trimFunction
-* @return {string}
-*/
+ * @param {!CanvasRenderingContext2D} context
+ * @param {string} text
+ * @param {number} maxWidth
+ * @param {function(string, number):string} trimFunction
+ * @return {string}
+ */
 const trimText = (context, text, maxWidth, trimFunction) => {
   const maxLength = 200;
   if (maxWidth <= 10) return '';
@@ -52,11 +55,11 @@ const trimText = (context, text, maxWidth, trimFunction) => {
 };
 
 /**
-* @param {!CanvasRenderingContext2D} context
-* @param {string} text
-* @param {number} maxWidth
-* @return {string}
-*/
+ * @param {!CanvasRenderingContext2D} context
+ * @param {string} text
+ * @param {number} maxWidth
+ * @return {string}
+ */
 const trimTextMiddle = (context, text, maxWidth) =>
   trimText(context, text, maxWidth, (text, width) => trimMiddle(text, width));
 
