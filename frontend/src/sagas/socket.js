@@ -1,9 +1,12 @@
 import { Socket } from 'phoenix';
-import { put, takeEvery, select } from 'redux-saga/effects';
+import { put, takeEvery, select, take } from 'redux-saga/effects';
+import { eventChannel as sagaEventChannel } from 'redux-saga';
 
 import { getUser } from '../reducers/user';
 
 function* initSocket() {
+  const user_id = (yield select(getUser)).id;
+
   const socket = new Socket(`${SOCKET_SERVER}/socket`, {
     params: {
       user_id: 1
@@ -15,37 +18,54 @@ function* initSocket() {
 
   socket.connect();
 
-  /* ⚠️ these are not working (look at box man) */
-  socket.onOpen(function* (e) {
-    yield put('SOCKET_OPEN');
-    console.log('OPEN', e);
-  });
-  socket.onError(function* (e) {
-    yield put('SOCKET_ERROR');
-    console.log('ERROR', e);
-  });
-  socket.onClose(function* (e) {
-    yield put('SOCKET_CLOSE');
-    console.log('CLOSE', e);
+  const socketEventChannel = createSocketChannel(socket, user_id);
+
+  while (true) {
+    const myAction = yield take(socketEventChannel);
+    yield put(myAction);
+  }
+}
+function createSocketChannel(socket, user_id) {
+  const socketEventChannel = sagaEventChannel(emit => {
+    socket.onOpen(e => {
+      emit({ type: 'SOCKET_OPEN' });
+      console.log('OPEN', e);
+    });
+    socket.onError(e => {
+      emit({ type: 'SOCKET_ERROR' });
+      console.log('ERROR', e);
+    });
+    socket.onClose(e => {
+      emit({ type: 'SOCKET_CLOSE' });
+      console.log('CLOSE', e);
+    });
+
+    const phoenixChannel = socket.channel(`events:${user_id}`, {});
+    phoenixChannel
+      .join()
+      .receive('ok', ({ messages }) => console.log('catching up', messages))
+      .receive('error', ({ reason }) => console.log('failed join', reason))
+      .receive('timeout', () =>
+        console.log('Networking issue. Still waiting...')
+      );
+
+    phoenixChannel.onError(e => console.log('something went wrong', e));
+    phoenixChannel.onClose(e => console.log('channel closed', e));
+
+    phoenixChannel.on('tabs', tabs => {
+      emit({ type: 'TABS_EVENT', ...tabs });
+    });
+    phoenixChannel.on('search_terms', searchTerm => {
+      emit({ type: 'SEARCH_TERMS_EVENT', ...searchTerm });
+    });
+    // subscriber must return unsubscribe method
+    const unsubscribe = () => {
+      // TODO
+    };
+    return unsubscribe;
   });
 
-  const user_id = (yield select(getUser)).id;
-
-  const channel = socket.channel(`events:${user_id}`, {});
-  channel
-    .join()
-    .receive('ok', ({ messages }) => console.log('catching up', messages))
-    .receive('error', ({ reason }) => console.log('failed join', reason))
-    .receive('timeout', () =>
-      console.log('Networking issue. Still waiting...')
-    );
-
-  channel.onError(e => console.log('something went wrong', e));
-  channel.onClose(e => console.log('channel closed', e));
-
-  channel.on('new:msg', msg => {
-    console.log('msg', msg);
-  });
+  return socketEventChannel;
 }
 
 function* socketSaga() {

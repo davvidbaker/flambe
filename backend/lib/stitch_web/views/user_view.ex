@@ -20,8 +20,9 @@ defmodule StitchWeb.UserView do
     traces = Stitch.Traces.list_user_traces(user.id)
     todos = Stitch.Accounts.list_user_todos(user.id)
     attentions = Stitch.Accounts.list_user_attentions(user.id)
+    search_terms = Stitch.Accounts.list_user_search_terms(user.id)
+    tabs = Stitch.Accounts.list_user_tabs(user.id)
     
-
     categories =
       Enum.map(user.categories, fn cat -> %{id: cat.id, color_background: cat.color_background, color_text: cat.color_text, name: cat.name} end)
 
@@ -33,7 +34,9 @@ defmodule StitchWeb.UserView do
       categories: categories,
       todos: todos,
       mantras: mantras,
-      attentionShifts: attentions
+      attentionShifts: attentions,
+      tabs: tabs,
+      searchTerms: search_terms
     }
   end
 end
