@@ -40,6 +40,9 @@ export const COMMAND_RUN = 'COMMAND_RUN';
 
 export const MANTRA_CREATE = 'MANTRA_CREATE';
 
+export const SETTINGS_SHOW = 'SETTINGS_SHOW';
+export const SETTINGS_HIDE = 'SETTINGS_HIDE';
+
 export const TODO_BEGIN = 'TODO_BEGIN';
 export const TODO_CREATE = 'TODO_CREATE';
 export const TODOS_TOGGLE = 'TODOS_TOGGLE';
@@ -326,6 +329,18 @@ export function showCategoryManager() {
 export function hideCategoryManager() {
   return {
     type: CATEGORY_MANAGER_HIDE
+  };
+}
+
+export function showSettings() {
+  return {
+    type: SETTINGS_SHOW
+  };
+}
+
+export function hideSettings() {
+  return {
+    type: SETTINGS_HIDE
   };
 }
 

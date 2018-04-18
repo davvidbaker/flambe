@@ -25,12 +25,6 @@ defmodule StitchWeb.UserView do
     categories =
       Enum.map(user.categories, fn cat -> %{id: cat.id, color_background: cat.color_background, color_text: cat.color_text, name: cat.name} end)
 
-    IO.puts "\ncategories"
-    IO.inspect categories
-
-    IO.puts "\nuser.categories"
-    IO.inspect user.categories
-
     %{
       id: user.id,
       name: user.name,

@@ -46,8 +46,8 @@ function user(
       return {
         ...state,
         mantras: [
-          { name: action.name, timestamp: Date.now() },
-          ...state.mantras
+          ...state.mantras,
+          { name: action.name, timestamp: Date.now() }
         ]
       };
     /** ⚠️ need to make sure the user doesn't do anything before this tho...

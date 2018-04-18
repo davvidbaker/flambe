@@ -3,7 +3,9 @@ import {
   ACTIVITY_DETAILS_SHOW,
   ACTIVITY_DETAILS_HIDE,
   CATEGORY_MANAGER_SHOW,
-  CATEGORY_MANAGER_HIDE
+  CATEGORY_MANAGER_HIDE,
+  SETTINGS_SHOW,
+  SETTINGS_HIDE
 } from 'actions';
 
 import timeline from './timeline';
@@ -41,6 +43,18 @@ function categoryManagerVisible(state = false, action) {
       return state;
   }
 }
+
+function settingsVisible(state = false, action) {
+  switch (action.type) {
+    case SETTINGS_SHOW:
+      return true;
+    case SETTINGS_HIDE:
+      return false;
+    default:
+      return state;
+  }
+}
+
 export {
   timeline,
   modifiers,
@@ -48,5 +62,6 @@ export {
   operand,
   todosVisible,
   activityDetailsVisible,
-  categoryManagerVisible
+  categoryManagerVisible,
+  settingsVisible
 };

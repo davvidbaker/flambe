@@ -4,7 +4,7 @@ defmodule StitchWeb.MantraController do
   alias Stitch.Accounts
   alias Stitch.Accounts.Mantra
 
-  action_fallback StitchWeb.FallbackController
+  action_fallback(StitchWeb.FallbackController)
 
   def index(conn, _params) do
     mantras = Accounts.list_mantras()
@@ -35,6 +35,7 @@ defmodule StitchWeb.MantraController do
 
   def delete(conn, %{"id" => id}) do
     mantra = Accounts.get_mantra!(id)
+
     with {:ok, %Mantra{}} <- Accounts.delete_mantra(mantra) do
       send_resp(conn, :no_content, "")
     end

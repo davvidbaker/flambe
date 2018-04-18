@@ -667,11 +667,11 @@ class FlameChart extends Component<Props, State> {
             block.level *
               this.blockHeight /
               this.props.threadLevels[activity.thread.id].max
-        : blockY,
+        : block.level === 0 ? blockY - this.blockHeight : blockY,
       blockWidth,
       collapsed
         ? this.blockHeight / this.props.threadLevels[activity.thread.id].max
-        : this.blockHeight
+        : block.level === 0 ? 2 * this.blockHeight : this.blockHeight
     );
 
     // don't even think about drawing text if bar is too small
@@ -985,6 +985,7 @@ class FlameChart extends Component<Props, State> {
     offsetFromTop: number
   ): { blockX: number, blockY: number, blockWidth: number } {
     if (endTime == null) {
+      // eslint-disable-next-line no-param-reassign
       endTime = this.props.rightBoundaryTime;
     }
 

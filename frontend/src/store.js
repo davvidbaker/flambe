@@ -11,12 +11,13 @@ import {
   operand,
   todosVisible,
   activityDetailsVisible,
-  categoryManagerVisible
+  categoryManagerVisible,
+  settingsVisible
 } from 'reducers';
 import { getTimeline } from 'reducers/timeline';
 import { getUser } from 'reducers/user';
 import { loadState, saveState } from 'utilities';
-import mainSaga from 'sagas';
+import sagas from 'sagas';
 
 // eslint-disable-next-line no-underscore-dangle
 const composeEnhancers =
@@ -45,6 +46,7 @@ const rootReducer = combineReducers({
   todosVisible,
   activityDetailsVisible,
   categoryManagerVisible,
+  settingsVisible,
   router: routerReducer
 });
 const store = createStore(
@@ -56,7 +58,7 @@ const store = createStore(
   )
 );
 
-sagaMiddleware.run(mainSaga);
+sagaMiddleware.run(sagas);
 
 store.subscribe(() => {
   saveState({

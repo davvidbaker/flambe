@@ -12,7 +12,8 @@ import {
   THREAD_CREATE,
   THREADS_COLLAPSE,
   THREADS_EXPAND,
-  TODOS_TOGGLE
+  TODOS_TOGGLE,
+  SETTINGS_SHOW
 } from 'actions';
 
 import { colors } from 'styles';
@@ -108,6 +109,11 @@ const COMMANDS = [
   {
     action: CATEGORY_MANAGER_SHOW,
     copy: 'manage categories'
+  },
+  {
+    action: SETTINGS_SHOW,
+    copy: 'open settings',
+    shortcut: '⌘ ,'
   }
 ];
 

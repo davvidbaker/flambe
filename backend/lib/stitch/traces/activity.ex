@@ -35,6 +35,7 @@ defmodule Stitch.Traces.Activity do
   defp insert_and_get_all([]) do
     []
   end
+
   defp insert_and_get_all(categories) do
     Stitch.Repo.all from c in Stitch.Accounts.Category, where: c.id in ^categories
   end
