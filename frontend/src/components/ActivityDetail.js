@@ -97,6 +97,7 @@ class ActivityDetail extends React.Component<Props> {
 
     return (
       <Modal
+        appElement={window.root}
         isOpen={this.props.activityDetailsVisible}
         onRequestClose={this.props.hideActivityDetails}
       >

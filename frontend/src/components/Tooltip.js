@@ -102,13 +102,17 @@ const Tooltip = ({
             endMessage.length > 0 && <p className="endMessage">{endMessage}</p>}
         </div>
       )}
-      {otherMessages &&
-        otherMessages.map(({ startMessage, endMessage }) => (
-          <Fragment key={startMessage || endMessage}>
-            {startMessage && startMessage}
-            {endMessage && endMessage}
-          </Fragment>
-        ))}
+      {/* /* ⚠️ NEEDS WORK */}
+      {/* {otherMessages &&
+        otherMessages.map(
+          ({ startMessage, endMessage }) =>
+            (startMessage || endMessage) && (
+              <Fragment key={startMessage || endMessage}>
+                {startMessage && startMessage}
+                {endMessage && endMessage}
+              </Fragment>
+            )
+        )} */}
     </Div>
   );
 };

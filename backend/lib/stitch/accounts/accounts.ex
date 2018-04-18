@@ -18,9 +18,13 @@ defmodule Stitch.Accounts do
 
   """
   def list_user_todos(user_id) do
-    query = from todo in "todos", 
-      where: todo.user_id == ^user_id, 
-      select: map(todo, [:name, :id, :description])
+    query =
+      from(
+        todo in "todos",
+        where: todo.user_id == ^user_id,
+        select: map(todo, [:name, :id, :description])
+      )
+
     Repo.all(query)
   end
 
@@ -34,9 +38,12 @@ defmodule Stitch.Accounts do
 
   """
   def list_user_mantras(user_id) do
-    query = from mantra in Stitch.Accounts.Mantra, 
-      where: mantra.user_id == ^user_id,
-      select: map(mantra, [:name, :timestamp])
+    query =
+      from(
+        mantra in Stitch.Accounts.Mantra,
+        where: mantra.user_id == ^user_id,
+        select: map(mantra, [:name, :timestamp])
+      )
 
     Repo.all(query)
   end
@@ -52,16 +59,15 @@ defmodule Stitch.Accounts do
 
   """
   def list_user_attentions(user_id) do
-    query = from attention in Stitch.Accounts.Attention, 
-      where: attention.user_id == ^user_id,
-      select: map(attention, [:thread_id, :timestamp])
+    query =
+      from(
+        attention in Stitch.Accounts.Attention,
+        where: attention.user_id == ^user_id,
+        select: map(attention, [:thread_id, :timestamp])
+      )
 
     Repo.all(query)
   end
-
-
-  
-
 
   @doc """
   Returns the list of users.
@@ -99,18 +105,23 @@ defmodule Stitch.Accounts do
   end
 
   def get_user_from_credential_info(%{provider: provider, uid: uid}) do
+    query =
+      from(
+        c in "credentials",
+        where: c.provider == ^provider,
+        where: c.uid == ^uid,
+        select: %{user_id: c.user_id}
+      )
 
-    query = from c in "credentials",
-      where: c.provider == ^provider, 
-      where: c.uid == ^uid,
-      select: %{user_id: c.user_id}
+    # ⚠️ This is probably inefficent
+    case Repo.one(query) do
+      %{user_id: user_id} ->
+        {:ok, get_user!(user_id)}
 
-      # ⚠️ This is probably inefficent
-      case Repo.one(query) do
-        %{user_id: user_id} -> {:ok, get_user!(user_id)}
-        # %Credential{} = credential -> get_user!(credential.user_id)
-        nil -> {:error, :does_not_exist}
-      end
+      # %Credential{} = credential -> get_user!(credential.user_id)
+      nil ->
+        {:error, :does_not_exist}
+    end
   end
 
   @doc """
@@ -127,11 +138,13 @@ defmodule Stitch.Accounts do
   """
   def create_user(attrs \\ %{}) do
     IO.inspect(attrs)
-    {:ok, user} = %User{}
-    |> User.changeset(attrs)
-    |> Repo.insert()
-    
-    user |> Ecto.build_assoc(:credential, attrs) |> IO.inspect |> Repo.insert()
+
+    {:ok, user} =
+      %User{}
+      |> User.changeset(attrs)
+      |> Repo.insert()
+
+    user |> Ecto.build_assoc(:credential, attrs) |> IO.inspect() |> Repo.insert()
 
     {:ok, user}
   end
@@ -151,7 +164,7 @@ defmodule Stitch.Accounts do
   def update_user(%User{} = user, attrs) do
     user
     |> User.changeset(attrs)
-    |> Ecto.Changeset.cast_assoc(:credential, with: &Credential.changeset/2) 
+    |> Ecto.Changeset.cast_assoc(:credential, with: &Credential.changeset/2)
     |> Repo.update()
   end
 
@@ -281,10 +294,12 @@ defmodule Stitch.Accounts do
   end
 
   def authenticate_by_email_password(email, _password) do
-    query = 
-      from u in "users",
+    query =
+      from(
+        u in "users",
         inner_join: c in assoc(u, :credential),
         where: c.email == ^email
+      )
 
     # ⚠️ we are discarding the password field for now! Could add authwith guardian here, I think.
     case Repo.one(query) do
@@ -337,7 +352,10 @@ defmodule Stitch.Accounts do
   def create_category(activity_ids, user_id, attrs \\ %{}) do
     %Category{}
     |> Category.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:activities, Enum.map(activity_ids, fn id -> Stitch.Traces.get_activity!(id) end))
+    |> Ecto.Changeset.put_assoc(
+      :activities,
+      Enum.map(activity_ids, fn id -> Stitch.Traces.get_activity!(id) end)
+    )
     |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
@@ -486,7 +504,6 @@ defmodule Stitch.Accounts do
     Todo.changeset(todo, %{})
   end
 
-
   @doc """
   Returns the list of mantras.
 
@@ -518,7 +535,7 @@ defmodule Stitch.Accounts do
 
   @doc """
   Creates a mantra.
-# ⚠️  example is not correct
+  # ⚠️  example is not correct
   ## Examples
 
       iex> create_mantra(%{field: value})
@@ -531,7 +548,7 @@ defmodule Stitch.Accounts do
   def create_mantra(user_id, attrs \\ %{}) do
     %Mantra{}
     |> Mantra.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))    
+    |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
 
@@ -582,7 +599,6 @@ defmodule Stitch.Accounts do
     Mantra.changeset(mantra, %{})
   end
 
-
   @doc """
   Returns the list of mantras.
 
@@ -614,7 +630,7 @@ defmodule Stitch.Accounts do
 
   @doc """
   Creates an attenion (shift).
-# ⚠️  example is not correct
+  # ⚠️  example is not correct
   ## Examples
 
       iex> create_mantra(%{field: value})
@@ -627,7 +643,7 @@ defmodule Stitch.Accounts do
   def create_attention(user_id, attrs \\ %{}) do
     %Attention{}
     |> Attention.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))    
+    |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
 
@@ -676,5 +692,199 @@ defmodule Stitch.Accounts do
   """
   def change_attention(%Attention{} = attention) do
     Attention.changeset(attention, %{})
+  end
+
+  alias Stitch.Accounts.Tabs
+
+  @doc """
+  Returns the list of tabs.
+
+  ## Examples
+
+      iex> list_tabs()
+      [%Tabs{}, ...]
+
+  """
+  def list_tabs do
+    Repo.all(Tabs)
+  end
+
+  @doc """
+  Gets a single tabs.
+
+  Raises `Ecto.NoResultsError` if the Tabs does not exist.
+
+  ## Examples
+
+      iex> get_tabs!(123)
+      %Tabs{}
+
+      iex> get_tabs!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_tabs!(id), do: Repo.get!(Tabs, id)
+
+  @doc """
+  Creates a tabs.
+
+  ## Examples
+
+      iex> create_tabs(%{field: value})
+      {:ok, %Tabs{}}
+
+      iex> create_tabs(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_tabs(user_id, attrs \\ %{}) do
+    %Tabs{}
+    |> Tabs.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a tabs.
+
+  ## Examples
+
+      iex> update_tabs(tabs, %{field: new_value})
+      {:ok, %Tabs{}}
+
+      iex> update_tabs(tabs, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_tabs(%Tabs{} = tabs, attrs) do
+    tabs
+    |> Tabs.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a Tabs.
+
+  ## Examples
+
+      iex> delete_tabs(tabs)
+      {:ok, %Tabs{}}
+
+      iex> delete_tabs(tabs)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_tabs(%Tabs{} = tabs) do
+    Repo.delete(tabs)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking tabs changes.
+
+  ## Examples
+
+      iex> change_tabs(tabs)
+      %Ecto.Changeset{source: %Tabs{}}
+
+  """
+  def change_tabs(%Tabs{} = tabs) do
+    Tabs.changeset(tabs, %{})
+  end
+
+  alias Stitch.Accounts.SearchTerm
+
+  @doc """
+  Returns the list of SearchTerms.
+
+  ## Examples
+
+      iex> list_search_term()
+      [%SearchTerm{}, ...]
+
+  """
+  def list_search_terms do
+    Repo.all(SearchTerm)
+  end
+
+  @doc """
+  Gets a single search_term.
+
+  Raises `Ecto.NoResultsError` if the SearchTerm does not exist.
+
+  ## Examples
+
+      iex> get_search_term!(123)
+      %SearchTerm{}
+
+      iex> get_search_term!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_search_term!(id), do: Repo.get!(SearchTerm, id)
+
+  @doc """
+  Creates a search_term.
+
+  ## Examples
+
+      iex> create_search_term(%{field: value})
+      {:ok, %SearchTerm{}}
+
+      iex> create_search_term(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_search_term(user_id, attrs \\ %{}) do
+    %SearchTerm{}
+    |> SearchTerm.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:user, Stitch.Accounts.get_user!(user_id))
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a search_term.
+
+  ## Examples
+
+      iex> update_search_term(search_term, %{field: new_value})
+      {:ok, %SearchTerm{}}
+
+      iex> update_search_term(search_term, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_search_term(%SearchTerm{} = search_term, attrs) do
+    search_term
+    |> SearchTerm.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a SearchTerm.
+
+  ## Examples
+
+      iex> delete_search_term(search_term)
+      {:ok, %SearchTerm{}}
+
+      iex> delete_search_term(search_term)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_search_term(%SearchTerm{} = search_term) do
+    Repo.delete(search_term)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking search_term changes.
+
+  ## Examples
+
+      iex> change_search_term(search_term)
+      %Ecto.Changeset{source: %SearchTerm{}}
+
+  """
+  def change_search_term(%SearchTerm{} = search_term) do
+    SearchTerm.changeset(search_term, %{})
   end
 end

@@ -365,4 +365,126 @@ defmodule Stitch.AccountsTest do
       assert %Ecto.Changeset{} = Accounts.change_attention(attention)
     end
   end
+
+  describe "tabs" do
+    alias Stitch.Accounts.Tabs
+
+    @valid_attrs %{count: 42}
+    @update_attrs %{count: 43}
+    @invalid_attrs %{count: nil}
+
+    def tabs_fixture(attrs \\ %{}) do
+      {:ok, tabs} =
+        attrs
+        |> Enum.into(@valid_attrs)
+        |> Accounts.create_tabs()
+
+      tabs
+    end
+
+    test "list_tabs/0 returns all tabs" do
+      tabs = tabs_fixture()
+      assert Accounts.list_tabs() == [tabs]
+    end
+
+    test "get_tabs!/1 returns the tabs with given id" do
+      tabs = tabs_fixture()
+      assert Accounts.get_tabs!(tabs.id) == tabs
+    end
+
+    test "create_tabs/1 with valid data creates a tabs" do
+      assert {:ok, %Tabs{} = tabs} = Accounts.create_tabs(@valid_attrs)
+      assert tabs.count == 42
+    end
+
+    test "create_tabs/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Accounts.create_tabs(@invalid_attrs)
+    end
+
+    test "update_tabs/2 with valid data updates the tabs" do
+      tabs = tabs_fixture()
+      assert {:ok, tabs} = Accounts.update_tabs(tabs, @update_attrs)
+      assert %Tabs{} = tabs
+      assert tabs.count == 43
+    end
+
+    test "update_tabs/2 with invalid data returns error changeset" do
+      tabs = tabs_fixture()
+      assert {:error, %Ecto.Changeset{}} = Accounts.update_tabs(tabs, @invalid_attrs)
+      assert tabs == Accounts.get_tabs!(tabs.id)
+    end
+
+    test "delete_tabs/1 deletes the tabs" do
+      tabs = tabs_fixture()
+      assert {:ok, %Tabs{}} = Accounts.delete_tabs(tabs)
+      assert_raise Ecto.NoResultsError, fn -> Accounts.get_tabs!(tabs.id) end
+    end
+
+    test "change_tabs/1 returns a tabs changeset" do
+      tabs = tabs_fixture()
+      assert %Ecto.Changeset{} = Accounts.change_tabs(tabs)
+    end
+  end
+
+  describe "searches" do
+    alias Stitch.Accounts.Searches
+
+    @valid_attrs %{term: "some term", timestamp: "2010-04-17 14:00:00.000000Z"}
+    @update_attrs %{term: "some updated term", timestamp: "2011-05-18 15:01:01.000000Z"}
+    @invalid_attrs %{term: nil, timestamp: nil}
+
+    def searches_fixture(attrs \\ %{}) do
+      {:ok, searches} =
+        attrs
+        |> Enum.into(@valid_attrs)
+        |> Accounts.create_searches()
+
+      searches
+    end
+
+    test "list_searches/0 returns all searches" do
+      searches = searches_fixture()
+      assert Accounts.list_searches() == [searches]
+    end
+
+    test "get_searches!/1 returns the searches with given id" do
+      searches = searches_fixture()
+      assert Accounts.get_searches!(searches.id) == searches
+    end
+
+    test "create_searches/1 with valid data creates a searches" do
+      assert {:ok, %Searches{} = searches} = Accounts.create_searches(@valid_attrs)
+      assert searches.term == "some term"
+      assert searches.timestamp == DateTime.from_naive!(~N[2010-04-17 14:00:00.000000Z], "Etc/UTC")
+    end
+
+    test "create_searches/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Accounts.create_searches(@invalid_attrs)
+    end
+
+    test "update_searches/2 with valid data updates the searches" do
+      searches = searches_fixture()
+      assert {:ok, searches} = Accounts.update_searches(searches, @update_attrs)
+      assert %Searches{} = searches
+      assert searches.term == "some updated term"
+      assert searches.timestamp == DateTime.from_naive!(~N[2011-05-18 15:01:01.000000Z], "Etc/UTC")
+    end
+
+    test "update_searches/2 with invalid data returns error changeset" do
+      searches = searches_fixture()
+      assert {:error, %Ecto.Changeset{}} = Accounts.update_searches(searches, @invalid_attrs)
+      assert searches == Accounts.get_searches!(searches.id)
+    end
+
+    test "delete_searches/1 deletes the searches" do
+      searches = searches_fixture()
+      assert {:ok, %Searches{}} = Accounts.delete_searches(searches)
+      assert_raise Ecto.NoResultsError, fn -> Accounts.get_searches!(searches.id) end
+    end
+
+    test "change_searches/1 returns a searches changeset" do
+      searches = searches_fixture()
+      assert %Ecto.Changeset{} = Accounts.change_searches(searches)
+    end
+  end
 end

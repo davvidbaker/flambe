@@ -1,4 +1,4 @@
-import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
+import { put, takeEvery, select } from 'redux-saga/effects';
 import {
   ACTIVITY_CREATE,
   ACTIVITY_DELETE,
@@ -10,6 +10,8 @@ import {
   ACTIVITY_DETAILS_SHOW,
   ATTENTION_SHIFT,
   CATEGORY_MANAGER_SHOW,
+  COMMAND_RUN,
+  SETTINGS_SHOW,
   THREAD_CREATE,
   THREADS_COLLAPSE,
   THREADS_EXPAND,
@@ -24,6 +26,7 @@ import {
   shiftAttention,
   showActivityDetails,
   showCategoryManager,
+  showSettings,
   suspendActivity,
   toggleTodos
 } from 'actions';
@@ -65,7 +68,9 @@ function* handleCommand({ type, operand, command }) {
       const message = command.message ? command.message : '';
       const eventFlavor = command.action.includes('REJECT')
         ? 'J'
-        : command.action.includes('RESOLVE') ? 'V' : 'E';
+        : command.action.includes('RESOLVE')
+          ? 'V'
+          : 'E';
       yield put(
         endActivity({
           id: operand.activity_id,
@@ -105,6 +110,10 @@ function* handleCommand({ type, operand, command }) {
       yield put(showCategoryManager());
       break;
 
+    case SETTINGS_SHOW:
+      yield put(showSettings());
+      break;
+
     case THREAD_CREATE:
       const rank = timeline.threads.length;
       console.log('timeline, rank', timeline, rank);
@@ -134,4 +143,8 @@ function* handleCommand({ type, operand, command }) {
   }
 }
 
-export default handleCommand;
+function* commandSaga() {
+  yield takeEvery(COMMAND_RUN, handleCommand);
+}
+
+export default commandSaga;

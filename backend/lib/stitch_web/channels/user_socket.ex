@@ -1,8 +1,10 @@
 defmodule StitchWeb.UserSocket do
   use Phoenix.Socket
 
+  alias Stitch.Accounts
+
   ## Channels
-  # channel "room:*", StitchWeb.RoomChannel
+  channel "events:*", StitchWeb.EventChannel
 
   ## Transports
   transport :websocket, Phoenix.Transports.WebSocket
@@ -19,7 +21,10 @@ defmodule StitchWeb.UserSocket do
   #
   # See `Phoenix.Token` documentation for examples in
   # performing token verification on connect.
-  def connect(_params, socket) do
+  def connect(params, socket) do
+    # This is not at all secure. Look here 👇 for potential auth approach.
+    # https://stackoverflow.com/questions/37680988/phoenix-channels-send-push-to-a-particular-client?rq=1
+    socket = assign(socket, :user, Accounts.get_user!(params["user_id"]))
     {:ok, socket}
   end
 

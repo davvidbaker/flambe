@@ -36,16 +36,16 @@ const ModalContent = styled.div`
 type Props = {
   onConfirm: () => mixed,
   contentLabel: string,
-  message: string,
+  message: string
 };
 
 type State = {
-  modalIsOpen: boolean,
+  modalIsOpen: boolean
 };
 
 class DeleteButton extends Component<Props, State> {
   state = {
-    modalIsOpen: false,
+    modalIsOpen: false
   };
 
   openModal = () => {
@@ -66,6 +66,7 @@ class DeleteButton extends Component<Props, State> {
         Delete
       </button>,
       <Modal
+        appElement={window.root}
         key="modal"
         isOpen={this.state.modalIsOpen}
         contentLabel={this.props.contentLabel}
@@ -76,8 +77,8 @@ class DeleteButton extends Component<Props, State> {
             right: 'unset',
             bottom: 'unset',
             padding: 0,
-            width: '300px',
-          },
+            width: '300px'
+          }
         }}
       >
         <ModalContent>
@@ -117,7 +118,7 @@ class DeleteButton extends Component<Props, State> {
             </Button>
           </div>
         </ModalContent>
-      </Modal>,
+      </Modal>
     ];
   }
 }
