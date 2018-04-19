@@ -709,6 +709,17 @@ defmodule Stitch.Accounts do
     Repo.all(Tabs)
   end
 
+  def list_user_tabs(user_id) do
+    query =
+      from(
+        tabs in Tabs,
+        where: tabs.user_id == ^user_id,
+        select: map(tabs, [:count, :window_count, :timestamp])
+      )
+    Repo.all(query)
+  end
+
+
   @doc """
   Gets a single tabs.
 
@@ -804,6 +815,17 @@ defmodule Stitch.Accounts do
   """
   def list_search_terms do
     Repo.all(SearchTerm)
+  end
+
+  def list_user_search_terms(user_id) do
+    query =
+      from(
+        search_term in Stitch.Accounts.SearchTerm,
+        where: search_term.user_id == ^user_id,
+        select: map(search_term, [:term, :timestamp])
+      )
+
+    Repo.all(query)
   end
 
   @doc """

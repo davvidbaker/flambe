@@ -1,4 +1,7 @@
 import last from 'lodash/fp/last';
+import sortBy from 'lodash/fp/sortBy';
+import map from 'lodash/fp/map';
+import pipe from 'lodash/fp/pipe';
 
 import {
   ATTENTION_SHIFT,
@@ -9,10 +12,26 @@ import {
   TODO_CREATE,
   TRACE_DELETE,
   TRACE_CREATE,
-  USER_FETCH
+  USER_FETCH,
+  SEARCH_TERMS_EVENT,
+  TABS_EVENT
 } from 'actions';
 
 export const getUser = state => state.user;
+
+function timestampStringToTimestampInteger({ timestamp, ...rest }) {
+  return {
+    timestamp: new Date(timestamp).getTime(),
+    ...rest
+  };
+}
+
+function sortByTime(arr) {
+  return pipe(
+    map(timestampStringToTimestampInteger),
+    sortBy(({ timestamp }) => timestamp)
+  )(arr);
+}
 
 function user(
   state = {
@@ -22,7 +41,8 @@ function user(
     categories: [],
     todos: [],
     mantras: [],
-    attentionShifts: []
+    attentionShifts: [],
+    search_terms: []
   },
   action
 ) {
@@ -147,15 +167,37 @@ function user(
       return {
         ...action.data,
         attentionShifts: action.data.attentionShifts.map(
-          ({ thread_id, timestamp }) => ({
-            timestamp: new Date(timestamp).getTime(),
-            thread_id
-          })
-        )
+          timestampStringToTimestampInteger
+        ),
+        mantras: sortByTime(action.data.mantras),
+        searchTerms: sortByTime(action.data.searchTerms),
+        tabs: sortByTime(action.data.tabs)
       };
 
     case `${USER_FETCH}_FAILED`:
       return state;
+
+    case SEARCH_TERMS_EVENT:
+      return {
+        ...state,
+        searchTerms: [
+          ...state.searchTerms,
+          { term: action.term, timestamp: action.timestamp }
+        ]
+      };
+
+    case TABS_EVENT:
+      return {
+        ...state,
+        tabs: [
+          ...state.tabs,
+          {
+            count: action.tabs_count,
+            timestamp: action.timestamp,
+            window_count: action.window_count
+          }
+        ]
+      };
 
     default:
       return state;

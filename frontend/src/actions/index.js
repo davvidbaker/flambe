@@ -63,6 +63,9 @@ export const TRACE_FETCH = 'TRACE_FETCH';
 
 export const USER_FETCH = 'USER_FETCH';
 
+export const SEARCH_TERMS_EVENT = 'SEARCH_TERMS_EVENT';
+export const TABS_EVENT = 'TABS_EVENT';
+
 export function toggleTodos(bool) {
   return {
     type: TODOS_TOGGLE,

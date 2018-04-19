@@ -60,7 +60,7 @@ const Header = ({
           />
         )}
       >
-        🔥 Traces
+        Traces
       </ToggleButton>
     )}
     <InputFromButton submit={createMantra} placeholderIsDefaultValue>

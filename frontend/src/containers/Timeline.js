@@ -7,27 +7,28 @@ import throttle from 'lodash/throttle';
 import sortBy from 'lodash/fp/sortBy';
 import last from 'lodash/last';
 
-import FlameChart from 'components/FlameChart';
-import ActivityDetail from 'components/ActivityDetail';
-import ThreadDetail from 'components/ThreadDetail';
-import WithDropTarget from 'containers/WithDropTarget';
-import WithEventListeners from 'components/WithEventListeners';
+import FlameChart from '../components/FlameChart';
+import NetworkChart from '../components/NetworkChart';
+import ActivityDetail from '../components/ActivityDetail';
+import ThreadDetail from '../components/ThreadDetail';
+import WithDropTarget from './WithDropTarget';
+import WithEventListeners from '../components/WithEventListeners';
 
-import { MAX_TIME_INTO_FUTURE } from 'constants/defaultParameters';
+import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import {
   updateActivity,
   createThread,
   collapseThread,
   expandThread
 } from 'actions';
-import { getTimeline } from 'reducers/timeline';
-import { getUser } from 'reducers/user';
-import { layout } from 'styles';
+import { getTimeline } from '../reducers/timeline';
+import { getUser } from '../reducers/user';
+import { layout } from '../styles';
 
-import zoom from 'utilities/zoom';
-import pan from 'utilities/pan';
+import zoom from '../utilities/zoom';
+import pan from '../utilities/pan';
 
-import type { Activity } from 'types/Activity';
+import type { Activity } from '../types/Activity';
 
 // minTime is smallest timestamp in the entire timeline
 // maxTime is largest timestamp in the entire timeline
@@ -155,6 +156,9 @@ class Timeline extends Component<Props, State> {
       props.focusedBlockActivity_id &&
       props.activities[props.focusedBlockActivity_id];
 
+    const rightBoundaryTime = this.state.rightBoundaryTime || props.maxTime;
+    const leftBoundaryTime = this.state.leftBoundaryTime || props.minTime;
+
     return (
       <WithEventListeners
         node={document}
@@ -176,6 +180,12 @@ class Timeline extends Component<Props, State> {
               height: `calc(${window.innerHeight}px - ${layout.headerHeight})`
             }}
           >
+            <NetworkChart
+              leftBoundaryTime={leftBoundaryTime}
+              rightBoundaryTime={rightBoundaryTime}
+              searchTerms={props.searchTerms}
+              tabs={props.tabs}
+            />
             <WithDropTarget
               targetName="flame-chart"
               threads={props.threads}
@@ -187,14 +197,12 @@ class Timeline extends Component<Props, State> {
                 blocks={props.blocks}
                 categories={props.user.categories}
                 currentAttention={last(props.attentionShifts).thread_id}
-                leftBoundaryTime={this.state.leftBoundaryTime || props.minTime}
+                leftBoundaryTime={leftBoundaryTime}
                 maxTime={props.maxTime}
                 minTime={props.minTime}
                 modifiers={props.modifiers}
                 pan={this.pan}
-                rightBoundaryTime={
-                  this.state.rightBoundaryTime || props.maxTime
-                }
+                rightBoundaryTime={rightBoundaryTime}
                 showThreadDetail={this.showThreadDetail}
                 threadLevels={props.threadLevels}
                 threads={props.threads}
@@ -247,7 +255,9 @@ connect(
     threads: sortBy(t => t.rank, getTimeline(state).threads),
     lastCategory_id: getTimeline(state).lastCategory_id,
     lastThread_id: getTimeline(state).lastThread_id,
-    attentionShifts: getUser(state).attentionShifts
+    attentionShifts: getUser(state).attentionShifts,
+    searchTerms: getUser(state).searchTerms,
+    tabs: getUser(state).tabs
   }),
   dispatch => ({
     createThread: (name, rank) => dispatch(createThread(name, rank)),

@@ -29,33 +29,16 @@ const TraceListItem = ({
         deleteTrace(trace.id);
       }}
     >
-      {current ? <Link to={'/'} replace>delete me</Link> : 'delete'}
+      {current ? (
+        <Link to={'/'} replace>
+          delete me
+        </Link>
+      ) : (
+        'delete'
+      )}
     </button>
   </li>
 );
-
-// const DeletableTraceListItem = graphql(DeleteTrace, {
-//   name: 'deleteTrace',
-//   options: {
-//     update: (store, { data: { deleteTrace } }) => {
-//       // Read the data from our cache for this query.
-//       const data = store.readQuery({
-//         query: AllTraces,
-//         variables: {
-//           user: 'cj75obgc8kecq0120mb7l3bej',
-//         },
-//       });
-
-//       // Add our new trace from the mutation to the end of the traces list.
-//       data.User.traces = data.User.traces.filter(
-//         trace => trace.id !== deleteTrace.id
-//       );
-
-//       // Write our data back to the cache.
-//       store.writeQuery({ query: AllTraces, data });
-//     },
-//   },
-// })(TraceListItem);
 
 const TraceList = ({
   traces,
@@ -63,7 +46,7 @@ const TraceList = ({
   selectTrace,
   deleteTrace,
   currentTrace,
-  deleteCurrentTrace,
+  deleteCurrentTrace
 }) => (
   <Dropdown style={{ top: layout.headerHeight }}>
     {traces.map(trace => (
@@ -73,7 +56,9 @@ const TraceList = ({
         toggle={toggle}
         selectTrace={selectTrace}
         current={currentTrace && trace.id === currentTrace.id}
-        deleteCurrentTrace={currentTrace && trace.id === currentTrace.id && deleteCurrentTrace}
+        deleteCurrentTrace={
+          currentTrace && trace.id === currentTrace.id && deleteCurrentTrace
+        }
         deleteTrace={deleteTrace}
       />
     ))}
