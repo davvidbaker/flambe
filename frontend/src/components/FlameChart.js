@@ -139,7 +139,7 @@ class FlameChart extends Component<Props, State> {
   }
 
   componentDidMount() {
-    window.addEventListener('resize', this.setCanvasSize);
+    window.addEventListener('resize', this.setCanvasSize.bind(this));
     this.setCanvasSize();
   }
 

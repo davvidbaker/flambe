@@ -22,7 +22,7 @@ class NetworkChart extends Component {
   };
 
   componentDidMount() {
-    window.addEventListener('resize', this.setCanvasSize);
+    window.addEventListener('resize', this.setCanvasSize.bind(this));
     this.setCanvasSize();
   }
 
@@ -125,7 +125,7 @@ class NetworkChart extends Component {
     });
     this.ctx.lineTo(
       this.timeToPixels(Date.now()),
-      this.countToY(last(this.props.tabs).count, maxWindows)
+      this.countToY(last(this.props.tabs).window_count, maxWindows)
     );
     this.ctx.stroke();
   }
