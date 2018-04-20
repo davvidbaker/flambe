@@ -1,21 +1,37 @@
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import last from 'lodash/last';
+import styled from 'styled-components';
 import findLast from 'lodash/fp/findLast';
 
 import {
   setCanvasSize,
   getBlockTransform,
-  timeToPixels
+  timeToPixels,
+  pixelsToTime
 } from '../utilities/timelineChart';
 import { trimTextMiddle } from '../utilities';
 
+const windowColor = '#48A2ED';
+const tabColor = '#90BD71';
+
 const ONE_MINUTE = 1000 * 60;
+const CountsBar = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min-content, 100px));
+  font-size: 11px;
+  visibility: ${props => (props.hidden ? 'hidden' : 'visible')};
+`;
 class NetworkChart extends Component {
   static textPadding = { x: 5, y: 13.5 };
+  static chartPadding = { x: 0, y: 10 };
   blockHeight = 20;
-  chartHeight = 50;
+  chartHeight = 50 - NetworkChart.chartPadding.y * 2;
 
   state = {
+    mouseIsOver: false,
+    hoverWindowCount: 0,
+    hoverTabCount: 0,
+    cursor: { x: 0, y: 0 },
     canvasWidth: null,
     canvasHeight: null,
     devicePixelRatio: 1
@@ -37,21 +53,61 @@ class NetworkChart extends Component {
     this.setState(state, this.render);
   };
 
+  onMouseEnter = () => {
+    this.setState({ mouseIsOver: true });
+  };
+
+  onMouseLeave = () => {
+    this.setState({ mouseIsOver: false });
+  };
+
+  onMouseMove = e => {
+    const x = e.nativeEvent.offsetX;
+
+    this.setState({
+      cursor: { x, y: e.nativeEvent.offsetY }
+    });
+
+    const time = this.pixelsToTime(x);
+    const closestPoint = this.props.tabs.find(
+      ({ timestamp }) => time < timestamp
+    );
+    console.log('closesPoint', closestPoint);
+
+    this.setState({
+      hoverWindowCount: closestPoint.window_count || 0,
+      hoverTabCount: closestPoint.count
+    });
+  };
   render() {
     this.draw();
 
     return (
-      <canvas
-        ref={canvas => {
-          this.canvas = canvas;
-        }}
-        style={{
-          width: `${this.state.canvasWidth}px` || '100%',
-          height: `${this.state.canvasHeight}px` || '100%'
-        }}
-        height={this.state.canvasHeight * this.state.devicePixelRatio || 300}
-        width={this.state.canvasWidth * this.state.devicePixelRatio || 450}
-      />
+      <Fragment>
+        <canvas
+          ref={canvas => {
+            this.canvas = canvas;
+          }}
+          style={{
+            width: `${this.state.canvasWidth}px` || '100%',
+            height: `${this.state.canvasHeight}px` || '100%'
+          }}
+          height={this.state.canvasHeight * this.state.devicePixelRatio || 300}
+          width={this.state.canvasWidth * this.state.devicePixelRatio || 450}
+          /* ⚠️ this hs got to be an antipattern to put this in render, right? */
+          onMouseMove={this.onMouseMove}
+          onMouseEnter={this.onMouseEnter}
+          onMouseLeave={this.onMouseLeave}
+        />
+        <CountsBar hidden={!this.state.mouseIsOver}>
+          <div style={{ color: windowColor }}>
+            windows: {this.state.hoverWindowCount}
+          </div>
+          <div style={{ color: tabColor }}>
+            tabs: {this.state.hoverTabCount}
+          </div>
+        </CountsBar>
+      </Fragment>
     );
   }
 
@@ -96,15 +152,20 @@ class NetworkChart extends Component {
       0
     );
 
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeStyle = '#90BD71';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeStyle = tabColor;
+    this.ctx.fillStyle = tabColor;
     this.ctx.beginPath();
     const firstTab = findLast(
       ({ timestamp }) => timestamp < this.props.leftBoundaryTime
     )(this.props.tabs) || { count: 0 };
 
     this.ctx.moveTo(0, this.countToY(firstTab.count, maxTabs));
-    tabsWithX.forEach(({ count, x }) => {
+    tabsWithX.forEach(({ count, x }, i) => {
+      this.ctx.lineTo(
+        tabsWithX[i - 1] ? tabsWithX[i - 1].x : 0,
+        this.countToY(count, maxTabs)
+      );
       this.ctx.lineTo(x, this.countToY(count, maxTabs));
     });
     this.ctx.lineTo(
@@ -113,14 +174,31 @@ class NetworkChart extends Component {
     );
     this.ctx.stroke();
 
-    this.ctx.strokeStyle = '#48A2ED';
+    if (this.state.mouseIsOver) {
+      this.ctx.beginPath();
+      this.ctx.arc(
+        this.state.cursor.x, // this.pixelsToTime(this.state.cursor.x),
+        this.countToY(this.state.hoverTabCount, maxTabs),
+        2,
+        0,
+        2 * Math.PI
+      );
+      this.ctx.fill();
+    }
+
+    this.ctx.strokeStyle = windowColor;
+    this.ctx.fillStyle = windowColor;
     this.ctx.beginPath();
     const firstWindow = findLast(
       ({ timestamp }) => timestamp < this.props.leftBoundaryTime
-    )(this.props.tabs) || { count: 0 };
+    )(this.props.tabs) || { window_count: 0 };
 
-    this.ctx.moveTo(0, this.countToY(firstWindow.count, maxWindows));
-    tabsWithX.forEach(({ window_count: count, x }) => {
+    this.ctx.moveTo(0, this.countToY(firstWindow.window_count, maxWindows));
+    tabsWithX.forEach(({ window_count: count, x }, i) => {
+      this.ctx.lineTo(
+        tabsWithX[i - 1] ? tabsWithX[i - 1].x : 0,
+        this.countToY(count, maxWindows)
+      );
       this.ctx.lineTo(x, this.countToY(count, maxWindows));
     });
     this.ctx.lineTo(
@@ -128,6 +206,27 @@ class NetworkChart extends Component {
       this.countToY(last(this.props.tabs).window_count, maxWindows)
     );
     this.ctx.stroke();
+
+    if (this.state.mouseIsOver) {
+      this.ctx.beginPath();
+      this.ctx.arc(
+        this.state.cursor.x,
+        this.countToY(this.state.hoverWindowCount, maxWindows),
+        2,
+        0,
+        2 * Math.PI
+      );
+      this.ctx.fill();
+    }
+  }
+
+  pixelsToTime(x) {
+    return pixelsToTime(
+      x,
+      this.props.leftBoundaryTime,
+      this.props.rightBoundaryTime,
+      this.state.canvasWidth
+    );
   }
 
   timeToPixels(timestamp) {
@@ -140,7 +239,11 @@ class NetworkChart extends Component {
   }
 
   countToY(count, maxCount) {
-    return this.chartHeight - count * this.chartHeight / maxCount;
+    return (
+      NetworkChart.chartPadding.y +
+      this.chartHeight -
+      count * this.chartHeight / maxCount
+    );
   }
 
   drawSearchTerms() {
@@ -180,7 +283,7 @@ class NetworkChart extends Component {
 
       this.ctx.globalAlpha = 0.5;
       this.ctx.fillStyle = '#000';
-      this.ctx.fillText(text, blockX, blockY + this.blockHeight);
+      this.ctx.fillText(text, blockX, blockY + this.blockHeight + 25);
     });
   }
 }
