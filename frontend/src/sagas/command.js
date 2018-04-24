@@ -16,11 +16,13 @@ import {
   THREADS_COLLAPSE,
   THREADS_EXPAND,
   TODOS_TOGGLE,
+  VIEW_CHANGE,
+  changeView,
   collapseThread,
-  expandThread,
   createActivity,
   createThread,
   deleteActivity,
+  expandThread,
   endActivity,
   resumeActivity,
   shiftAttention,
@@ -38,28 +40,24 @@ function* handleCommand({ type, operand, command }) {
 
   switch (command.action) {
     case ACTIVITY_CREATE:
-      yield put(
-        createActivity({
-          name: command.name,
-          timestamp: Date.now(),
-          description: '',
-          thread_id: command.thread_id,
-          phase: command.copy.includes('question') ? 'Q' : 'B',
-          category_id: command.category_id
-        })
-      );
+      yield put(createActivity({
+        name: command.name,
+        timestamp: Date.now(),
+        description: '',
+        thread_id: command.thread_id,
+        phase: command.copy.includes('question') ? 'Q' : 'B',
+        category_id: command.category_id
+      }));
       yield put(shiftAttention(command.thread_id, Date.now()));
       break;
 
     case ACTIVITY_RESUME:
-      yield put(
-        resumeActivity({
-          id: operand.activity_id,
-          timestamp: Date.now(),
-          message: command.message,
-          thread_id: operand.thread_id
-        })
-      );
+      yield put(resumeActivity({
+        id: operand.activity_id,
+        timestamp: Date.now(),
+        message: command.message,
+        thread_id: operand.thread_id
+      }));
       break;
 
     case ACTIVITY_END:
@@ -71,15 +69,13 @@ function* handleCommand({ type, operand, command }) {
         : command.action.includes('RESOLVE')
           ? 'V'
           : 'E';
-      yield put(
-        endActivity({
-          id: operand.activity_id,
-          timestamp: Date.now(),
-          message,
-          thread_id: operand.thread_id,
-          eventFlavor
-        })
-      );
+      yield put(endActivity({
+        id: operand.activity_id,
+        timestamp: Date.now(),
+        message,
+        thread_id: operand.thread_id,
+        eventFlavor
+      }));
       break;
 
     case ACTIVITY_DELETE:
@@ -87,14 +83,12 @@ function* handleCommand({ type, operand, command }) {
       break;
     /** 💁 if this isn't obvious, suspension can only happen on the most recent block of an activity (for activities that may have been suspended and resumed already) */
     case ACTIVITY_SUSPEND:
-      yield put(
-        suspendActivity({
-          id: operand.activity_id,
-          timestamp: Date.now(),
-          message: command.message ? command.message : '',
-          thread_id: operand.thread_id
-        })
-      );
+      yield put(suspendActivity({
+        id: operand.activity_id,
+        timestamp: Date.now(),
+        message: command.message ? command.message : '',
+        thread_id: operand.thread_id
+      }));
       break;
 
     case ATTENTION_SHIFT:
@@ -136,6 +130,10 @@ function* handleCommand({ type, operand, command }) {
     case TODOS_TOGGLE:
       const todosVisible = yield select(state => state.todosVisible);
       yield put(toggleTodos(!todosVisible));
+      break;
+
+    case VIEW_CHANGE:
+      yield put(changeView(command.view, command.thread_id));
       break;
 
     default:

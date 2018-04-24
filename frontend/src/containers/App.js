@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import { connect } from 'react-redux';
 import { compose } from 'redux';
 import last from 'lodash/fp/last';
@@ -14,13 +14,14 @@ import { injectGlobal } from 'styled-components';
 import Commander from 'react-commander';
 
 // flow-ignore
-import Timeline from 'containers/Timeline';
-import Todos from 'containers/Todos';
-import Header from 'components/Header';
-import WithEventListeners from 'components/WithEventListeners';
-import CategoryManager from 'components/CategoryManager';
-import Settings from 'components/Settings';
-import { history } from 'store';
+import Timeline from './Timeline';
+import SingleThreadView from './SingleThreadView';
+import Todos from './Todos';
+import Header from '../components/Header';
+import WithEventListeners from '../components/WithEventListeners';
+import CategoryManager from '../components/CategoryManager';
+import Settings from '../components/Settings';
+import { history } from '../store';
 import {
   collapseThread,
   deleteCurrentTrace,
@@ -34,14 +35,14 @@ import {
   selectTrace,
   showActivityDetails,
   createMantra
-} from 'actions';
-import COMMANDS, { ACTIVITY_COMMANDS } from 'constants/commands';
-import { getTimeline } from 'reducers/timeline';
-import { getUser } from 'reducers/user';
-import isEndable from 'utilities/isEndable';
+} from '../actions';
+import COMMANDS, { ACTIVITY_COMMANDS } from '../constants/commands';
+import { getTimeline } from '../reducers/timeline';
+import { getUser } from '../reducers/user';
+import isEndable from '../utilities/isEndable';
 
-import type { Trace } from 'types/Trace';
-import type { Todo } from 'types/Todo';
+import type { Trace } from '../types/Trace';
+import type { Todo } from '../types/Todo';
 
 // eslint-disable-next-line no-unused-expressions
 injectGlobal`
@@ -60,7 +61,6 @@ html {
 }
 `;
 
-// @DragDropContext(HTML5Backend)
 class App extends Component<
   {
     keyDown: () => mixed,
@@ -140,9 +140,7 @@ class App extends Component<
       switch (operand.type) {
         case 'activity':
           return [
-            ...ACTIVITY_COMMANDS.filter(
-              cmd => cmd.status.indexOf(operand.activityStatus) >= 0
-            ),
+            ...ACTIVITY_COMMANDS.filter(cmd => cmd.status.indexOf(operand.activityStatus) >= 0),
             ...COMMANDS
           ];
         default:
@@ -200,20 +198,14 @@ class App extends Component<
                       if (
                         isEndable(
                           this.props.activities[this.props.operand.activity_id],
-                          this.props.blocks.filter(
-                            block =>
-                              block.activity_id ===
-                              this.props.operand.activity_id
-                          ),
+                          this.props.blocks.filter(block =>
+                            block.activity_id ===
+                              this.props.operand.activity_id),
                           this.props.threadLevels
                         )
                       ) {
                         this.showCommander();
-                        this.commander.enterCommand(
-                          this.getCommands(this.props.operand).find(
-                            cmd => cmd.shortcut === e.key.toUpperCase()
-                          )
-                        );
+                        this.commander.enterCommand(this.getCommands(this.props.operand).find(cmd => cmd.shortcut === e.key.toUpperCase()));
                       }
                       break;
                     default:
@@ -246,12 +238,27 @@ class App extends Component<
               />
 
               <main>
-                <Route path="/traces/:trace_id" render={this.renderTimeline} />
-                <Route exact path="/" render={this.renderTimeline} />
+                {do {
+                  if (this.props.view === 'multithread') {
+                    <Fragment>
+                      <Route
+                        path="/traces/:trace_id"
+                        render={this.renderTimeline}
+                      />
+                      <Route exact path="/" render={this.renderTimeline} />
 
-                {this.props.todosVisible && (
-                  <Todos todos={this.props.user.todos} />
-                )}
+                      {this.props.todosVisible && (
+                        <Todos todos={this.props.user.todos} />
+                      )}
+                    </Fragment>;
+                  } else if (this.props.view === 'singlethread') {
+                    <Fragment>
+                      <SingleThreadView
+                        thread={this.props.threads.find(({ id }) => id === this.props.viewThread)}
+                      />
+                    </Fragment>;
+                  }
+                }}
               </main>
               <CategoryManager categories={this.props.categories} />
               <Settings />
@@ -287,7 +294,9 @@ export default compose(
       todosVisible: state.todosVisible,
       trace: getTimeline(state).trace,
       user: getUser(state),
-      userTraces: getUser(state).traces
+      userTraces: getUser(state).traces,
+      view: state.view,
+      viewThread: state.viewThread
     }),
     dispatch => ({
       collapseThread: id => dispatch(collapseThread(id)),

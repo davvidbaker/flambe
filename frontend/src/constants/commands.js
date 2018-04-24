@@ -13,7 +13,8 @@ import {
   THREADS_COLLAPSE,
   THREADS_EXPAND,
   TODOS_TOGGLE,
-  SETTINGS_SHOW
+  SETTINGS_SHOW,
+  VIEW_CHANGE
 } from 'actions';
 
 import { colors } from 'styles';
@@ -114,6 +115,25 @@ const COMMANDS = [
     action: SETTINGS_SHOW,
     copy: 'open settings',
     shortcut: '⌘ ,'
+  },
+  {
+    action: VIEW_CHANGE,
+    copy: 'change view...',
+    parameters: [
+      {
+        key: 'view',
+        placeholder: 'select a view',
+        /* ⚠️ kinda hacky */
+        selector: () => [
+          { name: 'single thread', value: 'singlethread' },
+          { name: 'multithread', value: 'multithread' }
+        ],
+        itemStringKey: 'name',
+        itemReturnKey: 'value'
+      },
+      // ⚠️ need a way to make this conditional on choosing a single thread
+      threadParam
+    ]
   }
 ];
 

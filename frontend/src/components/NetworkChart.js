@@ -72,12 +72,12 @@ class NetworkChart extends Component {
     const closestPoint = this.props.tabs.find(
       ({ timestamp }) => time < timestamp
     );
-    console.log('closesPoint', closestPoint);
-
-    this.setState({
-      hoverWindowCount: closestPoint.window_count || 0,
-      hoverTabCount: closestPoint.count
-    });
+    if (closestPoint) {
+      this.setState({
+        hoverWindowCount: closestPoint.window_count || 0,
+        hoverTabCount: closestPoint.count
+      });
+    }
   };
   render() {
     this.draw();
