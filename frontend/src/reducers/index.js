@@ -5,8 +5,9 @@ import {
   CATEGORY_MANAGER_SHOW,
   CATEGORY_MANAGER_HIDE,
   SETTINGS_SHOW,
-  SETTINGS_HIDE
-} from 'actions';
+  SETTINGS_HIDE,
+  VIEW_CHANGE
+} from '../actions';
 
 import timeline from './timeline';
 import modifiers from './modifiers';
@@ -55,13 +56,33 @@ function settingsVisible(state = false, action) {
   }
 }
 
+function view(state = 'multithread', action) {
+  switch (action.type) {
+    case VIEW_CHANGE:
+      return action.view;
+    default:
+      return state;
+  }
+}
+
+function viewThread(state = null, action) {
+  switch (action.type) {
+    case VIEW_CHANGE:
+      return action.view === 'multithread' ? null : action.thread_id;
+    default:
+      return state;
+  }
+}
+
 export {
-  timeline,
-  modifiers,
-  user,
-  operand,
-  todosVisible,
   activityDetailsVisible,
   categoryManagerVisible,
-  settingsVisible
+  modifiers,
+  operand,
+  todosVisible,
+  settingsVisible,
+  timeline,
+  user,
+  view,
+  viewThread
 };

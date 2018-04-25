@@ -63,6 +63,8 @@ export const TRACE_FETCH = 'TRACE_FETCH';
 
 export const USER_FETCH = 'USER_FETCH';
 
+export const VIEW_CHANGE = 'VIEW_CHANGE';
+
 export const SEARCH_TERMS_EVENT = 'SEARCH_TERMS_EVENT';
 export const TABS_EVENT = 'TABS_EVENT';
 
@@ -250,7 +252,9 @@ export function endActivity({
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function suspendActivity({ id, timestamp, message, thread_id }) {
+export function suspendActivity({
+  id, timestamp, message, thread_id
+}) {
   return {
     type: ACTIVITY_SUSPEND,
     id,
@@ -261,7 +265,9 @@ export function suspendActivity({ id, timestamp, message, thread_id }) {
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function resumeActivity({ id, timestamp, message, thread_id }) {
+export function resumeActivity({
+  id, timestamp, message, thread_id
+}) {
   return {
     type: ACTIVITY_RESUME,
     id,
@@ -348,7 +354,9 @@ export function hideSettings() {
 }
 
 /** 💁 the thread_id is just being used here for optimistic updates when a command is run that operated on the activity */
-export function focusBlock({ index, activity_id, activityStatus, thread_id }) {
+export function focusBlock({
+  index, activity_id, activityStatus, thread_id
+}) {
   return {
     type: BLOCK_FOCUS,
     index,
@@ -412,6 +420,14 @@ export function fetchTrace(trace: Trace) {
 export function deleteCurrentTrace() {
   return {
     type: DELETE_CURRENT_TRACE
+  };
+}
+
+export function changeView(view: string, thread_id?: number) {
+  return {
+    type: VIEW_CHANGE,
+    view,
+    thread_id
   };
 }
 

@@ -4,16 +4,7 @@ import createSagaMiddleware from 'redux-saga';
 import { routerReducer, routerMiddleware } from 'react-router-redux';
 import createHistory from 'history/createBrowserHistory';
 
-import {
-  timeline,
-  modifiers,
-  user,
-  operand,
-  todosVisible,
-  activityDetailsVisible,
-  categoryManagerVisible,
-  settingsVisible
-} from 'reducers';
+import * as reducers from './reducers';
 import { getTimeline } from 'reducers/timeline';
 import { getUser } from 'reducers/user';
 import { loadState, saveState } from 'utilities';
@@ -39,14 +30,7 @@ const rMiddleware = routerMiddleware(history);
 const persistedState = loadState();
 
 const rootReducer = combineReducers({
-  timeline,
-  modifiers,
-  user,
-  operand,
-  todosVisible,
-  activityDetailsVisible,
-  categoryManagerVisible,
-  settingsVisible,
+  ...reducers,
   router: routerReducer
 });
 const store = createStore(
@@ -63,7 +47,9 @@ sagaMiddleware.run(sagas);
 store.subscribe(() => {
   saveState({
     user: getUser(store.getState()),
-    timeline: getTimeline(store.getState())
+    timeline: getTimeline(store.getState()),
+    view: store.getState().view,
+    viewThread: store.getState().viewThread
   });
 });
 

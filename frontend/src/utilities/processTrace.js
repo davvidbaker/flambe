@@ -3,6 +3,7 @@
 import sortBy from 'lodash/fp/sortBy';
 import uniq from 'lodash/uniq';
 import last from 'lodash/last';
+import findLast from 'lodash/fp/findLast';
 
 import type { Activity } from 'types/Activity';
 import type { TraceEvent } from 'types/TraceEvent';
@@ -128,9 +129,13 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
         threadNonTerminatedActivities[thread_id].forEach(activity_id => {
           if (
-            blocks.find(block => block.activity_id === activity_id).startTime >
-            blocks.find(block => block.activity_id === event.activity.id)
-              .startTime
+            findLast(block => block.activity_id === activity_id)(blocks)
+              .startTime >=
+              findLast(block => block.activity_id === event.activity.id)(blocks)
+                .startTime &&
+            findLast(block => block.activity_id === activity_id)(blocks).level >
+              findLast(block => block.activity_id === event.activity.id)(blocks)
+                .level
           ) {
             activity.suspendedChildren.push(activity_id);
 
@@ -164,6 +169,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           threadLevels[thread_id].current,
           threadLevels[thread_id].max
         );
+
         if (activity.suspendedChildren.length > 0) {
           activity.suspendedChildren.forEach(activity_id => {
             blocks.push({

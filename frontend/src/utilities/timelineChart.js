@@ -9,7 +9,9 @@ export function setCanvasSize(canvas, textPadding, isFlameChart) {
   const state = {
     devicePixelRatio,
     canvasWidth: window.innerWidth,
-    canvasHeight: isFlameChart ? window.innerHeight - header.clientHeight : 50
+    canvasHeight: isFlameChart
+      ? window.innerHeight - header.clientHeight - 100
+      : 50
   };
 
   return {
