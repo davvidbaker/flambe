@@ -1,6 +1,6 @@
 // Activity (Block) is only endable if it is on the tip of the icicle.
 function isEndable(activity, activityBlocks, threadLevels) {
-  if (!activity.thread) {
+  if (!activity.thread_id) {
     console.warn('activity missing thread!', activity);
     // debugger;
     return false;
