@@ -34,6 +34,7 @@ import {
   runCommand,
   selectTrace,
   showActivityDetails,
+  showSettings,
   createMantra
 } from '../actions';
 import COMMANDS, { ACTIVITY_COMMANDS } from '../constants/commands';
@@ -162,6 +163,12 @@ class App extends Component<
             e.preventDefault();
             this.showCommander();
           }
+
+          if (e.key === ',' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            this.props.showSettings();
+          }
+
           if (
             e.target.nodeName !== 'INPUT' &&
             e.target.nodeName !== 'TEXTAREA'
@@ -310,6 +317,7 @@ export default compose(
       runCommand: (operand, command) => dispatch(runCommand(operand, command)),
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       showActivityDetails: () => dispatch(showActivityDetails()),
+      showSettings: () => dispatch(showSettings()),
       createMantra: (id, note) => dispatch(createMantra(id, note))
     })
   )

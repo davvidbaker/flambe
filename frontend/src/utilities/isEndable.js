@@ -6,7 +6,7 @@ function isEndable(activity, activityBlocks, threadLevels) {
     return false;
   }
   const lastBlock = activityBlocks[activityBlocks.length - 1];
-  if (lastBlock.level + 1 === threadLevels[activity.thread.id].current) {
+  if (lastBlock.level + 1 === threadLevels[activity.thread_id].current) {
     return true;
   }
   return false;

@@ -1,3 +1,4 @@
+/* 🤔 maybe change the name of this component */
 import React, { Component, Fragment } from 'react';
 import last from 'lodash/last';
 import styled from 'styled-components';
@@ -7,7 +8,8 @@ import {
   setCanvasSize,
   getBlockTransform,
   timeToPixels,
-  pixelsToTime
+  pixelsToTime,
+  drawFutureWindow
 } from '../utilities/timelineChart';
 import { trimTextMiddle } from '../utilities';
 
@@ -23,7 +25,7 @@ const CountsBar = styled.div`
 `;
 class NetworkChart extends Component {
   static textPadding = { x: 5, y: 13.5 };
-  static chartPadding = { x: 0, y: 10 };
+  static chartPadding = { x: 0, y: 15 };
   blockHeight = 20;
   chartHeight = 50 - NetworkChart.chartPadding.y * 2;
 
@@ -69,9 +71,7 @@ class NetworkChart extends Component {
     });
 
     const time = this.pixelsToTime(x);
-    const closestPoint = this.props.tabs.find(
-      ({ timestamp }) => time < timestamp
-    );
+    const closestPoint = this.props.tabs.find(({ timestamp }) => time < timestamp);
     if (closestPoint) {
       this.setState({
         hoverWindowCount: closestPoint.window_count || 0,
@@ -123,6 +123,14 @@ class NetworkChart extends Component {
       this.ctx.fillRect(0, 0, this.state.canvasWidth, this.state.canvasHeight);
       // this.ctx.globalAlpha = 1;
 
+      drawFutureWindow(
+        this.ctx,
+        this.props.leftBoundaryTime,
+        this.props.rightBoundaryTime,
+        this.state.canvasWidth,
+        this.state.canvasHeight
+      );
+      this.drawMantras();
       this.drawTabs();
       this.drawSearchTerms();
 
@@ -131,12 +139,39 @@ class NetworkChart extends Component {
     }
   }
 
+  drawMantras() {
+    this.ctx.globalAlpha = 1;
+    this.props.mantras.forEach(({ name, timestamp }, i) => {
+      const { blockX, blockY, blockWidth } = this.getBlockTransform(
+        timestamp,
+        this.props.mantras[i + 1]
+          ? this.props.mantras[i + 1].timestamp - 1
+          : Date.now(),
+        0,
+        this.blockHeight,
+        0
+      );
+
+      // don't draw if bar is left or right of view
+      if (blockX > this.state.canvasWidth || blockX + blockWidth <= 0) {
+        return;
+      }
+
+      this.ctx.fillStyle = i % 2 ? '#fafafa' : '#fff';
+      this.ctx.fillRect(blockX, 0, blockWidth, 100);
+
+      const text = trimTextMiddle(this.ctx, name, blockWidth);
+
+      this.ctx.fillStyle = '#000';
+      this.ctx.fillText(text, blockX, blockY + 11);
+    });
+  }
+
   drawTabs() {
-    const tabsWithinTimeWindow = this.props.tabs.filter(
-      ({ timestamp }) =>
-        timestamp > this.props.leftBoundaryTime &&
-        timestamp < this.props.rightBoundaryTime
-    );
+    getBlockTransform();
+    const tabsWithinTimeWindow = this.props.tabs.filter(({ timestamp }) =>
+      timestamp > this.props.leftBoundaryTime &&
+        timestamp < this.props.rightBoundaryTime);
 
     const tabsWithX = tabsWithinTimeWindow.map(({ timestamp, ...rest }) => ({
       ...rest,
@@ -156,9 +191,7 @@ class NetworkChart extends Component {
     this.ctx.strokeStyle = tabColor;
     this.ctx.fillStyle = tabColor;
     this.ctx.beginPath();
-    const firstTab = findLast(
-      ({ timestamp }) => timestamp < this.props.leftBoundaryTime
-    )(this.props.tabs) || { count: 0 };
+    const firstTab = findLast(({ timestamp }) => timestamp < this.props.leftBoundaryTime)(this.props.tabs) || { count: 0 };
 
     this.ctx.moveTo(0, this.countToY(firstTab.count, maxTabs));
     tabsWithX.forEach(({ count, x }, i) => {
@@ -189,9 +222,7 @@ class NetworkChart extends Component {
     this.ctx.strokeStyle = windowColor;
     this.ctx.fillStyle = windowColor;
     this.ctx.beginPath();
-    const firstWindow = findLast(
-      ({ timestamp }) => timestamp < this.props.leftBoundaryTime
-    )(this.props.tabs) || { window_count: 0 };
+    const firstWindow = findLast(({ timestamp }) => timestamp < this.props.leftBoundaryTime)(this.props.tabs) || { window_count: 0 };
 
     this.ctx.moveTo(0, this.countToY(firstWindow.window_count, maxWindows));
     tabsWithX.forEach(({ window_count: count, x }, i) => {
@@ -238,6 +269,19 @@ class NetworkChart extends Component {
     );
   }
 
+  getBlockTransform(startTime, endTime, level, blockHeight, offsetFromTop) {
+    return getBlockTransform(
+      startTime,
+      endTime,
+      level,
+      blockHeight,
+      offsetFromTop,
+      this.props.leftBoundaryTime,
+      this.props.rightBoundaryTime,
+      this.state.canvasWidth
+    );
+  }
+
   countToY(count, maxCount) {
     return (
       NetworkChart.chartPadding.y +
@@ -248,15 +292,12 @@ class NetworkChart extends Component {
 
   drawSearchTerms() {
     this.props.searchTerms.forEach(({ timestamp, term }) => {
-      const { blockX, blockY, blockWidth } = getBlockTransform(
+      const { blockX, blockY, blockWidth } = this.getBlockTransform(
         timestamp,
         timestamp + 10 * ONE_MINUTE,
         0,
         this.blockHeight,
-        0,
-        this.props.leftBoundaryTime,
-        this.props.rightBoundaryTime,
-        this.state.canvasWidth
+        0
       );
 
       // don't draw bar if whole thing is this.left of view

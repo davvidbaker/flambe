@@ -13,6 +13,7 @@ import timeline from './timeline';
 import modifiers from './modifiers';
 import user from './user';
 import operand from './operand';
+import settings from './settings';
 
 function todosVisible(state = false, action) {
   switch (action.type) {
@@ -80,6 +81,7 @@ export {
   modifiers,
   operand,
   todosVisible,
+  settings,
   settingsVisible,
   timeline,
   user,

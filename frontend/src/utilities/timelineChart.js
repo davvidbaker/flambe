@@ -1,3 +1,7 @@
+import filter from 'lodash/fp/filter';
+import reduce from 'lodash/fp/reduce';
+import pipe from 'lodash/fp/pipe';
+
 export function setCanvasSize(canvas, textPadding, isFlameChart) {
   const header = document.querySelector('header');
   const devicePixelRatio = window.devicePixelRatio;
@@ -72,4 +76,59 @@ export function getBlockTransform(
     blockX;
 
   return { blockX, blockY, blockWidth };
+}
+
+export function drawFutureWindow(
+  ctx,
+  leftBoundaryTime,
+  rightBoundaryTime,
+  canvasWidth,
+  canvasHeight
+) {
+  ctx.globalAlpha = 0.2;
+  ctx.fillStyle = '#B6C8E8';
+  ctx.strokeStyle = '#7B9EDE';
+  const now = Date.now();
+
+  if (now < rightBoundaryTime) {
+    const nowPixels = timeToPixels(
+      now,
+      leftBoundaryTime,
+      rightBoundaryTime,
+      canvasWidth
+    );
+    ctx.fillRect(nowPixels, 0, canvasWidth - nowPixels + 10, canvasHeight);
+    ctx.strokeRect(nowPixels, 0, canvasWidth - nowPixels + 10, canvasHeight);
+  }
+}
+
+export function visibleThreadLevels(
+  blocks,
+  activities,
+  leftBoundaryTime,
+  rightBoundaryTime,
+  threads
+) {
+  return pipe(
+    filter(({ startTime, endTime }) =>
+      (startTime > leftBoundaryTime && startTime < rightBoundaryTime) ||
+        (endTime > leftBoundaryTime && endTime < rightBoundaryTime) ||
+        (startTime < leftBoundaryTime && endTime > rightBoundaryTime) ||
+        (startTime < leftBoundaryTime && !endTime)),
+
+    reduce((acc, block) => {
+      const { thread_id } = activities[block.activity_id];
+
+      return {
+        ...acc,
+        [thread_id]: {
+          max: Math.max(
+            acc[thread_id] ? acc[thread_id].max : 1,
+            block.level + 1
+          ),
+          current: block.level
+        }
+      };
+    }, reduce((acc, { id }) => ({ ...acc, [id]: { current: 0, max: 0 } }), {})(threads))
+  )(blocks);
 }

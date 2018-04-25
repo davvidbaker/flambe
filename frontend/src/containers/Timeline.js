@@ -20,7 +20,8 @@ import {
   createThread,
   collapseThread,
   expandThread
-} from 'actions';
+} from '../actions';
+import { visibleThreadLevels } from '../utilities/timelineChart';
 import { getTimeline } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import { layout } from '../styles';
@@ -149,7 +150,6 @@ class Timeline extends Component<Props, State> {
       localStorage.setItem('rbt', this.state.rightBoundaryTime);
     }
   }, 1000);
-
   render() {
     const props = this.props;
     const focusedActivity =
@@ -184,6 +184,7 @@ class Timeline extends Component<Props, State> {
               leftBoundaryTime={leftBoundaryTime}
               rightBoundaryTime={rightBoundaryTime}
               searchTerms={props.searchTerms}
+              mantras={props.mantras}
               tabs={props.tabs}
             />
             <WithDropTarget
@@ -204,7 +205,18 @@ class Timeline extends Component<Props, State> {
                 pan={this.pan}
                 rightBoundaryTime={rightBoundaryTime}
                 showThreadDetail={this.showThreadDetail}
-                threadLevels={props.threadLevels}
+                // threadLevels={props.threadLevels}
+                threadLevels={
+                  props.settings.reactiveThreadHeight
+                    ? visibleThreadLevels(
+                      props.blocks,
+                      props.activities,
+                      leftBoundaryTime,
+                      rightBoundaryTime,
+                      props.threads
+                    )
+                    : props.threadLevels
+                }
                 threads={props.threads}
                 toggleThread={props.toggleThread}
                 topOffset={this.state.topOffset || 0}
@@ -226,9 +238,7 @@ class Timeline extends Component<Props, State> {
                   id: props.focusedBlockActivity_id,
                   ...focusedActivity
                 }}
-                activityBlocks={props.blocks.filter(
-                  block => block.activity_id === props.focusedBlockActivity_id
-                )}
+                activityBlocks={props.blocks.filter(block => block.activity_id === props.focusedBlockActivity_id)}
                 categories={props.user.categories}
                 updateActivity={props.updateActivity}
                 trace_id={props.trace_id}
@@ -248,6 +258,7 @@ connect(
     activities: getTimeline(state).activities,
     blocks: getTimeline(state).blocks,
     focusedBlockActivity_id: getTimeline(state).focusedBlockActivity_id,
+    mantras: getUser(state).mantras,
     minTime: getTimeline(state).minTime,
     maxTime: getTimeline(state).maxTime,
     modifiers: state.modifiers,
@@ -257,6 +268,7 @@ connect(
     lastThread_id: getTimeline(state).lastThread_id,
     attentionShifts: getUser(state).attentionShifts,
     searchTerms: getUser(state).searchTerms,
+    settings: state.settings,
     tabs: getUser(state).tabs
   }),
   dispatch => ({

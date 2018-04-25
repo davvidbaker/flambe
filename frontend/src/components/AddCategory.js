@@ -50,7 +50,6 @@ export class AddCategory extends Component<Props, State> {
   };
 
   selectExistingCategory = ({ id, name, color }: CategoryType) => {
-    console.log('selected existing category', id, name, color);
     this.props.addExistingCategory(id);
   };
 

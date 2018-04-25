@@ -47,6 +47,8 @@ sagaMiddleware.run(sagas);
 store.subscribe(() => {
   saveState({
     user: getUser(store.getState()),
+    settingsVisible: store.getState().settingsVisible,
+    settings: store.getState().settings,
     timeline: getTimeline(store.getState()),
     view: store.getState().view,
     viewThread: store.getState().viewThread
