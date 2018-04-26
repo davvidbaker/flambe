@@ -1,6 +1,7 @@
 import filter from 'lodash/fp/filter';
 import reduce from 'lodash/fp/reduce';
 import pipe from 'lodash/fp/pipe';
+import curry from 'lodash/fp/curry';
 
 export function setCanvasSize(canvas, textPadding, isFlameChart) {
   const header = document.querySelector('header');
@@ -102,6 +103,19 @@ export function drawFutureWindow(
   }
 }
 
+export function isVisible(
+  { startTime, endTime },
+  leftBoundaryTime,
+  rightBoundaryTime
+) {
+  return (
+    (startTime > leftBoundaryTime && startTime < rightBoundaryTime) ||
+    (endTime > leftBoundaryTime && endTime < rightBoundaryTime) ||
+    (startTime < leftBoundaryTime && endTime > rightBoundaryTime) ||
+    (startTime < leftBoundaryTime && !endTime)
+  );
+}
+
 export function visibleThreadLevels(
   blocks,
   activities,
@@ -109,12 +123,13 @@ export function visibleThreadLevels(
   rightBoundaryTime,
   threads
 ) {
+  /* ⚠️ weird code ahead. Should use a better pattern for *this* kinda thing. something something currying */
+  function thisIsVisible(block) {
+    return isVisible(block, leftBoundaryTime, rightBoundaryTime);
+  }
+
   return pipe(
-    filter(({ startTime, endTime }) =>
-      (startTime > leftBoundaryTime && startTime < rightBoundaryTime) ||
-        (endTime > leftBoundaryTime && endTime < rightBoundaryTime) ||
-        (startTime < leftBoundaryTime && endTime > rightBoundaryTime) ||
-        (startTime < leftBoundaryTime && !endTime)),
+    filter(thisIsVisible),
 
     reduce((acc, block) => {
       const { thread_id } = activities[block.activity_id];
