@@ -10,13 +10,16 @@ import identity from 'lodash/fp/identity';
 import pipe from 'lodash/fp/pipe';
 import reverse from 'lodash/fp/reverse';
 import mapValues from 'lodash/fp/mapValues';
+import filter from 'lodash/fp/filter';
+import reduce from 'lodash/fp/reduce';
 
 import {
   setCanvasSize,
   pixelsToTime,
   timeToPixels,
   getBlockTransform,
-  drawFutureWindow
+  drawFutureWindow,
+  isVisible
 } from '../utilities/timelineChart';
 /* 🔮  abstract into parts of react-flame-chart? */
 import HoverActivity from './HoverActivity';
@@ -389,17 +392,14 @@ class FlameChart extends Component<Props, State> {
       }
 
       const { startTime, endTime, level } = block;
-      const { blockX, blockY, blockWidth } = getBlockTransform(
+      const { blockX, blockY, blockWidth } = this.getBlockTransform(
         startTime,
         endTime,
         level,
         this.blockHeight,
         this.topOffset +
           this.state.offsets[activity.thread_id] +
-          FlameChart.threadHeaderHeight,
-        this.props.leftBoundaryTime,
-        this.props.rightBoundaryTime,
-        this.state.canvasWidth
+          FlameChart.threadHeaderHeight
       );
 
       const { startMessage, endMessage, ending } = block;
@@ -578,34 +578,118 @@ class FlameChart extends Component<Props, State> {
 
       // draw vertical bars
       this.drawGrid(this.ctx);
-
       if (this.props.blocks) {
-        // Object.values(this.props.activities).forEach(activity => {
-        for (let i = 0; i < this.props.blocks.length; i++) {
-          const block = this.props.blocks[i];
-          const activity = this.props.activities[block.activity_id];
-          if (!activity) console.log('block missing activity 😲', block);
-          this.ctx.font = `${block.endTime ? '' : 'bold'} 11px sans-serif`;
-
-          if (activity) {
-            this.drawBlock(block, activity);
-          }
-        }
+        this.drawBlocks();
       }
-      drawFutureWindow(
-        this.ctx,
-        this.props.leftBoundaryTime,
-        this.props.rightBoundaryTime,
-        this.state.canvasWidth,
-        this.state.canvasHeight
-      );
+      this.drawFutureWindow();
       this.drawThreadHeaders(this.ctx);
       this.drawAttention(this.ctx);
       this.drawMeasurementWindow(this.ctx, this.state.measurement);
+      this.drawSuspendResumeFlows();
 
       this.ctx.scale(0.5, 0.5);
       this.ctx.restore();
     }
+  }
+
+  drawFutureWindow() {
+    return drawFutureWindow(
+      this.ctx,
+      this.props.leftBoundaryTime,
+      this.props.rightBoundaryTime,
+      this.state.canvasWidth,
+      this.state.canvasHeight
+    );
+  }
+
+  drawBlocks() {
+    for (let i = 0; i < this.props.blocks.length; i++) {
+      const block = this.props.blocks[i];
+      const activity = this.props.activities[block.activity_id];
+      if (!activity) console.log('block missing activity 😲', block);
+      this.ctx.font = `${block.endTime ? '' : 'bold'} 11px sans-serif`;
+
+      if (activity) {
+        this.drawBlock(block, activity);
+      }
+    }
+  }
+
+  isVisible(block) {
+    return isVisible(
+      block,
+      this.props.leftBoundaryTime,
+      this.props.rightBoundaryTime
+    );
+  }
+
+  drawSuspendResumeFlows() {
+    /* ⚠️ terrible code ahead */
+    const onScreenBlocks = filter(this.isVisible.bind(this))(this.props.blocks);
+    const onScreenBlocksByActivity = reduce(
+      (acc, block) => ({
+        ...acc,
+        [block.activity_id]: [
+          ...(acc[block.activity_id] ? acc[block.activity_id] : []),
+          {
+            ...block,
+            thread_id: this.props.activities[block.activity_id].thread_id,
+            cat: this.props.categories.find(element =>
+              element.id ===
+                this.props.activities[block.activity_id].categories[0])
+          }
+        ]
+      }),
+      {}
+    )(onScreenBlocks);
+
+    const onScreenBlocksByActivityWithMultipleBlocks = filter(blocks => blocks.length > 1)(onScreenBlocksByActivity);
+
+    onScreenBlocksByActivityWithMultipleBlocks.forEach(arrayOfBlocks => {
+      arrayOfBlocks.forEach((block, i) => {
+        if (i === 0) return;
+
+        const { blockX, blockY, blockWidth } = this.getBlockTransform(
+          arrayOfBlocks[i - 1].endTime,
+          block.startTime,
+          block.level,
+          this.blockHeight,
+          this.topOffset +
+            this.state.offsets[block.thread_id] +
+            FlameChart.threadHeaderHeight
+        );
+
+        this.ctx.globalAlpha = 0.5;
+        this.ctx.strokeStyle = block.cat ? block.cat.color_background : colors.flames.main;
+        // this.ctx.fillStyle = 'black';
+        // this.ctx.fillRect(blockX, blockY, blockWidth, this.blockHeight);
+        this.ctx.beginPath();
+        this.ctx.moveTo(blockX, blockY);
+        this.ctx.bezierCurveTo(
+          blockX + 100,
+          this.topOffset + this.state.offsets[block.thread_id],
+          blockX + blockWidth - 100,
+          this.topOffset + this.state.offsets[block.thread_id],
+          blockX + blockWidth,
+          blockY
+        );
+        this.ctx.stroke();
+      });
+    });
+    // onScreenBlocksByActivity.filter(.forEach((block, i) => {});
+  }
+
+  getBlockTransform(startTime, endTime, level, blockHeight, offsetFromTop) {
+    return getBlockTransform(
+      startTime,
+      endTime,
+      level,
+      blockHeight,
+      offsetFromTop,
+      this.props.leftBoundaryTime,
+      this.props.rightBoundaryTime,
+      this.state.canvasWidth
+    );
   }
 
   drawBlock(block, activity) {
@@ -614,7 +698,7 @@ class FlameChart extends Component<Props, State> {
     const threadStatus = this.threadStatuses[activity.thread_id];
 
     const { startTime, endTime, level } = block;
-    const { blockX, blockY, blockWidth } = getBlockTransform(
+    const { blockX, blockY, blockWidth } = this.getBlockTransform(
       startTime,
       endTime,
       collapsed ? -1 : level,
@@ -622,10 +706,7 @@ class FlameChart extends Component<Props, State> {
       (collapsed ? 1 : 0) +
         this.topOffset +
         this.state.offsets[activity.thread_id] +
-        FlameChart.threadHeaderHeight,
-      this.props.leftBoundaryTime,
-      this.props.rightBoundaryTime,
-      this.state.canvasWidth
+        FlameChart.threadHeaderHeight
     );
 
     // don't draw bar if whole thing is this.left of view
@@ -948,7 +1029,10 @@ connect(
       index, activity_id, activityStatus, thread_id
     }) =>
       dispatch(focusBlock({
-        index, activity_id, activityStatus, thread_id
+        index,
+        activity_id,
+        activityStatus,
+        thread_id
       })),
     hoverBlock: index => dispatch(hoverBlock(index))
   })
