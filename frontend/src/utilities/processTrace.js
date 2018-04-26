@@ -66,9 +66,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
   }
 
   // 👇 The trace from the database is not necessarily ordered.
-  const orderedTrace: TraceEvent[] = sortBy(
-    (event: TraceEvent) => event.timestamp
-  )(trace);
+  const orderedTrace: TraceEvent[] = sortBy((event: TraceEvent) => event.timestamp)(trace);
 
   // ⚠️ maybe one day don't have this redundancy.
   // Activities on client are slightly different than how they are stored on server. On client, activities have fields for their start and end times, while activities on server do not. Originally I was calling them entries on the client, but I stopped because the confusion around that being a keyword for objects in javascript. (Object.entries()...).
@@ -149,9 +147,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
             threadLevels[thread_id].current--;
             threadNonTerminatedActivities[
               thread_id
-            ] = threadNonTerminatedActivities[thread_id].filter(
-              id => id !== activity_id
-            );
+            ] = threadNonTerminatedActivities[thread_id].filter(id => id !== activity_id);
           }
         });
 
@@ -198,7 +194,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         // activity.level = threadLevels[thread_id].current;
         activity.name = event.activity.name;
         activity.description = event.activity.description;
-        activity.thread = event.activity.thread;
+        activity.thread_id = event.activity.thread.id;
         activity.flavor = event.phase === 'Q' ? 'question' : 'task';
         blocks.push({
           startTime: event.timestamp,
@@ -263,7 +259,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       activity.categories.length > 0 ? activity.categories[0] : null;
 
     if (ind === orderedTrace.length - 1) {
-      lastThread_id = activity.thread.id;
+      lastThread_id = activity.thread_id;
     }
   });
 

@@ -40,6 +40,8 @@ export const COMMAND_RUN = 'COMMAND_RUN';
 
 export const MANTRA_CREATE = 'MANTRA_CREATE';
 
+export const SETTING_TOGGLE = 'SETTING_TOGGLE';
+
 export const SETTINGS_SHOW = 'SETTINGS_SHOW';
 export const SETTINGS_HIDE = 'SETTINGS_HIDE';
 
@@ -439,6 +441,13 @@ export function fetchResource(
     type: FETCH_RESOURCE,
     params,
     resource
+  };
+}
+
+export function toggleSetting(setting) {
+  return {
+    type: SETTING_TOGGLE,
+    setting
   };
 }
 

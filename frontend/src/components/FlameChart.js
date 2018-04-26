@@ -1,10 +1,7 @@
 // @flow
-
 import React, { Component } from 'react';
-
 import emojiRegex from 'emoji-regex';
 import { connect } from 'react-redux';
-// flow-ignore
 import pickBy from 'lodash/fp/pickBy';
 import compose from 'lodash/fp/compose';
 import isEqual from 'lodash/isEqual';
@@ -13,18 +10,18 @@ import identity from 'lodash/fp/identity';
 import pipe from 'lodash/fp/pipe';
 import reverse from 'lodash/fp/reverse';
 import mapValues from 'lodash/fp/mapValues';
-// import memoize from 'lodash/fp/memoize';
 
 import {
   setCanvasSize,
   pixelsToTime,
   timeToPixels,
-  getBlockTransform
+  getBlockTransform,
+  drawFutureWindow
 } from '../utilities/timelineChart';
 /* 🔮  abstract into parts of react-flame-chart? */
-import HoverActivity from 'components/HoverActivity';
-import FocusActivity from 'components/FocusActivity';
-import Tooltip from 'components/Tooltip';
+import HoverActivity from './HoverActivity';
+import FocusActivity from './FocusActivity';
+import Tooltip from './Tooltip';
 
 import {
   constrain,
@@ -200,22 +197,16 @@ class FlameChart extends Component<Props, State> {
     const hitThread_id = this.pixelsToThread_id(e.nativeEvent.offsetY);
     const hitLevel = this.pixelsToLevel(e.nativeEvent.offsetY);
 
-    const filterByTime = pickBy(
-      block =>
-        ts > block.startTime &&
-        (ts < block.endTime || block.endTime === undefined)
-    );
+    const filterByTime = pickBy(block =>
+      ts > block.startTime &&
+        (ts < block.endTime || block.endTime === undefined));
 
     const filterByLevel = pickBy(block => block.level === hitLevel);
 
-    const filterByThread = pickBy(
-      block =>
-        this.props.activities[block.activity_id].thread.id === hitThread_id
-    );
+    const filterByThread = pickBy(block =>
+      this.props.activities[block.activity_id].thread_id === hitThread_id);
 
-    const hitBlocks = compose(filterByTime, filterByLevel, filterByThread)(
-      this.props.blocks
-    );
+    const hitBlocks = compose(filterByTime, filterByLevel, filterByThread)(this.props.blocks);
 
     /** 💁 this is the header (hitLevel === -1) */
     if (hitLevel === -1) {
@@ -256,7 +247,7 @@ class FlameChart extends Component<Props, State> {
             index: hit.value[0],
             activity_id: block.activity_id,
             activityStatus: activity.status,
-            thread_id: activity.thread.id
+            thread_id: activity.thread_id
           });
           break;
 
@@ -391,7 +382,7 @@ class FlameChart extends Component<Props, State> {
         this.props.activities && this.props.activities[block.activity_id];
 
       if (
-        this.props.threads.find(thread => thread.id === activity.thread.id)
+        this.props.threads.find(thread => thread.id === activity.thread_id)
           .collapsed
       ) {
         return false;
@@ -404,28 +395,22 @@ class FlameChart extends Component<Props, State> {
         level,
         this.blockHeight,
         this.topOffset +
-          this.state.offsets[activity.thread.id] +
+          this.state.offsets[activity.thread_id] +
           FlameChart.threadHeaderHeight,
         this.props.leftBoundaryTime,
-        this.props.rightBoundaryTime, this.state.canvasWidth
+        this.props.rightBoundaryTime,
+        this.state.canvasWidth
       );
 
-      
       const { startMessage, endMessage, ending } = block;
 
       // ⚠️ ahead rough draft
-      const activityBlocks = this.props.blocks.filter(
-        b => block.activity_id === b.activity_id
-      );
+      const activityBlocks = this.props.blocks.filter(b => block.activity_id === b.activity_id);
 
-      const otherActivityBlocks = this.props.blocks.filter(
-        (b, index) =>
-          block.activity_id === b.activity_id && Number(blockIndex) !== index
-      );
+      const otherActivityBlocks = this.props.blocks.filter((b, index) =>
+        block.activity_id === b.activity_id && Number(blockIndex) !== index);
 
-      const otherMessages = otherActivityBlocks.map(
-        ({ startMessage, endMessage }) => ({ startMessage, endMessage })
-      );
+      const otherMessages = otherActivityBlocks.map(({ startMessage, endMessage }) => ({ startMessage, endMessage }));
 
       return {
         blockWidth,
@@ -463,12 +448,8 @@ class FlameChart extends Component<Props, State> {
   };
 
   render() {
-    const focusedBlock = this.getBlockDetails(
-      this.canvas && this.props.activities && this.props.focusedBlockIndex
-    );
-    const hoveredBlock = this.getBlockDetails(
-      this.canvas && this.props.activities && this.props.hoveredBlockIndex
-    );
+    const focusedBlock = this.getBlockDetails(this.canvas && this.props.activities && this.props.focusedBlockIndex);
+    const hoveredBlock = this.getBlockDetails(this.canvas && this.props.activities && this.props.hoveredBlockIndex);
 
     const hoveredActivity = hoveredBlock
       ? this.props.activities[
@@ -611,7 +592,13 @@ class FlameChart extends Component<Props, State> {
           }
         }
       }
-      this.drawFutureWindow(this.ctx);
+      drawFutureWindow(
+        this.ctx,
+        this.props.leftBoundaryTime,
+        this.props.rightBoundaryTime,
+        this.state.canvasWidth,
+        this.state.canvasHeight
+      );
       this.drawThreadHeaders(this.ctx);
       this.drawAttention(this.ctx);
       this.drawMeasurementWindow(this.ctx, this.state.measurement);
@@ -622,11 +609,9 @@ class FlameChart extends Component<Props, State> {
   }
 
   drawBlock(block, activity) {
-    const collapsed = this.props.threads.find(
-      thread => thread.id === activity.thread.id
-    ).collapsed;
+    const collapsed = this.props.threads.find(thread => thread.id === activity.thread_id).collapsed;
 
-    const threadStatus = this.threadStatuses[activity.thread.id];
+    const threadStatus = this.threadStatuses[activity.thread_id];
 
     const { startTime, endTime, level } = block;
     const { blockX, blockY, blockWidth } = getBlockTransform(
@@ -636,7 +621,7 @@ class FlameChart extends Component<Props, State> {
       this.blockHeight,
       (collapsed ? 1 : 0) +
         this.topOffset +
-        this.state.offsets[activity.thread.id] +
+        this.state.offsets[activity.thread_id] +
         FlameChart.threadHeaderHeight,
       this.props.leftBoundaryTime,
       this.props.rightBoundaryTime,
@@ -659,9 +644,7 @@ class FlameChart extends Component<Props, State> {
     /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
     if (activity.categories.length > 0 && activity.categories[0]) {
       // ⚠️ don't always just show the color belonging to category 0... need a better way
-      const cat = this.props.categories.find(
-        element => element.id === activity.categories[0]
-      );
+      const cat = this.props.categories.find(element => element.id === activity.categories[0]);
       if (cat) {
         this.ctx.fillStyle = cat.color_background;
       }
@@ -672,11 +655,11 @@ class FlameChart extends Component<Props, State> {
         ? blockY +
           block.level *
             this.blockHeight /
-            this.props.threadLevels[activity.thread.id].max
+            this.props.threadLevels[activity.thread_id].max
         : blockY,
       blockWidth,
       collapsed
-        ? this.blockHeight / this.props.threadLevels[activity.thread.id].max
+        ? this.blockHeight / this.props.threadLevels[activity.thread_id].max
         : this.blockHeight
     );
 
@@ -703,9 +686,7 @@ class FlameChart extends Component<Props, State> {
     /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
     if (activity.categories.length > 0 && activity.categories[0]) {
       // ⚠️ don't always just show the color belonging to category 0... need a better way
-      const cat = this.props.categories.find(
-        element => element.id === activity.categories[0]
-      );
+      const cat = this.props.categories.find(element => element.id === activity.categories[0]);
       if (cat) {
         this.ctx.fillStyle = cat.color_text || '#000000';
       }
@@ -954,34 +935,6 @@ class FlameChart extends Component<Props, State> {
     ctx.lineTo(x, length);
     ctx.stroke();
   }
-
-  drawFutureWindow(ctx) {
-    ctx.globalAlpha = 0.2;
-    ctx.fillStyle = '#B6C8E8';
-    ctx.strokeStyle = '#7B9EDE';
-    const now = Date.now();
-
-    if (now < this.props.rightBoundaryTime) {
-      const nowPixels = timeToPixels(
-        now,
-        this.props.leftBoundaryTime,
-        this.props.rightBoundaryTime,
-        this.state.canvasWidth
-      );
-      ctx.fillRect(
-        nowPixels,
-        0,
-        this.state.canvasWidth - nowPixels + 10,
-        this.state.canvasHeight
-      );
-      ctx.strokeRect(
-        nowPixels,
-        0,
-        this.state.canvasWidth - nowPixels + 10,
-        this.state.canvasHeight
-      );
-    }
-  }
 }
 
 export default // flow-ignore
@@ -991,8 +944,12 @@ connect(
     hoveredBlockIndex: getTimeline(state).hoveredBlockIndex
   }),
   dispatch => ({
-    focusBlock: ({ index, activity_id, activityStatus, thread_id }) =>
-      dispatch(focusBlock({ index, activity_id, activityStatus, thread_id })),
+    focusBlock: ({
+      index, activity_id, activityStatus, thread_id
+    }) =>
+      dispatch(focusBlock({
+        index, activity_id, activityStatus, thread_id
+      })),
     hoverBlock: index => dispatch(hoverBlock(index))
   })
 )(FlameChart);

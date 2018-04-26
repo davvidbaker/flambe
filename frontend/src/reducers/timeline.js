@@ -24,7 +24,7 @@ import {
   TIMELINE_PAN,
   TODO_BEGIN,
   TRACE_SELECT,
-  TRACE_FETCH,
+  TRACE_FETCH
 } from 'actions';
 
 import { zoom, pan, processTrace } from 'utilities';
@@ -35,17 +35,24 @@ export const getTimeline = state => state.timeline;
 const initialState = {
   trace: {
     id: null,
-    name: null,
+    name: null
   },
   threadLevels: {},
   leftBoundaryTime: 0,
   rightBoundaryTime: 0,
   flameChartTopOffset: 0,
   lastThread: null,
-  lastCategory_id: null,
+  lastCategory_id: null
 };
 
-function createBlock(blocks, thread_id, timestamp, threadLevels) {
+function createBlock(
+  blocks,
+  thread_id,
+  timestamp,
+  threadLevels,
+  activity_id = 'optimisticActivity',
+  beginning = 'B'
+) {
   // eslint-disable-next-line no-param-reassign
   blocks = blocks || [];
   return {
@@ -54,8 +61,9 @@ function createBlock(blocks, thread_id, timestamp, threadLevels) {
       {
         level: threadLevels[thread_id].current,
         startTime: timestamp,
-        activity_id: 'optimisticActivity',
-      },
+        activity_id,
+        beginning
+      }
     ],
     threadLevels: {
       ...threadLevels,
@@ -64,9 +72,9 @@ function createBlock(blocks, thread_id, timestamp, threadLevels) {
         max: Math.max(
           threadLevels[thread_id].current + 1,
           threadLevels[thread_id].max
-        ),
-      },
-    },
+        )
+      }
+    }
   };
 }
 
@@ -86,7 +94,7 @@ function timeline(state = initialState, action) {
       return {
         ...state,
         leftBoundaryTime,
-        rightBoundaryTime,
+        rightBoundaryTime
       };
 
     case TIMELINE_PAN:
@@ -104,7 +112,7 @@ function timeline(state = initialState, action) {
         ...state,
         leftBoundaryTime: lBT,
         rightBoundaryTime: rBT,
-        flameChartTopOffset: topOffset,
+        flameChartTopOffset: topOffset
       };
 
     case PROCESS_TIMELINE_TRACE:
@@ -116,7 +124,7 @@ function timeline(state = initialState, action) {
         threadLevels,
         threads,
         lastCategory_id,
-        lastThread_id,
+        lastThread_id
       } = processTrace(action.events, action.threads);
 
       return {
@@ -129,19 +137,19 @@ function timeline(state = initialState, action) {
         threadLevels,
         threads,
         lastCategory_id,
-        lastThread_id,
+        lastThread_id
       };
 
     case TRACE_SELECT:
       return {
         ...state,
-        trace: action.trace,
+        trace: action.trace
       };
 
     case DELETE_CURRENT_TRACE:
       return {
         ...state,
-        trace: null,
+        trace: null
       };
 
     case UPDATE_THREAD_LEVEL:
@@ -153,9 +161,9 @@ function timeline(state = initialState, action) {
           ...state.threadLevels,
           [action.id]: {
             current: prevLevel + action.inc,
-            max: Math.max(prevLevel + action.inc, prevMax),
-          },
-        },
+            max: Math.max(prevLevel + action.inc, prevMax)
+          }
+        }
       };
     // 😃 optimism!
     case TODO_BEGIN:
@@ -172,32 +180,30 @@ function timeline(state = initialState, action) {
             categories: [action.category_id],
             status: 'active',
             thread: {
-              id: action.thread_id,
-            },
-          },
+              id: action.thread_id
+            }
+          }
         },
         ...createBlock(
           state.blocks,
           action.thread_id,
           action.timestamp,
           state.threadLevels
-        ),
+        )
       };
 
     case `${TODO_BEGIN}_SUCCEEDED`:
     case `${ACTIVITY_CREATE}_SUCCEEDED`:
       return {
         ...state,
-        blocks: state.blocks.map(
-          block =>
-            (block.activity_id === 'optimisticActivity'
-              ? { ...block, activity_id: action.data.id }
-              : block)
-        ),
+        blocks: state.blocks.map(block =>
+          (block.activity_id === 'optimisticActivity'
+            ? { ...block, activity_id: action.data.id }
+            : block)),
         activities: mapKeys(
           state.activities,
           (_val, key) => (key === 'optimisticActivity' ? action.data.id : key)
-        ),
+        )
       };
 
     case ACTIVITY_RESUME:
@@ -208,25 +214,23 @@ function timeline(state = initialState, action) {
           [action.id]: {
             ...state.activities[action.id],
             endTime: action.timestamp,
-            status: 'active',
-          },
+            status: 'active'
+          }
         },
         ...createBlock(
           state.blocks,
           action.thread_id,
           action.timestamp,
-          state.threadLevels
-        ),
+          state.threadLevels,
+          action.id,
+          'R'
+        )
       };
 
     case ACTIVITY_DELETE:
       const acts = {};
-      const remainingBlocks = state.blocks.filter(
-        block => block.activity_id !== action.id
-      );
-      const activityBlocks = state.blocks.filter(
-        block => block.activity_id === action.id
-      );
+      const remainingBlocks = state.blocks.filter(block => block.activity_id !== action.id);
+      const activityBlocks = state.blocks.filter(block => block.activity_id === action.id);
       /** 💁 we need to adjust the levels of any affected blocks */
       Object.entries(state.activities).forEach(([key, val]) => {
         if (key !== action.id) {
@@ -272,9 +276,9 @@ function timeline(state = initialState, action) {
             /** ⚠️ I THINK THIS IS WRONG */
             [action.thread_id]: {
               current: state.threadLevels[action.thread_id].current - 1,
-              max: state.threadLevels[action.thread_id].max,
-            },
-          },
+              max: state.threadLevels[action.thread_id].max
+            }
+          }
       };
     // 😃 optimism!
     case ACTIVITY_END:
@@ -285,8 +289,8 @@ function timeline(state = initialState, action) {
           [action.id]: {
             ...state.activities[action.id],
             endTime: action.timestamp,
-            status: 'complete',
-          },
+            status: 'complete'
+          }
         },
         blocks: terminateBlock(
           state.blocks,
@@ -300,9 +304,9 @@ function timeline(state = initialState, action) {
           ...state.threadLevels,
           [action.thread_id]: {
             current: state.threadLevels[action.thread_id].current - 1,
-            max: state.threadLevels[action.thread_id].max,
-          },
-        },
+            max: state.threadLevels[action.thread_id].max
+          }
+        }
       };
     // 😃 optimism!
     /** ⚠️ TODO make sure the activity is suspendable! */
@@ -314,8 +318,8 @@ function timeline(state = initialState, action) {
           [action.id]: {
             ...state.activities[action.id],
             endTime: action.timestamp,
-            status: 'suspended',
-          },
+            status: 'suspended'
+          }
         },
         blocks: terminateBlock(
           state.blocks,
@@ -329,9 +333,9 @@ function timeline(state = initialState, action) {
           ...state.threadLevels,
           [action.thread_id]: {
             current: state.threadLevels[action.thread_id].current - 1,
-            max: state.threadLevels[action.thread_id].max,
-          },
-        },
+            max: state.threadLevels[action.thread_id].max
+          }
+        }
       };
     /** ⚠️ need to handle network failures */
     case ACTIVITY_UPDATE:
@@ -350,12 +354,12 @@ function timeline(state = initialState, action) {
               ? action.updates.category_ids.length > 0
                 ? [
                   ...state.activities[action.id].categories,
-                  ...action.updates.category_ids,
+                  ...action.updates.category_ids
                 ]
                 : state.activities[action.id].categories
-              : state.activities[action.id].categories,
-          },
-        },
+              : state.activities[action.id].categories
+          }
+        }
       };
     /** 😃 optimism */
     case CATEGORY_CREATE:
@@ -367,10 +371,10 @@ function timeline(state = initialState, action) {
             ...state.activities[action.activity_id],
             categories: [
               ...state.activities[action.activity_id].categories,
-              'optimisticCategory',
-            ],
-          },
-        },
+              'optimisticCategory'
+            ]
+          }
+        }
       };
 
     case `${CATEGORY_CREATE}_SUCCEEDED`:
@@ -382,12 +386,10 @@ function timeline(state = initialState, action) {
             (act.categories.includes('optimisticCategory')
               ? {
                 ...act,
-                categories: act.categories.map(
-                  cat => (cat === 'optimisticCategory' ? action.data.id : cat)
-                ),
+                categories: act.categories.map(cat => (cat === 'optimisticCategory' ? action.data.id : cat))
               }
               : act)
-        ),
+        )
       };
 
     case THREAD_CREATE:
@@ -399,28 +401,26 @@ function timeline(state = initialState, action) {
             name: action.name,
             rank: action.rank,
             id: 'optimisticThread',
-            collapsed: false,
-          },
+            collapsed: false
+          }
         ],
         threadLevels: {
           ...state.threadLevels,
-          optimisticThread: { current: 0, max: 0 },
-        },
+          optimisticThread: { current: 0, max: 0 }
+        }
       };
 
     case `${THREAD_CREATE}_SUCCEEDED`:
       return {
         ...state,
-        threads: state.threads.map(
-          thread =>
-            (thread.id === 'optimisticThread'
-              ? { ...thread, id: action.data.id }
-              : thread)
-        ),
+        threads: state.threads.map(thread =>
+          (thread.id === 'optimisticThread'
+            ? { ...thread, id: action.data.id }
+            : thread)),
         threadLevels: mapKeys(
           state.threadLevels,
           (_val, key) => (key === 'optimisticThread' ? action.data.id : key)
-        ),
+        )
       };
     /** ⚠️ need to handle failures */
     case THREAD_DELETE:
@@ -435,36 +435,28 @@ function timeline(state = initialState, action) {
         ...state,
         threads: state.threads.filter(thread => thread.id !== action.id),
         activities: activs,
-        threadLevels: omit(state.threadLevels, action.id),
+        threadLevels: omit(state.threadLevels, action.id)
       };
 
     case THREAD_COLLAPSE:
       return {
         ...state,
-        threads: state.threads.map(
-          thread =>
-            (thread.id === action.id ? { ...thread, collapsed: true } : thread)
-        ),
+        threads: state.threads.map(thread =>
+          (thread.id === action.id ? { ...thread, collapsed: true } : thread))
       };
 
     case THREAD_EXPAND:
       return {
         ...state,
-        threads: state.threads.map(
-          thread =>
-            (thread.id === action.id ? { ...thread, collapsed: false } : thread)
-        ),
+        threads: state.threads.map(thread =>
+          (thread.id === action.id ? { ...thread, collapsed: false } : thread))
       };
     /** ⚠️ need to handle failures */
     case THREAD_UPDATE:
       return {
         ...state,
-        threads: state.threads.map(
-          thread =>
-            (thread.id === action.id
-              ? { ...thread, ...action.updates }
-              : thread)
-        ),
+        threads: state.threads.map(thread =>
+          (thread.id === action.id ? { ...thread, ...action.updates } : thread))
       };
 
     case BLOCK_FOCUS:
@@ -472,14 +464,14 @@ function timeline(state = initialState, action) {
         ...state,
         focusedBlockIndex: action.index,
         focusedBlockActivity_id: action.activity_id,
-        thread_id: action.thread_id,
+        thread_id: action.thread_id
       };
 
     case BLOCK_HOVER:
       return {
         ...state,
         hoveredBlockIndex: action.index,
-        hoveredBlockActivity_id: action.activity_id,
+        hoveredBlockActivity_id: action.activity_id
       };
 
     default:

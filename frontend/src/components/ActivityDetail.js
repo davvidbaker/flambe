@@ -107,7 +107,7 @@ class ActivityDetail extends React.Component<Props> {
           submit={(value: string) => {
             updateActivity(activity.id, {
               name: value,
-              thread_id: activity.thread.id
+              thread_id: activity.thread_id
             });
           }}
         >
@@ -116,7 +116,7 @@ class ActivityDetail extends React.Component<Props> {
         {/* abstract out the delete functionality */}
         <DeleteButton
           onConfirm={() => {
-            deleteActivity(activity.id, activity.thread.id);
+            deleteActivity(activity.id, activity.thread_id);
           }}
           contentLabel="Delete Activity?"
         >
@@ -173,7 +173,11 @@ connect(
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
-    endActivity: ({ id, timestamp, message, thread_id, eventFlavor = 'E' }) =>
-      dispatch(endActivity({ id, timestamp, message, thread_id, eventFlavor }))
+    endActivity: ({
+      id, timestamp, message, thread_id, eventFlavor = 'E'
+    }) =>
+      dispatch(endActivity({
+        id, timestamp, message, thread_id, eventFlavor
+      }))
   })
 )(ActivityDetail);

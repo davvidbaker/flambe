@@ -4,18 +4,22 @@ defmodule StitchWeb.ActivityController do
   alias Stitch.{Traces, Accounts}
   alias Stitch.Traces.{Activity, Event, Trace}
 
-  action_fallback StitchWeb.FallbackController
+  action_fallback(StitchWeb.FallbackController)
 
-
-  def create(conn, %{"thread_id" => thread_id, "trace_id" => trace_id, "todo_id" => todo_id, "event" => event_params, "activity" => activity_params}) do
-    
+  def create(conn, %{
+        "thread_id" => thread_id,
+        "trace_id" => trace_id,
+        "todo_id" => todo_id,
+        "event" => event_params,
+        "activity" => activity_params
+      }) do
     if !is_nil(todo_id) do
       Accounts.delete_todo(Accounts.get_todo!(todo_id))
     end
-    
+
     # ⚠️ 🔒 this is bad. Should rely on the connection or token for authentication
     with {:ok, %Activity{} = activity} <- Traces.create_activity(thread_id, activity_params),
-    {:ok, %Event{}} <- Traces.create_event(trace_id, activity.id, event_params) do
+         {:ok, %Event{}} <- Traces.create_event(trace_id, activity.id, event_params) do
       # with {:ok, %Trace{} = trace} <- Traces.create_trace(conn.assigns.current_user, trace_params) do
       conn
       |> put_status(:created)
@@ -45,9 +49,11 @@ defmodule StitchWeb.ActivityController do
 
   def update(conn, %{"id" => id, "activity" => activity_params}) do
     activity = Traces.get_activity!(id)
+    IO.puts("\nactivity_params")
+    IO.inspect(activity_params)
+
     with {:ok, %Activity{}} <- Traces.update_activity(activity, activity_params) do
       render(conn, "show.json", activity: activity)
     end
   end
-    
 end

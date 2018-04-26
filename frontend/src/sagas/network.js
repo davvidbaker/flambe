@@ -90,7 +90,9 @@ function* createActivity({
   });
 }
 
-function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }) {
+function* endActivity({
+  type, id, timestamp, message, eventFlavor = 'E'
+}) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -110,7 +112,9 @@ function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }) {
   });
 }
 
-function* suspendActivity({ type, id, timestamp, message }) {
+function* suspendActivity({
+  type, id, timestamp, message
+}) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -145,6 +149,7 @@ function* deleteActivity({ type, id }) {
 
 // { name, thread_id, category_ids = [] }
 function* updateActivity({ type, id, updates }) {
+  console.log('updates', updates);
   yield fetchResource(type, {
     resource: { path: 'activities', id },
     params: {
@@ -154,7 +159,9 @@ function* updateActivity({ type, id, updates }) {
   });
 }
 
-function* createCategory({ type, activity_id, name, color_background }) {
+function* createCategory({
+  type, activity_id, name, color_background
+}) {
   const user = yield select(getUser);
   yield fetchResource(type, {
     resource: { path: 'categories' },
@@ -300,18 +307,16 @@ function* processFetchedTrace({ data }) {
   const timeline = yield select(getTimeline);
   const persistedThreads = timeline.threads;
 
-  yield put(
-    processTimelineTrace(
-      data.events.map(event => ({
-        ...event,
-        timestamp: new Date(event.timestamp).getTime()
-      })),
-      data.threads.map(thread => ({
-        ...thread,
-        collapsed: isCollapsed(persistedThreads, thread)
-      }))
-    )
-  );
+  yield put(processTimelineTrace(
+    data.events.map(event => ({
+      ...event,
+      timestamp: new Date(event.timestamp).getTime()
+    })),
+    data.threads.map(thread => ({
+      ...thread,
+      collapsed: isCollapsed(persistedThreads, thread)
+    }))
+  ));
 }
 
 function* createThread({ type, name, rank }) {
@@ -328,7 +333,9 @@ function* createThread({ type, name, rank }) {
   });
 }
 
-function* resumeActivity({ type, id, timestamp, message }) {
+function* resumeActivity({
+  type, id, timestamp, message
+}) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */

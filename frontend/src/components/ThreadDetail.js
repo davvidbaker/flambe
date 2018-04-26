@@ -32,7 +32,7 @@ class ThreadDetail extends Component<Props> {
 
   render() {
     const suspendedActivities = pipe(
-      filter(activity => activity.thread.id === this.props.id),
+      filter(activity => activity.thread_id === this.props.id),
       filter(activity => activity.status === 'suspended')
     )(this.props.activities);
 
