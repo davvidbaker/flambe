@@ -6,6 +6,7 @@ import {
   ACTIVITY_REJECT,
   ACTIVITY_RESOLVE,
   ACTIVITY_RESUME,
+  ACTIVITY_RESURRECT,
   ACTIVITY_DETAILS_SHOW,
   ATTENTION_SHIFT,
   CATEGORY_MANAGER_SHOW,
@@ -163,11 +164,19 @@ export const ACTIVITY_COMMANDS = [
     label: activityLabel,
     shortcut: 'V'
   },
+
   {
     action: ACTIVITY_RESUME,
     copy: 'resume...',
     parameters: [messageParam],
     status: ['suspended'],
+    label: activityLabel
+  },
+  {
+    action: ACTIVITY_RESURRECT,
+    copy: 'resurrect...',
+    parameters: [messageParam],
+    status: ['complete'],
     label: activityLabel
   },
   {

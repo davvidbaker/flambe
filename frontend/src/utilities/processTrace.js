@@ -152,6 +152,42 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         });
 
         break;
+
+      // X for Resurrect(s)
+      case 'X':
+        blocks.push({
+          startTime: event.timestamp,
+          level: threadLevels[thread_id].current,
+          activity_id: event.activity.id,
+          beginning: event.phase
+        });
+        threadLevels[thread_id].current++;
+        threadLevels[thread_id].max = Math.max(
+          threadLevels[thread_id].current,
+          threadLevels[thread_id].max
+        );
+
+        /* 🤔 There shouldn't be any suspended children on a completed activity, right? */
+        // if (activity.suspendedChildren.length > 0) {
+        //   activity.suspendedChildren.forEach(activity_id => {
+        //     blocks.push({
+        //       startTime: event.timestamp,
+        //       level: threadLevels[thread_id].current,
+        //       activity_id,
+        //       beginning: event.phase
+        //     });
+        //     threadLevels[thread_id].current++;
+        //     threadLevels[thread_id].max = Math.max(
+        //       threadLevels[thread_id].current,
+        //       threadLevels[thread_id].max
+        //     );
+        //     threadNonTerminatedActivities[thread_id].push(activity_id);
+        //   });
+        //   activity.suspendedChildren = [];
+        //   threadNonTerminatedActivities[thread_id].push(event.activity.id);
+        // }
+        activity.status = 'active';
+        break;
       // R for resume
       case 'R':
         blocks.push({

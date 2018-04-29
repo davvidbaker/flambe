@@ -6,6 +6,7 @@ import {
   ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_RESUME,
+  ACTIVITY_RESURRECT,
   ACTIVITY_SUSPEND,
   ACTIVITY_UPDATE,
   ATTENTION_SHIFT,
@@ -333,6 +334,7 @@ function* createThread({ type, name, rank }) {
   });
 }
 
+/* ⚠️ Soooo resumeActivity and resurrectActivity are almost identical. Some refactoring is in ofder. */
 function* resumeActivity({
   type, id, timestamp, message
 }) {
@@ -354,6 +356,28 @@ function* resumeActivity({
     }
   });
 }
+
+function* resurrectActivity({
+  type, id, timestamp, message
+}) {
+  const timeline = yield select(getTimeline);
+  yield fetchResource(type, {
+    /** 💁 path of 'events' is not a mistake */
+    resource: { path: 'events' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        trace_id: timeline.trace.id,
+        activity_id: id,
+        event: {
+          timestamp_integer: timestamp,
+          message,
+          phase: 'X'
+        }
+      })
+    }
+  });
+}
 // // // // // // // // // // // // // // // // // // // // // // // //
 
 function* networkSaga() {
@@ -361,6 +385,7 @@ function* networkSaga() {
   yield takeEvery(ACTIVITY_DELETE, deleteActivity);
   yield takeEvery(ACTIVITY_END, endActivity);
   yield takeEvery(ACTIVITY_RESUME, resumeActivity);
+  yield takeEvery(ACTIVITY_RESURRECT, resurrectActivity);
   yield takeEvery(ACTIVITY_SUSPEND, suspendActivity);
   yield takeEvery(ACTIVITY_UPDATE, updateActivity);
 

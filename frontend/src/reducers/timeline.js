@@ -7,6 +7,7 @@ import {
   ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_RESUME,
+  ACTIVITY_RESURRECT,
   ACTIVITY_SUSPEND,
   ACTIVITY_UPDATE,
   BLOCK_FOCUS,
@@ -179,9 +180,7 @@ function timeline(state = initialState, action) {
             startTime: action.timestamp,
             categories: [action.category_id],
             status: 'active',
-            thread: {
-              id: action.thread_id
-            }
+            thread_id: action.thread_id
           }
         },
         ...createBlock(
@@ -224,6 +223,27 @@ function timeline(state = initialState, action) {
           state.threadLevels,
           action.id,
           'R'
+        )
+      };
+
+    case ACTIVITY_RESURRECT:
+      return {
+        ...state,
+        activities: {
+          ...state.activities,
+          [action.id]: {
+            ...state.activities[action.id],
+            endTime: action.timestamp,
+            status: 'active'
+          }
+        },
+        ...createBlock(
+          state.blocks,
+          action.thread_id,
+          action.timestamp,
+          state.threadLevels,
+          action.id,
+          'X'
         )
       };
 

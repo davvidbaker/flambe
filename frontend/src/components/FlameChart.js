@@ -666,9 +666,9 @@ class FlameChart extends Component<Props, State> {
         this.ctx.beginPath();
         this.ctx.moveTo(blockX, blockY);
         this.ctx.bezierCurveTo(
-          blockX + 100,
+          blockX + 10,
           this.topOffset + this.state.offsets[block.thread_id],
-          blockX + blockWidth - 100,
+          blockX + blockWidth - 10,
           this.topOffset + this.state.offsets[block.thread_id],
           blockX + blockWidth,
           blockY
