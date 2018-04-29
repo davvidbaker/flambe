@@ -3,6 +3,7 @@ import {
   ACTIVITY_END,
   ACTIVITY_SUSPEND,
   ACTIVITY_RESUME,
+  ACTIVITY_RESURRECT
 } from 'actions';
 
 function operand(state = null, action) {
@@ -12,25 +13,26 @@ function operand(state = null, action) {
         type: action.index !== null ? 'activity' : null,
         activity_id: action.activity_id,
         activityStatus: action.activityStatus,
-        thread_id: action.thread_id,
+        thread_id: action.thread_id
       };
 
     case ACTIVITY_END:
       return {
         ...state,
-        activityStatus: 'complete',
+        activityStatus: 'complete'
       };
 
     case ACTIVITY_SUSPEND:
       return {
         ...state,
-        activityStatus: 'suspended',
+        activityStatus: 'suspended'
       };
 
+    case ACTIVITY_RESURRECT:
     case ACTIVITY_RESUME:
       return {
         ...state,
-        activityStatus: 'active',
+        activityStatus: 'active'
       };
 
     default:

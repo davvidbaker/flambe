@@ -19,6 +19,7 @@ export const ACTIVITY_END = 'ACTIVITY_END'; // 👈 legacy
 export const ACTIVITY_REJECT = 'ACTIVITY_REJECT';
 export const ACTIVITY_RESOLVE = 'ACTIVITY_RESOLVE';
 export const ACTIVITY_RESUME = 'ACTIVITY_RESUME';
+export const ACTIVITY_RESURRECT = 'ACTIVITY_RESURRECT';
 export const ACTIVITY_SUSPEND = 'ACTIVITY_SUSPEND';
 export const ACTIVITY_UPDATE = 'ACTIVITY_UPDATE';
 
@@ -279,6 +280,18 @@ export function resumeActivity({
   };
 }
 
+/** 💁 the thread_id is just being used here for optimystical updating threadLevels */
+export function resurrectActivity({
+  id, timestamp, message, thread_id
+}) {
+  return {
+    type: ACTIVITY_RESURRECT,
+    id,
+    timestamp,
+    message,
+    thread_id
+  };
+}
 // /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
 // export function rejectActivity(id, timestamp, message, thread_id) {
 //   return {

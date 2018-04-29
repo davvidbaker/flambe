@@ -6,6 +6,7 @@ import {
   ACTIVITY_REJECT,
   ACTIVITY_RESOLVE,
   ACTIVITY_RESUME,
+  ACTIVITY_RESURRECT,
   ACTIVITY_SUSPEND,
   ACTIVITY_DETAILS_SHOW,
   ATTENTION_SHIFT,
@@ -25,6 +26,7 @@ import {
   expandThread,
   endActivity,
   resumeActivity,
+  resurrectActivity,
   shiftAttention,
   showActivityDetails,
   showCategoryManager,
@@ -58,6 +60,17 @@ function* handleCommand({ type, operand, command }) {
         message: command.message,
         thread_id: operand.thread_id
       }));
+      yield put(shiftAttention(operand.thread_id, Date.now()));
+      break;
+
+    case ACTIVITY_RESURRECT:
+      yield put(resurrectActivity({
+        id: operand.activity_id,
+        timestamp: Date.now(),
+        message: command.message,
+        thread_id: operand.thread_id
+      }));
+      yield put(shiftAttention(operand.thread_id, Date.now()));
       break;
 
     case ACTIVITY_END:
