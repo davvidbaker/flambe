@@ -6,16 +6,14 @@
 use Mix.Config
 
 # General application configuration
-config :stitch,
-  ecto_repos: [Stitch.Repo]
+config :flambe, ecto_repos: [Flambe.Repo]
 
 # Configures the endpoint
-config :stitch, StitchWeb.Endpoint,
+config :flambe, FlambeWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "blTEMHWIkbiAPhmJWziLsANDEZMRLYl0OCK3BBydt1IVNRR3pk9qo7GojiF6zbbq",
-  render_errors: [view: StitchWeb.ErrorView, accepts: ~w(html json)],
-  pubsub: [name: Stitch.PubSub,
-           adapter: Phoenix.PubSub.PG2]
+  render_errors: [view: FlambeWeb.ErrorView, accepts: ~w(html json)],
+  pubsub: [name: Flambe.PubSub, adapter: Phoenix.PubSub.PG2]
 
 # Configures Elixir's Logger
 config :logger, :console,
@@ -30,4 +28,4 @@ config :ueberauth, Ueberauth,
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
-import_config "#{Mix.env}.exs"
+import_config "#{Mix.env()}.exs"

@@ -1,9 +1,9 @@
-defmodule Stitch.Repo.Migrations.CreateUsers do
+defmodule Flambe.Repo.Migrations.CreateUsers do
   use Ecto.Migration
 
   def change do
     create table(:users) do
-      add :name, :string
+      add(:name, :string)
 
       timestamps()
     end

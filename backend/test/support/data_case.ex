@@ -1,4 +1,4 @@
-defmodule Stitch.DataCase do
+defmodule Flambe.DataCase do
   @moduledoc """
   This module defines the setup for tests requiring
   access to the application's data layer.
@@ -16,20 +16,20 @@ defmodule Stitch.DataCase do
 
   using do
     quote do
-      alias Stitch.Repo
+      alias Flambe.Repo
 
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
-      import Stitch.DataCase
+      import Flambe.DataCase
     end
   end
 
   setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Stitch.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Flambe.Repo)
 
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Stitch.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(Flambe.Repo, {:shared, self()})
     end
 
     :ok
