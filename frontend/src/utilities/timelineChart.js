@@ -50,6 +50,10 @@ export function timeToPixels(
   );
 }
 
+export function getBlockY(level, blockHeight, offsetFromTop) {
+  return level * (1 + blockHeight) + offsetFromTop; // 👈 the + 1 is a margin
+}
+
 export function getBlockTransform(
   startTime: number,
   endTime: number,
@@ -71,7 +75,7 @@ export function getBlockTransform(
     rightBoundaryTime,
     canvasWidth
   );
-  const blockY = level * (1 + blockHeight) + offsetFromTop; // 👈 the + 1 is a margin
+  const blockY = getBlockY(level, blockHeight, offsetFromTop);
   const blockWidth =
     timeToPixels(endTime, leftBoundaryTime, rightBoundaryTime, canvasWidth) -
     blockX;

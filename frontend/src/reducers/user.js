@@ -93,8 +93,6 @@ function user(
       };
     /* ⚠️ this is optimistic, need to handle failure */
     case ATTENTION_SHIFT:
-      console.log('state.attentionShifts', state.attentionShifts);
-      console.log('action', action);
       return action.thread_id === last(state.attentionShifts.thread_id)
         ? state
         : {
