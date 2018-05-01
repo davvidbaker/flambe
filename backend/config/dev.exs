@@ -6,19 +6,22 @@ use Mix.Config
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we use it
 # with brunch.io to recompile .js and .css sources.
-config :stitch, StitchWeb.Endpoint,
-  http: [port: 4000, protocol_options: [
-    max_header_name_length: 640000,
-    max_header_value_length: 40960000,
-    max_headers: 1000000
-  ]],
+config :flambe, FlambeWeb.Endpoint,
+  http: [
+    port: 4000,
+    protocol_options: [
+      max_header_name_length: 640_000,
+      max_header_value_length: 40_960_000,
+      max_headers: 1_000_000
+    ]
+  ],
   debug_errors: true,
   code_reloader: true,
   check_origin: false,
   watchers: [
     # node: ["node_modules/brunch/bin/brunch", "watch", "--stdin",
-                    # cd: Path.expand("../assets", __DIR__)]
-                  ]
+    # cd: Path.expand("../assets", __DIR__)]
+  ]
 
 # ## SSL Support
 #
@@ -37,13 +40,13 @@ config :stitch, StitchWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :stitch, StitchWeb.Endpoint,
+config :flambe, FlambeWeb.Endpoint,
   live_reload: [
     patterns: [
       ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
       ~r{priv/gettext/.*(po)$},
-      ~r{lib/stitch_web/views/.*(ex)$},
-      ~r{lib/stitch_web/templates/.*(eex)$}
+      ~r{lib/flambe_web/views/.*(ex)$},
+      ~r{lib/flambe_web/templates/.*(eex)$}
     ]
   ]
 
@@ -55,11 +58,11 @@ config :logger, :console, format: "[$level] $message\n"
 config :phoenix, :stacktrace_depth, 20
 
 # Configure your database
-config :stitch, Stitch.Repo,
+config :flambe, Flambe.Repo,
   adapter: Ecto.Adapters.Postgres,
   username: "postgres",
   password: "postgres",
-  database: "stitch_dev",
+  database: "flambe_dev",
   hostname: "localhost",
   pool_size: 10
 

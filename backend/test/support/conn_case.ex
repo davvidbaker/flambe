@@ -1,4 +1,4 @@
-defmodule StitchWeb.ConnCase do
+defmodule FlambeWeb.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -19,20 +19,20 @@ defmodule StitchWeb.ConnCase do
     quote do
       # Import conveniences for testing with connections
       use Phoenix.ConnTest
-      import StitchWeb.Router.Helpers
+      import FlambeWeb.Router.Helpers
 
       # The default endpoint for testing
-      @endpoint StitchWeb.Endpoint
+      @endpoint FlambeWeb.Endpoint
     end
   end
-
 
   setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Stitch.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Flambe.Repo)
+
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Stitch.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(Flambe.Repo, {:shared, self()})
     end
+
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
-
 end

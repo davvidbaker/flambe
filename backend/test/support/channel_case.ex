@@ -1,4 +1,4 @@
-defmodule StitchWeb.ChannelCase do
+defmodule FlambeWeb.ChannelCase do
   @moduledoc """
   This module defines the test case to be used by
   channel tests.
@@ -21,17 +21,17 @@ defmodule StitchWeb.ChannelCase do
       use Phoenix.ChannelTest
 
       # The default endpoint for testing
-      @endpoint StitchWeb.Endpoint
+      @endpoint FlambeWeb.Endpoint
     end
   end
-
 
   setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Stitch.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Flambe.Repo)
+
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Stitch.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(Flambe.Repo, {:shared, self()})
     end
+
     :ok
   end
-
 end

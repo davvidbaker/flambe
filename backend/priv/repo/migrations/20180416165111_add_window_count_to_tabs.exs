@@ -1,4 +1,4 @@
-defmodule Stitch.Repo.Migrations.AddWindowCountToTabs do
+defmodule Flambe.Repo.Migrations.AddWindowCountToTabs do
   use Ecto.Migration
 
   def change do

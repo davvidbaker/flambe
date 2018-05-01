@@ -1,4 +1,4 @@
-defmodule Stitch.Repo.Migrations.AddTimestampToTabs do
+defmodule Flambe.Repo.Migrations.AddTimestampToTabs do
   use Ecto.Migration
 
   def change do
