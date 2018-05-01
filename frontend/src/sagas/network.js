@@ -1,4 +1,5 @@
 import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
+import { push } from 'react-router-redux';
 
 import {
   processTimelineTrace,
@@ -50,9 +51,13 @@ function* fetchResource(actionType, { resource, params }) {
   // action should be {resourceType, resourceIdentifier}
   try {
     const json = yield call(hitNetwork, { resource, params });
-    const data = json.data;
+    const { data } = json;
     yield put({ type: `${actionType}_SUCCEEDED`, data });
   } catch (e) {
+    if (e.status === 401) {
+      yield put(push('/login'));
+      return;
+    }
     console.error('failed response', `${actionType}_FAILED`, e, e.statusText);
   }
 }

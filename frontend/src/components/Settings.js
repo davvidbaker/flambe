@@ -11,6 +11,10 @@ const SETTINGS = [
     copy: 'Reactive Thread Height',
     description:
       'The height of a thread dynamically adjusts its height depending on how many levels are in the visible window.'
+  },
+  {
+    setting: 'suspendResumeFlows',
+    copy: 'Suspend/Resume Flows'
   }
 ];
 
@@ -30,6 +34,9 @@ const Wrapper = styled.div`
   ul {
     list-style: none;
     padding: 0;
+  }
+  li {
+    margin-bottom: 5px;
   }
 `;
 
@@ -52,7 +59,7 @@ const Settings = ({
             <Setting>
               <input
                 checked={settings[setting]}
-                onClick={() => toggleSetting(setting)}
+                onChange={() => toggleSetting(setting)}
                 type="checkbox"
                 id={setting}
               />

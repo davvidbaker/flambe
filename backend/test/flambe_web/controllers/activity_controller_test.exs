@@ -11,8 +11,8 @@ defmodule FlambeWeb.ActivityControllerTest do
 
   def fixture(:activity) do
     trace =
-      TestHelper.create_dummy_user()
-      |> TestHelper.create_dummy_trace()
+      TestHelper.user_fixture()
+      |> TestHelper.trace_fixture()
 
     [main_thread | _tail] =
       trace

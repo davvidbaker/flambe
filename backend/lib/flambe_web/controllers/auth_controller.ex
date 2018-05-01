@@ -19,8 +19,15 @@ defmodule FlambeWeb.AuthController do
       {:ok, user} ->
         conn
         |> put_flash(:info, "Successfully authenticated.")
+        |> Flambe.Guardian.Plug.sign_in(user)
+        # Do I need this? 🤔
         |> put_session(:current_user, user)
+        # |> redirect(external: "http://localhost:8081")
+        # 
         |> redirect(to: "/")
+
+      # ⚠️ fix this and here is where I left off. How do I ASDF
+      # HOW DO I now send this token to 8081? Maybe something something sockets
 
       {:error, reason} ->
         conn
