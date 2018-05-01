@@ -45,14 +45,16 @@ class NetworkChart extends Component {
   }
 
   setCanvasSize = () => {
-    const { ctx, minTextWidth, state } = setCanvasSize(
-      this.canvas,
-      NetworkChart.textPadding
-    );
-    this.ctx = ctx;
-    this.ctx.font = '11px sans-serif';
-    this.minTextWidth = minTextWidth;
-    this.setState(state, this.render);
+    if (this.canvas) {
+      const { ctx, minTextWidth, state } = setCanvasSize(
+        this.canvas,
+        NetworkChart.textPadding
+      );
+      this.ctx = ctx;
+      this.ctx.font = '11px sans-serif';
+      this.minTextWidth = minTextWidth;
+      this.setState(state, this.render);
+    }
   };
 
   onMouseEnter = () => {

@@ -15,7 +15,7 @@ class SingleThreadView extends Component {
 
     console.log('thread, activities', thread, activities);
 
-    const threadActivities = filter(({ thread: activityThread }) => activityThread.id === thread.id)(activities);
+    const threadActivities = filter(({ thread_id }) => thread_id === thread.id)(activities);
 
     const suspendedActivities = filter(({ status }) => status === 'suspended')(threadActivities);
 

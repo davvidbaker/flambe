@@ -18,6 +18,7 @@ import {
   pixelsToTime,
   timeToPixels,
   getBlockTransform,
+  getBlockY,
   drawFutureWindow,
   isVisible
 } from '../utilities/timelineChart';
@@ -584,9 +585,9 @@ class FlameChart extends Component<Props, State> {
       this.drawFutureWindow();
       this.drawThreadHeaders(this.ctx);
       this.drawAttention(this.ctx);
-      this.drawMeasurementWindow(this.ctx, this.state.measurement);
       this.drawSuspendResumeFlows();
-
+      this.drawMeasurementWindow(this.ctx, this.state.measurement);
+      
       this.ctx.scale(0.5, 0.5);
       this.ctx.restore();
     }
@@ -625,7 +626,9 @@ class FlameChart extends Component<Props, State> {
 
   drawSuspendResumeFlows() {
     /* ⚠️ terrible code ahead */
-    const onScreenBlocks = filter(this.isVisible.bind(this))(this.props.blocks);
+    /* ⚠️ not actually filtering blocks on by those within window because couldn't easily think of how to then draw flows to blocks that need to flow back to them... */
+    // const onScreenBlocks = filter(this.isVisible.bind(this))(this.props.blocks);
+    const onScreenBlocks = this.props.blocks;
     const onScreenBlocksByActivity = reduce(
       (acc, block) => ({
         ...acc,
@@ -648,35 +651,47 @@ class FlameChart extends Component<Props, State> {
     onScreenBlocksByActivityWithMultipleBlocks.forEach(arrayOfBlocks => {
       arrayOfBlocks.forEach((block, i) => {
         if (i === 0) return;
-
-        const { blockX, blockY, blockWidth } = this.getBlockTransform(
-          arrayOfBlocks[i - 1].endTime,
-          block.startTime,
-          block.level,
+        if (this.threadCollapsed(block.thread_id)) return;
+        
+        const x1 = this.timeToPixels(arrayOfBlocks[i - 1].endTime);
+        const y1 = getBlockY(
+          arrayOfBlocks[i - 1].level + 1,
           this.blockHeight,
-          this.topOffset +
-            this.state.offsets[block.thread_id] +
-            FlameChart.threadHeaderHeight
-        );
+          this.topOffset
+        ) + this.topOffset + this.state.offsets[block.thread_id];
+        const x2 = this.timeToPixels(block.startTime);
+        const y2 = getBlockY(block.level + 1, this.blockHeight, this.topOffset) + this.state.offsets[block.thread_id] + this.topOffset;
 
-        this.ctx.globalAlpha = 0.5;
-        this.ctx.strokeStyle = block.cat ? block.cat.color_background : colors.flames.main;
+        const aThird = (x2 - x1)/3;
+        
+        this.ctx.globalAlpha = 0.2;
+        this.ctx.strokeStyle = block.cat
+          ? block.cat.color_background
+          : colors.flames.main;
+        this.ctx.lineWidth = this.blockHeight;
         // this.ctx.fillStyle = 'black';
         // this.ctx.fillRect(blockX, blockY, blockWidth, this.blockHeight);
         this.ctx.beginPath();
-        this.ctx.moveTo(blockX, blockY);
+        this.ctx.moveTo(x1 - 20, y1 + this.blockHeight / 2); // blockY + this.blockHeight / 2);
         this.ctx.bezierCurveTo(
-          blockX + 10,
-          this.topOffset + this.state.offsets[block.thread_id],
-          blockX + blockWidth - 10,
-          this.topOffset + this.state.offsets[block.thread_id],
-          blockX + blockWidth,
-          blockY
+          x1 + aThird,
+          y1 + this.blockHeight / 2,
+          x1 + aThird,
+          y1 + (y2 - y1) / 2,// this.topOffset + this.state.offsets[block.thread_id],
+          x1 + (x2 - x1) / 2,
+          y1 + (y2 - y1) / 2,// this.topOffset + this.state.offsets[block.thread_id],
+        );
+        this.ctx.bezierCurveTo(
+          x2 - aThird,
+          y1 + (y2 - y1) / 2,// this.topOffset + this.state.offsets[block.thread_id],
+          x2 - aThird,
+          y2,
+          x2 + 20,
+          y2 + this.blockHeight / 2
         );
         this.ctx.stroke();
       });
     });
-    // onScreenBlocksByActivity.filter(.forEach((block, i) => {});
   }
 
   getBlockTransform(startTime, endTime, level, blockHeight, offsetFromTop) {
@@ -693,9 +708,7 @@ class FlameChart extends Component<Props, State> {
   }
 
   drawBlock(block, activity) {
-    const collapsed = this.props.threads.find(thread => thread.id === activity.thread_id).collapsed;
-
-    const threadStatus = this.threadStatuses[activity.thread_id];
+    const collapsed = this.threadCollapsed(activity.thread_id);
 
     const { startTime, endTime, level } = block;
     const { blockX, blockY, blockWidth } = this.getBlockTransform(
@@ -813,6 +826,10 @@ class FlameChart extends Component<Props, State> {
     }
   }
 
+  threadCollapsed(thread_id) {
+    return this.props.threads.find(thread => thread.id === thread_id).collapsed;
+  }
+
   pixelsToThread_id(y: number): number {
     const reverseOffsets = pipe(sortBy(identity), reverse)(this.state.offsets);
     let i = 0;
@@ -916,27 +933,12 @@ class FlameChart extends Component<Props, State> {
   drawAttention(ctx) {
     this.props.attentionShifts.forEach(({ thread_id, timestamp }, ind) => {
       const y = this.state.offsets[thread_id];
-      const x = timeToPixels(
-        timestamp,
-        this.props.leftBoundaryTime,
-        this.props.rightBoundaryTime,
-        this.state.canvasWidth
-      );
+      const x = this.timeToPixels(timestamp);
 
       const x2 =
         ind < this.props.attentionShifts.length - 1
-          ? timeToPixels(
-            this.props.attentionShifts[ind + 1].timestamp,
-            this.props.leftBoundaryTime,
-            this.props.rightBoundaryTime,
-            this.state.canvasWidth
-          )
-          : timeToPixels(
-            this.props.rightBoundaryTime,
-            this.props.leftBoundaryTime,
-            this.props.rightBoundaryTime,
-            this.state.canvasWidth
-          );
+          ? this.timeToPixels(this.props.attentionShifts[ind + 1].timestamp)
+          : this.timeToPixels(this.props.rightBoundaryTime);
 
       ctx.strokeStyle = '#ff0000';
 
@@ -968,13 +970,7 @@ class FlameChart extends Component<Props, State> {
 
   drawMeasurementWindow(ctx, measurement) {
     const { left, right } = mapValues(
-      val =>
-        timeToPixels(
-          val,
-          this.props.leftBoundaryTime,
-          this.props.rightBoundaryTime,
-          this.state.canvasWidth
-        ),
+      val => this.timeToPixels(val),
       measurement
     );
     ctx.save();
@@ -1015,6 +1011,15 @@ class FlameChart extends Component<Props, State> {
     ctx.moveTo(x, 0);
     ctx.lineTo(x, length);
     ctx.stroke();
+  }
+
+  timeToPixels(timestamp) {
+    return timeToPixels(
+      timestamp,
+      this.props.leftBoundaryTime,
+      this.props.rightBoundaryTime,
+      this.state.canvasWidth
+    );
   }
 }
 
