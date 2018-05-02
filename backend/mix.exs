@@ -33,16 +33,17 @@ defmodule Flambe.Mixfile do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:cors_plug, "~> 1.2"},
+      {:cowboy, "~> 1.0"},
+      {:ex_doc, "~> 0.13"},
+      {:gettext, "~> 0.11"},
+      {:guardian, "~> 1.0"},
       {:phoenix, "~> 1.3.0"},
       {:phoenix_pubsub, "~> 1.0"},
       {:phoenix_ecto, "~> 3.2"},
-      {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 2.10"},
       {:phoenix_live_reload, "~> 1.0", only: :dev},
-      {:gettext, "~> 0.11"},
-      {:cowboy, "~> 1.0"},
-      {:ex_doc, "~> 0.13"},
-      {:cors_plug, "~> 1.2"},
+      {:postgrex, ">= 0.0.0"},
       {:ueberauth, "~> 0.4"},
       {:ueberauth_github, "~> 0.6"}
     ]

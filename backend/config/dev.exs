@@ -66,4 +66,8 @@ config :flambe, Flambe.Repo,
   hostname: "localhost",
   pool_size: 10
 
+config :flambe, Flambe.Guardian,
+  issuer: "flambe",
+  secret_key: "8K68whWQOJn1kvRuJ3NmgkK36GDF4Q6/Z5UMtzCK+c/Tw4BO6fU/1IH/JiMyu+C6"
+
 import_config "dev.secret.exs"

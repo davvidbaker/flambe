@@ -205,6 +205,7 @@ class Timeline extends Component<Props, State> {
                 pan={this.pan}
                 rightBoundaryTime={rightBoundaryTime}
                 showThreadDetail={this.showThreadDetail}
+                showSuspendResumeFlows={props.settings.suspendResumeFlows}
                 // threadLevels={props.threadLevels}
                 threadLevels={
                   props.settings.reactiveThreadHeight

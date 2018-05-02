@@ -37,8 +37,8 @@ const store = createStore(
   rootReducer,
   persistedState,
   composeEnhancers(
-    applyMiddleware(rMiddleware),
-    applyMiddleware(sagaMiddleware)
+    applyMiddleware(sagaMiddleware),
+    applyMiddleware(rMiddleware)
   )
 );
 

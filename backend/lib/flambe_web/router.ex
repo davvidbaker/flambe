@@ -16,9 +16,13 @@ defmodule FlambeWeb.Router do
     plug(:fetch_session)
   end
 
+  pipeline :authenticate_user do
+    # plug(Flambe.AuthPipeline)
+  end
+
   scope "/", FlambeWeb do
     # Use the default browser stack
-    pipe_through(:browser)
+    pipe_through([:browser, :authenticate_user])
 
     get("/", PageController, :index)
   end
@@ -33,23 +37,6 @@ defmodule FlambeWeb.Router do
     pipe_through([:browser, :authenticate_user])
 
     resources("/pages", PageController)
-  end
-
-  defp authenticate_user(conn, _) do
-    conn |> put_resp_header("access-control-allow-origin", "*")
-    # case get_session(conn, :user_id) do
-    #   nil ->
-    #     conn
-    #     # ⚠️ fix for production
-    #     |> put_resp_header("access-control-allow-origin", "*")
-    #     |> put_status(:unauthorized)
-    #     |> Phoenix.Controller.json(%{"error": "SESSION_NOT_FOUND"})
-    #     |> halt()
-    #   user_id ->
-    #     # ⚠️ fix for production
-    #     |> put_resp_header("access-control-allow-origin", "*")
-    #     assign(conn, :current_user, Flambe.Accounts.get_user!(user_id))
-    # end
   end
 
   scope "/auth", FlambeWeb do

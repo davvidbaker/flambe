@@ -1,7 +1,8 @@
 import { SETTING_TOGGLE } from '../actions';
 
 const defaultState = {
-  reactiveThreadHeight: true
+  reactiveThreadHeight: true,
+  suspendResumeFlows: true
 };
 
 function settings(state = defaultState, action) {

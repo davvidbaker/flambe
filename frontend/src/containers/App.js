@@ -17,6 +17,7 @@ import Commander from 'react-commander';
 import Timeline from './Timeline';
 import SingleThreadView from './SingleThreadView';
 import Todos from './Todos';
+import Login from '../components/Login';
 import Header from '../components/Header';
 import WithEventListeners from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
@@ -232,52 +233,66 @@ class App extends Component<
         <WithEventListeners eventListeners={eventListeners} node={document}>
           {() => (
             <div>
-              <Header
-                traces={this.props.user.traces}
-                currentTrace={this.props.trace}
-                selectTrace={this.props.selectTrace}
-                deleteTrace={this.props.deleteTrace}
-                deleteCurrentTrace={this.props.deleteCurrentTrace}
-                currentMantra={
-                  this.props.user && last(this.props.user.mantras).name
-                }
-                createMantra={name => this.props.createMantra(name)}
-              />
+              <Route exact path="/login" render={() => <Login />} />
+              {/* /* ⚠️ I might have fucked up the route logic */}
+              <Route
+                exact
+                path="/"
+                render={() => (
+                  <Fragment>
+                    <Header
+                      traces={this.props.user.traces}
+                      currentTrace={this.props.trace}
+                      selectTrace={this.props.selectTrace}
+                      deleteTrace={this.props.deleteTrace}
+                      deleteCurrentTrace={this.props.deleteCurrentTrace}
+                      currentMantra={
+                        this.props.user && last(this.props.user.mantras).name
+                      }
+                      createMantra={name => this.props.createMantra(name)}
+                    />
 
-              <main>
-                {do {
-                  if (this.props.view === 'multithread') {
-                    <Fragment>
-                      <Route
-                        path="/traces/:trace_id"
-                        render={this.renderTimeline}
-                      />
-                      <Route exact path="/" render={this.renderTimeline} />
+                    <main>
+                      {do {
+                        if (this.props.view === 'multithread') {
+                          <Fragment>
+                            <Route
+                              path="/traces/:trace_id"
+                              render={this.renderTimeline}
+                            />
+                            <Route
+                              exact
+                              path="/"
+                              render={this.renderTimeline}
+                            />
 
-                      {this.props.todosVisible && (
-                        <Todos todos={this.props.user.todos} />
-                      )}
-                    </Fragment>;
-                  } else if (this.props.view === 'singlethread') {
-                    <Fragment>
-                      <SingleThreadView
-                        thread={this.props.threads.find(({ id }) => id === this.props.viewThread)}
-                      />
-                    </Fragment>;
-                  }
-                }}
-              </main>
-              <CategoryManager categories={this.props.categories} />
-              <Settings />
-              <Commander
-                withBuildup
-                appElement={window.root}
-                isOpen={this.state.commanderVisible}
-                commands={this.getCommands(this.props.operand)}
-                onSubmit={this.submitCommand}
-                hideCommander={this.hideCommander}
-                getItems={this.getItems}
-                ref={c => (this.commander = c)}
+                            {this.props.todosVisible && (
+                              <Todos todos={this.props.user.todos} />
+                            )}
+                          </Fragment>;
+                        } else if (this.props.view === 'singlethread') {
+                          <Fragment>
+                            <SingleThreadView
+                              thread={this.props.threads.find(({ id }) => id === this.props.viewThread)}
+                            />
+                          </Fragment>;
+                        }
+                      }}
+                    </main>
+                    <CategoryManager categories={this.props.categories} />
+                    <Settings />
+                    <Commander
+                      withBuildup
+                      appElement={window.root}
+                      isOpen={this.state.commanderVisible}
+                      commands={this.getCommands(this.props.operand)}
+                      onSubmit={this.submitCommand}
+                      hideCommander={this.hideCommander}
+                      getItems={this.getItems}
+                      ref={c => (this.commander = c)}
+                    />
+                  </Fragment>
+                )}
               />
             </div>
           )}
