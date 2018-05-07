@@ -1,8 +1,5 @@
-// @flow
-
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-// flow-ignore
 import throttle from 'lodash/throttle';
 import sortBy from 'lodash/fp/sortBy';
 import last from 'lodash/last';

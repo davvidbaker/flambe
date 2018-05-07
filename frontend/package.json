@@ -24,6 +24,7 @@
   "homepage": "https://github.com/davvidbaker/flame-chart#readme",
   "dependencies": {
     "babel-polyfill": "^6.26.0",
+    "dayjs": "^1.5.19",
     "downshift": "^1.9.1",
     "emoji-regex": "^6.5.1",
     "fuzzaldrin-plus": "^0.5.0",
