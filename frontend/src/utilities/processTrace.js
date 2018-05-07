@@ -194,7 +194,8 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           startTime: event.timestamp,
           level: threadLevels[thread_id].current,
           activity_id: event.activity.id,
-          beginning: event.phase
+          beginning: event.phase,
+          startMessage: event.message,
         });
         threadLevels[thread_id].current++;
         threadLevels[thread_id].max = Math.max(

@@ -1,16 +1,14 @@
-// @flow
-
 import React from 'react';
 import styled from 'styled-components';
 import Modal from 'react-modal';
-// flow-ignore
 import { connect } from 'react-redux';
 
-import Category from 'components/Category';
-import AddCategory from 'components/AddCategory';
-import DeleteButton from 'components/DeleteButton';
-import Grid from 'components/Grid';
-import { InputFromButton } from 'components/Button';
+import Category from './Category';
+import ActivityEventFlow from './ActivityEventFlow';
+import AddCategory from './AddCategory';
+import DeleteButton from './DeleteButton';
+import Grid from './Grid';
+import { InputFromButton } from './Button';
 import {
   deleteActivity,
   endActivity,
@@ -27,23 +25,6 @@ import type { Category as CategoryType } from 'types/Category';
 const P = styled.p`
   margin: 0;
 `;
-
-function mapToGrid(obj, { columns }) {
-  return (
-    <Grid columns={columns}>
-      {Object.entries(obj).map(([key, val]) => [
-        <P key={`key-${key}`}>{key}</P>,
-        <div key={`val-${key}`}>
-          {val !== null && typeof val === 'object' ? (
-            mapToGrid(val, { columns: '1fr 3fr' })
-          ) : (
-            <P>{val}</P>
-          )}
-        </div>
-      ])}
-    </Grid>
-  );
-}
 
 type Props = {
   activity: Activity,
@@ -98,7 +79,7 @@ class ActivityDetail extends React.Component<Props> {
     return (
       <Modal
         appElement={window.root}
-        isOpen={this.props.activityDetailsVisible}
+        isOpen={Boolean(this.props.activityDetailsVisible)}
         onRequestClose={this.props.hideActivityDetails}
       >
         {/* // flow-ignore */}
@@ -151,8 +132,7 @@ class ActivityDetail extends React.Component<Props> {
             />
           </ul>
         </div>
-        {activity && mapToGrid(activity, { columns: '1fr 3fr' })}
-        {/* </StyledDraggable> */}
+        <ActivityEventFlow activityBlocks={activityBlocks} />
       </Modal>
     );
   }
@@ -177,7 +157,11 @@ connect(
       id, timestamp, message, thread_id, eventFlavor = 'E'
     }) =>
       dispatch(endActivity({
-        id, timestamp, message, thread_id, eventFlavor
+        id,
+        timestamp,
+        message,
+        thread_id,
+        eventFlavor
       }))
   })
 )(ActivityDetail);
