@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component, Fragment } from 'react';
+import React, { Component  } from 'react';
 import { connect } from 'react-redux';
 import { compose } from 'redux';
 import last from 'lodash/fp/last';
@@ -216,6 +216,19 @@ class App extends Component<
                         this.commander.enterCommand(this.getCommands(this.props.operand).find(cmd => cmd.shortcut === e.key.toUpperCase()));
                       }
                       break;
+                    case 's':
+                      /* ⚠️ not great code ahead */
+                      if (
+                        this.props.activities[
+                          this.props.operand.activity_id
+                        ].status === 'active'
+                      ) {
+                        console.log('this.props.activities', this.props.activities[
+                          this.props.operand.activity_id
+                        ]);
+                        this.showCommander();
+                        this.commander.enterCommand(ACTIVITY_COMMANDS.find(({ shortcut }) => shortcut === 'S'));
+                      }
                     default:
                       break;
                   }
@@ -239,7 +252,7 @@ class App extends Component<
                 exact
                 path="/"
                 render={() => (
-                  <Fragment>
+                  <>
                     <Header
                       traces={this.props.user.traces}
                       currentTrace={this.props.trace}
@@ -255,7 +268,7 @@ class App extends Component<
                     <main>
                       {do {
                         if (this.props.view === 'multithread') {
-                          <Fragment>
+                          <>
                             <Route
                               path="/traces/:trace_id"
                               render={this.renderTimeline}
@@ -269,13 +282,13 @@ class App extends Component<
                             {this.props.todosVisible && (
                               <Todos todos={this.props.user.todos} />
                             )}
-                          </Fragment>;
+                          </>;
                         } else if (this.props.view === 'singlethread') {
-                          <Fragment>
+                          <>
                             <SingleThreadView
                               thread={this.props.threads.find(({ id }) => id === this.props.viewThread)}
                             />
-                          </Fragment>;
+                          </>;
                         }
                       }}
                     </main>
@@ -291,7 +304,7 @@ class App extends Component<
                       getItems={this.getItems}
                       ref={c => (this.commander = c)}
                     />
-                  </Fragment>
+                  </>
                 )}
               />
             </div>

@@ -184,7 +184,8 @@ export const ACTIVITY_COMMANDS = [
     copy: 'suspend...',
     parameters: [messageParam],
     status: ['active'],
-    label: activityLabel
+    label: activityLabel,
+    shortcut: 'S'
   },
   {
     action: ACTIVITY_DELETE,

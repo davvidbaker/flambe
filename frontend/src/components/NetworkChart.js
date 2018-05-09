@@ -1,5 +1,5 @@
 /* 🤔 maybe change the name of this component */
-import React, { Component, Fragment } from 'react';
+import React, { Component } from 'react';
 import last from 'lodash/last';
 import styled from 'styled-components';
 import findLast from 'lodash/fp/findLast';
@@ -85,7 +85,7 @@ class NetworkChart extends Component {
     this.draw();
 
     return (
-      <Fragment>
+      <>
         <canvas
           ref={canvas => {
             this.canvas = canvas;
@@ -109,7 +109,7 @@ class NetworkChart extends Component {
             tabs: {this.state.hoverTabCount}
           </div>
         </CountsBar>
-      </Fragment>
+      </>
     );
   }
 
