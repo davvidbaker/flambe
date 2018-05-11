@@ -15,7 +15,7 @@ import {
   updateActivity,
   createCategory,
   updateCategory,
-  hideActivityDetails
+  hideActivityDetails,
 } from 'actions';
 import { getUser } from 'reducers/user';
 
@@ -44,8 +44,7 @@ type Props = {
   addCategory: ({ variables: {} }) => mixed,
   updateCategory: ({ name?: string, color?: string }) => mixed,
   updateName: ({ variables: { name: string } }) => mixed,
-  threadLevels: { [string]: number }
-  // updateThreadLevels: (id: string, inc: number) => mixed,
+  threadLevels: { [string]: number },
 };
 
 class ActivityDetail extends React.Component<Props> {
@@ -53,13 +52,13 @@ class ActivityDetail extends React.Component<Props> {
     this.props.createCategory({
       activity_id: this.props.activity.id,
       name,
-      color_background: hexString
+      color_background: hexString,
     });
   };
 
   addExistingCategory = (category_id: string) => {
     this.props.updateActivity(this.props.activity.id, {
-      category_ids: [category_id]
+      category_ids: [category_id],
     });
   };
 
@@ -72,8 +71,7 @@ class ActivityDetail extends React.Component<Props> {
       deleteActivity,
       threadLevels,
       updateCategory,
-      // updateThreadLevels,
-      categories
+      categories,
     } = this.props;
 
     return (
@@ -88,7 +86,7 @@ class ActivityDetail extends React.Component<Props> {
           submit={(value: string) => {
             updateActivity(activity.id, {
               name: value,
-              thread_id: activity.thread_id
+              thread_id: activity.thread_id,
             });
           }}
         >
@@ -142,26 +140,24 @@ export default // flow-ignore
 connect(
   state => ({
     categories: getUser(state).categories,
-    activityDetailsVisible: state.activityDetailsVisible
+    activityDetailsVisible: state.activityDetailsVisible,
   }),
   dispatch => ({
-    // updateThreadLevels: (id: string, inc: number) =>
-    // dispatch(updateThreadLevel(id, inc)),
     createCategory: ({ activity_id, name, color_background }) =>
       dispatch(createCategory({ activity_id, name, color_background })),
     hideActivityDetails: () => dispatch(hideActivityDetails()),
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
-    endActivity: ({
-      id, timestamp, message, thread_id, eventFlavor = 'E'
-    }) =>
-      dispatch(endActivity({
-        id,
-        timestamp,
-        message,
-        thread_id,
-        eventFlavor
-      }))
+    endActivity: ({ id, timestamp, message, thread_id, eventFlavor = 'E' }) =>
+      dispatch(
+        endActivity({
+          id,
+          timestamp,
+          message,
+          thread_id,
+          eventFlavor,
+        })
+      ),
   })
 )(ActivityDetail);

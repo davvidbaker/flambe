@@ -10,6 +10,7 @@ import {
   ACTIVITY_DETAILS_SHOW,
   ATTENTION_SHIFT,
   CATEGORY_MANAGER_SHOW,
+  FIND,
   THREAD_CREATE,
   THREADS_COLLAPSE,
   THREADS_EXPAND,
@@ -77,6 +78,26 @@ const COMMANDS = [
       threadParam,
       categoryParam
     ]
+  },
+  {
+    action: FIND,
+    copy: 'find...',
+    parameters: [
+      {
+        key: 'text',
+        placeholder: 'find',
+        selector: props => {
+          console.log(props);
+          const acts = Object.values(props.activities).map(({ name }) => ({
+            name,
+            value: null
+          }));
+          return acts;
+          return props.user;
+        }
+      }
+    ],
+    shortcut: '⌘ F'
   },
   /** ⚠️ TODO make sure the thread name is unique */
   {

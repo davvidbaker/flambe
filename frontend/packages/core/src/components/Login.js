@@ -2,7 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 
 import Button from './Button';
-import Logo from './Logo';
+import Logo from 'flambe-logo';
 
 const CenterFlex = styled.div`
   width: 100%;

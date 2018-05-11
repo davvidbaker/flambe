@@ -7,7 +7,7 @@ export const ADD_EVENT = 'ADD_EVENT';
 export const TIMELINE_ZOOM = 'TIMELINE_ZOOM';
 export const TIMELINE_PAN = 'TIMELINE_PAN';
 export const UPDATE_ACTIVITY = 'UPDATE_ACTIVITY';
-export const UPDATE_THREAD_LEVEL = 'UPDATE_THREAD_LEVEL';
+// export const UPDATE_THREAD_LEVEL = 'UPDATE_THREAD_LEVEL';
 export const DELETE_CURRENT_TRACE = 'DELETE_CURRENT_TRACE';
 export const KEY_DOWN = 'KEY_DOWN';
 export const KEY_UP = 'KEY_UP';
@@ -38,6 +38,8 @@ export const CATEGORY_MANAGER_SHOW = 'CATEGORY_MANAGER_SHOW';
 export const CATEGORY_MANAGER_HIDE = 'CATEGORY_MANAGER_HIDE';
 
 export const COMMAND_RUN = 'COMMAND_RUN';
+
+export const FIND = 'FIND';
 
 export const MANTRA_CREATE = 'MANTRA_CREATE';
 
@@ -396,13 +398,13 @@ export function hoverBlock(index: number) {
 //   };
 // }
 
-export function updateThreadLevel(id, inc) {
-  return {
-    type: UPDATE_THREAD_LEVEL,
-    id,
-    inc
-  };
-}
+// export function updateThreadLevel(id, inc) {
+//   return {
+//     type: UPDATE_THREAD_LEVEL,
+//     id,
+//     inc
+//   };
+// }
 
 export function keyDown(key: string) {
   return {

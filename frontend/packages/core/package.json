@@ -1,0 +1,15 @@
+{
+  "name": "flambe-core",
+  "version": "0.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "webpack --config webpack.prod.js",
+    "start": "webpack-dev-server --config webpack.dev.js",
+    "stats": "webpack --config webpack.prod.js --profile --json > stats.json"
+
+  },
+  "dependencies": {
+    "flambe-logo": "^0.0.2"
+  }
+}
