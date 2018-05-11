@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component  } from 'react';
+import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { compose } from 'redux';
 import last from 'lodash/fp/last';
@@ -36,31 +36,33 @@ import {
   selectTrace,
   showActivityDetails,
   showSettings,
-  createMantra
+  createMantra,
+  FIND,
 } from '../actions';
 import COMMANDS, { ACTIVITY_COMMANDS } from '../constants/commands';
 import { getTimeline } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import isEndable from '../utilities/isEndable';
+import { findById } from '../utilities';
 
 import type { Trace } from '../types/Trace';
 import type { Todo } from '../types/Todo';
 
-// eslint-disable-next-line no-unused-expressions
+// eslint-disable-next-line babel/no-unused-expressions
 injectGlobal`
-html {
-  box-sizing: border-box;
-  font-family: sans-serif;
-  overflow: hidden;
-}
+  html {
+    box-sizing: border-box;
+    font-family: sans-serif;
+    overflow: hidden;
+  }
 
-*::before, *::after {
-  box-sizing: border-box;
-}
+  *::before, *::after {
+    box-sizing: border-box;
+  }
 
-* {
-  box-sizing: inherit;
-}
+  * {
+    box-sizing: inherit;
+  }
 `;
 
 class App extends Component<
@@ -72,12 +74,12 @@ class App extends Component<
     user: { id: string, name: string },
     userTraces: (?Trace)[],
     userTodos: (?Todo)[],
-    todosVisible: boolean
+    todosVisible: boolean,
   },
   { commanderVisible: boolean }
 > {
   state = {
-    commanderVisible: false
+    commanderVisible: false,
   };
 
   componentWillMount() {
@@ -142,8 +144,10 @@ class App extends Component<
       switch (operand.type) {
         case 'activity':
           return [
-            ...ACTIVITY_COMMANDS.filter(cmd => cmd.status.indexOf(operand.activityStatus) >= 0),
-            ...COMMANDS
+            ...ACTIVITY_COMMANDS.filter(
+              cmd => cmd.status.indexOf(operand.activityStatus) >= 0
+            ),
+            ...COMMANDS,
           ];
         default:
           return COMMANDS;
@@ -165,6 +169,14 @@ class App extends Component<
             this.showCommander();
           }
 
+          if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+            e.preventDefault();
+            this.showCommander();
+            this.commander.enterCommand(
+              COMMANDS.find(({ action }) => action === FIND)
+            );
+          }
+
           if (e.key === ',' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
             this.props.showSettings();
@@ -184,7 +196,7 @@ class App extends Component<
               });
             }
           }
-        }
+        },
       ],
       [
         'keyup',
@@ -205,29 +217,40 @@ class App extends Component<
                     case 'j':
                       if (
                         isEndable(
-                          this.props.activities[this.props.operand.activity_id],
-                          this.props.blocks.filter(block =>
-                            block.activity_id ===
-                              this.props.operand.activity_id),
+                          findById(
+                            this.props.operand.activity_id,
+                            this.props.activities
+                          ),
+                          this.props.blocks.filter(
+                            block =>
+                              block.activity_id ===
+                              this.props.operand.activity_id
+                          ),
                           this.props.threadLevels
                         )
                       ) {
                         this.showCommander();
-                        this.commander.enterCommand(this.getCommands(this.props.operand).find(cmd => cmd.shortcut === e.key.toUpperCase()));
+                        this.commander.enterCommand(
+                          this.getCommands(this.props.operand).find(
+                            cmd => cmd.shortcut === e.key.toUpperCase()
+                          )
+                        );
                       }
                       break;
                     case 's':
                       /* ⚠️ not great code ahead */
                       if (
-                        this.props.activities[
-                          this.props.operand.activity_id
-                        ].status === 'active'
+                        findById(
+                          this.props.operand.activity_id,
+                          this.props.activities
+                        ).status === 'active'
                       ) {
-                        console.log('this.props.activities', this.props.activities[
-                          this.props.operand.activity_id
-                        ]);
                         this.showCommander();
-                        this.commander.enterCommand(ACTIVITY_COMMANDS.find(({ shortcut }) => shortcut === 'S'));
+                        this.commander.enterCommand(
+                          ACTIVITY_COMMANDS.find(
+                            ({ shortcut }) => shortcut === 'S'
+                          )
+                        );
                       }
                     default:
                       break;
@@ -238,8 +261,8 @@ class App extends Component<
                 break;
             }
           }
-        }
-      ]
+        },
+      ],
     ];
     return (
       <ConnectedRouter history={history}>
@@ -264,7 +287,6 @@ class App extends Component<
                       }
                       createMantra={name => this.props.createMantra(name)}
                     />
-
                     <main>
                       {do {
                         if (this.props.view === 'multithread') {
@@ -278,7 +300,6 @@ class App extends Component<
                               path="/"
                               render={this.renderTimeline}
                             />
-
                             {this.props.todosVisible && (
                               <Todos todos={this.props.user.todos} />
                             )}
@@ -286,7 +307,9 @@ class App extends Component<
                         } else if (this.props.view === 'singlethread') {
                           <>
                             <SingleThreadView
-                              thread={this.props.threads.find(({ id }) => id === this.props.viewThread)}
+                              thread={this.props.threads.find(
+                                ({ id }) => id === this.props.viewThread
+                              )}
                             />
                           </>;
                         }
@@ -331,7 +354,7 @@ export default compose(
       user: getUser(state),
       userTraces: getUser(state).traces,
       view: state.view,
-      viewThread: state.viewThread
+      viewThread: state.viewThread,
     }),
     dispatch => ({
       collapseThread: id => dispatch(collapseThread(id)),
@@ -346,7 +369,7 @@ export default compose(
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       showActivityDetails: () => dispatch(showActivityDetails()),
       showSettings: () => dispatch(showSettings()),
-      createMantra: (id, note) => dispatch(createMantra(id, note))
+      createMantra: (id, note) => dispatch(createMantra(id, note)),
     })
   )
 )(App);

@@ -6,15 +6,20 @@ import trimTextMiddle from './trimText';
 import deepArrayIsEqual from './deepArrayIsEqual';
 import shortEnglishHumanizer from './shortEnglishHumanizer';
 
+function findById(idToFind, arr) {
+  return !arr ? {} : arr.find(({ id }) => id === idToFind);
+}
+
 export {
-  zoom,
+  deepArrayIsEqual,
+  findById,
+  loadState,
   pan,
   processTrace,
   saveState,
-  loadState,
-  trimTextMiddle,
-  deepArrayIsEqual,
   shortEnglishHumanizer,
+  trimTextMiddle,
+  zoom,
 };
 
 // Everything below (as well as other stuff dispersed throughout 😜) is borrowed with ❤️ from Chrome DevTools.
@@ -29,3 +34,4 @@ export const constrain = (num, min, max) => {
   else if (num > max) num = max;
   return num;
 };
+

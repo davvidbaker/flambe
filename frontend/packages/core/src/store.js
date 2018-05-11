@@ -45,14 +45,17 @@ const store = createStore(
 sagaMiddleware.run(sagas);
 
 store.subscribe(() => {
+  const state = store.getState();
   saveState({
-    activityDetailsVisible: store.getState().settings,
-    settings: store.getState().settings,
-    settingsVisible: store.getState().settingsVisible,
-    timeline: getTimeline(store.getState()),
-    user: getUser(store.getState()),
-    view: store.getState().view,
-    viewThread: store.getState().viewThread
+    activityDetailsVisible: state.activityDetailsVisible,
+    categoryManagerVisible: state.categoryManagerVisible,
+    operand: state.operand,
+    settings: state.settings,
+    settingsVisible: state.settingsVisible,
+    timeline: getTimeline(state),
+    user: getUser(state),
+    view: state.view,
+    viewThread: state.viewThread
   });
 });
 

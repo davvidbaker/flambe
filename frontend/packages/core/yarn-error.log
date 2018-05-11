@@ -1,0 +1,46 @@
+Arguments: 
+  /usr/local/Cellar/node/9.11.1/bin/node /usr/local/bin/yarn start
+
+PATH: 
+  /Users/david/Development/flambe/frontend/node_modules/.bin:/Users/david/.config/yarn/link/node_modules/.bin:/Users/david/Development/flambe/frontend/node_modules/.bin:/Users/david/.config/yarn/link/node_modules/.bin:/usr/local/Cellar/node/9.11.1/libexec/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/Cellar/node/9.11.1/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/Cellar/node/9.11.1/bin/node_modules/npm/bin/node-gyp-bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/Postgres.app/Contents/Versions/latest/bin:/usr/local/mysql/bin:/Applications/Postgres.app/Contents/Versions/9.6/bin
+
+Yarn version: 
+  1.6.0
+
+Node version: 
+  9.11.1
+
+Platform: 
+  darwin x64
+
+Trace: 
+  SyntaxError: /Users/david/Development/flambe/frontend/packages/core/package.json: Unexpected token } in JSON at position 296
+      at JSON.parse (<anonymous>)
+      at /Users/david/.config/yarn/global/node_modules/yarn/lib/cli.js:1130:59
+      at Generator.next (<anonymous>)
+      at step (/Users/david/.config/yarn/global/node_modules/yarn/lib/cli.js:98:30)
+      at /Users/david/.config/yarn/global/node_modules/yarn/lib/cli.js:109:13
+      at <anonymous>
+
+npm manifest: 
+  {
+    "name": "flambe-core",
+    "version": "0.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "scripts": {
+      "build": "webpack --config webpack.prod.js",
+      "start": "webpack-dev-server --config webpack.dev.js",
+      "stats": "webpack --config webpack.prod.js --profile --json > stats.json",
+  
+    },
+    "dependencies": {
+      "flambe-logo": "^0.0.2"
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile

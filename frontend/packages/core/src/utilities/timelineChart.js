@@ -1,15 +1,15 @@
-import filter from 'lodash/fp/filter';
-import reduce from 'lodash/fp/reduce';
-import pipe from 'lodash/fp/pipe';
-import curry from 'lodash/fp/curry';
+import filter from "lodash/fp/filter";
+import reduce from "lodash/fp/reduce";
+import pipe from "lodash/fp/pipe";
+import curry from "lodash/fp/curry";
 
 export function setCanvasSize(canvas, textPadding, isFlameChart) {
-  const header = document.querySelector('header');
+  const header = document.querySelector("header");
   const devicePixelRatio = window.devicePixelRatio;
 
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
 
-  const minTextWidth = textPadding.x + ctx.measureText('\u2026').textWidth;
+  const minTextWidth = textPadding.x + ctx.measureText("\u2026").textWidth;
 
   const state = {
     devicePixelRatio,
@@ -91,8 +91,8 @@ export function drawFutureWindow(
   canvasHeight
 ) {
   ctx.globalAlpha = 0.2;
-  ctx.fillStyle = '#B6C8E8';
-  ctx.strokeStyle = '#7B9EDE';
+  ctx.fillStyle = "#B6C8E8";
+  ctx.strokeStyle = "#7B9EDE";
   const now = Date.now();
 
   if (now < rightBoundaryTime) {
@@ -136,7 +136,7 @@ export function visibleThreadLevels(
     filter(thisIsVisible),
 
     reduce((acc, block) => {
-      const { thread_id } = activities[block.activity_id];
+      const { thread_id } = activities.find(({ id }) => id === block.activity_id);
 
       return {
         ...acc,

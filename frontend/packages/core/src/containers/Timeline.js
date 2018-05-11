@@ -1,32 +1,32 @@
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
-import throttle from 'lodash/throttle';
-import sortBy from 'lodash/fp/sortBy';
-import last from 'lodash/last';
+import   React   , { Component } from "react"           ;
+import { connect  }              from "react-redux"     ;
+import   throttle                from "lodash/throttle" ;
+import   sortBy                  from "lodash/fp/sortBy";
+import   last                    from "lodash/last"     ;
 
-import FlameChart from '../components/FlameChart';
-import NetworkChart from '../components/NetworkChart';
-import ActivityDetail from '../components/ActivityDetail';
-import ThreadDetail from '../components/ThreadDetail';
-import WithDropTarget from './WithDropTarget';
-import WithEventListeners from '../components/WithEventListeners';
+import FlameChart         from "../components/FlameChart"        ;
+import NetworkChart       from "../components/NetworkChart"      ;
+import ActivityDetail     from "../components/ActivityDetail"    ;
+import ThreadDetail       from "../components/ThreadDetail"      ;
+import WithDropTarget     from "./WithDropTarget"                ;
+import WithEventListeners from "../components/WithEventListeners";
 
-import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
+import { MAX_TIME_INTO_FUTURE } from "../constants/defaultParameters" ;
+import { visibleThreadLevels  } from "../utilities/timelineChart"     ;
+import { getTimeline          } from "../reducers/timeline"           ;
+import { getUser              } from "../reducers/user"               ;
+import { layout               } from "../styles"                      ;
+import { findById             } from '../utilities'                   ;
+import   zoom                   from "../utilities/zoom"              ;
+import   pan                    from "../utilities/pan"               ;
 import {
   updateActivity,
   createThread,
   collapseThread,
   expandThread
-} from '../actions';
-import { visibleThreadLevels } from '../utilities/timelineChart';
-import { getTimeline } from '../reducers/timeline';
-import { getUser } from '../reducers/user';
-import { layout } from '../styles';
+} from "../actions";
 
-import zoom from '../utilities/zoom';
-import pan from '../utilities/pan';
-
-import type { Activity } from '../types/Activity';
+import type { Activity } from "../types/Activity";
 
 // minTime is smallest timestamp in the entire timeline
 // maxTime is largest timestamp in the entire timeline
@@ -34,49 +34,48 @@ import type { Activity } from '../types/Activity';
 // rightBoundaryTime is timestamp of right bound of current view
 
 type Thread = {
-  id: string,
-  name: string,
+  id        : string,
+  name      : string,
   __typename: 'Thread',
   activities: (?Activity)[]
 };
 
 type Props = {
-  trace_id: string,
-  minTime: number,
-  maxTime: number,
+  trace_id               : string,
+  minTime                : number,
+  maxTime                : number,
   focusedBlockActivity_id: ?string,
-  activities: { [string]: Activity },
-  threads: (?Thread)[],
-  toggleThread: () => mixed
+  activities             : { [string]: Activity },
+  threads                : (?Thread)[],
+  toggleThread           : () => mixed
 };
 
 type State = {
-  leftBoundaryTime: number,
-  rightBoundaryTime: number,
-  topOffset: number,
-
-  threadModal_id: ?number
+  leftBoundaryTime :  number,
+  rightBoundaryTime:  number,
+  topOffset        :  number,
+  threadModal_id   : ?number
 };
 
 class Timeline extends Component<Props, State> {
   state = {
-    leftBoundaryTime: 1506456399223.1394,
+    leftBoundaryTime : 1506456399223.1394,
     rightBoundaryTime: 1506482474608.5562,
-    topOffset: 0,
-    eventListeners: null
+    topOffset        : 0,
+    eventListeners   : null
   };
 
   constructor(props) {
     super(props);
     const savedTimes = {
-      lbt: localStorage.getItem('lbt'),
-      rbt: localStorage.getItem('rbt')
+      lbt: localStorage.getItem("lbt"),
+      rbt: localStorage.getItem("rbt")
     };
     const lbt = savedTimes.lbt && Number.parseFloat(savedTimes.lbt);
     const rbt = savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
 
     if (lbt && rbt) {
-      this.state.leftBoundaryTime = lbt;
+      this.state.leftBoundaryTime  = lbt;
       this.state.rightBoundaryTime = rbt;
     }
   }
@@ -138,20 +137,20 @@ class Timeline extends Component<Props, State> {
    */
   setLocalStorage = throttle(() => {
     if (
-      typeof this.state.leftBoundaryTime === 'number' &&
+      typeof this.state.leftBoundaryTime === "number" &&
       this.state.leftBoundaryTime !== NaN &&
-      typeof this.state.rightBoundaryTime === 'number' &&
+      typeof this.state.rightBoundaryTime === "number" &&
       this.state.rightBoundaryTime !== NaN
     ) {
-      localStorage.setItem('lbt', this.state.leftBoundaryTime);
-      localStorage.setItem('rbt', this.state.rightBoundaryTime);
+      localStorage.setItem("lbt", this.state.leftBoundaryTime);
+      localStorage.setItem("rbt", this.state.rightBoundaryTime);
     }
   }, 1000);
   render() {
     const props = this.props;
     const focusedActivity =
       props.focusedBlockActivity_id &&
-      props.activities[props.focusedBlockActivity_id];
+      findById(props.focusedBlockActivity_id, props.activities);
 
     const rightBoundaryTime = this.state.rightBoundaryTime || props.maxTime;
     const leftBoundaryTime = this.state.leftBoundaryTime || props.minTime;
@@ -161,9 +160,9 @@ class Timeline extends Component<Props, State> {
         node={document}
         eventListeners={[
           [
-            'keyup',
+            "keyup",
             e => {
-              if (e.key === 'n' && e.target.nodeName !== 'INPUT') {
+              if (e.key === "n" && e.target.nodeName !== "INPUT") {
                 this.showRightNow();
               }
             }
@@ -173,7 +172,7 @@ class Timeline extends Component<Props, State> {
         {() => (
           <div
             style={{
-              position: 'relative',
+              position: "relative",
               height: `calc(${window.innerHeight}px - ${layout.headerHeight})`
             }}
           >
@@ -205,7 +204,7 @@ class Timeline extends Component<Props, State> {
                 showSuspendResumeFlows={props.settings.suspendResumeFlows}
                 // threadLevels={props.threadLevels}
                 threadLevels={
-                  props.settings.reactiveThreadHeight
+                  props.activities && props.settings.reactiveThreadHeight
                     ? visibleThreadLevels(
                       props.blocks,
                       props.activities,
