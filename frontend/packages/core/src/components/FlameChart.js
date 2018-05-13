@@ -1,18 +1,19 @@
 // @flow
-import   React, { Component } from 'react'              ;
-import   emojiRegex           from 'emoji-regex'        ;
-import { connect }            from 'react-redux'        ;
-import   pickBy               from 'lodash/fp/pickBy'   ;
-import   compose              from 'lodash/fp/compose'  ;
-import   isEqual              from 'lodash/isEqual'     ;
-import   isUndefined          from 'lodash/isUndefined' ;
-import   sortBy               from 'lodash/fp/sortBy'   ;
-import   identity             from 'lodash/fp/identity' ;
-import   pipe                 from 'lodash/fp/pipe'     ;
-import   reverse              from 'lodash/fp/reverse'  ;
-import   mapValues            from 'lodash/fp/mapValues';
-import   filter               from 'lodash/fp/filter'   ;
-import   reduce               from 'lodash/fp/reduce'   ;
+import React, { Component } from 'react';
+import emojiRegex from 'emoji-regex';
+import { connect } from 'react-redux';
+import pickBy from 'lodash/fp/pickBy';
+import compose from 'lodash/fp/compose';
+import isEqual from 'lodash/isEqual';
+import isUndefined from 'lodash/isUndefined';
+import sortBy from 'lodash/fp/sortBy';
+import identity from 'lodash/fp/identity';
+import pipe from 'lodash/fp/pipe';
+import reverse from 'lodash/fp/reverse';
+import mapValues from 'lodash/fp/mapValues';
+import filter from 'lodash/fp/filter';
+import reduce from 'lodash/fp/reduce';
+import zipWith from 'lodash/fp/zipWith';
 
 import {
   setCanvasSize,
@@ -25,7 +26,7 @@ import {
 } from '../utilities/timelineChart';
 /* 🔮  abstract into parts of react-flame-chart? */
 import FocusActivity from './FocusActivity';
-import Tooltip       from './Tooltip'      ;
+import Tooltip from './Tooltip';
 
 import {
   constrain,
@@ -34,11 +35,11 @@ import {
   shortEnglishHumanizer,
   findById,
 } from 'utilities';
-import { focusBlock , hoverBlock } from 'actions'          ;
-import { getTimeline             } from 'reducers/timeline';
-import { colors                  } from 'styles'           ;
+import { focusBlock, hoverBlock } from 'actions';
+import { getTimeline } from 'reducers/timeline';
+import { colors } from 'styles';
 
-import type { Activity                 } from 'types/Activity';
+import type { Activity } from 'types/Activity';
 import type { Category as CategoryType } from 'types/Category';
 
 const SUSPENDED = 0;
@@ -84,7 +85,7 @@ type Props = {
   showThreadDetail: (id: number) => mixed,
   showSuspendResumeFlows: boolean,
   toggleThread: (id: number, isCollapsed: boolean) => mixed,
-  };
+};
 
 type State = {
   canvasWidth: number, // in pixels
@@ -643,6 +644,8 @@ class FlameChart extends Component<Props, State> {
   }
 
   drawSuspendResumeFlows() {
+    this.ctx.globalCompositeOperation = 'source-over';
+
     /* ⚠️ terrible code ahead */
     /* ⚠️ not actually filtering blocks on by those within window because couldn't easily think of how to then draw flows to blocks that need to flow back to them... */
     // const onScreenBlocks = filter(this.isVisible.bind(this))(this.props.blocks);
@@ -989,13 +992,65 @@ class FlameChart extends Component<Props, State> {
           ? this.timeToPixels(this.props.attentionShifts[ind + 1].timestamp)
           : this.timeToPixels(this.props.rightBoundaryTime);
 
-      ctx.strokeStyle = '#ff0000';
+      ctx.strokeStyle = 'mediumseagreen';
+      ctx.globalAlpha = 0.2;
+      ctx.globalCompositeOperation = 'difference';
 
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x2, y);
+      ctx.moveTo(x2, y);
+
+      /* ⚠️  bad code ahead */
+      const x3 = this.timeToPixels(
+        ind < this.props.attentionShifts.length - 2
+          ? this.props.attentionShifts[ind + 2].timestamp
+          : x2
+      );
+
+      const width = Math.min(10, Math.min(Math.abs(x2 - x), Math.abs(x3 - x2)));
+
+      /* 🔮 replace with a setting */
+      if (true) {
+        if (ind < this.props.attentionShifts.length - 1)
+          this.drawAttentionFlow(
+            ctx,
+            x2,
+            y,
+            this.state.offsets[this.props.attentionShifts[ind + 1].thread_id],
+            width
+          );
+        // debugger;
+      }
+
       ctx.stroke();
     });
+  }
+
+  drawAttentionFlow(ctx, x, y1, y2, width) {
+    const midpoint = (a, b) => (a + b) / 2;
+
+    const startVertex = [x, y1];
+    const middleVertex = [x, midpoint(y1, y2)]; //midpoint(y1, y2)];
+    const endVertex = [x, y2];
+
+    const add = (arr1, arr2) => zipWith((a, b) => a + b, arr1, arr2);
+    ctx.bezierCurveTo(
+      ...add(startVertex, [width, 0]),
+      // ...add(middleVertex, [20, 0]),
+      ...middleVertex,
+      ...middleVertex
+    );
+    // ctx.bezierCurveTo(...startVertex, ...startVertex, ...middleVertex);
+
+    // const controlPoint1 = add(middleVertex, [2, 0]);
+    ctx.bezierCurveTo(
+      ...middleVertex,
+
+      // ...add(middleVertex, [-20, 0]),
+      ...add(endVertex, [-width, 0]),
+      ...endVertex
+    );
   }
 
   // ⚠️ TODO vertical grid
