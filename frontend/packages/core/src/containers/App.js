@@ -16,7 +16,7 @@ import Commander from 'react-commander';
 // flow-ignore
 import Timeline from './Timeline';
 import SingleThreadView from './SingleThreadView';
-import Todos from './Todos';
+// import Todos from './Todos';
 import Login from '../components/Login';
 import Header from '../components/Header';
 import WithEventListeners from '../components/WithEventListeners';
@@ -24,10 +24,10 @@ import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
 import { history } from '../store';
 import {
-  collapseThread,
+  collapseAllThreads,
   deleteCurrentTrace,
   deleteTrace,
-  expandThread,
+  expandAllThreads,
   fetchTrace,
   fetchUser,
   keyDown,
@@ -43,7 +43,6 @@ import COMMANDS, { ACTIVITY_COMMANDS } from '../constants/commands';
 import { getTimeline } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import isEndable from '../utilities/isEndable';
-import { findById } from '../utilities';
 
 import type { Trace } from '../types/Trace';
 import type { Todo } from '../types/Todo';
@@ -187,13 +186,9 @@ class App extends Component<
             e.target.nodeName !== 'TEXTAREA'
           ) {
             if (e.shiftKey && e.key === '}') {
-              this.props.threads.forEach(thread => {
-                this.props.expandThread(thread.id);
-              });
+                this.props.expandAllThreads();
             } else if (e.shiftKey && e.key === '{') {
-              this.props.threads.forEach(thread => {
-                this.props.collapseThread(thread.id);
-              });
+              this.props.collapseAllThreads();
             }
           }
         },
@@ -217,10 +212,7 @@ class App extends Component<
                     case 'j':
                       if (
                         isEndable(
-                          findById(
-                            this.props.operand.activity_id,
-                            this.props.activities
-                          ),
+                          this.props.activities[this.props.operand.activity_id],
                           this.props.blocks.filter(
                             block =>
                               block.activity_id ===
@@ -240,10 +232,8 @@ class App extends Component<
                     case 's':
                       /* ⚠️ not great code ahead */
                       if (
-                        findById(
-                          this.props.operand.activity_id,
-                          this.props.activities
-                        ).status === 'active'
+                        this.props.activities[this.props.operand.activity_id]
+                          .status === 'active'
                       ) {
                         this.showCommander();
                         this.commander.enterCommand(
@@ -300,16 +290,14 @@ class App extends Component<
                               path="/"
                               render={this.renderTimeline}
                             />
-                            {this.props.todosVisible && (
+                            {/* {this.props.todosVisible && (
                               <Todos todos={this.props.user.todos} />
-                            )}
+                            )} */}
                           </>;
                         } else if (this.props.view === 'singlethread') {
                           <>
                             <SingleThreadView
-                              thread={this.props.threads.find(
-                                ({ id }) => id === this.props.viewThread
-                              )}
+                              thread={this.props.threads[this.props.viewThread]}
                             />
                           </>;
                         }
@@ -357,10 +345,10 @@ export default compose(
       viewThread: state.viewThread,
     }),
     dispatch => ({
-      collapseThread: id => dispatch(collapseThread(id)),
+      collapseAllThreads: id => dispatch(collapseAllThreads(id)),
       deleteCurrentTrace: () => dispatch(deleteCurrentTrace()),
       deleteTrace: (id: number) => dispatch(deleteTrace(id)),
-      expandThread: id => dispatch(expandThread(id)),
+      expandAllThreads: id => dispatch(expandAllThreads(id)),
       fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
       fetchUser: user_id => dispatch(fetchUser(user_id)),
       keyDown: key => dispatch(keyDown(key)),

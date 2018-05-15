@@ -59,7 +59,7 @@ type Props = {
 };
 
 // flow-ignore
-@DragSource(ItemTypes.TODO, draggableSource, collect)
+// @DragSource(ItemTypes.TODO, draggableSource, collect)
 class Todo extends Component<Props> {
   render() {
     if (this.props.isDragging === 'asdf') return null;
