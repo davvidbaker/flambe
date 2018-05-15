@@ -15,6 +15,10 @@ const SETTINGS = [
   {
     setting: 'suspendResumeFlows',
     copy: 'Suspend/Resume Flows'
+  },
+  {
+    setting: 'attentionFlows',
+    copy: 'Attention Flows'
   }
 ];
 

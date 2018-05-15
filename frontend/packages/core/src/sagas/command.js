@@ -14,16 +14,16 @@ import {
   COMMAND_RUN,
   SETTINGS_SHOW,
   THREAD_CREATE,
-  THREADS_COLLAPSE,
-  THREADS_EXPAND,
+  THREADS_COLLAPSE_ALL,
+  THREADS_EXPAND_ALL,
   TODOS_TOGGLE,
   VIEW_CHANGE,
   changeView,
-  collapseThread,
+  collapseAllThreads,
   createActivity,
   createThread,
   deleteActivity,
-  expandThread,
+  expandAllThreads,
   endActivity,
   resumeActivity,
   resurrectActivity,
@@ -32,7 +32,7 @@ import {
   showCategoryManager,
   showSettings,
   suspendActivity,
-  toggleTodos
+  toggleTodos,
 } from 'actions';
 
 import { getTimeline } from 'reducers/timeline';
@@ -42,34 +42,40 @@ function* handleCommand({ type, operand, command }) {
 
   switch (command.action) {
     case ACTIVITY_CREATE:
-      yield put(createActivity({
-        name: command.name,
-        timestamp: Date.now(),
-        description: '',
-        thread_id: command.thread_id,
-        phase: command.copy.includes('question') ? 'Q' : 'B',
-        category_id: command.category_id
-      }));
+      yield put(
+        createActivity({
+          name: command.name,
+          timestamp: Date.now(),
+          description: '',
+          thread_id: command.thread_id,
+          phase: command.copy.includes('question') ? 'Q' : 'B',
+          category_id: command.category_id,
+        })
+      );
       yield put(shiftAttention(command.thread_id, Date.now()));
       break;
 
     case ACTIVITY_RESUME:
-      yield put(resumeActivity({
-        id: operand.activity_id,
-        timestamp: Date.now(),
-        message: command.message,
-        thread_id: operand.thread_id
-      }));
+      yield put(
+        resumeActivity({
+          id: operand.activity_id,
+          timestamp: Date.now(),
+          message: command.message,
+          thread_id: operand.thread_id,
+        })
+      );
       yield put(shiftAttention(operand.thread_id, Date.now()));
       break;
 
     case ACTIVITY_RESURRECT:
-      yield put(resurrectActivity({
-        id: operand.activity_id,
-        timestamp: Date.now(),
-        message: command.message,
-        thread_id: operand.thread_id
-      }));
+      yield put(
+        resurrectActivity({
+          id: operand.activity_id,
+          timestamp: Date.now(),
+          message: command.message,
+          thread_id: operand.thread_id,
+        })
+      );
       yield put(shiftAttention(operand.thread_id, Date.now()));
       break;
 
@@ -82,13 +88,15 @@ function* handleCommand({ type, operand, command }) {
         : command.action.includes('RESOLVE')
           ? 'V'
           : 'E';
-      yield put(endActivity({
-        id: operand.activity_id,
-        timestamp: Date.now(),
-        message,
-        thread_id: operand.thread_id,
-        eventFlavor
-      }));
+      yield put(
+        endActivity({
+          id: operand.activity_id,
+          timestamp: Date.now(),
+          message,
+          thread_id: operand.thread_id,
+          eventFlavor,
+        })
+      );
       break;
 
     case ACTIVITY_DELETE:
@@ -96,12 +104,14 @@ function* handleCommand({ type, operand, command }) {
       break;
     /** 💁 if this isn't obvious, suspension can only happen on the most recent block of an activity (for activities that may have been suspended and resumed already) */
     case ACTIVITY_SUSPEND:
-      yield put(suspendActivity({
-        id: operand.activity_id,
-        timestamp: Date.now(),
-        message: command.message ? command.message : '',
-        thread_id: operand.thread_id
-      }));
+      yield put(
+        suspendActivity({
+          id: operand.activity_id,
+          timestamp: Date.now(),
+          message: command.message ? command.message : '',
+          thread_id: operand.thread_id,
+        })
+      );
       break;
 
     case ATTENTION_SHIFT:
@@ -127,17 +137,12 @@ function* handleCommand({ type, operand, command }) {
       yield put(createThread(command.name, rank));
       break;
 
-    case THREADS_COLLAPSE:
-      for (let i = 0; i < timeline.threads.length; i++) {
-        console.log('timeline', timeline);
-        yield put(collapseThread(timeline.threads[i].id));
-      }
+    case THREADS_COLLAPSE_ALL:
+      yield put(collapseAllThreads());
       break;
 
-    case THREADS_EXPAND:
-      for (let i = 0; i < timeline.threads.length; i++) {
-        yield put(expandThread(timeline.threads[i].id));
-      }
+    case THREADS_EXPAND_ALL:
+      yield put(expandAllThreads());
       break;
 
     case TODOS_TOGGLE:

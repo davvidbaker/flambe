@@ -1,6 +1,6 @@
 // @flow
 
-import zoom from './zoom';
+import zoom from './zoom.js';
 
 console.table = () => {}
 

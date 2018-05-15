@@ -14,7 +14,7 @@ module.exports = merge(common, {
     historyApiFallback: true
   },
 
-  devtool: 'cheap-module-source-map',
+  devtool: 'source-map',
 
   output: {
     path: path.resolve(__dirname, 'dist'),

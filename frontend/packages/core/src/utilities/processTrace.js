@@ -1,30 +1,38 @@
 // @flow
 // flow-ignore
-import sortBy from "lodash/fp/sortBy";
-import uniq from "lodash/uniq";
-import last from "lodash/last";
-import findLast from "lodash/fp/findLast";
-import map from "lodash/fp/map";
+import sortBy from 'lodash/fp/sortBy';
+import uniq from 'lodash/uniq';
+import last from 'lodash/last';
+import findLast from 'lodash/fp/findLast';
+import map from 'lodash/fp/map';
+import mapValues from 'lodash/fp/mapValues';
 
-import { findById } from "./";
-
-import type { Activity } from "types/Activity";
-import type { TraceEvent } from "types/TraceEvent";
-import type { Thread } from "types/Thread";
+import type { Activity } from 'types/Activity';
+import type { TraceEvent } from 'types/TraceEvent';
+import type { Thread } from 'types/Thread';
 
 export function lastActivityBlock(blocks, activity_id) {
   return last(blocks.filter(block => block.activity_id === activity_id));
 }
 
 export function removeActivity(activity_id, thread_id, threadOpenActivities) {
-  /* ⚠️ threadObj is a bad name */
-  return map(threadObj =>
-    (threadObj.id === thread_id
-      ? {
-        ...threadObj,
-        activities: threadObj.activities.filter(id => activity_id !== id)
-      }
-      : threadObj))(threadOpenActivities);
+  return {
+    ...threadOpenActivities,
+    [thread_id]: threadOpenActivities[thread_id].filter(
+      act_id => act_id !== activity_id
+    ),
+  };
+
+  // /* ⚠️ threadObj is a bad name */
+  // return map(
+  //   ([id, obj]) =>
+  //     threadObj.id === thread_id
+  //       ? {
+  //           ...threadObj,
+  //           activities: threadObj.activities.filter(id => activity_id !== id),
+  //         }
+  //       : threadObj
+  // )(Object.entries(threadOpenActivities));
 }
 
 /** ⚠️ kinda sorta definitely mutates blocks array/maybe the objects inside, right? */
@@ -33,7 +41,7 @@ export function terminateBlock(
   activity_id,
   timestamp,
   phase,
-  message = ""
+  message = ''
 ) {
   const block = lastActivityBlock(blocks, activity_id);
   block.endTime = timestamp;
@@ -51,22 +59,21 @@ function pushToMaybeNullArray(arr, ...items) {
 }
 
 function processTrace(trace: TraceEvent[], threads: Thread[]) {
-  let threadLevels = [];
-  let threadOpenActivities = [];
+  const threadsObject = {};
+  let threadLevels = {};
+  let threadOpenActivities = {};
   // const threadStatuses = {};
   threads.forEach(thread => {
-    threadLevels = [
+    threadsObject[thread.id] = thread;
+    threadLevels = {
       ...threadLevels,
-      {
-        id: thread.id,
-        current: 0,
-        max: 0
-      }
-    ];
-    threadOpenActivities = [
+      [thread.id]: { current: 0, max: 0 },
+    };
+
+    threadOpenActivities = {
       ...threadOpenActivities,
-      { id: thread.id, activities: [] }
-    ];
+      [thread.id]: [],
+    };
   });
 
   if (!trace || trace.length <= 0) {
@@ -75,17 +82,19 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       max: Date.now() + 1000, // arbitrary
       activities: {},
       threadLevels,
-      threads
+      threads,
     };
   }
 
   // 👇 The trace from the database is not necessarily ordered.
-  const orderedTrace: TraceEvent[] = sortBy((event: TraceEvent) => event.timestamp)(trace);
+  const orderedTrace: TraceEvent[] = sortBy(
+    (event: TraceEvent) => event.timestamp
+  )(trace);
 
   // ⚠️ maybe one day don't have this redundancy.
   // Activities on client are slightly different than how they are stored on server. On client, activities have fields for their start and end times, while activities on server do not. Originally I was calling them entries on the client, but I stopped because the confusion around that being a keyword for objects in javascript. (Object.entries()...).
   // 1 "activity" is made up of 1 or more blocks which happen from suspending and resuming the activity
-  let activities = [];
+  let activities = {};
   let blocks = [];
 
   let leftTime = trace[0].timestamp;
@@ -99,18 +108,21 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       return;
     }
 
-    activities = activities.find(({ id }) => id === event.activity.id)
-      ? activities
-      : [...activities, { id: event.activity.id }];
+    activities = {
+      ...activities,
+      [event.activity.id]: activities[event.activity.id] || {},
+    };
 
     const thread_id = event.activity.thread.id;
 
-    if (!threadLevels.find(({ id }) => id === thread_id)) {
-      threadLevels = [...threadLevels, { id: thread_id, current: 0, max: 0 }];
-    }
-    const threadLevel = threadLevels.find(({ id }) => id === thread_id);
+    threadLevels = {
+      ...threadLevels,
+      [thread_id]: threadLevels[thread_id] || { current: 0, max: 0 },
+    };
 
-    const activity: Activity = activities.find(({ id }) => id === event.activity.id);
+    const threadLevel = threadLevels[thread_id];
+
+    const activity = activities[event.activity.id];
 
     activity.events = pushToMaybeNullArray(activity.events, event.id);
 
@@ -125,7 +137,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     switch (event.phase) {
       /* 💁 If an activity is suspended, so are its child activities */
       // S for suspend
-      case "S":
+      case 'S':
         blocks = terminateBlock(
           blocks,
           event.activity.id,
@@ -134,14 +146,14 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           event.message
         );
         threadLevel.current--;
-        activity.status = "suspended";
+        activity.status = 'suspended';
 
         threadOpenActivities = removeActivity(
           event.activity.id,
           thread_id,
           threadOpenActivities
         );
-        findById(thread_id, threadOpenActivities).activities.forEach(activity_id => {
+        threadOpenActivities[thread_id].forEach(activity_id => {
           if (
             findLast(block => block.activity_id === activity_id)(blocks)
               .startTime >=
@@ -161,40 +173,37 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
               event.message
             );
             threadLevel.current--;
-            // 👀 🙉 I AM FUTZING WITH THREAD OPEN ACTIVITIES (stop using id object thing) but I wanted to be reading about sofia abdalla and making find functionality and thnen making activities draggable (which needs some thought put into it but is totally a good idea) and then I was also writing about how whenever I want to do anything at all, I want to do everything.
-            threadOpenActivities = threadOpenActivities.map(tOA =>
-              (tOA.id === thread_id
-                ? {
-                  ...tOA,
-                  activities: tOA.activities.filter(id => id !== activity_id)
-                }
-                : tOA));
+            threadOpenActivities = removeActivity(
+              activity_id,
+              thread_id,
+              threadOpenActivities
+            );
           }
         });
 
         break;
 
       // X for Resurrect(s)
-      case "X":
-        blocks.push({
-          startTime: event.timestamp,
-          level: threadLevel.current,
-          activity_id: event.activity.id,
-          beginning: event.phase
-        });
-        threadLevel.current++;
-        threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
-        activity.status = "active";
-        break;
-
-      // R for resume
-      case "R":
+      case 'X':
         blocks.push({
           startTime: event.timestamp,
           level: threadLevel.current,
           activity_id: event.activity.id,
           beginning: event.phase,
-          startMessage: event.message
+        });
+        threadLevel.current++;
+        threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
+        activity.status = 'active';
+        break;
+
+      // R for resume
+      case 'R':
+        blocks.push({
+          startTime: event.timestamp,
+          level: threadLevel.current,
+          activity_id: event.activity.id,
+          beginning: event.phase,
+          startMessage: event.message,
         });
         threadLevel.current++;
         threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
@@ -205,43 +214,58 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
               startTime: event.timestamp,
               level: threadLevel.current,
               activity_id,
-              beginning: event.phase
+              beginning: event.phase,
             });
             threadLevel.current++;
             threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
-            threadOpenActivities = threadOpenActivities.map(tOA =>
-              (tOA.id === thread_id
-                ? { ...tOA, activities: [...tOA.activities, activity_id] }
-                : tOA));
+            threadOpenActivities = {
+              ...threadOpenActivities,
+              [thread_id]: [...threadOpenActivities[thread_id], activity_id],
+            };
+            /* .map(
+              tOA =>
+                tOA.id === thread_id
+                  ? { ...tOA, activities: [...tOA.activities, activity_id] }
+                  : tOA
+            ); */
           });
           activity.suspendedChildren = [];
-          threadOpenActivities = threadOpenActivities.map(tOA =>
-            (tOA.id === thread_id
-              ? { ...tOA, activities: [...tOA.activities, event.activity.id] }
-              : tOA));
+          threadOpenActivities = {
+            ...threadOpenActivities,
+            [thread_id]: [
+              ...threadOpenActivities[thread_id],
+              event.activity.id,
+            ],
+          };
+          // threadOpenActivities = threadOpenActivities.map(
+          //   tOA =>
+          //     tOA.id === thread_id
+          //       ? { ...tOA, activities: [...tOA.activities, event.activity.id] }
+          //       : tOA
+          // );
         }
-        activity.status = "active";
+        activity.status = 'active';
         break;
       // B for begin, Q for question
-      case "Q":
-      case "B":
+      case 'Q':
+      case 'B':
         activity.startTime = event.timestamp; // 👈 do i need this?
-        activity.status = "active";
+        activity.status = 'active';
         activity.name = event.activity.name;
         activity.description = event.activity.description;
         activity.thread_id = event.activity.thread.id;
-        activity.flavor = event.phase === "Q" ? "question" : "task";
+        activity.flavor = event.phase === 'Q' ? 'question' : 'task';
         blocks.push({
           startTime: event.timestamp,
           level: threadLevel.current,
           activity_id: event.activity.id,
           beginning: event.phase,
-          startMessage: event.message
+          startMessage: event.message,
         });
-        threadOpenActivities = threadOpenActivities.map(tOA =>
-          (tOA.id === thread_id
-            ? { ...tOA, activities: [...tOA.activities, event.activity.id] }
-            : tOA));
+        threadOpenActivities = {
+          ...threadOpenActivities,
+          [thread_id]: [...threadOpenActivities[thread_id], event.activity.id],
+        };
         // if (threadStatuses[thread_id].status === 'suspended') {
         //   blocks = terminateBlock(
         //     blocks,
@@ -256,12 +280,12 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
         break;
       // E for End, J for Reject, V for Resolve
-      case "E":
-      case "J":
-      case "V":
+      case 'E':
+      case 'J':
+      case 'V':
         activity.endTime = event.timestamp;
         activity.ending = event.phase; // ⚠️ need the message!
-        activity.status = "complete";
+        activity.status = 'complete';
         blocks = terminateBlock(
           blocks,
           event.activity.id,
@@ -297,6 +321,8 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     }
   });
 
+  console.log(`processingTrace`);
+
   return {
     activities,
     blocks,
@@ -305,7 +331,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     min: leftTime,
     max: rightTime,
     threadLevels,
-    threads
+    threads: threadsObject,
   };
 }
 

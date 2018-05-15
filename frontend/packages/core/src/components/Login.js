@@ -11,10 +11,10 @@ const CenterFlex = styled.div`
   justify-content: center;
   flex-direction: column;
   align-items: center;
-  outline: 5px solid #FFD12F;
-  outline-offset:-10px;
+  outline: 5px solid #ffd12f;
+  outline-offset: -10px;
   border: 5px solid #ff5826;
-  
+
   box-sizing: outline-box;
 
   .inner {
@@ -28,10 +28,9 @@ const CenterFlex = styled.div`
 const Padded = styled.div`
   /* 🤔  maybe bad/weird pattern here*/
   padding: 30px;
-  background: 
+  /* background: ; */
 `;
 const Login = () => (
-  // fetch(`${SERVER}/auth/github`);
   <CenterFlex>
     <div className="inner">
       <Padded>

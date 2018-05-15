@@ -12,8 +12,8 @@ import {
   CATEGORY_MANAGER_SHOW,
   FIND,
   THREAD_CREATE,
-  THREADS_COLLAPSE,
-  THREADS_EXPAND,
+  THREADS_COLLAPSE_ALL,
+  THREADS_EXPAND_ALL,
   TODOS_TOGGLE,
   SETTINGS_SHOW,
   VIEW_CHANGE
@@ -24,7 +24,7 @@ import { colors } from 'styles';
 const threadParam = {
   key: 'thread_id',
   placeholder: 'thread',
-  selector: props => props.threads,
+  selector: props => Object.values(props.threads),
   itemStringKey: 'name',
   itemReturnKey: 'id'
 };
@@ -115,12 +115,12 @@ const COMMANDS = [
     copy: 'toggle todo list'
   },
   {
-    action: THREADS_COLLAPSE,
+    action: THREADS_COLLAPSE_ALL,
     copy: 'collapse all threads',
     shortcut: '⇧ {'
   },
   {
-    action: THREADS_EXPAND,
+    action: THREADS_EXPAND_ALL,
     copy: 'expand all threads',
     shortcut: '⇧ }'
   },
