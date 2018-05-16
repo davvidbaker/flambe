@@ -11,16 +11,11 @@
     // "transform-decorators-legacy",
     "react-hot-loader/babel" // currently can't use with babel 7 I don't think
   ],
+  "presets": [["@babel/env", { "modules": false }], "@babel/react"],
 
-  "presets": [
-    "@babel/preset-es2015",
-    "@babel/preset-react",
-    "@babel/preset-flow",
-    ["@babel/preset-stage-2", { "decoratorsLegacy": true }]
-  ]
-  // "env": {
-  //   "test": {
-  //     "presets": [["es2015"], "react"]
-  //   }
-  // }
+  "env": {
+    "test": {
+      "presets": [["@babel/env"], "@babel/react"]
+    }
+  }
 }

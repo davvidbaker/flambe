@@ -3,7 +3,7 @@ import { MAX_TIME_INTO_FUTURE } from 'constants/defaultParameters';
 
 /**
  * Calculates new left and right boundaries for timeline.
- * 
+ *
  * @export
  * @param {number} deltaY - scroll amount in pixels
  * @param {number} zoomCenter - pixels
@@ -12,17 +12,17 @@ import { MAX_TIME_INTO_FUTURE } from 'constants/defaultParameters';
  * @param {number} width - in pixels of element being zoomed
  * @param {number} nowTime - current Time - UTC
  * @param {number} minTime - min time on timeline - UTC
- * @returns 
+ * @returns
  */
 function zoom(
-  deltaY: number,
-  zoomCenter: number,
-  zoomCenterTime: number,
-  leftBoundaryTime: number,
-  rightBoundaryTime: number,
-  width: number,
-  nowTime: number,
-  minTime: number
+  deltaY,
+  zoomCenter,
+  zoomCenterTime,
+  leftBoundaryTime,
+  rightBoundaryTime,
+  width,
+  nowTime,
+  minTime = 0
 ) {
   const zoomPower = 1.1;
   const mouseWheelZoomSpeed = 1 / 120;
@@ -31,7 +31,6 @@ function zoom(
 
   let newLeft =
     zoomCenterTime + (leftBoundaryTime - zoomCenterTime) * zoomFactor;
-
   // can't zoom out past minimum time on timeline
   newLeft = Math.max(newLeft, minTime);
 
