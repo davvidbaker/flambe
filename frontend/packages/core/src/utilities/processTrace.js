@@ -22,17 +22,16 @@ export function removeActivity(activity_id, thread_id, threadOpenActivities) {
       act_id => act_id !== activity_id
     ),
   };
+}
 
-  // /* ⚠️ threadObj is a bad name */
-  // return map(
-  //   ([id, obj]) =>
-  //     threadObj.id === thread_id
-  //       ? {
-  //           ...threadObj,
-  //           activities: threadObj.activities.filter(id => activity_id !== id),
-  //         }
-  //       : threadObj
-  // )(Object.entries(threadOpenActivities));
+function isChildActivity(activity_id, blocks, event) {
+  return (
+    findLast(block => block.activity_id === activity_id)(blocks).startTime >=
+      findLast(block => block.activity_id === event.activity.id)(blocks)
+        .startTime &&
+    findLast(block => block.activity_id === activity_id)(blocks).level >
+      findLast(block => block.activity_id === event.activity.id)(blocks).level
+  );
 }
 
 /** ⚠️ kinda sorta definitely mutates blocks array/maybe the objects inside, right? */
@@ -138,6 +137,14 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       /* 💁 If an activity is suspended, so are its child activities */
       // S for suspend
       case 'S':
+        // if an activity was already suspended, we shouldn't have a suspend event for it, but in case we because data was corrupt or altered...
+        if (
+          activities[event.activity.id].status === 'suspended' ||
+          activities[event.activity.id].status === 'parent_suspended'
+        ) {
+          break;
+        }
+
         blocks = terminateBlock(
           blocks,
           event.activity.id,
@@ -145,7 +152,10 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           event.phase,
           event.message
         );
+
         threadLevel.current--;
+        threadLevel.current = Math.max(0, threadLevel.current);
+
         activity.status = 'suspended';
 
         threadOpenActivities = removeActivity(
@@ -154,16 +164,11 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           threadOpenActivities
         );
         threadOpenActivities[thread_id].forEach(activity_id => {
-          if (
-            findLast(block => block.activity_id === activity_id)(blocks)
-              .startTime >=
-              findLast(block => block.activity_id === event.activity.id)(blocks)
-                .startTime &&
-            findLast(block => block.activity_id === activity_id)(blocks).level >
-              findLast(block => block.activity_id === event.activity.id)(blocks)
-                .level
-          ) {
+          if (isChildActivity(activity_id, blocks, event)) {
+            console.log(`activity_id`, activity_id);
             activity.suspendedChildren.push(activity_id);
+
+            activities[activity_id].status = 'parent_suspended';
 
             terminateBlock(
               blocks,
@@ -173,6 +178,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
               event.message
             );
             threadLevel.current--;
+            threadLevel.current = Math.max(0, threadLevel.current);
             threadOpenActivities = removeActivity(
               activity_id,
               thread_id,
@@ -198,6 +204,12 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
       // R for resume
       case 'R':
+        // NOW I am making it so you can't really resume a task whose parent was suspended. The parent has to be resumed.
+
+        if (activities[event.activity.id].status === 'parent_suspended') {
+          break;
+        }
+
         blocks.push({
           startTime: event.timestamp,
           level: threadLevel.current,
@@ -229,14 +241,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
                   : tOA
             ); */
           });
-          activity.suspendedChildren = [];
-          threadOpenActivities = {
-            ...threadOpenActivities,
-            [thread_id]: [
-              ...threadOpenActivities[thread_id],
-              event.activity.id,
-            ],
-          };
+
           // threadOpenActivities = threadOpenActivities.map(
           //   tOA =>
           //     tOA.id === thread_id
@@ -244,6 +249,11 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           //       : tOA
           // );
         }
+        activity.suspendedChildren = [];
+        threadOpenActivities = {
+          ...threadOpenActivities,
+          [thread_id]: [...threadOpenActivities[thread_id], event.activity.id],
+        };
         activity.status = 'active';
         break;
       // B for begin, Q for question
@@ -286,6 +296,46 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         activity.endTime = event.timestamp;
         activity.ending = event.phase; // ⚠️ need the message!
         activity.status = 'complete';
+        if (event.activity.name.includes('AvailabilityTable />')) {
+          console.log(
+            `threadOpenActivities[thread_id]`,
+            threadOpenActivities[thread_id]
+          );
+          console.log(
+            `threadOpenActivities[thread_id]`,
+            threadOpenActivities[thread_id]
+          );
+          console.log(
+            `  threadOpenActivities[thread_id][ind],`,
+            threadOpenActivities[thread_id][0]
+          );
+        }
+        /* ⚠️ bad name */
+        const openActs = threadOpenActivities[thread_id].map(
+          act_id => activities[thread_id]
+        );
+        /* ⚠️ mutation */
+        openActs.forEach((act, ind) => {
+          const act_id = threadOpenActivities[thread_id][ind];
+          if (act_id && isChildActivity(act_id, blocks, event)) {
+            blocks = terminateBlock(
+              blocks,
+              act_id,
+              event.timestamp,
+              event.phase,
+              event.message
+            );
+            // threadLevel.current--;
+
+            act.status = 'complete';
+            threadOpenActivities = removeActivity(
+              act_id,
+              thread_id,
+              threadOpenActivities
+            );
+          }
+        });
+
         blocks = terminateBlock(
           blocks,
           event.activity.id,

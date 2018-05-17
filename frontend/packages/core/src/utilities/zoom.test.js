@@ -1,6 +1,6 @@
 // @flow
 
-import zoom from './zoom.js';
+import zoom from './zoom';
 
 console.table = () => {}
 
@@ -20,9 +20,9 @@ describe('zoom function', () => {
       zoomCenterTime,
       oldLeftBoundaryTime,
       oldRightBoundaryTime,
-      width
+      width,
+      new Date().getTime()
     );
-    // console.log(leftBoundaryTime);
     expect(leftBoundaryTime).toBeGreaterThan(oldLeftBoundaryTime);
     expect(rightBoundaryTime).toBeLessThan(oldRightBoundaryTime);
   });
@@ -36,9 +36,21 @@ describe('zoom function', () => {
       zoomCenterTime,
       oldLeftBoundaryTime,
       oldRightBoundaryTime,
-      width
+      width,
+      new Date().getTime()
     );
-    // console.log(leftBoundaryTime);
+
+    console.log(`deltaY,
+      zoomCenter,
+      zoomCenterTime,
+      oldLeftBoundaryTime,
+      oldRightBoundaryTime,
+      width`, deltaY,
+      zoomCenter,
+      zoomCenterTime,
+      oldLeftBoundaryTime,
+      oldRightBoundaryTime,
+      width);
     expect(leftBoundaryTime).toBeLessThan(oldLeftBoundaryTime);
     expect(leftBoundaryTime).toBeLessThan(rightBoundaryTime);
     expect(rightBoundaryTime).toBeGreaterThan(oldRightBoundaryTime);

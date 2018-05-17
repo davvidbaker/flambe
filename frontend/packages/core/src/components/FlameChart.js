@@ -164,10 +164,11 @@ class FlameChart extends Component<Props, State> {
         thread_id = Number(thread_id);
         const spacer = ind > 0 ? 4 : 0;
         offsets[thread_id] = acc + spacer; // FlameChart.foldedThreadHeight;
+        const max =
+          (threadLevels[thread_id] && threadLevels[thread_id].max) || 0;
         const add = thread.collapsed
           ? FlameChart.threadHeaderHeight
-          : (this.blockHeight + 1) * threadLevels[thread_id].max +
-            FlameChart.threadHeaderHeight;
+          : (this.blockHeight + 1) * max + FlameChart.threadHeaderHeight;
         return acc + add + spacer;
       }, 0);
 
@@ -220,7 +221,7 @@ class FlameChart extends Component<Props, State> {
     if (Object.keys(hitBlocks).length === 0) {
       return null;
     } else if (Object.keys(hitBlocks).length !== 1) {
-      throw new Error('multiple hits! something is wrong!', hitBlocks);
+      console.error('multiple hits! something is wrong!', hitBlocks);
     }
 
     const hitBlock = Object.entries(hitBlocks)[0];
@@ -232,9 +233,7 @@ class FlameChart extends Component<Props, State> {
   };
 
   onClick = e => {
-    // e.preventDefault();
     const hit = this.hitTest(e);
-    console.log(`e.button`, e.button);
 
     if (hit) {
       switch (hit.type) {
@@ -600,7 +599,7 @@ class FlameChart extends Component<Props, State> {
   }
 
   drawLimbo(ctx) {
-    //WIP
+    // ⚠️️️️/ ⚠️️️️/ ⚠️️️️/ ⚠️️️️/ ⚠️️️️ WIP
     // this.props.activities
     const suspendedActivities = pickBy(({ status }) => status === 'suspended')(
       this.props.activities
@@ -613,7 +612,7 @@ class FlameChart extends Component<Props, State> {
           endTime: this.props.rightBoundaryTime,
           level: i,
         },
-        activity,
+        activity
       );
     });
   }
@@ -726,22 +725,32 @@ class FlameChart extends Component<Props, State> {
           x1 - constrain(block1Width, 0, 5),
           y1 + this.blockHeight / 2
         ); // blockY + this.blockHeight / 2);
-        this.ctx.bezierCurveTo(
+        const halfwayY = y1 + this.blockHeight / 2 + (y2 - y1) / 2;
+
+        /* this.ctx.bezierCurveTo(
           x1 + aThird,
           y1 + this.blockHeight / 2,
           x1 + aThird,
-          y1 + (y2 - y1) / 2, // this.topOffset + this.state.offsets[block.thread_id],
+          halfwayY, // this.topOffset + this.state.offsets[block.thread_id],
           x1 + (x2 - x1) / 2,
-          y1 + (y2 - y1) / 2 // this.topOffset + this.state.offsets[block.thread_id],
+          // this.topOffset + this.state.offsets[block.thread_id],
+          halfwayY
         );
         this.ctx.bezierCurveTo(
           x2 - aThird,
-          y1 + (y2 - y1) / 2, // this.topOffset + this.state.offsets[block.thread_id],
+          halfwayY, // this.topOffset + this.state.offsets[block.thread_id],
           x2 - aThird,
           y2 + this.blockHeight / 2,
           x2 + constrain(block2Width, 0, 5),
           y2 + this.blockHeight / 2
-        );
+        ); */
+
+        this.ctx.bezierCurveTo(x1 + aThird, 
+          y1 + this.blockHeight / 2,
+          x2 - aThird,
+          y2 + this.blockHeight / 2,
+          x2 + constrain(block2Width, 0, 5),
+        y2 + this.blockHeight / 2)
         this.ctx.stroke();
       });
     });
