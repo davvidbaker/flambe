@@ -55,7 +55,7 @@ defmodule FlambeWeb.Router do
 
     resources("/users", UserController, except: [:new, :edit])
     resources("/traces", TraceController, except: [:new, :edit])
-    resources("/events", EventController, only: [:create])
+    resources("/events", EventController, only: [:create, :update])
     resources("/activities", ActivityController, only: [:create, :show, :delete, :update])
     resources("/categories", CategoryController, except: [:new, :edit])
     resources("/threads", ThreadController, except: [:new, :edit])

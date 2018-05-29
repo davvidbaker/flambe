@@ -2,18 +2,22 @@
 import React, { Component } from 'react';
 import emojiRegex from 'emoji-regex';
 import { connect } from 'react-redux';
+/* 💁     👇 intentionally "maxx"  */
+import maxx from 'lodash/fp/max';
+import map from 'lodash/fp/map';
+import pipe from 'lodash/fp/pipe';
 import pickBy from 'lodash/fp/pickBy';
+import sortBy from 'lodash/fp/sortBy';
+import reduce from 'lodash/fp/reduce';
+import filter from 'lodash/fp/filter';
+import entries from 'lodash/fp/entries';
 import compose from 'lodash/fp/compose';
 import isEqual from 'lodash/isEqual';
-import isUndefined from 'lodash/isUndefined';
-import sortBy from 'lodash/fp/sortBy';
-import identity from 'lodash/fp/identity';
-import pipe from 'lodash/fp/pipe';
 import reverse from 'lodash/fp/reverse';
-import mapValues from 'lodash/fp/mapValues';
-import filter from 'lodash/fp/filter';
-import reduce from 'lodash/fp/reduce';
 import zipWith from 'lodash/fp/zipWith';
+import identity from 'lodash/fp/identity';
+import mapValues from 'lodash/fp/mapValues';
+import isUndefined from 'lodash/isUndefined';
 
 import {
   setCanvasSize,
@@ -41,10 +45,13 @@ import { colors } from 'styles';
 import type { Activity } from 'types/Activity';
 import type { Category as CategoryType } from 'types/Category';
 
+const reduceWithIndices = reduce.convert({ cap: false });
+
 const SUSPENDED = 0;
 
 function activityByBlockIndex(blocks, index) {
   if (index === null || isUndefined(index)) return null;
+  if (!blocks[Number(index)]) return null;
   return blocks[Number(index)].activity_id;
 }
 
@@ -74,7 +81,7 @@ type State = {
   canvasHeight: number, // in pixels
   cursor: { x: number, y: number },
   devicePixelRatio: number, // window.devicePixelRatio (ie, it is 2 on my laptop, but 1 on my external monitor)
-  hoverThreadEllipsis: number, // the id of the thread whose details ellipsis is being hovered
+  hoverThreadEllipsis: number | null, // the id of the thread whose details ellipsis is being hovered
   measurement: { left: ?number, right: ?number },
   measuring: boolean,
   mousedown: boolean,
@@ -108,6 +115,9 @@ class FlameChart extends Component<Props, State> {
       right: null,
     },
     measuring: false,
+    draggingThread: null,
+    resizing: false,
+    resizingBlock: null,
     mousedown: false,
     mousedownX: null,
     offsets: {},
@@ -117,8 +127,7 @@ class FlameChart extends Component<Props, State> {
   constructor(props) {
     super(props);
 
-    const offsets = this.setOffsets(props.threads, props.threadLevels);
-    this.state.offsets = offsets;
+    this.state.offsets = this.setOffsets(props.threads, props.threadLevels);
 
     this.threadStatuses = {};
     Object.keys(props.threads).forEach(({ id }) => {
@@ -144,6 +153,9 @@ class FlameChart extends Component<Props, State> {
       ) ||
       !isEqual(this.props.threadLevels, nextProps.threadLevels)
     ) {
+
+      console.log(`this.maxThreadLevels`, this.maxThreadLevels);
+
       const offsets = this.setOffsets(
         nextProps.threads,
         nextProps.threadLevels
@@ -160,7 +172,13 @@ class FlameChart extends Component<Props, State> {
     ) {
       const offsets = {};
 
-      Object.entries(threads).reduce((acc, [thread_id, thread], ind) => {
+      this.threadsSortedByRank = pipe(
+        entries,
+        sortBy(([_id, { rank }]) => rank),
+        map(([key, val]) => [Number(key), val])
+      )(threads);
+
+      reduceWithIndices((acc, [thread_id, thread], ind) => {
         thread_id = Number(thread_id);
         const spacer = ind > 0 ? 4 : 0;
         offsets[thread_id] = acc + spacer; // FlameChart.foldedThreadHeight;
@@ -170,7 +188,7 @@ class FlameChart extends Component<Props, State> {
           ? FlameChart.threadHeaderHeight
           : (this.blockHeight + 1) * max + FlameChart.threadHeaderHeight;
         return acc + add + spacer;
-      }, 0);
+      }, 0)(this.threadsSortedByRank);
 
       return offsets;
     }
@@ -188,10 +206,14 @@ class FlameChart extends Component<Props, State> {
     this.setState(state, this.render);
   };
 
-  hitTest = e => {
-    const ts = this.pixelsToTime(e.nativeEvent.offsetX);
-    const hitThread_id = this.pixelsToThread_id(e.nativeEvent.offsetY);
-    const hitLevel = this.pixelsToLevel(e.nativeEvent.offsetY);
+  hitTest = event => {
+    const ts = this.pixelsToTime(event.nativeEvent.offsetX);
+    const hitThreadPosition = this.pixelsToThreadPosition(
+      event.nativeEvent.offsetY
+    );
+    const hitThread_id = this.threadsSortedByRank[hitThreadPosition][0];
+
+    const hitLevel = this.pixelsToLevel(event.nativeEvent.offsetY);
 
     const filterByTime = pickBy(
       block =>
@@ -212,7 +234,7 @@ class FlameChart extends Component<Props, State> {
 
     /** 💁 this is the header (hitLevel === -1) */
     if (hitLevel === -1) {
-      if (e.nativeEvent.offsetX > this.state.canvasWidth - 30) {
+      if (event.nativeEvent.offsetX > this.state.canvasWidth - 30) {
         return { type: 'thread_ellipsis', value: hitThread_id };
       }
       return { type: 'thread_header', value: hitThread_id };
@@ -225,8 +247,27 @@ class FlameChart extends Component<Props, State> {
     }
 
     const hitBlock = Object.entries(hitBlocks)[0];
+
+    if (
+      event.nativeEvent.offsetX > 10 &&
+      event.nativeEvent.offsetX < this.state.canvasWidth - 10
+    ) {
+      const startX = this.timeToPixels(hitBlock[1].startTime);
+      if (event.nativeEvent.offsetX - startX < 10) {
+        return { type: 'block_edge_left', value: hitBlock };
+      }
+      const endX =
+        hitBlock[1].endTime && this.timeToPixels(hitBlock[1].endTime);
+      if (endX && endX - event.nativeEvent.offsetX < 10) {
+        return {
+          type: 'block_edge_right',
+          value: hitBlock,
+        };
+      }
+    }
     return { type: 'block', value: hitBlock };
   };
+
   onContextMenu = e => {
     e.preventDefault();
     console.log(`oncontext menu e`, e);
@@ -236,6 +277,7 @@ class FlameChart extends Component<Props, State> {
     const hit = this.hitTest(e);
 
     if (hit) {
+      console.log(`hit`, hit);
       switch (hit.type) {
         case 'thread_ellipsis':
           console.log(`hit.value`, hit.value);
@@ -295,35 +337,49 @@ class FlameChart extends Component<Props, State> {
       cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
     });
 
-    const hit = this.hitTest(e);
-    if (hit) {
-      switch (hit.type) {
-        case 'thread_ellipsis':
-          this.canvas.style.cursor = 'pointer';
-          this.setState({
-            hoverThreadEllipsis: hit.value,
-          });
-          break;
-        case 'thread_header':
-          this.canvas.style.cursor = 'pointer';
-          break;
-        /** 💁 hit.value is array like [key, val] */
-        case 'block':
-          this.props.hoverBlock(hit.value[0]);
-          this.canvas.style.cursor = 'default';
-          this.setState({ hoverThreadEllipsis: null });
-          break;
-
-        default:
-          this.canvas.style.cursor = 'default';
-          break;
-      }
+    if (this.state.resizing) {
     } else {
-      this.props.hoverBlock(null);
-      this.canvas.style.cursor = 'default';
+      const hit = this.hitTest(e);
+      if (hit) {
+        switch (hit.type) {
+          case 'thread_ellipsis':
+            this.canvas.style.cursor = 'pointer';
+            this.props.hoverBlock(null);
+            this.setState({
+              hoverThreadEllipsis: hit.value,
+            });
+            break;
+          case 'thread_header':
+            this.canvas.style.cursor = 'pointer';
+            this.props.hoverBlock(null);
+            this.setState({ hoverThreadEllipsis: null });
+            break;
+          /** 💁 hit.value is array like [key, val] */
+          case 'block':
+            this.props.hoverBlock(hit.value[0]);
+            this.canvas.style.cursor = 'default';
+            this.setState({ hoverThreadEllipsis: null });
+            break;
+          case 'block_edge_left':
+            this.props.hoverBlock(null);
+            this.canvas.style.cursor = 'w-resize';
+            break;
+          case 'block_edge_right':
+            this.props.hoverBlock(null);
+            this.canvas.style.cursor = 'e-resize';
+            break;
 
-      if (this.state.hoverThreadEllipsis) {
-        this.setState({ hoverThreadEllipsis: null });
+          default:
+            this.canvas.style.cursor = 'default';
+            break;
+        }
+      } else {
+        this.props.hoverBlock(null);
+        this.canvas.style.cursor = 'default';
+
+        if (this.state.hoverThreadEllipsis) {
+          this.setState({ hoverThreadEllipsis: null });
+        }
       }
     }
 
@@ -434,14 +490,67 @@ class FlameChart extends Component<Props, State> {
           right: eTimeX,
         },
       });
+    } else {
+      const hit = this.hitTest(e);
+      if (hit) {
+        if (hit.type.includes('block_edge')) {
+          this.setState({
+            resizing: hit.type.match(/edge_(.*)$/)[1],
+            resizingBlock: hit.value,
+          });
+          this.canvasCapture = this.captureCanvas();
+        } else if (hit.type === 'thread_header') {
+          /* 💁  hit.value is the thread id */
+          const thread_id = hit.value;
+          this.setState({ draggingThread: thread_id });
+          this.canvasCapture = this.captureCanvas();
+          this.otherThreadCaptures = pipe(
+            map(({ id }) => id),
+            filter(id => id !== thread_id),
+            map(id => ({ id, capture: this.captureThread(id) }))
+          )(this.props.threads);
+          this.threadCapture = this.captureThread(thread_id);
+        }
+      }
     }
   };
 
   onMouseUp = () => {
-    this.setState({ mousedown: false, measuring: false, mousedownX: null });
+    if (this.state.resizing) {
+      /* ⚠️ should do like an adjust activity thing that updates redux blocks */
+      this.props.updateEvent(
+        this.state.resizingBlock[1].events[
+          this.state.resizing === 'left' ? 0 : 1
+        ],
+        {
+          timestamp_integer: Math.floor(this.pixelsToTime(this.state.cursor.x)),
+        }
+      );
+      // this.state.resizingBlock[1].activity_id, {
+      //   updates: {
+      //     [this.state.resizing === 'left'
+      //       ? 'startTime'
+      //       : 'endTime']: this.pixelsToTime(this.state.cursor.x),
+      //   },
+      // });
+    } else if (this.state.draggingThread) {
+      // this.props.updateThreadRank()
+    }
+
+    this.setState({
+      mousedown: false,
+      measuring: false,
+      mousedownX: null,
+      draggingThread: null,
+      resizing: false,
+      resizingBlock: null,
+    });
   };
 
   render() {
+    this.maxThreadLevels = pipe(map(({ max }) => max), maxx)(
+      this.props.threadLevels
+    );
     const focusedBlock = this.getBlockDetails(
       this.canvas && this.props.activities && this.props.focusedBlockIndex
     );
@@ -516,6 +625,20 @@ class FlameChart extends Component<Props, State> {
     );
   }
 
+  captureThread(id) {
+    console.log(`this.state.offsts`, this.state.offsets);
+    const y = this.state.offsets[id];
+
+    return this.ctx.getImageData(
+      0,
+      this.state.offsets[id] * this.state.devicePixelRatio,
+      this.state.canvasWidth * this.state.devicePixelRatio,
+      /* ⚠️ wrong */
+      ((this.state.offsets[id + 1] || this.state.canvasHeight) - y) *
+        this.state.devicePixelRatio
+    );
+  }
+
   calcTooltipOffset() {
     /** borrowed directly from ChromeDevTools */
     if (this.tooltip) {
@@ -552,50 +675,109 @@ class FlameChart extends Component<Props, State> {
     }
   }
 
+  captureCanvas() {
+    return this.ctx.getImageData(
+      0,
+      0,
+      this.state.canvasWidth * this.state.devicePixelRatio,
+      this.state.canvasHeight * this.state.devicePixelRatio
+    );
+  }
+
+  clearCanvas() {
+    // clear the canvas
+    this.ctx.fillStyle = colors.background;
+    // this.ctx.globalAlpha = 0.5;
+    this.ctx.fillRect(0, 0, this.state.canvasWidth, this.state.canvasHeight);
+  }
+
   draw() {
     if (this.canvas) {
       this.ctx.save();
 
       this.ctx.scale(this.state.devicePixelRatio, this.state.devicePixelRatio);
 
-      // clear the canvas
-      this.ctx.fillStyle = colors.background;
-      // this.ctx.globalAlpha = 0.5;
-      this.ctx.fillRect(0, 0, this.state.canvasWidth, this.state.canvasHeight);
-      // this.ctx.globalAlpha = 1;
+      this.clearCanvas();
+      if (this.state.resizing) {
+        if (this.canvasCapture) {
+          this.ctx.putImageData(this.canvasCapture, 0, 0);
+          this.ctx.globalAlpha = 0.4;
+          this.ctx.fillRect(
+            0,
+            0,
+            this.state.canvasWidth,
+            this.state.canvasHeight
+          );
+        }
+        this.drawBlock(
+          {
+            ...this.state.resizingBlock[1],
+            ...(this.state.resizing === 'left'
+              ? { startTime: this.pixelsToTime(this.state.cursor.x) }
+              : { endTime: this.pixelsToTime(this.state.cursor.x) }),
+          },
+          this.props.activities[this.state.resizingBlock[1].activity_id]
+        );
+        // this.ctx.fillRect(this.state.cursor.x, this.state.cursor.y, 20, 20 );
+      } else if (this.state.draggingThread !== null) {
+        this.drawDraggingThreads();
+      } else {
+        this.hoverActivity_id = activityByBlockIndex(
+          this.props.blocks,
+          this.props.hoveredBlockIndex
+        );
+        this.focusActivity_id = activityByBlockIndex(
+          this.props.blocks,
+          this.props.focusedBlockIndex
+        );
+        // this.props.hoveredBlockIndex
+        //   ? this.props.blocks[Number(this.props.hoveredBlockIndex)].activity_id
+        //   : null;
 
-      this.hoverActivity_id = activityByBlockIndex(
-        this.props.blocks,
-        this.props.hoveredBlockIndex
-      );
-      this.focusActivity_id = activityByBlockIndex(
-        this.props.blocks,
-        this.props.focusedBlockIndex
-      );
-      // this.props.hoveredBlockIndex
-      //   ? this.props.blocks[Number(this.props.hoveredBlockIndex)].activity_id
-      //   : null;
+        // draw vertical bars
+        this.drawGrid(this.ctx);
+        if (this.props.blocks) {
+          this.drawBlocks();
+        }
+        this.drawFutureWindow();
+        this.drawThreadHeaders(this.ctx);
+        this.drawAttention(this.ctx);
+        if (this.props.showSuspendResumeFlows) {
+          this.drawSuspendResumeFlows();
+        }
 
-      // draw vertical bars
-      this.drawGrid(this.ctx);
-      if (this.props.blocks) {
-        this.drawBlocks();
+        /* 🔮 USE A SETTING */
+        if (true) {
+          // this.drawLimbo(this.ctx);
+        }
+        this.drawMeasurementWindow(this.ctx, this.state.measurement);
       }
-      this.drawFutureWindow();
-      this.drawThreadHeaders(this.ctx);
-      this.drawAttention(this.ctx);
-      if (this.props.showSuspendResumeFlows) {
-        this.drawSuspendResumeFlows();
-      }
-      /* 🔮 USE A SETTINGS */
-      if (true) {
-        this.drawLimbo(this.ctx);
-      }
-      this.drawMeasurementWindow(this.ctx, this.state.measurement);
-
       this.ctx.scale(0.5, 0.5);
       this.ctx.restore();
     }
+  }
+
+  drawDraggingThreads() {
+    this.otherThreadCaptures.forEach(({ id, capture }) => {
+      this.ctx.putImageData(
+        capture,
+        0,
+        this.state.offsets[id] * this.state.devicePixelRatio
+      );
+    });
+    this.ctx.fillStyle = '#dadada';
+    const y = this.state.offsets[this.state.draggingThread];
+    this.ctx.fillRect(
+      0,
+      y,
+      this.state.canvasWidth * this.state.devicePixelRatio,
+      this.state.offsets[this.state.draggingThread + 1] - y
+    );
+    this.ctx.putImageData(
+      this.threadCapture,
+      0,
+      this.state.cursor.y * this.state.devicePixelRatio
+    );
   }
 
   drawLimbo(ctx) {
@@ -745,12 +927,14 @@ class FlameChart extends Component<Props, State> {
           y2 + this.blockHeight / 2
         ); */
 
-        this.ctx.bezierCurveTo(x1 + aThird, 
+        this.ctx.bezierCurveTo(
+          x1 + aThird,
           y1 + this.blockHeight / 2,
           x2 - aThird,
           y2 + this.blockHeight / 2,
           x2 + constrain(block2Width, 0, 5),
-        y2 + this.blockHeight / 2)
+          y2 + this.blockHeight / 2
+        );
         this.ctx.stroke();
       });
     });
@@ -807,18 +991,17 @@ class FlameChart extends Component<Props, State> {
         this.ctx.fillStyle = cat.color_background;
       }
     }
+
+    const adjustedBlockHeight =
+      this.blockHeight /
+      (this.props.uniformBlockHeight
+        ? this.maxThreadLevels
+        : this.props.threadLevels[activity.thread_id].max);
     this.ctx.fillRect(
       blockX,
-      collapsed
-        ? blockY +
-          block.level *
-            this.blockHeight /
-            this.props.threadLevels[activity.thread_id].max
-        : blockY,
+      collapsed ? blockY + block.level * adjustedBlockHeight : blockY,
       blockWidth,
-      collapsed
-        ? this.blockHeight / this.props.threadLevels[activity.thread_id].max
-        : this.blockHeight
+      collapsed ? adjustedBlockHeight : this.blockHeight
     );
 
     // don't even think about drawing text if bar is too small
@@ -897,14 +1080,14 @@ class FlameChart extends Component<Props, State> {
     return collapsed || false;
   }
 
-  pixelsToThread_id(y: number): number {
+  pixelsToThreadPosition(y: number): number {
     const reverseOffsets = pipe(sortBy(identity), reverse)(this.state.offsets);
     let i = 0;
     while (y < reverseOffsets[i]) {
       i++;
     }
     const thread_id = reverse(Object.keys(this.props.threads))[i];
-    return Number(thread_id) || null;
+    return Number(thread_id) - 1 || 0;
   }
 
   pixelsToLevel(y: number): number {
@@ -923,6 +1106,7 @@ class FlameChart extends Component<Props, State> {
   drawThreadHeaders(ctx) {
     ctx.globalAlpha = 1;
     Object.entries(this.props.threads).forEach(([thread_id, thread]) => {
+      thread_id = Number(thread_id);
       const regex = emojiRegex();
       let match;
 

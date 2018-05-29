@@ -29,4 +29,12 @@ defmodule FlambeWeb.EventController do
       |> render("show.json", event: event)
     end
   end
+
+  def update(conn, %{"id" => id, "event" => event_params}) do 
+    event = Traces.get_event!(id)
+
+    with {:ok, %Event{} = event} <- Traces.update_event(event, event_params) do
+      render(conn, "show.json", event: event)
+    end
+  end
 end

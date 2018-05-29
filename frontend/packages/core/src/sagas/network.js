@@ -2,6 +2,7 @@ import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
 import { push } from 'react-router-redux';
 
 import {
+  createToast,
   processTimelineTrace,
   ACTIVITY_CREATE,
   ACTIVITY_DELETE,
@@ -13,6 +14,7 @@ import {
   ATTENTION_SHIFT,
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
+  EVENT_UPDATE,
   MANTRA_CREATE,
   THREAD_CREATE,
   THREAD_DELETE,
@@ -58,7 +60,12 @@ function* fetchResource(actionType, { resource, params }) {
       yield put(push('/login'));
       return;
     }
-    console.error('failed response', `${actionType}_FAILED`, e, e.statusText);
+    yield put(
+      createToast(
+        `${actionType.replace(/_/g, ' ')} failed. Network error.`,
+        'error'
+      )
+    );
   }
 }
 
@@ -151,7 +158,6 @@ function* deleteActivity({ type, id }) {
 
 // { name, thread_id, category_ids = [] }
 function* updateActivity({ type, id, updates }) {
-  console.log('updates', updates);
   yield fetchResource(type, {
     resource: { path: 'activities', id },
     params: {
@@ -159,6 +165,21 @@ function* updateActivity({ type, id, updates }) {
       body: JSON.stringify({ activity: { ...updates } }),
     },
   });
+}
+
+function* updateEvent({ type, id, updates }) {
+  yield fetchResource(type, {
+    resource: { path: 'events', id },
+    params: {
+      method: 'PUT',
+      body: JSON.stringify({ event: { ...updates } }),
+    },
+  });
+
+  const trace = (yield select(getTimeline)).trace;
+  console.log(`trace`, trace);
+  /* ⚠️ This is bad. Shouldn't need to use the network!! */
+  yield call(fetchTrace, { trace });
 }
 
 function* createCategory({ type, activity_id, name, color_background }) {
@@ -388,6 +409,8 @@ function* networkSaga() {
 
   yield takeEvery(CATEGORY_CREATE, createCategory);
   yield takeEvery(CATEGORY_UPDATE, updateCategory);
+
+  yield takeEvery(EVENT_UPDATE, updateEvent);
 
   yield takeEvery(MANTRA_CREATE, createMantra);
 

@@ -39,6 +39,8 @@ export const CATEGORY_MANAGER_HIDE = 'CATEGORY_MANAGER_HIDE';
 
 export const COMMAND_RUN = 'COMMAND_RUN';
 
+export const EVENT_UPDATE = 'EVENT_UPDATE';
+
 export const FIND = 'FIND';
 
 export const MANTRA_CREATE = 'MANTRA_CREATE';
@@ -48,10 +50,6 @@ export const SETTING_TOGGLE = 'SETTING_TOGGLE';
 export const SETTINGS_SHOW = 'SETTINGS_SHOW';
 export const SETTINGS_HIDE = 'SETTINGS_HIDE';
 
-export const TODO_BEGIN = 'TODO_BEGIN';
-export const TODO_CREATE = 'TODO_CREATE';
-export const TODOS_TOGGLE = 'TODOS_TOGGLE';
-
 export const THREAD_CREATE = 'THREAD_CREATE';
 export const THREAD_DELETE = 'THREAD_DELETE';
 export const THREAD_COLLAPSE = 'THREAD_COLLAPSE';
@@ -60,6 +58,13 @@ export const THREAD_UPDATE = 'THREAD_UPDATE';
 
 export const THREADS_COLLAPSE_ALL = 'THREADS_COLLAPSE_ALL';
 export const THREADS_EXPAND_ALL = 'THREADS_EXPAND_ALL';
+
+export const TODO_BEGIN = 'TODO_BEGIN';
+export const TODO_CREATE = 'TODO_CREATE';
+export const TODOS_TOGGLE = 'TODOS_TOGGLE';
+
+export const TOAST_CREATE = 'TOAST_CREATE';
+export const TOAST_POP = 'TOAST_POP';
 
 export const TRACE_CREATE = 'TRACE_CREATE';
 export const TRACE_DELETE = 'TRACE_DELETE';
@@ -340,6 +345,14 @@ export function updateActivity(id, updates) {
   };
 }
 
+export function updateEvent(id, updates) {
+  return {
+    type: EVENT_UPDATE,
+    id,
+    updates,
+  };
+}
+
 export function showActivityDetails() {
   return {
     type: ACTIVITY_DETAILS_SHOW,
@@ -467,6 +480,21 @@ export function toggleSetting(setting) {
   return {
     type: SETTING_TOGGLE,
     setting,
+  };
+}
+
+export function createToast(message, notificationType) {
+  return {
+    type: TOAST_CREATE,
+    message,
+    notificationType,
+  };
+}
+
+export function popToast(index = 0) {
+  return {
+    type: TOAST_POP,
+    index,
   };
 }
 

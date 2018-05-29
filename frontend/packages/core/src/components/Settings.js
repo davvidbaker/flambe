@@ -19,6 +19,10 @@ const SETTINGS = [
   {
     setting: 'attentionFlows',
     copy: 'Attention Flows'
+  },
+  {
+    setting: 'uniformBlockHeight',
+    copy: 'Uniform Block Height'
   }
 ];
 

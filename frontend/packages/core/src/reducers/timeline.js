@@ -138,6 +138,7 @@ function timeline(state = initialState, action) {
         threads,
         lastCategory_id,
         lastThread_id,
+        events,
       } = processTrace(action.events, action.threads);
 
       console.log(`threads`, threads);
@@ -152,6 +153,7 @@ function timeline(state = initialState, action) {
         threads,
         lastCategory_id,
         lastThread_id,
+        events,
       };
 
     /* ⚠️ this is optimistic, need to handle failure */
@@ -159,10 +161,10 @@ function timeline(state = initialState, action) {
       return {
         ...state,
         threads: {
-          ...mapValues(thread => ({ ...thread, rank: thread.rank++ }))(
+          ...mapValues(thread => ({ ...thread, rank: thread.rank + 1 }))(
             state.threads
           ),
-          [action.thread_id]: 0,
+          [action.thread_id]: { ...state.threads[action.thread_id], rank: 0 },
         },
       };
       break;
@@ -229,8 +231,8 @@ function timeline(state = initialState, action) {
               ? { ...block, activity_id: action.data.id }
               : block
         ),
-        activities: mapKeys(key =>
-          key === 'optimisticActivity' ? action.data.id : key
+        activities: mapKeys(
+          key => (key === 'optimisticActivity' ? action.data.id : key)
         )(state.activities),
       };
 
@@ -381,11 +383,13 @@ function timeline(state = initialState, action) {
     /** ⚠️ need to handle network failures */
     case ACTIVITY_UPDATE:
       const activity = state.activities[action.id];
+      console.log(`activity`, activity);
       return {
         ...state,
         lastThread_id: action.thread_id,
         activities: {
           ...state.activities,
+          /* ⚠️ ugly */
           [action.id]: {
             ...state.activities[action.id],
             name: action.updates.name ? action.updates.name : activity.name,
@@ -394,6 +398,12 @@ function timeline(state = initialState, action) {
                 ? [...activity.categories, ...action.updates.category_ids]
                 : activity.categories
               : activity.categories,
+            startTime: action.updates.startTime
+              ? action.updates.startTime
+              : activity.startTime,
+            endTime: action.updates.endTime
+              ? action.updates.endTime
+              : activity.endTime,
           },
         },
       };
