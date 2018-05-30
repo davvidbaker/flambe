@@ -14,6 +14,8 @@ import modifiers from './modifiers';
 import user from './user';
 import operand from './operand';
 import settings from './settings';
+import toaster from './toaster';
+
 
 function todosVisible(state = false, action) {
   switch (action.type) {
@@ -84,6 +86,7 @@ export {
   settings,
   settingsVisible,
   timeline,
+  toaster,
   user,
   view,
   viewThread

@@ -20,6 +20,7 @@ import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
 import {
   updateActivity,
+  updateEvent,
   createThread,
   collapseThread,
   expandThread,
@@ -191,6 +192,7 @@ class Timeline extends Component<Props, State> {
             >
               <FlameChart
                 activities={props.activities}
+                uniformBlockHeight={props.settings.uniformBlockHeight}
                 attentionShifts={props.attentionShifts}
                 blocks={props.blocks}
                 categories={props.user.categories}
@@ -219,6 +221,7 @@ class Timeline extends Component<Props, State> {
                 threads={Array.isArray(props.threads) ? {} : props.threads}
                 toggleThread={props.toggleThread}
                 topOffset={this.state.topOffset || 0}
+                updateEvent={props.updateEvent}
                 zoom={this.zoom}
               />
             </WithDropTarget>
@@ -226,7 +229,7 @@ class Timeline extends Component<Props, State> {
               closeThreadDetail={this.closeThreadDetail}
               id={this.state.threadModal_id}
               name={
-                this.state.threadModal_id && props.threads[threadModal_id].name
+                this.state.threadModal_id && props.threads[this.state.threadModal_id].name
               }
               activities={props.activities}
             />
@@ -275,6 +278,7 @@ connect(
     createThread: (name, rank) => dispatch(createThread(name, rank)),
     toggleThread: (id, isCollapsed = false) =>
       dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
-    updateActivity: (id, obj) => dispatch(updateActivity(id, obj)),
+    updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
+    updateEvent: (id, updates) => dispatch(updateEvent(id, updates))
   })
 )(Timeline);

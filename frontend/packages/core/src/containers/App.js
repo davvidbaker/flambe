@@ -13,12 +13,13 @@ import HTML5Backend from 'react-dnd-html5-backend';
 import { injectGlobal } from 'styled-components';
 import Commander from 'react-commander';
 
-// flow-ignore
+import Toaster from './Toaster';
 import Timeline from './Timeline';
 import SingleThreadView from './SingleThreadView';
 // import Todos from './Todos';
 import Login from '../components/Login';
 import Header from '../components/Header';
+import { colors } from '../styles';
 import WithEventListeners from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
@@ -53,6 +54,7 @@ injectGlobal`
     box-sizing: border-box;
     font-family: sans-serif;
     overflow: hidden;
+
   }
 
   *::before, *::after {
@@ -61,6 +63,40 @@ injectGlobal`
 
   * {
     box-sizing: inherit;
+  }
+
+  body {
+    /* background: linear-gradient(to top, #40e0d0, #ff8c00, transparent); */
+    position: relative;
+
+    &::before, &::after {
+      z-index: -1;
+      content: '';
+      position: absolute;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      opacity: var(--body-after-opacity, 1);
+      transitioN: opacity 0.15s;
+    }
+    
+    &::after {
+      background: linear-gradient(to top, transparent, #ff8c00, #ff0080);
+    }
+    &::before {
+      background: linear-gradient(to top, #40e0d0, #ff8c00, transparent);
+    }
+  }
+
+  :root {
+    --root-scale: 1;
+    --body-after-opacity: 0.1;
+  }
+
+  #root { 
+    transition: transform 0.15s;
+    transform: scale(var(--root-scale, 1));
+    background: ${colors.background};
   }
 `;
 
@@ -80,6 +116,10 @@ class App extends Component<
   state = {
     commanderVisible: false,
   };
+
+  componentDidCatch(e) {
+    console.log('component did catch', e);
+  }
 
   componentWillMount() {
     /** ⚠️ come back */
@@ -186,7 +226,7 @@ class App extends Component<
             e.target.nodeName !== 'TEXTAREA'
           ) {
             if (e.shiftKey && e.key === '}') {
-                this.props.expandAllThreads();
+              this.props.expandAllThreads();
             } else if (e.shiftKey && e.key === '{') {
               this.props.collapseAllThreads();
             }
@@ -222,6 +262,14 @@ class App extends Component<
                         )
                       ) {
                         this.showCommander();
+                        console.log(
+                          `  this.getCommands(this.props.operand).find(
+                            cmd => cmd.shortcut === e.key.toUpperCase()
+                          )`,
+                          this.getCommands(this.props.operand).find(
+                            cmd => cmd.shortcut === e.key.toUpperCase()
+                          )
+                        );
                         this.commander.enterCommand(
                           this.getCommands(this.props.operand).find(
                             cmd => cmd.shortcut === e.key.toUpperCase()
@@ -256,69 +304,106 @@ class App extends Component<
     ];
     return (
       <ConnectedRouter history={history}>
-        <WithEventListeners eventListeners={eventListeners} node={document}>
+        <WithEventListeners
+          eventListeners={[
+            [
+              'blur',
+              e => {
+                document.documentElement.style.setProperty(
+                  '--root-scale',
+                  `0.95`
+                );
+                document.documentElement.style.setProperty(
+                  '--body-after-opacity',
+                  `1`
+                );
+                console.log(`e`, e);
+              },
+            ],
+            [
+              'focus',
+              e => {
+                document.documentElement.style.setProperty('--root-scale', `1`);
+                document.documentElement.style.setProperty(
+                  '--body-after-opacity',
+                  `0.1`
+                );
+                console.log(`e`, e);
+              },
+            ],
+          ]}
+          node={window}
+        >
           {() => (
-            <div>
-              <Route exact path="/login" render={() => <Login />} />
-              {/* /* ⚠️ I might have fucked up the route logic */}
-              <Route
-                exact
-                path="/"
-                render={() => (
-                  <>
-                    <Header
-                      traces={this.props.user.traces}
-                      currentTrace={this.props.trace}
-                      selectTrace={this.props.selectTrace}
-                      deleteTrace={this.props.deleteTrace}
-                      deleteCurrentTrace={this.props.deleteCurrentTrace}
-                      currentMantra={
-                        this.props.user && last(this.props.user.mantras).name
-                      }
-                      createMantra={name => this.props.createMantra(name)}
-                    />
-                    <main>
-                      {do {
-                        if (this.props.view === 'multithread') {
-                          <>
-                            <Route
-                              path="/traces/:trace_id"
-                              render={this.renderTimeline}
-                            />
-                            <Route
-                              exact
-                              path="/"
-                              render={this.renderTimeline}
-                            />
-                            {/* {this.props.todosVisible && (
+            <WithEventListeners eventListeners={eventListeners} node={document}>
+              {() => (
+                <div>
+                  <Route exact path="/login" render={() => <Login />} />
+                  {/* /* ⚠️ I might have fucked up the route logic */}
+                  <Route
+                    exact
+                    path="/"
+                    render={() => (
+                      <>
+                        <Header
+                          traces={this.props.user.traces}
+                          currentTrace={this.props.trace}
+                          selectTrace={this.props.selectTrace}
+                          deleteTrace={this.props.deleteTrace}
+                          deleteCurrentTrace={this.props.deleteCurrentTrace}
+                          currentMantra={
+                            this.props.user &&
+                            last(this.props.user.mantras).name
+                          }
+                          createMantra={name => this.props.createMantra(name)}
+                        />
+                        <main>
+                          {do {
+                            if (this.props.view === 'multithread') {
+                              <>
+                                <Route
+                                  path="/traces/:trace_id"
+                                  render={this.renderTimeline}
+                                />
+                                <Route
+                                  exact
+                                  path="/"
+                                  render={this.renderTimeline}
+                                />
+                                {/* {this.props.todosVisible && (
                               <Todos todos={this.props.user.todos} />
                             )} */}
-                          </>;
-                        } else if (this.props.view === 'singlethread') {
-                          <>
-                            <SingleThreadView
-                              thread={this.props.threads[this.props.viewThread]}
-                            />
-                          </>;
-                        }
-                      }}
-                    </main>
-                    <CategoryManager categories={this.props.categories} />
-                    <Settings />
-                    <Commander
-                      withBuildup
-                      appElement={window.root}
-                      isOpen={this.state.commanderVisible}
-                      commands={this.getCommands(this.props.operand)}
-                      onSubmit={this.submitCommand}
-                      hideCommander={this.hideCommander}
-                      getItems={this.getItems}
-                      ref={c => (this.commander = c)}
-                    />
-                  </>
-                )}
-              />
-            </div>
+                              </>;
+                            } else if (this.props.view === 'singlethread') {
+                              <>
+                                <SingleThreadView
+                                  thread={
+                                    this.props.threads[this.props.viewThread]
+                                  }
+                                />
+                              </>;
+                            }
+                          }}
+                        </main>
+                        <Toaster />
+                        <CategoryManager categories={this.props.categories} />
+                        <Settings />
+                        <Commander
+                          withBuildup
+                          appElement={window.root}
+                          isOpen={this.state.commanderVisible}
+                          commands={this.getCommands(this.props.operand)}
+                          onSubmit={this.submitCommand}
+                          hideCommander={this.hideCommander}
+                          getItems={this.getItems}
+                          ref={c => (this.commander = c)}
+                        />
+                      </>
+                    )}
+                  />
+                </div>
+              )}
+            </WithEventListeners>
           )}
         </WithEventListeners>
       </ConnectedRouter>
