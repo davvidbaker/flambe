@@ -1,6 +1,6 @@
 {
   "name": "flambe-core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "lib/app.js",
   "license": "MIT",
   "scripts": {
@@ -17,7 +17,7 @@
     "dayjs": "^1.5.19",
     "downshift": "^1.9.1",
     "emoji-regex": "^6.5.1",
-    "flambe-logo": "^0.1.1",
+    "flambe-logo": "^0.1.2",
     "fuzzaldrin-plus": "^0.5.0",
     "history": "^4.7.2",
     "humanize-duration": "^3.12.0",
