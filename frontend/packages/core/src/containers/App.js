@@ -1,29 +1,29 @@
 // @flow
 
-import React, { Component } from "react";
-import { connect } from "react-redux";
-import { compose } from "redux";
-import last from "lodash/fp/last";
+import React, { Component } from 'react';
+import { connect } from 'react-redux';
+import { compose } from 'redux';
+import last from 'lodash/fp/last';
 
 // flow-ignore
-import { ConnectedRouter } from "react-router-redux";
-import { Route } from "react-router";
-import { DragDropContext, DragDropManager } from "react-dnd";
-import HTML5Backend from "react-dnd-html5-backend";
-import { injectGlobal } from "styled-components";
-import Commander from "react-commander";
-import Modal from "react-modal";
-import Toaster from "./Toaster";
-import Timeline from "./Timeline";
-import SingleThreadView from "./SingleThreadView";
+import { ConnectedRouter } from 'react-router-redux';
+import { Route } from 'react-router';
+import { DragDropContext, DragDropManager } from 'react-dnd';
+import HTML5Backend from 'react-dnd-html5-backend';
+import { injectGlobal } from 'styled-components';
+import Commander from 'react-commander';
+import Modal from 'react-modal';
+import Toaster from './Toaster';
+import Timeline from './Timeline';
+import SingleThreadView from './SingleThreadView';
 // import Todos from './Todos';
-import Login from "../components/Login";
-import Header from "../components/Header";
-import { colors } from "../styles";
-import WithEventListeners from "../components/WithEventListeners";
-import CategoryManager from "../components/CategoryManager";
-import Settings from "../components/Settings";
-import { history } from "../store";
+import Login from '../components/Login';
+import Header from '../components/Header';
+import { colors } from '../styles';
+import WithEventListeners from '../components/WithEventListeners';
+import CategoryManager from '../components/CategoryManager';
+import Settings from '../components/Settings';
+import { history } from '../store';
 import {
   collapseAllThreads,
   deleteCurrentTrace,
@@ -38,17 +38,18 @@ import {
   showActivityDetails,
   showSettings,
   createMantra,
+  createToast,
   FIND
-} from "../actions";
-import COMMANDS, { ACTIVITY_COMMANDS } from "../constants/commands";
-import { getTimeline } from "../reducers/timeline";
-import { getUser } from "../reducers/user";
-import isEndable from "../utilities/isEndable";
+} from '../actions';
+import COMMANDS, { ACTIVITY_COMMANDS } from '../constants/commands';
+import { getTimeline } from '../reducers/timeline';
+import { getUser } from '../reducers/user';
+import isEndable from '../utilities/isEndable';
 
-import type { Trace } from "../types/Trace";
-import type { Todo } from "../types/Todo";
+import type { Trace } from '../types/Trace';
+import type { Todo } from '../types/Todo';
 
-Modal.setAppElement("#app-root");
+Modal.setAppElement('#app-root');
 
 // eslint-disable-next-line babel/no-unused-expressions
 injectGlobal`
@@ -120,7 +121,11 @@ class App extends Component<
   };
 
   componentDidCatch(e) {
-    console.log("component did catch", e);
+    console.log('component did catch', e);
+    createToast(
+      `${e}. Top level error.`,
+      'error'
+    )
   }
 
   componentWillMount() {
@@ -140,7 +145,7 @@ class App extends Component<
       document.addEventListener(DOMEvent, e => {
         // flow-ignore
         switch (e.key) {
-          case "Shift":
+          case 'Shift':
             // flow-ignore
             propFn(e.key);
             break;
@@ -151,17 +156,17 @@ class App extends Component<
       });
     };
 
-    window.addEventListener("blur", e => {
-      document.documentElement.style.setProperty("--root-scale", "0.975");
-      document.documentElement.style.setProperty("--body-after-opacity", "1");
+    window.addEventListener('blur', e => {
+      document.documentElement.style.setProperty('--root-scale', '0.975');
+      document.documentElement.style.setProperty('--body-after-opacity', '1');
     });
-    window.addEventListener("focus", e => {
-      document.documentElement.style.setProperty("--root-scale", "1");
-      document.documentElement.style.setProperty("--body-after-opacity", "0.1");
+    window.addEventListener('focus', e => {
+      document.documentElement.style.setProperty('--root-scale', '1');
+      document.documentElement.style.setProperty('--body-after-opacity', '0.1');
     });
 
-    createKeyEvent("keydown", this.props.keyDown);
-    createKeyEvent("keyup", this.props.keyUp);
+    createKeyEvent('keydown', this.props.keyDown);
+    createKeyEvent('keyup', this.props.keyUp);
   }
 
   getItems = selector => selector(this.props);
@@ -192,7 +197,7 @@ class App extends Component<
   getCommands = operand => {
     if (operand) {
       switch (operand.type) {
-        case "activity":
+        case 'activity':
           return [
             ...ACTIVITY_COMMANDS.filter(cmd => cmd.status.indexOf(operand.activityStatus) >= 0),
             ...COMMANDS
@@ -207,56 +212,56 @@ class App extends Component<
   render() {
     const eventListeners = [
       [
-        "keydown",
+        'keydown',
         e => {
           if (e.repeat) return;
 
-          if (e.shiftKey && (e.metaKey || e.ctrlKey) && e.key === "p") {
+          if (e.shiftKey && (e.metaKey || e.ctrlKey) && e.key === 'p') {
             /** 💁 By default, if chrome devtools are open, this will pull up their command palette, even if focus is in the page, not dev tools. */
             e.preventDefault();
             this.showCommander();
           }
 
-          if ((e.metaKey || e.ctrlKey) && e.key === "f") {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
             e.preventDefault();
             this.showCommander();
             this.commander.enterCommand(COMMANDS.find(({ action }) => action === FIND));
           }
 
-          if (e.key === "," && (e.metaKey || e.ctrlKey)) {
+          if (e.key === ',' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
             this.props.showSettings();
           }
 
           if (
-            e.target.nodeName !== "INPUT" &&
-            e.target.nodeName !== "TEXTAREA"
+            e.target.nodeName !== 'INPUT' &&
+            e.target.nodeName !== 'TEXTAREA'
           ) {
-            if (e.shiftKey && e.key === "}") {
+            if (e.shiftKey && e.key === '}') {
               this.props.expandAllThreads();
-            } else if (e.shiftKey && e.key === "{") {
+            } else if (e.shiftKey && e.key === '{') {
               this.props.collapseAllThreads();
             }
           }
         }
       ],
       [
-        "keyup",
+        'keyup',
         e => {
           if (
             this.props.operand &&
-            e.target.nodeName !== "INPUT" &&
-            e.target.nodeName !== "TEXTAREA"
+            e.target.nodeName !== 'INPUT' &&
+            e.target.nodeName !== 'TEXTAREA'
           ) {
             switch (this.props.operand.type) {
-              case "activity":
-                if (e.code === "Space") {
+              case 'activity':
+                if (e.code === 'Space') {
                   this.props.showActivityDetails();
                 } else {
                   switch (e.key) {
-                    case "e":
-                    case "v":
-                    case "j":
+                    case 'e':
+                    case 'v':
+                    case 'j':
                       if (
                         isEndable(
                           this.props.activities[this.props.operand.activity_id],
@@ -270,14 +275,14 @@ class App extends Component<
                         this.commander.enterCommand(this.getCommands(this.props.operand).find(cmd => cmd.shortcut === e.key.toUpperCase()));
                       }
                       break;
-                    case "s":
+                    case 's':
                       /* ⚠️ not great code ahead */
                       if (
                         this.props.activities[this.props.operand.activity_id]
-                          .status === "active"
+                          .status === 'active'
                       ) {
                         this.showCommander();
-                        this.commander.enterCommand(ACTIVITY_COMMANDS.find(({ shortcut }) => shortcut === "S"));
+                        this.commander.enterCommand(ACTIVITY_COMMANDS.find(({ shortcut }) => shortcut === 'S'));
                       }
                     default:
                       break;
@@ -316,7 +321,7 @@ class App extends Component<
                     />
                     <main>
                       {do {
-                        if (this.props.view === "multithread") {
+                        if (this.props.view === 'multithread') {
                           <>
                             <Route
                               path="/traces/:trace_id"
@@ -331,7 +336,7 @@ class App extends Component<
                               <Todos todos={this.props.user.todos} />
                             )} */}'
                           </>;
-                        } else if (this.props.view === "singlethread") {
+                        } else if (this.props.view === 'singlethread') {
                           <>
                             <SingleThreadView
                               thread={this.props.threads[this.props.viewThread]}
@@ -394,7 +399,9 @@ export default compose(
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       showActivityDetails: () => dispatch(showActivityDetails()),
       showSettings: () => dispatch(showSettings()),
-      createMantra: (id, note) => dispatch(createMantra(id, note))
+      createMantra: (id, note) => dispatch(createMantra(id, note)),
+      createToast: (message, notificationType) =>
+        dispatch(createToast(message, notificationType))
     })
   )
 )(App);
