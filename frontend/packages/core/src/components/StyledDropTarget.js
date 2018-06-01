@@ -6,7 +6,7 @@ import React from 'react';
 import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 
-import { colors } from 'styles';
+import { colors } from '../styles';
 
 const StyledDropTarget = styled.div`
 position: absolute;

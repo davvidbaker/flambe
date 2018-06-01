@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 
 import Dropdown from './Dropdown';
 import NewTrace from './NewTrace';
-import { AllTraces } from 'containers/App';
-import { layout } from 'styles';
+
+import { layout } from '../styles';
 
 const TraceListItem = ({
   trace,

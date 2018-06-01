@@ -5,10 +5,10 @@ import { routerReducer, routerMiddleware } from 'react-router-redux';
 import createHistory from 'history/createBrowserHistory';
 
 import * as reducers from './reducers';
-import { getTimeline } from 'reducers/timeline';
-import { getUser } from 'reducers/user';
-import { loadState, saveState } from 'utilities';
-import sagas from 'sagas';
+import { getTimeline } from './reducers/timeline';
+import { getUser } from './reducers/user';
+import { loadState, saveState } from './utilities';
+import sagas from './sagas';
 
 // eslint-disable-next-line no-underscore-dangle
 const composeEnhancers =

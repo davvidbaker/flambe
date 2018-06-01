@@ -4,7 +4,7 @@ import { connect } from 'react-redux';
 import filter from 'lodash/fp/filter';
 import pipe from 'lodash/fp/pipe';
 
-import { updateThread, deleteThread } from 'actions';
+import { updateThread, deleteThread } from '../actions';
 
 import { InputFromButton } from './Button';
 import DeleteButton from './DeleteButton';

@@ -17,9 +17,9 @@ import {
   TODOS_TOGGLE,
   SETTINGS_SHOW,
   VIEW_CHANGE
-} from 'actions';
+} from '../actions';
 
-import { colors } from 'styles';
+import { colors } from '../styles';
 
 const threadParam = {
   key: 'thread_id',

@@ -4,7 +4,7 @@ import {
   ACTIVITY_SUSPEND,
   ACTIVITY_RESUME,
   ACTIVITY_RESURRECT
-} from 'actions';
+} from '../actions';
 
 function operand(state = null, action) {
   switch (action.type) {

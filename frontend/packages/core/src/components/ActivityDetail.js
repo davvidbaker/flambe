@@ -16,11 +16,11 @@ import {
   createCategory,
   updateCategory,
   hideActivityDetails,
-} from 'actions';
-import { getUser } from 'reducers/user';
+} from '../actions';
+import { getUser } from '../reducers/user';
 
-import type { Activity } from 'types/Activity';
-import type { Category as CategoryType } from 'types/Category';
+import type { Activity } from '../types/Activity';
+import type { Category as CategoryType } from '../types/Category';
 
 const P = styled.p`
   margin: 0;

@@ -33,9 +33,9 @@ import {
   showSettings,
   suspendActivity,
   toggleTodos,
-} from 'actions';
+} from '../actions';
 
-import { getTimeline } from 'reducers/timeline';
+import { getTimeline } from '../reducers/timeline';
 
 function* handleCommand({ type, operand, command }) {
   const timeline = yield select(getTimeline);

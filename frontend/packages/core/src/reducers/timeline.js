@@ -1,6 +1,5 @@
 import mapKeys from "lodash/fp/mapKeys";
 import mapValues from "lodash/fp/mapValues";
-import map from "lodash/fp/map";
 import omit from "lodash/fp/omit";
 
 import {
@@ -29,10 +28,9 @@ import {
   TIMELINE_PAN,
   TODO_BEGIN,
   TRACE_SELECT,
-  TRACE_FETCH
-} from "actions";
+} from "../actions";
 
-import { zoom, pan, processTrace, findById } from "../utilities";
+import { zoom, pan, processTrace } from "../utilities";
 import { terminateBlock } from "../utilities/processTrace";
 
 export const getTimeline = state => state.timeline;
@@ -165,7 +163,6 @@ function timeline(state = initialState, action) {
           [action.thread_id]: { ...state.threads[action.thread_id], rank: 0 }
         }
       };
-      break;
 
     case TRACE_SELECT:
       return {

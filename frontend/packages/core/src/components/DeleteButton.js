@@ -5,7 +5,7 @@ import styled from 'styled-components';
 import Modal from 'react-modal';
 import tinycolor from 'tinycolor2';
 
-import { colors } from 'styles';
+import { colors } from '../styles';
 import Button from './Button';
 
 const GREY = tinycolor(colors.text)

@@ -37,17 +37,16 @@ import {
   trimTextMiddle,
   deepArrayIsEqual,
   shortEnglishHumanizer
-} from "utilities";
-import { focusBlock, hoverBlock } from "actions";
-import { getTimeline } from "reducers/timeline";
-import { colors } from "styles";
+} from "../utilities";
+import { focusBlock, hoverBlock } from "../actions";
+import { getTimeline } from "../reducers/timeline";
+import { colors } from "../styles";
 
-import type { Activity } from "types/Activity";
-import type { Category as CategoryType } from "types/Category";
+import type { Activity } from "../types/Activity";
+import type { Category as CategoryType } from "../types/Category";
 
 const reduceWithIndices = reduce.convert({ cap: false });
 
-const SUSPENDED = 0;
 
 function activityByBlockIndex(blocks, index) {
   if (index === null || isUndefined(index)) return null;
@@ -246,7 +245,7 @@ class FlameChart extends Component<Props, State> {
       const startX = this.timeToPixels(hitBlock[1].startTime);
       const endX =
         hitBlock[1].endTime && this.timeToPixels(hitBlock[1].endTime);
-        
+
       /* 💁 don't resize if block is too small */
       if (endX - startX > 20) {
         if (event.nativeEvent.offsetX - startX < 10) {

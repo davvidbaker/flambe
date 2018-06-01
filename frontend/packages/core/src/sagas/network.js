@@ -26,9 +26,9 @@ import {
   TRACE_SELECT,
   TRACE_DELETE,
   USER_FETCH
-} from 'actions';
-import { getUser } from 'reducers/user';
-import { getTimeline } from 'reducers/timeline';
+} from '../actions';
+import { getUser } from '../reducers/user';
+import { getTimeline } from '../reducers/timeline';
 
 async function hitNetwork({ resource, params = {} }) {
   const response = await fetch(

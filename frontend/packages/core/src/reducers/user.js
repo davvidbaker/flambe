@@ -15,7 +15,7 @@ import {
   USER_FETCH,
   SEARCH_TERMS_EVENT,
   TABS_EVENT
-} from 'actions';
+} from '../actions';
 
 export const getUser = state => state.user;
 

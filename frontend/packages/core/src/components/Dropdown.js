@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 
-import { colors } from 'styles';
+import { colors } from '../styles';
 
 const Dropdown = styled.ul`
   position: absolute;

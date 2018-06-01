@@ -2,7 +2,7 @@
 
 // modifying keys like shift, command, ctrl, etc
 
-import { KEY_DOWN, KEY_UP } from 'actions';
+import { KEY_DOWN, KEY_UP } from '../actions';
 
 const initState = {
   shift: false,
