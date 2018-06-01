@@ -25,7 +25,7 @@ import {
   TRACE_FETCH,
   TRACE_SELECT,
   TRACE_DELETE,
-  USER_FETCH,
+  USER_FETCH
 } from 'actions';
 import { getUser } from 'reducers/user';
 import { getTimeline } from 'reducers/timeline';
@@ -38,9 +38,9 @@ async function hitNetwork({ resource, params = {} }) {
     {
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
-      ...params,
+      ...params
     }
   );
   if (!response.ok) throw response;
@@ -61,12 +61,10 @@ function* fetchResource(actionType, { resource, params }) {
       return;
     }
     console.log(`network error e`, e);
-    yield put(
-      createToast(
-        `${actionType.replace(/_/g, ' ')} failed. Network error.`,
-        'error'
-      )
-    );
+    yield put(createToast(
+      `${actionType.replace(/_/g, ' ')} failed. Network error.`,
+      'error'
+    ));
   }
 }
 
@@ -81,7 +79,7 @@ function* createActivity({
   thread_id /* message */,
   category_id,
   todo_id = null,
-  phase = 'B',
+  phase = 'B'
 }) {
   const timeline = yield select(getTimeline);
 
@@ -97,14 +95,16 @@ function* createActivity({
         activity: {
           name,
           description,
-          categories: category_id ? [category_id] : [],
-        },
-      }),
-    },
+          categories: category_id ? [category_id] : []
+        }
+      })
+    }
   });
 }
 
-function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }) {
+function* endActivity({
+  type, id, timestamp, message, eventFlavor = 'E'
+}) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -117,14 +117,16 @@ function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }) {
         event: {
           timestamp_integer: timestamp,
           message,
-          phase: eventFlavor,
-        },
-      }),
-    },
+          phase: eventFlavor
+        }
+      })
+    }
   });
 }
 
-function* suspendActivity({ type, id, timestamp, message }) {
+function* suspendActivity({
+  type, id, timestamp, message
+}) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -137,10 +139,10 @@ function* suspendActivity({ type, id, timestamp, message }) {
         event: {
           timestamp_integer: timestamp,
           message,
-          phase: 'S',
-        },
-      }),
-    },
+          phase: 'S'
+        }
+      })
+    }
   });
 }
 
@@ -151,9 +153,9 @@ function* deleteActivity({ type, id }) {
     params: {
       method: 'DELETE',
       body: JSON.stringify({
-        delete_events: true,
-      }),
-    },
+        delete_events: true
+      })
+    }
   });
 }
 
@@ -163,8 +165,8 @@ function* updateActivity({ type, id, updates }) {
     resource: { path: 'activities', id },
     params: {
       method: 'PUT',
-      body: JSON.stringify({ activity: { ...updates } }),
-    },
+      body: JSON.stringify({ activity: { ...updates } })
+    }
   });
 }
 
@@ -173,8 +175,8 @@ function* updateEvent({ type, id, updates }) {
     resource: { path: 'events', id },
     params: {
       method: 'PUT',
-      body: JSON.stringify({ event: { ...updates } }),
-    },
+      body: JSON.stringify({ event: { ...updates } })
+    }
   });
 
   const trace = (yield select(getTimeline)).trace;
@@ -183,7 +185,9 @@ function* updateEvent({ type, id, updates }) {
   yield call(fetchTrace, { trace });
 }
 
-function* createCategory({ type, activity_id, name, color_background }) {
+function* createCategory({
+  type, activity_id, name, color_background
+}) {
   const user = yield select(getUser);
   yield fetchResource(type, {
     resource: { path: 'categories' },
@@ -193,9 +197,9 @@ function* createCategory({ type, activity_id, name, color_background }) {
         user_id: user.id,
         /** 🔮 <-(first crystal ball use) if you want to be able to set a bunch of activities to a new category, this will have to change, like with highlighting a big section */
         activity_ids: [activity_id],
-        category: { name, color_background },
-      }),
-    },
+        category: { name, color_background }
+      })
+    }
   });
 }
 
@@ -209,10 +213,10 @@ function* createTodo({ type, name, description }) {
         user_id: user.id,
         todo: {
           name,
-          description,
-        },
-      }),
-    },
+          description
+        }
+      })
+    }
   });
 }
 
@@ -222,9 +226,9 @@ function* updateCategory({ type, id, updates }) {
     params: {
       method: 'PUT',
       body: JSON.stringify({
-        category: { ...updates },
-      }),
-    },
+        category: { ...updates }
+      })
+    }
   });
 }
 
@@ -238,10 +242,10 @@ function* createMantra({ type, name }) {
         user_id: user.id,
         mantra: {
           name,
-          timestamp_integer: Date.now(),
-        },
-      }),
-    },
+          timestamp_integer: Date.now()
+        }
+      })
+    }
   });
 }
 
@@ -255,10 +259,10 @@ function* shiftAttention({ type, thread_id, timestamp }) {
         user_id: user.id,
         attention: {
           thread_id,
-          timestamp_integer: timestamp,
-        },
-      }),
-    },
+          timestamp_integer: timestamp
+        }
+      })
+    }
   });
 }
 
@@ -268,9 +272,9 @@ function* updateThread({ type, id, updates }) {
     params: {
       method: 'PUT',
       body: JSON.stringify({
-        thread: { ...updates },
-      }),
-    },
+        thread: { ...updates }
+      })
+    }
   });
 }
 
@@ -278,8 +282,8 @@ function* deleteThread({ type, id }) {
   yield fetchResource(type, {
     resource: { path: 'threads', id },
     params: {
-      method: 'DELETE',
-    },
+      method: 'DELETE'
+    }
   });
 }
 
@@ -289,20 +293,20 @@ function* createTrace({ type, name }) {
     resource: { path: 'traces' },
     params: {
       method: 'POST',
-      body: JSON.stringify({ user_id: user.id, trace: { name } }),
-    },
+      body: JSON.stringify({ user_id: user.id, trace: { name } })
+    }
   });
 }
 
 function* fetchUser({ type, id }) {
   yield fetchResource(type, {
-    resource: { path: 'users', id },
+    resource: { path: 'users', id }
   });
 }
 
 function* fetchTrace({ trace }) {
   yield fetchResource(TRACE_FETCH, {
-    resource: { path: 'traces', id: trace.id },
+    resource: { path: 'traces', id: trace.id }
   });
 }
 
@@ -310,8 +314,8 @@ function* deleteTrace({ type, id }) {
   yield fetchResource(type, {
     resource: { path: 'traces', id },
     params: {
-      method: 'DELETE',
-    },
+      method: 'DELETE'
+    }
   });
 }
 
@@ -329,18 +333,16 @@ function* processFetchedTrace({ data }) {
   const timeline = yield select(getTimeline);
   const persistedThreads = timeline.threads;
 
-  yield put(
-    processTimelineTrace(
-      data.events.map(event => ({
-        ...event,
-        timestamp: new Date(event.timestamp).getTime(),
-      })),
-      data.threads.map(thread => ({
-        ...thread,
-        collapsed: isCollapsed(persistedThreads, thread),
-      }))
-    )
-  );
+  yield put(processTimelineTrace(
+    data.events.map(event => ({
+      ...event,
+      timestamp: new Date(event.timestamp).getTime()
+    })),
+    data.threads.map(thread => ({
+      ...thread,
+      collapsed: isCollapsed(persistedThreads, thread)
+    }))
+  ));
 }
 
 function* createThread({ type, name, rank }) {
@@ -351,14 +353,16 @@ function* createThread({ type, name, rank }) {
       method: 'POST',
       body: JSON.stringify({
         trace_id: timeline.trace.id,
-        thread: { name, rank },
-      }),
-    },
+        thread: { name, rank }
+      })
+    }
   });
 }
 
 /* ⚠️ Soooo resumeActivity and resurrectActivity are almost identical. Some refactoring is in ofder. */
-function* resumeActivity({ type, id, timestamp, message }) {
+function* resumeActivity({
+  type, id, timestamp, message
+}) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -371,14 +375,16 @@ function* resumeActivity({ type, id, timestamp, message }) {
         event: {
           timestamp_integer: timestamp,
           message,
-          phase: 'R',
-        },
-      }),
-    },
+          phase: 'R'
+        }
+      })
+    }
   });
 }
 
-function* resurrectActivity({ type, id, timestamp, message }) {
+function* resurrectActivity({
+  type, id, timestamp, message
+}) {
   const timeline = yield select(getTimeline);
   yield fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -391,10 +397,10 @@ function* resurrectActivity({ type, id, timestamp, message }) {
         event: {
           timestamp_integer: timestamp,
           message,
-          phase: 'X',
-        },
-      }),
-    },
+          phase: 'X'
+        }
+      })
+    }
   });
 }
 // // // // // // // // // // // // // // // // // // // // // // // //

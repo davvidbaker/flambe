@@ -50,7 +50,7 @@ module.exports = {
         SwitchCase: 1,
       },
     ],
-    quotes: 1,
+    quotes: 'off',
     'babel/no-unused-expressions': 'error',
     'babel/quotes': 'off',
     'import/no-extraneous-dependencies': 'off',
