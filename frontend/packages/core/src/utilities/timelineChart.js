@@ -2,6 +2,8 @@ import filter from 'lodash/fp/filter';
 import reduce from 'lodash/fp/reduce';
 import pipe from 'lodash/fp/pipe';
 import curry from 'lodash/fp/curry';
+import reverse from 'lodash/fp/reverse';
+import isUndefined from 'lodash/fp/isUndefined';
 
 export function setCanvasSize(canvas, textPadding, isFlameChart) {
   const header = document.querySelector('header');
@@ -150,4 +152,27 @@ export function visibleThreadLevels(
       };
     }, reduce((acc, { id }) => ({ ...acc, [id]: { current: 0, max: 0 } }), {})(threads))
   )(blocks);
+}
+
+export function rankThreadsByAttention(attentionShifts, threads) {
+  /* 💁 attentionShifts should already be ordered chronologically */
+
+  /* ⚠️ maybe bad code ahead */
+  let rank = 0;
+  const ranks = pipe(
+    reverse,
+    reduce((acc, { thread_id }) => {
+      if (isUndefined(acc[thread_id])) {
+        acc[thread_id] = rank;
+        threads[thread_id].rank = rank;
+        rank++;
+      }
+      return acc;
+    }, {})
+  )(attentionShifts);
+
+  // return map(thread => {...thread})(threads)
+
+
+  return threads;
 }

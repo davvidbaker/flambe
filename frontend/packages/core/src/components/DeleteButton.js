@@ -66,7 +66,6 @@ class DeleteButton extends Component<Props, State> {
         Delete
       </button>,
       <Modal
-        appElement={window.root}
         key="modal"
         isOpen={this.state.modalIsOpen}
         contentLabel={this.props.contentLabel}

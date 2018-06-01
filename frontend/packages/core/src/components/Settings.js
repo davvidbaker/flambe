@@ -10,20 +10,26 @@ const SETTINGS = [
     setting: 'reactiveThreadHeight',
     copy: 'Reactive Thread Height',
     description:
-      'The height of a thread dynamically adjusts its height depending on how many levels are in the visible window.'
+      'The height of a thread dynamically adjusts its height depending on how many levels are in the visible window.',
   },
   {
     setting: 'suspendResumeFlows',
-    copy: 'Suspend/Resume Flows'
+    copy: 'Suspend/Resume Flows',
   },
   {
     setting: 'attentionFlows',
-    copy: 'Attention Flows'
+    copy: 'Attention Flows',
   },
   {
     setting: 'uniformBlockHeight',
-    copy: 'Uniform Block Height'
-  }
+    copy: 'Uniform Block Height',
+    description: 'In collapsed threads, all blocks are the same height.',
+  },
+  {
+    setting: 'attentionDrivenThreadOrder',
+    copy: 'Attention Driven Thread Order',
+    description: 'Threads are ordered by what was worked on most recently',
+  },
 ];
 
 const Setting = styled.div`
@@ -52,11 +58,10 @@ const Settings = ({
   settingsVisible,
   hideSettings,
   settings,
-  toggleSetting
+  toggleSetting,
 }) => (
   <Modal
     isOpen={settingsVisible}
-    appElement={window.root}
     onRequestClose={hideSettings}
   >
     <Wrapper>
@@ -84,10 +89,10 @@ const Settings = ({
 export default connect(
   state => ({
     settingsVisible: state.settingsVisible,
-    settings: state.settings
+    settings: state.settings,
   }),
   dispatch => ({
     hideSettings: () => dispatch(hideSettingsAction()),
-    toggleSetting: setting => dispatch(toggleSetting(setting))
+    toggleSetting: setting => dispatch(toggleSetting(setting)),
   })
 )(Settings);

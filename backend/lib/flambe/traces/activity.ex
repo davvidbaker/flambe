@@ -28,7 +28,7 @@ defmodule Flambe.Traces.Activity do
     |> Flambe.Repo.preload(:categories)
     |> cast(attrs, [:name, :description])
     |> validate_required([:name])
-    # ⚠️ really not sure if this is the right way to do this..., it is working though...👇
+    # ⚠️ really not sure if this is the right way to do this..., it is working though...👇 not.
     |> put_assoc(:categories, upsert_categories(attrs))
   end
 

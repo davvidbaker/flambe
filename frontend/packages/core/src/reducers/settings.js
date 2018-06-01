@@ -4,7 +4,8 @@ const defaultState = {
   reactiveThreadHeight: true,
   suspendResumeFlows: true,
   attentionFlows: false,
-  uniformBlockHeight: false
+  uniformBlockHeight: false,
+  attentionDrivenThreadOrder: true,
 };
 
 function settings(state = defaultState, action) {
