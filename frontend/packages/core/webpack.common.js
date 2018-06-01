@@ -1,4 +1,3 @@
-
 const webpack = require('webpack');
 
 module.exports = {
@@ -30,7 +29,7 @@ module.exports = {
       {
         test: /\.jsx?$/,
         exclude: /node_modules/,
-        loaders: ['babel-loader'],
+        use: { loader: 'babel-loader', options: { extends: '../../.babelrc' } },
       },
       {
         test: /\.(jpe?g|png|gif|svg)$/i,
@@ -58,6 +57,6 @@ module.exports = {
       minChunks: Infinity,
       // (with more entries, this ensures that no other module
       //  goes into the vendor chunk)
-    })
+    }),
   ],
 };

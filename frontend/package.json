@@ -6,16 +6,15 @@
   "main": "index.js",
   "scripts": {
     "analyze": "webpack-bundle-analyzer stats.json",
-    "start": "cd packages/core && yarn start",
-    "test": "bolt ws run test",
+    "start": "(cd packages/core && npm start)",
+    "test": "lerna run test",
     "flow": "flow",
-    "lib": "bolt ws run lib",
+    "lib": "lerna un lib",
+    "bootstrap": "lerna bootstrap",
     "testlib": "bolt ws run clean && bolt ws exec \"babel ./ -d\""
   },
   "bolt": {
-    "workspaces": [
-      "packages/*"
-    ]
+    "workspaces": ["packages/*"]
   },
   "repository": {
     "type": "git",
@@ -27,37 +26,6 @@
     "url": "https://github.com/davvidbaker/flame-chart/issues"
   },
   "homepage": "https://github.com/davvidbaker/flame-chart#readme",
-  "dependencies": {
-    "@babel/polyfill": "^7.0.0-beta.46",
-    "dayjs": "^1.5.19",
-    "downshift": "^1.9.1",
-    "emoji-regex": "^6.5.1",
-    "fuzzaldrin-plus": "^0.5.0",
-    "history": "^4.7.2",
-    "humanize-duration": "^3.12.0",
-    "lodash": "^4.17.4",
-    "match-sorter": "^2.0.2",
-    "phoenix": "^1.3.0",
-    "react": "^16.3.2",
-    "react-color": "^2.13.5",
-    "react-commander": "^0.0.1",
-    "react-contexify": "^3.0.0",
-    "react-dnd": "^2.5.1",
-    "react-dnd-html5-backend": "^2.5.1",
-    "react-dom": "^16.2.0",
-    "react-hot-loader": "^3.0.0-beta.7",
-    "react-modal": "^2.4.1",
-    "react-redux": "^5.0.6",
-    "react-router-dom": "^4.2.2",
-    "react-router-redux": "^5.0.0-alpha.9",
-    "recompose": "^0.25.0",
-    "redux": "4.0.0",
-    "redux-saga": "^0.16.0",
-    "redux-thunk": "^2.2.0",
-    "regenerator-runtime": "^0.11.1",
-    "styled-components": "^3.2.6",
-    "tinycolor2": "^1.4.1"
-  },
   "devDependencies": {
     "@babel/core": "^7.0.0-beta.47",
     "@babel/plugin-proposal-class-properties": "^7.0.0-beta.46",
@@ -86,6 +54,7 @@
     "flow-bin": "^0.53.1",
     "html-webpack-plugin": "^2.30.1",
     "jest": "^22.4.3",
+    "lerna": "^2.11.0",
     "nodemon": "^1.11.0",
     "prop-types": "^15.5.10",
     "uglifyjs-webpack-plugin": "^0.4.6",
@@ -96,8 +65,6 @@
     "ws": "^3.1.0"
   },
   "jest": {
-    "modulePaths": [
-      "packages/*/src"
-    ]
+    "modulePaths": ["packages/*/src"]
   }
 }

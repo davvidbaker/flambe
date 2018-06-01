@@ -38,7 +38,6 @@ class ThreadDetail extends Component<Props> {
 
     return (
       <Modal
-        appElement={window.root}
         contentLabel="Thread Details"
         isOpen={!!this.props.id}
         shouldCloseOnOverlayClick

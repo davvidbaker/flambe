@@ -12,7 +12,10 @@ import WithDropTarget from './WithDropTarget';
 import WithEventListeners from '../components/WithEventListeners';
 
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
-import { visibleThreadLevels } from '../utilities/timelineChart';
+import {
+  visibleThreadLevels,
+  rankThreadsByAttention,
+} from '../utilities/timelineChart';
 import { getTimeline } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import { layout } from '../styles';
@@ -104,7 +107,6 @@ class Timeline extends Component<Props, State> {
       { leftBoundaryTime, rightBoundaryTime },
       this.setLocalStorage
     );
-
   };
 
   pan = (dx, dy, canvasWidth) => {
@@ -156,6 +158,12 @@ class Timeline extends Component<Props, State> {
 
     const rightBoundaryTime = this.state.rightBoundaryTime || props.maxTime;
     const leftBoundaryTime = this.state.leftBoundaryTime || props.minTime;
+
+    const threads = Array.isArray(props.threads)
+      ? {}
+      : props.settings.attentionDrivenThreadOrder
+        ? rankThreadsByAttention(props.attentionShifts, props.threads)
+        : props.threads;
 
     return (
       <WithEventListeners
@@ -218,7 +226,7 @@ class Timeline extends Component<Props, State> {
                       )
                     : props.threadLevels
                 }
-                threads={Array.isArray(props.threads) ? {} : props.threads}
+                threads={threads}
                 toggleThread={props.toggleThread}
                 topOffset={this.state.topOffset || 0}
                 updateEvent={props.updateEvent}
@@ -229,7 +237,8 @@ class Timeline extends Component<Props, State> {
               closeThreadDetail={this.closeThreadDetail}
               id={this.state.threadModal_id}
               name={
-                this.state.threadModal_id && props.threads[this.state.threadModal_id].name
+                this.state.threadModal_id &&
+                props.threads[this.state.threadModal_id].name
               }
               activities={props.activities}
             />
@@ -279,6 +288,6 @@ connect(
     toggleThread: (id, isCollapsed = false) =>
       dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
-    updateEvent: (id, updates) => dispatch(updateEvent(id, updates))
+    updateEvent: (id, updates) => dispatch(updateEvent(id, updates)),
   })
 )(Timeline);

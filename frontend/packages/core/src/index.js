@@ -15,14 +15,14 @@ const render = Component => {
         <Component />
       </Provider>
     </AppContainer>,
-    document.getElementById('root')
+    document.getElementById('app-root')
   );
 };
 
 render(App);
 // Hot Module Replacement API
-if (module.hot) {
-  module.hot.accept(() => {
-    render(App);
-  });
-}
+// if (module.hot) {
+//   module.hot.accept(() => {
+//     render(App);
+//   });
+// }

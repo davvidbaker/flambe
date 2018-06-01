@@ -18,7 +18,6 @@ const CategoryManager = ({
   hideCategoryManager
 }) => (
   <Modal
-    appElement={window.root}
     isOpen={categoryManagerVisible}
     shouldCloseOnOverlayClick
     contentLabel="Categories"

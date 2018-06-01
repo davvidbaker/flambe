@@ -60,6 +60,7 @@ function* fetchResource(actionType, { resource, params }) {
       yield put(push('/login'));
       return;
     }
+    console.log(`network error e`, e);
     yield put(
       createToast(
         `${actionType.replace(/_/g, ' ')} failed. Network error.`,
