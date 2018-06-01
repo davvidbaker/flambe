@@ -1,12 +1,12 @@
 {
   "name": "flambe-logo",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "",
   "main": "lib/index.js",
   "scripts": {
     "echo": "echo echo c",
     "clean": "rm -rf lib && mkdir lib",
-    "lib": "yarn clean && babel ./ -d lib --config-file ../../.babelrc "
+    "lib": "npm run clean && babel ./ -d lib --config-file ../../.babelrc"
   },
   "peerDependencies": {
     "react": "^16.3.2",
