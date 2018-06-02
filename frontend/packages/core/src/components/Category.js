@@ -1,12 +1,13 @@
 // @flow
 import React, { Component } from 'react';
 
-import ColorPicker from 'components/ColorPicker';
-import ColorCircle from 'components/ColorCircle';
-import Popup from 'components/Popup';
 import styled from 'styled-components';
 
-import type { Category as CategoryType } from 'types/Category';
+import ColorPicker from './ColorPicker';
+import ColorCircle from './ColorCircle';
+import Popup from './Popup';
+
+import type { Category as CategoryType } from '../types/Category';
 
 const Preview = styled.div`
   font-size: 12px;

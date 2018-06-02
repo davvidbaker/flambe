@@ -5,7 +5,7 @@ import tinycolor from 'tinycolor2';
 import ToggleButton from './ToggleButton';
 import { InputFromButton } from './Button';
 import TraceList from './TraceList';
-import { colors, layout } from 'styles';
+import { colors, layout } from '../styles';
 
 const StyledHeader = styled.header`
   font-weight: bold;

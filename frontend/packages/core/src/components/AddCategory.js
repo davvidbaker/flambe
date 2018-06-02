@@ -1,11 +1,11 @@
 import React, { Component } from 'react';
 
-import { InputFromButton } from 'components/Button';
-import Fuzzy from 'components/Fuzzy';
+import { InputFromButton } from './Button';
+import Fuzzy from './Fuzzy';
 import { colors } from '../styles';
-import Popup from 'components/Popup';
-import ColorPicker from 'components/ColorPicker';
-import type { Category as CategoryType } from 'types/Category';
+import Popup from './Popup';
+import ColorPicker from './ColorPicker';
+import type { Category as CategoryType } from '../types/Category';
 
 type Props = {
   categories: Category[],

@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 
-import { colors } from 'styles';
+import { colors } from '../styles';
 
 const ColorCircle = styled.div`
   border-radius: 50%;

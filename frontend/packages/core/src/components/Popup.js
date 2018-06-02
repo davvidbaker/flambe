@@ -2,7 +2,7 @@
 import React, { Component } from 'react';
 import styled from 'styled-components';
 
-import WithEventListeners from 'components/WithEventListeners';
+import WithEventListeners from '../components/WithEventListeners';
 
 const Overlay = styled.div`
   position: fixed;

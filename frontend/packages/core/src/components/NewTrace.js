@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 
-import { AllTraces } from 'containers/App';
-import { createTrace } from 'actions';
+import { AllTraces } from '../containers/App';
+import { createTrace } from '../actions';
 
 import { InputFromButton } from './Button';
 

@@ -4,7 +4,7 @@ import React, { Component } from 'react';
 import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 
-import { colors } from 'styles';
+import { colors } from '../styles';
 
 const commonStyles = `
   background: ${colors.background};

@@ -1,10 +1,10 @@
 // @flow
 
 import React, { Component } from 'react';
-import { ItemTypes } from 'components/Todo';
 import { DropTarget } from 'react-dnd';
 
-import StyledDropTarget from 'components/StyledDropTarget';
+import { ItemTypes } from '../components/Todo';
+import StyledDropTarget from '../components/StyledDropTarget';
 
 // ⚠️ rename, make more abstract
 const todoTarget = {

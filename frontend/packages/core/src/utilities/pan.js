@@ -1,5 +1,5 @@
 // @flow
-import { MAX_TIME_INTO_FUTURE } from 'constants/defaultParameters';
+import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 
 function pan(
   deltaX: number,

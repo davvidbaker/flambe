@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { colors } from 'styles';
+import { colors } from '../styles';
 
 // not using styled components because received this warning
 // | 🔴 Consider using style property for frequently changed styles.
