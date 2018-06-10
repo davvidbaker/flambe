@@ -1,0 +1,20 @@
+{
+  "name": "flambe-docs",
+  "version": "0.1.6",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "webpack-dev-server --config webpack.dev.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "flambe-core": "^0.1.6",
+    "flambe-logo": "^0.1.6",
+    "react": "^16.3.2",
+    "react-dom": "^16.2.0",
+    "regenerator-runtime": "^0.11.1",
+    "styled-components": "^3.2.6"
+  }
+}
