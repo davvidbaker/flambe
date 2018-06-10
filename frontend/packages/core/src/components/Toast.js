@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
+// import mdx from 'mdx';
 
 import { colors } from '../styles';
 
@@ -12,7 +13,12 @@ props => (props.type === 'error' ? colors.red : 'green');
 const Wrapper = styled.div`
   background: ${getColor};
   font-size: 0.8em;
-  /* border: 1px solid ${props => tinycolor(getColor(props)).darken(25).toString()}; */
+  border: 1px solid
+    ${props =>
+    tinycolor(getColor(props))
+      .darken(25)
+      .toString()};
+  border-radius: 2px;
   color: white;
   opacity: 0.9;
   margin: 0.5em;
@@ -34,7 +40,7 @@ const ProgressBar = styled.div`
   left: 0;
   bottom: 0;
   animation: slide 5s linear;
-  background: linear-gradient(to right, #40e0d0, #ff8c00, #ff0080);
+  background: linear-gradient(to left, #40e0d0, #ff8c00, #ff0080, transparent);
 
   animation-play-state: ${props => (props.playing ? 'running' : 'paused')};
   animation-fill-mode: forwards;
@@ -52,7 +58,7 @@ const ProgressBar = styled.div`
 
 class Toast extends Component {
   state = {
-    playing: true,
+    playing: true
   };
   componentDidMount() {}
 
@@ -76,6 +82,7 @@ class Toast extends Component {
         onMouseLeave={this.onMouseLeave}
         onClick={this.pop}
       >
+        {/* <div>{mdx.sync(this.props.message)}</div> */}
         <div>{this.props.message}</div>
         <ProgressBar playing={this.state.playing} onAnimationEnd={this.pop} />
       </Wrapper>

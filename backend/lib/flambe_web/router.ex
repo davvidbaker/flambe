@@ -30,7 +30,7 @@ defmodule FlambeWeb.Router do
   scope "/", FlambeWeb do
     pipe_through(:api)
 
-    resources("/sessions", SessionController, only: [:new, :create, :delete], singleton: true)
+    resources("/sessions", SessionController, only: [:create, :delete], singleton: true)
   end
 
   scope "/cms", FlambeWeb.CMS, as: :cms do

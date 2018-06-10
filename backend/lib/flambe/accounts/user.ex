@@ -5,6 +5,7 @@ defmodule Flambe.Accounts.User do
 
   schema "users" do
     field(:name, :string)
+    field(:username, :string)
 
     # ⚠️ not sure if on_replace: :delete is correct/idk what it does, but thinking it might be correct
     has_many(:credential, Credential, on_replace: :delete)
@@ -19,6 +20,14 @@ defmodule Flambe.Accounts.User do
   def changeset(%User{} = user, attrs) do
     user
     |> cast(attrs, [:name, :note_to_self])
-    |> validate_required([:name])
+    |> validate_required([:name, :username])
+    |> validate_length(:username, min: 1, max: 20)
+    |> unique_constraint(:username)
+  end
+
+  def registration_changeset(user, params) do
+    user
+    |> changeset(params)
+    |> cast_assoc(:credential, with: &Credential.changeset/2)
   end
 end

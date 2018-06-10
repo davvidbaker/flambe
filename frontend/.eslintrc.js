@@ -41,7 +41,7 @@ module.exports = {
     'no-debugger': 'off',
     'no-nested-ternary': 'off',
     'no-plusplus': 'off',
-    'no-unused-vars': 'error',
+    'no-unused-vars: ["error", { "argsIgnorePattern": "^_" }],
     'no-unused-expressions': 'off',
     indent: [
       'error',

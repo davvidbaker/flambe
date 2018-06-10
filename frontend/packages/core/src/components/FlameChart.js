@@ -26,7 +26,8 @@ import {
   getBlockTransform,
   getBlockY,
   drawFutureWindow,
-  isVisible
+  isVisible,
+  sortThreadsByRank
 } from "../utilities/timelineChart";
 /* 🔮  abstract into parts of react-flame-chart? */
 import FocusActivity from "./FocusActivity";
@@ -168,11 +169,7 @@ class FlameChart extends Component<Props, State> {
     ) {
       const offsets = {};
 
-      this.threadsSortedByRank = pipe(
-        entries,
-        sortBy(([_id, { rank }]) => rank),
-        map(([key, val]) => [Number(key), val])
-      )(threads);
+      this.threadsSortedByRank = sortThreadsByRank(threads);
 
       reduceWithIndices((acc, [thread_id, thread], ind) => {
         thread_id = Number(thread_id);
@@ -247,7 +244,7 @@ class FlameChart extends Component<Props, State> {
         hitBlock[1].endTime && this.timeToPixels(hitBlock[1].endTime);
 
       /* 💁 don't resize if block is too small */
-      if (endX - startX > 20) {
+      if (!endX || endX - startX > 20) {
         if (event.nativeEvent.offsetX - startX < 10) {
           return { type: "block_edge_left", value: hitBlock };
         }
@@ -1320,6 +1317,7 @@ class FlameChart extends Component<Props, State> {
   }
 }
 
+// This state is kinda minor. Should refactor it up.
 export default // flow-ignore
 connect(
   state => ({

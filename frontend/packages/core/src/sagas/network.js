@@ -62,7 +62,9 @@ function* fetchResource(actionType, { resource, params }) {
     }
     console.log(`network error e`, e);
     yield put(createToast(
-      `${actionType.replace(/_/g, ' ')} failed. Network error.`,
+      `${actionType.replace(/_/g, ' ')} failed. Network error.
+      
+      See Network panel in DevTools for details.`,
       'error'
     ));
   }

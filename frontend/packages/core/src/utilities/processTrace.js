@@ -206,6 +206,10 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         });
         threadLevel.current++;
         threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
+        threadOpenActivities = {
+          ...threadOpenActivities,
+          [thread_id]: [...threadOpenActivities[thread_id], event.activity.id]
+        };
         activity.status = 'active';
         break;
 

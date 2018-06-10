@@ -6,6 +6,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const common = require('./webpack.common.js');
 
 module.exports = merge(common, {
+  mode: 'development',
   // potentially insecure way to view on remote computer
   devServer: {
     host: '0.0.0.0',
@@ -32,10 +33,10 @@ module.exports = merge(common, {
     // This plugin will cause the relative path of the module to be displayed when HMR is enabled.
     new webpack.NamedModulesPlugin(),
 
-    new webpack.HotModuleReplacementPlugin({}),
-    new HtmlWebpackPlugin({
-      template: './index.dev.ejs',
-      title: 'Flame-Chart'
-    })
+    new webpack.HotModuleReplacementPlugin({})
+    // new HtmlWebpackPlugin({
+    //   template: './index.dev.ejs',
+    //   title: 'Flame-Chart'
+    // })
   ]
 });
