@@ -32,130 +32,125 @@ import {
   showCategoryManager,
   showSettings,
   suspendActivity,
-  toggleTodos,
+  toggleTodos
 } from '../actions';
 
 import { getTimeline } from '../reducers/timeline';
 
-function* handleCommand({ type, operand, command }) {
+function* handleCommand({ operand, command }) {
   const timeline = yield select(getTimeline);
 
-  switch (command.action) {
-    case ACTIVITY_CREATE:
-      yield put(
-        createActivity({
+  if (typeof command.action === 'function') {
+    /* 💁 This may look funny, but is correct, because the command has been loaded up with arguments now */
+    command.action(command);
+  } else {
+    switch (command.action) {
+      case ACTIVITY_CREATE:
+        yield put(createActivity({
           name: command.name,
           timestamp: Date.now(),
           description: '',
           thread_id: command.thread_id,
           phase: command.copy.includes('question') ? 'Q' : 'B',
-          category_id: command.category_id,
-        })
-      );
-      yield put(shiftAttention(command.thread_id, Date.now()));
-      break;
+          category_id: command.category_id
+        }));
+        yield put(shiftAttention(command.thread_id, Date.now()));
+        break;
 
-    case ACTIVITY_RESUME:
-      yield put(
-        resumeActivity({
+      case ACTIVITY_RESUME:
+        yield put(resumeActivity({
           id: operand.activity_id,
           timestamp: Date.now(),
           message: command.message,
-          thread_id: operand.thread_id,
-        })
-      );
-      yield put(shiftAttention(operand.thread_id, Date.now()));
-      break;
+          thread_id: operand.thread_id
+        }));
+        yield put(shiftAttention(operand.thread_id, Date.now()));
+        break;
 
-    case ACTIVITY_RESURRECT:
-      yield put(
-        resurrectActivity({
+      case ACTIVITY_RESURRECT:
+        yield put(resurrectActivity({
           id: operand.activity_id,
           timestamp: Date.now(),
           message: command.message,
-          thread_id: operand.thread_id,
-        })
-      );
-      yield put(shiftAttention(operand.thread_id, Date.now()));
-      break;
+          thread_id: operand.thread_id
+        }));
+        yield put(shiftAttention(operand.thread_id, Date.now()));
+        break;
 
-    case ACTIVITY_END:
-    case ACTIVITY_REJECT:
-    case ACTIVITY_RESOLVE:
-      const message = command.message ? command.message : '';
-      const eventFlavor = command.action.includes('REJECT')
-        ? 'J'
-        : command.action.includes('RESOLVE')
-          ? 'V'
-          : 'E';
-      yield put(
-        endActivity({
+      case ACTIVITY_END:
+      case ACTIVITY_REJECT:
+      case ACTIVITY_RESOLVE:
+        const message = command.message ? command.message : '';
+        const eventFlavor = command.action.includes('REJECT')
+          ? 'J'
+          : command.action.includes('RESOLVE')
+            ? 'V'
+            : 'E';
+        yield put(endActivity({
           id: operand.activity_id,
           timestamp: Date.now(),
           message,
           thread_id: operand.thread_id,
-          eventFlavor,
-        })
-      );
-      break;
+          eventFlavor
+        }));
+        break;
 
-    case ACTIVITY_DELETE:
-      yield put(deleteActivity(operand.activity_id, operand.thread_id));
-      break;
-    /** 💁 if this isn't obvious, suspension can only happen on the most recent block of an activity (for activities that may have been suspended and resumed already) */
-    case ACTIVITY_SUSPEND:
-      yield put(
-        suspendActivity({
+      case ACTIVITY_DELETE:
+        yield put(deleteActivity(operand.activity_id, operand.thread_id));
+        break;
+      /** 💁 if this isn't obvious, suspension can only happen on the most recent block of an activity (for activities that may have been suspended and resumed already) */
+      case ACTIVITY_SUSPEND:
+        yield put(suspendActivity({
           id: operand.activity_id,
           timestamp: Date.now(),
           message: command.message ? command.message : '',
-          thread_id: operand.thread_id,
-        })
-      );
-      break;
+          thread_id: operand.thread_id
+        }));
+        break;
 
-    case ATTENTION_SHIFT:
-      console.log('command', command);
-      yield put(shiftAttention(command.thread_id, Date.now()));
-      break;
+      case ATTENTION_SHIFT:
+        console.log('command', command);
+        yield put(shiftAttention(command.thread_id, Date.now()));
+        break;
 
-    case ACTIVITY_DETAILS_SHOW:
-      yield put(showActivityDetails());
-      break;
+      case ACTIVITY_DETAILS_SHOW:
+        yield put(showActivityDetails());
+        break;
 
-    case CATEGORY_MANAGER_SHOW:
-      yield put(showCategoryManager());
-      break;
+      case CATEGORY_MANAGER_SHOW:
+        yield put(showCategoryManager());
+        break;
 
-    case SETTINGS_SHOW:
-      yield put(showSettings());
-      break;
+      case SETTINGS_SHOW:
+        yield put(showSettings());
+        break;
 
-    case THREAD_CREATE:
-      const rank = timeline.threads.length;
-      console.log('timeline, rank', timeline, rank);
-      yield put(createThread(command.name, rank));
-      break;
+      case THREAD_CREATE:
+        const rank = timeline.threads.length;
+        console.log('timeline, rank', timeline, rank);
+        yield put(createThread(command.name, rank));
+        break;
 
-    case THREADS_COLLAPSE_ALL:
-      yield put(collapseAllThreads());
-      break;
+      case THREADS_COLLAPSE_ALL:
+        yield put(collapseAllThreads());
+        break;
 
-    case THREADS_EXPAND_ALL:
-      yield put(expandAllThreads());
-      break;
+      case THREADS_EXPAND_ALL:
+        yield put(expandAllThreads());
+        break;
 
-    case TODOS_TOGGLE:
-      const todosVisible = yield select(state => state.todosVisible);
-      yield put(toggleTodos(!todosVisible));
-      break;
+      case TODOS_TOGGLE:
+        const todosVisible = yield select(state => state.todosVisible);
+        yield put(toggleTodos(!todosVisible));
+        break;
 
-    case VIEW_CHANGE:
-      yield put(changeView(command.view, command.thread_id));
-      break;
+      case VIEW_CHANGE:
+        yield put(changeView(command.view, command.thread_id));
+        break;
 
-    default:
-      break;
+      default:
+        break;
+    }
   }
 }
 

@@ -29,7 +29,7 @@ const Padded = styled.div`
   padding: 30px;
   /* background: ; */
 `;
-const Login = () => (
+const Register = () => (
   <CenterFlex>
     <div className="inner">
       <Padded>
@@ -51,4 +51,4 @@ const Login = () => (
     </div>
   </CenterFlex>
 );
-export default Login;
+export default Register;

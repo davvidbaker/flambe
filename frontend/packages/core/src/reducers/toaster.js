@@ -1,7 +1,7 @@
 import { TOAST_CREATE, TOAST_POP } from '../actions';
 
 function toaster(
-  state = [{ type: 'error', message: 'this is blank.' }],
+  state = [],
   action
 ) {
   switch (action.type) {

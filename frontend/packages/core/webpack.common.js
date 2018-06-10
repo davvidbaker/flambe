@@ -48,15 +48,17 @@ module.exports = {
   },
 
   plugins: [
-    new webpack.optimize.CommonsChunkPlugin({
-      name: 'vendor',
+    /* ⚠️ webpack.optimize.CommonsChunkPlugin has been removed, please use config.optimization.splitChunks instead.
+ */
+    // new webpack.optimize.CommonsChunkPlugin({
+    //   name: 'vendor',
 
-      // filename: "vendor.js"
-      // (Give the chunk a different name)
+    //   // filename: "vendor.js"
+    //   // (Give the chunk a different name)
 
-      minChunks: Infinity,
-      // (with more entries, this ensures that no other module
-      //  goes into the vendor chunk)
-    }),
+    //   minChunks: Infinity,
+    //   // (with more entries, this ensures that no other module
+    //   //  goes into the vendor chunk)
+    // }),
   ],
 };

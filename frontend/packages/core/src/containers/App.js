@@ -1,6 +1,5 @@
 // @flow
-
-import React, { Component } from 'react';
+import React from 'react';
 import { connect } from 'react-redux';
 import { compose } from 'redux';
 import last from 'lodash/fp/last';
@@ -14,10 +13,12 @@ import { injectGlobal } from 'styled-components';
 import Commander from 'react-commander';
 import Modal from 'react-modal';
 import Toaster from './Toaster';
+import Dashboard from './Dashboard';
 import Timeline from './Timeline';
 import SingleThreadView from './SingleThreadView';
 // import Todos from './Todos';
 import Login from '../components/Login';
+import Register from '../components/Register';
 import Header from '../components/Header';
 import { colors } from '../styles';
 import WithEventListeners from '../components/WithEventListeners';
@@ -39,7 +40,7 @@ import {
   showSettings,
   createMantra,
   createToast,
-  FIND
+  FIND,
 } from '../actions';
 import COMMANDS, { ACTIVITY_COMMANDS } from '../constants/commands';
 import { getTimeline } from '../reducers/timeline';
@@ -100,10 +101,11 @@ injectGlobal`
     transition: transform 0.15s;
     transform: scale(var(--root-scale, 1));
     background: ${colors.background};
+    max-height:100vh;
   }
 `;
 
-class App extends Component<
+class App extends React.Component<
   {
     keyDown: () => mixed,
     keyUp: () => mixed,
@@ -112,20 +114,18 @@ class App extends Component<
     user: { id: string, name: string },
     userTraces: (?Trace)[],
     userTodos: (?Todo)[],
-    todosVisible: boolean
+    todosVisible: boolean,
   },
   { commanderVisible: boolean }
 > {
   state = {
-    commanderVisible: false
+    commanderVisible: false,
+    additionalCommands: [],
   };
 
-  componentDidCatch(e) {
+  componentDidCatch(e, info) {
     console.log('component did catch', e);
-    createToast(
-      `${e}. Top level error.`,
-      'error'
-    )
+    createToast(`${(e, info)}. Top level error.`, 'error');
   }
 
   componentWillMount() {
@@ -171,6 +171,12 @@ class App extends Component<
 
   getItems = selector => selector(this.props);
 
+  addCommand = command => {
+    this.setState(state => ({
+      additionalCommands: [command, ...state.additionalCommands],
+    }));
+  };
+
   submitCommand = command => {
     this.hideCommander();
     this.props.runCommand(this.props.operand, command);
@@ -190,23 +196,33 @@ class App extends Component<
       : this.props.trace && this.props.trace.id;
 
     return trace_id ? (
-      <Timeline trace_id={trace_id} user={this.props.user} key="timeline" />
+      <Timeline
+        trace_id={trace_id}
+        user={this.props.user}
+        key="timeline"
+        /* ⚠️ I don't like this api too much. Should mabye use context? */
+        addCommand={this.addCommand}
+      />
     ) : null;
   };
 
   getCommands = operand => {
+    const baseCommands = [...COMMANDS, ...this.state.additionalCommands];
+
     if (operand) {
       switch (operand.type) {
         case 'activity':
           return [
-            ...ACTIVITY_COMMANDS.filter(cmd => cmd.status.indexOf(operand.activityStatus) >= 0),
-            ...COMMANDS
+            ...ACTIVITY_COMMANDS.filter(
+              cmd => cmd.status.indexOf(operand.activityStatus) >= 0
+            ),
+            ...baseCommands,
           ];
         default:
-          return COMMANDS;
+          return baseCommands;
       }
     }
-    return COMMANDS;
+    return baseCommands;
   };
 
   render() {
@@ -225,7 +241,9 @@ class App extends Component<
           if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
             e.preventDefault();
             this.showCommander();
-            this.commander.enterCommand(COMMANDS.find(({ action }) => action === FIND));
+            this.commander.enterCommand(
+              COMMANDS.find(({ action }) => action === FIND)
+            );
           }
 
           if (e.key === ',' && (e.metaKey || e.ctrlKey)) {
@@ -243,7 +261,7 @@ class App extends Component<
               this.props.collapseAllThreads();
             }
           }
-        }
+        },
       ],
       [
         'keyup',
@@ -265,14 +283,20 @@ class App extends Component<
                       if (
                         isEndable(
                           this.props.activities[this.props.operand.activity_id],
-                          this.props.blocks.filter(block =>
-                            block.activity_id ===
-                              this.props.operand.activity_id),
+                          this.props.blocks.filter(
+                            block =>
+                              block.activity_id ===
+                              this.props.operand.activity_id
+                          ),
                           this.props.threadLevels
                         )
                       ) {
                         this.showCommander();
-                        this.commander.enterCommand(this.getCommands(this.props.operand).find(cmd => cmd.shortcut === e.key.toUpperCase()));
+                        this.commander.enterCommand(
+                          this.getCommands(this.props.operand).find(
+                            cmd => cmd.shortcut === e.key.toUpperCase()
+                          )
+                        );
                       }
                       break;
                     case 's':
@@ -282,7 +306,11 @@ class App extends Component<
                           .status === 'active'
                       ) {
                         this.showCommander();
-                        this.commander.enterCommand(ACTIVITY_COMMANDS.find(({ shortcut }) => shortcut === 'S'));
+                        this.commander.enterCommand(
+                          ACTIVITY_COMMANDS.find(
+                            ({ shortcut }) => shortcut === 'S'
+                          )
+                        );
                       }
                     default:
                       break;
@@ -293,8 +321,8 @@ class App extends Component<
                 break;
             }
           }
-        }
-      ]
+        },
+      ],
     ];
     return (
       <ConnectedRouter history={history}>
@@ -302,6 +330,8 @@ class App extends Component<
           {() => (
             <div>
               <Route exact path="/login" render={() => <Login />} />
+              <Route exact path="/register" render={() => <Register />} />
+              <Route exact path="/dashboard" render={() => <Dashboard />} />
               {/* /* ⚠️ I might have fucked up the route logic */}
               <Route
                 exact
@@ -367,7 +397,6 @@ class App extends Component<
     );
   }
 }
-
 export default compose(
   DragDropContext(HTML5Backend),
   // flow-ignore
@@ -379,12 +408,13 @@ export default compose(
       threadLevels: getTimeline(state).threadLevels,
       threads: getTimeline(state).threads,
       operand: state.operand,
+      settings: state.settings,
       todosVisible: state.todosVisible,
       trace: getTimeline(state).trace,
       user: getUser(state),
       userTraces: getUser(state).traces,
       view: state.view,
-      viewThread: state.viewThread
+      viewThread: state.viewThread,
     }),
     dispatch => ({
       collapseAllThreads: id => dispatch(collapseAllThreads(id)),
@@ -401,7 +431,7 @@ export default compose(
       showSettings: () => dispatch(showSettings()),
       createMantra: (id, note) => dispatch(createMantra(id, note)),
       createToast: (message, notificationType) =>
-        dispatch(createToast(message, notificationType))
+        dispatch(createToast(message, notificationType)),
     })
   )
 )(App);

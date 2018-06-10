@@ -3,12 +3,8 @@ defmodule FlambeWeb.SessionController do
 
   alias Flambe.Accounts
 
-  def new(conn, _) do
-    render(conn, "new.html")
-  end
-
   # 👇 this is what the create function looked like when we were returning html.
-  # def create(conn, %{"user" => %{"email" => email, "password" => password}}) do 
+  # def create(conn, %{"user" => %{"email" => email, "password" => password}}) do
   #   case Accounts.authenticate_by_email_password(email, password) do
   #     {:ok, user} ->
   #       conn
@@ -23,11 +19,11 @@ defmodule FlambeWeb.SessionController do
   #     end
   # end
 
-  # ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ come back to auth and token and guardian and shit when you understand things better. For now just leaving it wide open/not requiring any auth at all.
   def create(conn, %{"user" => %{"email" => email, "password" => password}}) do
     case Accounts.authenticate_by_email_password(email, password) do
       {:ok, user} ->
         conn
+        |> assign(:current_user, user)
         |> put_session(:user_id, user.id)
         |> configure_session(renew: true)
         |> put_status(200)

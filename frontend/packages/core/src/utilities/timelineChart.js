@@ -1,6 +1,9 @@
 import filter from 'lodash/fp/filter';
+import entries from 'lodash/fp/entries';
 import reduce from 'lodash/fp/reduce';
 import pipe from 'lodash/fp/pipe';
+import sortBy from 'lodash/fp/sortBy';
+import map from 'lodash/fp/map';
 import curry from 'lodash/fp/curry';
 import reverse from 'lodash/fp/reverse';
 import isUndefined from 'lodash/fp/isUndefined';
@@ -35,7 +38,8 @@ export function pixelsToTime(
   canvasWidth
 ) {
   return (
-    leftBoundaryTime + x * (rightBoundaryTime - leftBoundaryTime) / canvasWidth
+    leftBoundaryTime +
+    (x * (rightBoundaryTime - leftBoundaryTime)) / canvasWidth
   );
 }
 
@@ -46,8 +50,7 @@ export function timeToPixels(
   canvasWidth: number
 ) {
   return (
-    (timestamp - leftBoundaryTime) *
-    canvasWidth /
+    ((timestamp - leftBoundaryTime) * canvasWidth) /
     (rightBoundaryTime - leftBoundaryTime)
   );
 }
@@ -173,6 +176,13 @@ export function rankThreadsByAttention(attentionShifts, threads) {
 
   // return map(thread => {...thread})(threads)
 
-
   return threads;
+}
+
+export function sortThreadsByRank(threads) {
+  return pipe(
+    entries,
+    sortBy(([_id, { rank }]) => rank),
+    map(([key, val]) => [Number(key), val])
+  )(threads);
 }

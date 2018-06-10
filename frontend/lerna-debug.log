@@ -13,1084 +13,381 @@
 6 silly npmConfig   mutex: undefined }
 7 silly initialize success
 8 silly execute attempt
-9 info Bootstrapping 3 packages
+9 info Bootstrapping 2 packages
 10 info lifecycle preinstall
-11 silly runScript preinstall flambe-electron
-12 silly flambe-electron
+11 silly runScript preinstall undefined
+12 silly
 13 silly runScript preinstall flambe-logo
 14 silly flambe-logo
-15 silly runScript preinstall flambe-core
-16 silly flambe-core
-17 silly hasMatchingDependency flambe-core flambe-logo
-18 silly hasDependencyInstalled flambe-electron babel-core
-19 silly dependencyIsSatisfied [ 'babel-core',
-19 silly dependencyIsSatisfied   '^6.26.3',
-19 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-20 verbose dependencyIsSatisfied babel-core true
-21 silly hasDependencyInstalled flambe-electron babel-eslint
-22 silly dependencyIsSatisfied [ 'babel-eslint',
-22 silly dependencyIsSatisfied   '^8.2.3',
-22 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-23 verbose dependencyIsSatisfied babel-eslint true
-24 silly hasDependencyInstalled flambe-electron babel-jest
-25 silly dependencyIsSatisfied [ 'babel-jest',
-25 silly dependencyIsSatisfied   '^23.0.0',
-25 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-26 verbose dependencyIsSatisfied babel-jest true
-27 silly hasDependencyInstalled flambe-electron babel-loader
-28 silly dependencyIsSatisfied [ 'babel-loader',
-28 silly dependencyIsSatisfied   '^7.1.4',
-28 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-29 verbose dependencyIsSatisfied babel-loader true
-30 silly hasDependencyInstalled flambe-electron chalk
-31 silly dependencyIsSatisfied [ 'chalk',
-31 silly dependencyIsSatisfied   '^2.4.1',
-31 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-32 verbose dependencyIsSatisfied chalk true
-33 silly hasDependencyInstalled flambe-electron cross-env
-34 silly dependencyIsSatisfied [ 'cross-env',
-34 silly dependencyIsSatisfied   '^5.1.6',
-34 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-35 verbose dependencyIsSatisfied cross-env true
-36 silly hasDependencyInstalled flambe-electron eslint
-37 silly dependencyIsSatisfied [ 'eslint',
-37 silly dependencyIsSatisfied   '^4.19.1',
-37 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-38 verbose dependencyIsSatisfied eslint true
-39 silly hasDependencyInstalled flambe-electron eslint-config-airbnb
-40 silly dependencyIsSatisfied [ 'eslint-config-airbnb',
-40 silly dependencyIsSatisfied   '^16.1.0',
-40 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-41 verbose dependencyIsSatisfied eslint-config-airbnb true
-42 silly hasDependencyInstalled flambe-electron eslint-plugin-import
-43 silly dependencyIsSatisfied [ 'eslint-plugin-import',
-43 silly dependencyIsSatisfied   '^2.12.0',
-43 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-44 verbose dependencyIsSatisfied eslint-plugin-import true
-45 silly hasDependencyInstalled flambe-electron eslint-plugin-jsx-a11y
-46 silly dependencyIsSatisfied [ 'eslint-plugin-jsx-a11y',
-46 silly dependencyIsSatisfied   '6.0.3',
-46 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-47 verbose dependencyIsSatisfied eslint-plugin-jsx-a11y true
-48 silly hasDependencyInstalled flambe-electron eslint-plugin-react
-49 silly dependencyIsSatisfied [ 'eslint-plugin-react',
-49 silly dependencyIsSatisfied   '^7.8.2',
-49 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-50 verbose dependencyIsSatisfied eslint-plugin-react true
-51 silly hasDependencyInstalled flambe-electron flow-bin
-52 silly dependencyIsSatisfied [ 'flow-bin',
-52 silly dependencyIsSatisfied   '^0.72.0',
-52 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-53 verbose dependencyIsSatisfied flow-bin true
-54 silly hasDependencyInstalled flambe-electron jest
-55 silly dependencyIsSatisfied [ 'jest',
-55 silly dependencyIsSatisfied   '^23.0.0',
-55 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-56 verbose dependencyIsSatisfied jest true
-57 silly hasDependencyInstalled flambe-electron uglifyjs-webpack-plugin
-58 silly dependencyIsSatisfied [ 'uglifyjs-webpack-plugin',
-58 silly dependencyIsSatisfied   '1.2.5',
-58 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-59 verbose dependencyIsSatisfied uglifyjs-webpack-plugin true
-60 silly hasDependencyInstalled flambe-electron webpack
-61 silly dependencyIsSatisfied [ 'webpack',
-61 silly dependencyIsSatisfied   '^4.8.3',
-61 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-62 verbose dependencyIsSatisfied webpack true
-63 silly hasDependencyInstalled flambe-electron webpack-bundle-analyzer
-64 silly dependencyIsSatisfied [ 'webpack-bundle-analyzer',
-64 silly dependencyIsSatisfied   '^2.13.1',
-64 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-65 verbose dependencyIsSatisfied webpack-bundle-analyzer true
-66 silly hasDependencyInstalled flambe-electron webpack-dev-server
-67 silly dependencyIsSatisfied [ 'webpack-dev-server',
-67 silly dependencyIsSatisfied   '^3.1.4',
-67 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-68 verbose dependencyIsSatisfied webpack-dev-server true
-69 silly hasDependencyInstalled flambe-electron webpack-merge
-70 silly dependencyIsSatisfied [ 'webpack-merge',
-70 silly dependencyIsSatisfied   '^4.1.2',
-70 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-71 verbose dependencyIsSatisfied webpack-merge true
-72 silly hasDependencyInstalled flambe-core @babel/polyfill
-73 silly dependencyIsSatisfied [ '@babel/polyfill',
-73 silly dependencyIsSatisfied   '^7.0.0-beta.46',
+15 silly hasDependencyInstalled undefined '@babel/polyfill'
+16 silly dependencyIsSatisfied [ '@babel/polyfill',
+16 silly dependencyIsSatisfied   '^7.0.0-beta.46',
+16 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+17 verbose dependencyIsSatisfied @babel/polyfill false
+18 silly hasDependencyInstalled undefined 'dayjs'
+19 silly dependencyIsSatisfied [ 'dayjs',
+19 silly dependencyIsSatisfied   '^1.5.19',
+19 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+20 verbose dependencyIsSatisfied dayjs false
+21 silly hasDependencyInstalled undefined 'downshift'
+22 silly dependencyIsSatisfied [ 'downshift',
+22 silly dependencyIsSatisfied   '^1.9.1',
+22 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+23 verbose dependencyIsSatisfied downshift false
+24 silly hasDependencyInstalled undefined 'emoji-regex'
+25 silly dependencyIsSatisfied [ 'emoji-regex',
+25 silly dependencyIsSatisfied   '^6.5.1',
+25 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+26 verbose dependencyIsSatisfied emoji-regex false
+27 silly hasDependencyInstalled undefined 'fuzzaldrin-plus'
+28 silly dependencyIsSatisfied [ 'fuzzaldrin-plus',
+28 silly dependencyIsSatisfied   '^0.5.0',
+28 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+29 verbose dependencyIsSatisfied fuzzaldrin-plus false
+30 silly hasDependencyInstalled undefined 'history'
+31 silly dependencyIsSatisfied [ 'history',
+31 silly dependencyIsSatisfied   '^4.7.2',
+31 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+32 verbose dependencyIsSatisfied history false
+33 silly hasDependencyInstalled undefined 'humanize-duration'
+34 silly dependencyIsSatisfied [ 'humanize-duration',
+34 silly dependencyIsSatisfied   '^3.12.0',
+34 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+35 verbose dependencyIsSatisfied humanize-duration false
+36 silly hasDependencyInstalled undefined 'lodash'
+37 silly dependencyIsSatisfied [ 'lodash',
+37 silly dependencyIsSatisfied   '^4.17.4',
+37 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+38 verbose dependencyIsSatisfied lodash false
+39 silly hasDependencyInstalled undefined 'match-sorter'
+40 silly dependencyIsSatisfied [ 'match-sorter',
+40 silly dependencyIsSatisfied   '^2.0.2',
+40 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+41 verbose dependencyIsSatisfied match-sorter false
+42 silly hasDependencyInstalled undefined 'mdx'
+43 silly dependencyIsSatisfied [ 'mdx',
+43 silly dependencyIsSatisfied   '^0.3.1',
+43 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+44 verbose dependencyIsSatisfied mdx false
+45 silly hasDependencyInstalled undefined 'phoenix'
+46 silly dependencyIsSatisfied [ 'phoenix',
+46 silly dependencyIsSatisfied   '^1.3.0',
+46 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+47 verbose dependencyIsSatisfied phoenix false
+48 silly hasDependencyInstalled undefined 'react'
+49 silly dependencyIsSatisfied [ 'react',
+49 silly dependencyIsSatisfied   '^16.3.2',
+49 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+50 verbose dependencyIsSatisfied react false
+51 silly hasDependencyInstalled undefined 'react-color'
+52 silly dependencyIsSatisfied [ 'react-color',
+52 silly dependencyIsSatisfied   '^2.13.5',
+52 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+53 verbose dependencyIsSatisfied react-color false
+54 silly hasDependencyInstalled undefined 'react-commander'
+55 silly dependencyIsSatisfied [ 'react-commander',
+55 silly dependencyIsSatisfied   '^0.0.1',
+55 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+56 verbose dependencyIsSatisfied react-commander false
+57 silly hasDependencyInstalled undefined 'react-contexify'
+58 silly dependencyIsSatisfied [ 'react-contexify',
+58 silly dependencyIsSatisfied   '^3.0.0',
+58 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+59 verbose dependencyIsSatisfied react-contexify false
+60 silly hasDependencyInstalled undefined 'react-dnd'
+61 silly dependencyIsSatisfied [ 'react-dnd',
+61 silly dependencyIsSatisfied   '^2.5.1',
+61 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+62 verbose dependencyIsSatisfied react-dnd false
+63 silly hasDependencyInstalled undefined 'react-dnd-html5-backend'
+64 silly dependencyIsSatisfied [ 'react-dnd-html5-backend',
+64 silly dependencyIsSatisfied   '^2.5.1',
+64 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+65 verbose dependencyIsSatisfied react-dnd-html5-backend false
+66 silly hasDependencyInstalled undefined 'react-dom'
+67 silly dependencyIsSatisfied [ 'react-dom',
+67 silly dependencyIsSatisfied   '^16.2.0',
+67 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+68 verbose dependencyIsSatisfied react-dom false
+69 silly hasDependencyInstalled undefined 'react-hot-loader'
+70 silly dependencyIsSatisfied [ 'react-hot-loader',
+70 silly dependencyIsSatisfied   '^3.0.0-beta.7',
+70 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+71 verbose dependencyIsSatisfied react-hot-loader false
+72 silly hasDependencyInstalled undefined 'react-modal'
+73 silly dependencyIsSatisfied [ 'react-modal',
+73 silly dependencyIsSatisfied   '^3.4.4',
 73 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-74 verbose dependencyIsSatisfied @babel/polyfill true
-75 silly hasDependencyInstalled flambe-core dayjs
-76 silly dependencyIsSatisfied [ 'dayjs',
-76 silly dependencyIsSatisfied   '^1.5.19',
+74 verbose dependencyIsSatisfied react-modal false
+75 silly hasDependencyInstalled undefined 'react-redux'
+76 silly dependencyIsSatisfied [ 'react-redux',
+76 silly dependencyIsSatisfied   '^5.0.6',
 76 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-77 verbose dependencyIsSatisfied dayjs true
-78 silly hasDependencyInstalled flambe-core downshift
-79 silly dependencyIsSatisfied [ 'downshift',
-79 silly dependencyIsSatisfied   '^1.9.1',
+77 verbose dependencyIsSatisfied react-redux false
+78 silly hasDependencyInstalled undefined 'react-router-dom'
+79 silly dependencyIsSatisfied [ 'react-router-dom',
+79 silly dependencyIsSatisfied   '^4.2.2',
 79 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-80 verbose dependencyIsSatisfied downshift true
-81 silly hasDependencyInstalled flambe-core emoji-regex
-82 silly dependencyIsSatisfied [ 'emoji-regex',
-82 silly dependencyIsSatisfied   '^6.5.1',
+80 verbose dependencyIsSatisfied react-router-dom false
+81 silly hasDependencyInstalled undefined 'react-router-redux'
+82 silly dependencyIsSatisfied [ 'react-router-redux',
+82 silly dependencyIsSatisfied   '^5.0.0-alpha.9',
 82 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-83 verbose dependencyIsSatisfied emoji-regex true
-84 silly hasDependencyInstalled flambe-core fuzzaldrin-plus
-85 silly dependencyIsSatisfied [ 'fuzzaldrin-plus',
-85 silly dependencyIsSatisfied   '^0.5.0',
+83 verbose dependencyIsSatisfied react-router-redux false
+84 silly hasDependencyInstalled undefined 'recompose'
+85 silly dependencyIsSatisfied [ 'recompose',
+85 silly dependencyIsSatisfied   '^0.25.0',
 85 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-86 verbose dependencyIsSatisfied fuzzaldrin-plus true
-87 silly hasDependencyInstalled flambe-core history
-88 silly dependencyIsSatisfied [ 'history',
-88 silly dependencyIsSatisfied   '^4.7.2',
+86 verbose dependencyIsSatisfied recompose false
+87 silly hasDependencyInstalled undefined 'redux'
+88 silly dependencyIsSatisfied [ 'redux',
+88 silly dependencyIsSatisfied   '4.0.0',
 88 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-89 verbose dependencyIsSatisfied history true
-90 silly hasDependencyInstalled flambe-electron history
-91 silly dependencyIsSatisfied [ 'history',
-91 silly dependencyIsSatisfied   '^4.7.2',
-91 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-92 verbose dependencyIsSatisfied history true
-93 silly hasDependencyInstalled flambe-core humanize-duration
-94 silly dependencyIsSatisfied [ 'humanize-duration',
-94 silly dependencyIsSatisfied   '^3.12.0',
+89 verbose dependencyIsSatisfied redux false
+90 silly hasDependencyInstalled undefined 'redux-saga'
+91 silly dependencyIsSatisfied [ 'redux-saga',
+91 silly dependencyIsSatisfied   '^0.16.0',
+91 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
+92 verbose dependencyIsSatisfied redux-saga false
+93 silly hasDependencyInstalled undefined 'redux-thunk'
+94 silly dependencyIsSatisfied [ 'redux-thunk',
+94 silly dependencyIsSatisfied   '^2.2.0',
 94 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-95 verbose dependencyIsSatisfied humanize-duration true
-96 silly hasDependencyInstalled flambe-core lodash
-97 silly dependencyIsSatisfied [ 'lodash',
-97 silly dependencyIsSatisfied   '^4.17.4',
+95 verbose dependencyIsSatisfied redux-thunk false
+96 silly hasDependencyInstalled undefined 'regenerator-runtime'
+97 silly dependencyIsSatisfied [ 'regenerator-runtime',
+97 silly dependencyIsSatisfied   '^0.11.1',
 97 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-98 verbose dependencyIsSatisfied lodash true
-99 silly hasDependencyInstalled flambe-core match-sorter
-100 silly dependencyIsSatisfied [ 'match-sorter',
-100 silly dependencyIsSatisfied   '^2.0.2',
+98 verbose dependencyIsSatisfied regenerator-runtime false
+99 silly hasDependencyInstalled undefined 'styled-components'
+100 silly dependencyIsSatisfied [ 'styled-components',
+100 silly dependencyIsSatisfied   '^3.2.6',
 100 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-101 verbose dependencyIsSatisfied match-sorter true
-102 silly hasDependencyInstalled flambe-core phoenix
-103 silly dependencyIsSatisfied [ 'phoenix',
-103 silly dependencyIsSatisfied   '^1.3.0',
+101 verbose dependencyIsSatisfied styled-components false
+102 silly hasDependencyInstalled undefined 'tinycolor2'
+103 silly dependencyIsSatisfied [ 'tinycolor2',
+103 silly dependencyIsSatisfied   '^1.4.1',
 103 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-104 verbose dependencyIsSatisfied phoenix true
-105 silly hasDependencyInstalled flambe-core react
-106 silly dependencyIsSatisfied [ 'react',
-106 silly dependencyIsSatisfied   '^16.3.2',
-106 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-107 verbose dependencyIsSatisfied react true
-108 silly hasDependencyInstalled flambe-electron react
-109 silly dependencyIsSatisfied [ 'react',
-109 silly dependencyIsSatisfied   '^16.4.0',
-109 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-110 verbose dependencyIsSatisfied react true
-111 silly hasDependencyInstalled flambe-core react-color
-112 silly dependencyIsSatisfied [ 'react-color',
-112 silly dependencyIsSatisfied   '^2.13.5',
-112 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-113 verbose dependencyIsSatisfied react-color true
-114 silly hasDependencyInstalled flambe-core react-commander
-115 silly dependencyIsSatisfied [ 'react-commander',
-115 silly dependencyIsSatisfied   '^0.0.1',
-115 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-116 verbose dependencyIsSatisfied react-commander true
-117 silly hasDependencyInstalled flambe-core react-contexify
-118 silly dependencyIsSatisfied [ 'react-contexify',
-118 silly dependencyIsSatisfied   '^3.0.0',
-118 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-119 verbose dependencyIsSatisfied react-contexify true
-120 silly hasDependencyInstalled flambe-core react-dnd
-121 silly dependencyIsSatisfied [ 'react-dnd',
-121 silly dependencyIsSatisfied   '^2.5.1',
-121 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-122 verbose dependencyIsSatisfied react-dnd true
-123 silly hasDependencyInstalled flambe-core react-dnd-html5-backend
-124 silly dependencyIsSatisfied [ 'react-dnd-html5-backend',
-124 silly dependencyIsSatisfied   '^2.5.1',
-124 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-125 verbose dependencyIsSatisfied react-dnd-html5-backend true
-126 silly hasDependencyInstalled flambe-core react-dom
-127 silly dependencyIsSatisfied [ 'react-dom',
-127 silly dependencyIsSatisfied   '^16.2.0',
-127 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-128 verbose dependencyIsSatisfied react-dom true
-129 silly hasDependencyInstalled flambe-electron react-dom
-130 silly dependencyIsSatisfied [ 'react-dom',
-130 silly dependencyIsSatisfied   '^16.4.0',
-130 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-131 verbose dependencyIsSatisfied react-dom true
-132 silly hasDependencyInstalled flambe-core react-hot-loader
-133 silly dependencyIsSatisfied [ 'react-hot-loader',
-133 silly dependencyIsSatisfied   '^3.0.0-beta.7',
-133 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-134 verbose dependencyIsSatisfied react-hot-loader true
-135 silly hasDependencyInstalled flambe-electron react-hot-loader
-136 silly dependencyIsSatisfied [ 'react-hot-loader',
-136 silly dependencyIsSatisfied   '^4.2.0',
-136 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-137 verbose dependencyIsSatisfied react-hot-loader true
-138 silly hasDependencyInstalled flambe-core react-modal
-139 silly dependencyIsSatisfied [ 'react-modal',
-139 silly dependencyIsSatisfied   '^3.4.4',
-139 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-140 verbose dependencyIsSatisfied react-modal true
-141 silly hasDependencyInstalled flambe-core react-redux
-142 silly dependencyIsSatisfied [ 'react-redux',
-142 silly dependencyIsSatisfied   '^5.0.6',
-142 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-143 verbose dependencyIsSatisfied react-redux true
-144 silly hasDependencyInstalled flambe-electron react-redux
-145 silly dependencyIsSatisfied [ 'react-redux',
-145 silly dependencyIsSatisfied   '^5.0.7',
-145 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-146 verbose dependencyIsSatisfied react-redux true
-147 silly hasDependencyInstalled flambe-core react-router-dom
-148 silly dependencyIsSatisfied [ 'react-router-dom',
-148 silly dependencyIsSatisfied   '^4.2.2',
-148 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-149 verbose dependencyIsSatisfied react-router-dom true
-150 silly hasDependencyInstalled flambe-electron react-router-dom
-151 silly dependencyIsSatisfied [ 'react-router-dom',
-151 silly dependencyIsSatisfied   '^4.2.2',
-151 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-152 verbose dependencyIsSatisfied react-router-dom true
-153 silly hasDependencyInstalled flambe-core react-router-redux
-154 silly dependencyIsSatisfied [ 'react-router-redux',
-154 silly dependencyIsSatisfied   '^5.0.0-alpha.9',
-154 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-155 verbose dependencyIsSatisfied react-router-redux true
-156 silly hasDependencyInstalled flambe-electron react-router-redux
-157 silly dependencyIsSatisfied [ 'react-router-redux',
-157 silly dependencyIsSatisfied   '^5.0.0-alpha.6',
-157 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-158 verbose dependencyIsSatisfied react-router-redux true
-159 silly hasDependencyInstalled flambe-core recompose
-160 silly dependencyIsSatisfied [ 'recompose',
-160 silly dependencyIsSatisfied   '^0.25.0',
-160 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-161 verbose dependencyIsSatisfied recompose true
-162 silly hasDependencyInstalled flambe-core redux
-163 silly dependencyIsSatisfied [ 'redux',
-163 silly dependencyIsSatisfied   '4.0.0',
-163 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-164 verbose dependencyIsSatisfied redux true
-165 silly hasDependencyInstalled flambe-electron redux
-166 silly dependencyIsSatisfied [ 'redux',
-166 silly dependencyIsSatisfied   '^4.0.0',
-166 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-167 verbose dependencyIsSatisfied redux true
-168 silly hasDependencyInstalled flambe-core redux-saga
-169 silly dependencyIsSatisfied [ 'redux-saga',
-169 silly dependencyIsSatisfied   '^0.16.0',
-169 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-170 verbose dependencyIsSatisfied redux-saga true
-171 silly hasDependencyInstalled flambe-core redux-thunk
-172 silly dependencyIsSatisfied [ 'redux-thunk',
-172 silly dependencyIsSatisfied   '^2.2.0',
-172 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-173 verbose dependencyIsSatisfied redux-thunk true
-174 silly hasDependencyInstalled flambe-electron redux-thunk
-175 silly dependencyIsSatisfied [ 'redux-thunk',
-175 silly dependencyIsSatisfied   '^2.2.0',
-175 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-176 verbose dependencyIsSatisfied redux-thunk true
-177 silly hasDependencyInstalled flambe-core regenerator-runtime
-178 silly dependencyIsSatisfied [ 'regenerator-runtime',
-178 silly dependencyIsSatisfied   '^0.11.1',
-178 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-179 verbose dependencyIsSatisfied regenerator-runtime true
-180 silly hasDependencyInstalled flambe-core styled-components
-181 silly dependencyIsSatisfied [ 'styled-components',
-181 silly dependencyIsSatisfied   '^3.2.6',
-181 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-182 verbose dependencyIsSatisfied styled-components true
-183 silly hasDependencyInstalled flambe-core tinycolor2
-184 silly dependencyIsSatisfied [ 'tinycolor2',
-184 silly dependencyIsSatisfied   '^1.4.1',
-184 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/core/node_modules' ]
-185 verbose dependencyIsSatisfied tinycolor2 true
-186 silly hasDependencyInstalled flambe-electron babel-plugin-add-module-exports
-187 silly dependencyIsSatisfied [ 'babel-plugin-add-module-exports',
-187 silly dependencyIsSatisfied   '^0.2.1',
-187 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-188 verbose dependencyIsSatisfied babel-plugin-add-module-exports true
-189 silly hasDependencyInstalled flambe-electron babel-plugin-dev-expression
-190 silly dependencyIsSatisfied [ 'babel-plugin-dev-expression',
-190 silly dependencyIsSatisfied   '^0.2.1',
-190 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-191 verbose dependencyIsSatisfied babel-plugin-dev-expression true
-192 silly hasDependencyInstalled flambe-electron babel-plugin-flow-runtime
-193 silly dependencyIsSatisfied [ 'babel-plugin-flow-runtime',
-193 silly dependencyIsSatisfied   '^0.17.0',
-193 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-194 verbose dependencyIsSatisfied babel-plugin-flow-runtime true
-195 silly hasDependencyInstalled flambe-electron babel-plugin-transform-class-properties
-196 silly dependencyIsSatisfied [ 'babel-plugin-transform-class-properties',
-196 silly dependencyIsSatisfied   '^6.24.1',
-196 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-197 verbose dependencyIsSatisfied babel-plugin-transform-class-properties true
-198 silly hasDependencyInstalled flambe-electron babel-plugin-transform-es2015-classes
-199 silly dependencyIsSatisfied [ 'babel-plugin-transform-es2015-classes',
-199 silly dependencyIsSatisfied   '^6.24.1',
-199 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-200 verbose dependencyIsSatisfied babel-plugin-transform-es2015-classes true
-201 silly hasDependencyInstalled flambe-electron babel-preset-env
-202 silly dependencyIsSatisfied [ 'babel-preset-env',
-202 silly dependencyIsSatisfied   '^1.7.0',
-202 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-203 verbose dependencyIsSatisfied babel-preset-env true
-204 silly hasDependencyInstalled flambe-electron babel-preset-react
-205 silly dependencyIsSatisfied [ 'babel-preset-react',
-205 silly dependencyIsSatisfied   '^6.24.1',
-205 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-206 verbose dependencyIsSatisfied babel-preset-react true
-207 silly hasDependencyInstalled flambe-electron babel-preset-react-optimize
-208 silly dependencyIsSatisfied [ 'babel-preset-react-optimize',
-208 silly dependencyIsSatisfied   '^1.0.1',
-208 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-209 verbose dependencyIsSatisfied babel-preset-react-optimize true
-210 silly hasDependencyInstalled flambe-electron babel-preset-stage-0
-211 silly dependencyIsSatisfied [ 'babel-preset-stage-0',
-211 silly dependencyIsSatisfied   '^6.24.1',
-211 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-212 verbose dependencyIsSatisfied babel-preset-stage-0 true
-213 silly hasDependencyInstalled flambe-electron babel-register
-214 silly dependencyIsSatisfied [ 'babel-register',
-214 silly dependencyIsSatisfied   '^6.26.0',
-214 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-215 verbose dependencyIsSatisfied babel-register true
-216 silly hasDependencyInstalled flambe-electron concurrently
-217 silly dependencyIsSatisfied [ 'concurrently',
-217 silly dependencyIsSatisfied   '^3.5.1',
-217 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-218 verbose dependencyIsSatisfied concurrently true
-219 silly hasDependencyInstalled flambe-electron cross-spawn
-220 silly dependencyIsSatisfied [ 'cross-spawn',
-220 silly dependencyIsSatisfied   '^6.0.5',
-220 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-221 verbose dependencyIsSatisfied cross-spawn true
-222 silly hasDependencyInstalled flambe-electron css-loader
-223 silly dependencyIsSatisfied [ 'css-loader',
-223 silly dependencyIsSatisfied   '^0.28.11',
-223 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-224 verbose dependencyIsSatisfied css-loader true
-225 silly hasDependencyInstalled flambe-electron detect-port
-226 silly dependencyIsSatisfied [ 'detect-port',
-226 silly dependencyIsSatisfied   '^1.2.3',
-226 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-227 verbose dependencyIsSatisfied detect-port true
-228 silly hasDependencyInstalled flambe-electron electron
-229 silly dependencyIsSatisfied [ 'electron',
-229 silly dependencyIsSatisfied   '^2.0.2',
-229 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-230 verbose dependencyIsSatisfied electron true
-231 silly hasDependencyInstalled flambe-electron electron-builder
-232 silly dependencyIsSatisfied [ 'electron-builder',
-232 silly dependencyIsSatisfied   '^20.14.7',
-232 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-233 verbose dependencyIsSatisfied electron-builder true
-234 silly hasDependencyInstalled flambe-electron electron-devtools-installer
-235 silly dependencyIsSatisfied [ 'electron-devtools-installer',
-235 silly dependencyIsSatisfied   '^2.2.4',
-235 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-236 verbose dependencyIsSatisfied electron-devtools-installer true
-237 silly hasDependencyInstalled flambe-electron electron-rebuild
-238 silly dependencyIsSatisfied [ 'electron-rebuild',
-238 silly dependencyIsSatisfied   '^1.7.3',
-238 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-239 verbose dependencyIsSatisfied electron-rebuild true
-240 silly hasDependencyInstalled flambe-electron enzyme
-241 silly dependencyIsSatisfied [ 'enzyme',
-241 silly dependencyIsSatisfied   '^3.3.0',
-241 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-242 verbose dependencyIsSatisfied enzyme true
-243 silly hasDependencyInstalled flambe-electron enzyme-adapter-react-16
-244 silly dependencyIsSatisfied [ 'enzyme-adapter-react-16',
-244 silly dependencyIsSatisfied   '^1.1.1',
-244 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-245 verbose dependencyIsSatisfied enzyme-adapter-react-16 true
-246 silly hasDependencyInstalled flambe-electron enzyme-to-json
-247 silly dependencyIsSatisfied [ 'enzyme-to-json',
-247 silly dependencyIsSatisfied   '^3.3.4',
-247 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-248 verbose dependencyIsSatisfied enzyme-to-json true
-249 silly hasDependencyInstalled flambe-electron eslint-config-prettier
-250 silly dependencyIsSatisfied [ 'eslint-config-prettier',
-250 silly dependencyIsSatisfied   '^2.9.0',
-250 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-251 verbose dependencyIsSatisfied eslint-config-prettier true
-252 silly hasDependencyInstalled flambe-electron eslint-formatter-pretty
-253 silly dependencyIsSatisfied [ 'eslint-formatter-pretty',
-253 silly dependencyIsSatisfied   '^1.3.0',
-253 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-254 verbose dependencyIsSatisfied eslint-formatter-pretty true
-255 silly hasDependencyInstalled flambe-electron eslint-import-resolver-webpack
-256 silly dependencyIsSatisfied [ 'eslint-import-resolver-webpack',
-256 silly dependencyIsSatisfied   '^0.10.0',
-256 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-257 verbose dependencyIsSatisfied eslint-import-resolver-webpack true
-258 silly hasDependencyInstalled flambe-electron eslint-plugin-compat
-259 silly dependencyIsSatisfied [ 'eslint-plugin-compat',
-259 silly dependencyIsSatisfied   '^2.2.0',
-259 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-260 verbose dependencyIsSatisfied eslint-plugin-compat true
-261 silly hasDependencyInstalled flambe-electron eslint-plugin-flowtype
-262 silly dependencyIsSatisfied [ 'eslint-plugin-flowtype',
-262 silly dependencyIsSatisfied   '^2.47.1',
-262 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-263 verbose dependencyIsSatisfied eslint-plugin-flowtype true
-264 silly hasDependencyInstalled flambe-electron eslint-plugin-jest
-265 silly dependencyIsSatisfied [ 'eslint-plugin-jest',
-265 silly dependencyIsSatisfied   '^21.15.2',
-265 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-266 verbose dependencyIsSatisfied eslint-plugin-jest true
-267 silly hasDependencyInstalled flambe-electron eslint-plugin-promise
-268 silly dependencyIsSatisfied [ 'eslint-plugin-promise',
-268 silly dependencyIsSatisfied   '^3.7.0',
-268 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-269 verbose dependencyIsSatisfied eslint-plugin-promise true
-270 silly hasDependencyInstalled flambe-electron express
-271 silly dependencyIsSatisfied [ 'express',
-271 silly dependencyIsSatisfied   '^4.16.3',
-271 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-272 verbose dependencyIsSatisfied express true
-273 silly hasDependencyInstalled flambe-electron extract-text-webpack-plugin
-274 silly dependencyIsSatisfied [ 'extract-text-webpack-plugin',
-274 silly dependencyIsSatisfied   '^4.0.0-beta.0',
-274 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-275 verbose dependencyIsSatisfied extract-text-webpack-plugin true
-276 silly hasDependencyInstalled flambe-electron fbjs-scripts
-277 silly dependencyIsSatisfied [ 'fbjs-scripts',
-277 silly dependencyIsSatisfied   '^0.8.3',
-277 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-278 verbose dependencyIsSatisfied fbjs-scripts true
-279 silly hasDependencyInstalled flambe-electron file-loader
-280 silly dependencyIsSatisfied [ 'file-loader',
-280 silly dependencyIsSatisfied   '^1.1.11',
-280 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-281 verbose dependencyIsSatisfied file-loader true
-282 silly hasDependencyInstalled flambe-electron flow-runtime
-283 silly dependencyIsSatisfied [ 'flow-runtime',
-283 silly dependencyIsSatisfied   '^0.17.0',
-283 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-284 verbose dependencyIsSatisfied flow-runtime true
-285 silly hasDependencyInstalled flambe-electron flow-typed
-286 silly dependencyIsSatisfied [ 'flow-typed',
-286 silly dependencyIsSatisfied   '^2.4.0',
-286 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-287 verbose dependencyIsSatisfied flow-typed true
-288 silly hasDependencyInstalled flambe-electron husky
-289 silly dependencyIsSatisfied [ 'husky',
-289 silly dependencyIsSatisfied   '^0.14.3',
-289 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-290 verbose dependencyIsSatisfied husky true
-291 silly hasDependencyInstalled flambe-electron identity-obj-proxy
-292 silly dependencyIsSatisfied [ 'identity-obj-proxy',
-292 silly dependencyIsSatisfied   '^3.0.0',
-292 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-293 verbose dependencyIsSatisfied identity-obj-proxy true
-294 silly hasDependencyInstalled flambe-electron lint-staged
-295 silly dependencyIsSatisfied [ 'lint-staged',
-295 silly dependencyIsSatisfied   '^7.1.2',
-295 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-296 verbose dependencyIsSatisfied lint-staged true
-297 silly hasDependencyInstalled flambe-electron minimist
-298 silly dependencyIsSatisfied [ 'minimist',
-298 silly dependencyIsSatisfied   '^1.2.0',
-298 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-299 verbose dependencyIsSatisfied minimist true
-300 silly hasDependencyInstalled flambe-electron node-sass
-301 silly dependencyIsSatisfied [ 'node-sass',
-301 silly dependencyIsSatisfied   '^4.9.0',
-301 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-302 verbose dependencyIsSatisfied node-sass true
-303 silly hasDependencyInstalled flambe-electron npm-logical-tree
-304 silly dependencyIsSatisfied [ 'npm-logical-tree',
-304 silly dependencyIsSatisfied   '^1.2.1',
-304 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-305 verbose dependencyIsSatisfied npm-logical-tree true
-306 silly hasDependencyInstalled flambe-electron prettier
-307 silly dependencyIsSatisfied [ 'prettier',
-307 silly dependencyIsSatisfied   '^1.12.1',
-307 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-308 verbose dependencyIsSatisfied prettier true
-309 silly hasDependencyInstalled flambe-electron react-test-renderer
-310 silly dependencyIsSatisfied [ 'react-test-renderer',
-310 silly dependencyIsSatisfied   '^16.4.0',
-310 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-311 verbose dependencyIsSatisfied react-test-renderer true
-312 silly hasDependencyInstalled flambe-electron redux-logger
-313 silly dependencyIsSatisfied [ 'redux-logger',
-313 silly dependencyIsSatisfied   '^3.0.6',
-313 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-314 verbose dependencyIsSatisfied redux-logger true
-315 silly hasDependencyInstalled flambe-electron rimraf
-316 silly dependencyIsSatisfied [ 'rimraf',
-316 silly dependencyIsSatisfied   '^2.6.2',
-316 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-317 verbose dependencyIsSatisfied rimraf true
-318 silly hasDependencyInstalled flambe-electron sass-loader
-319 silly dependencyIsSatisfied [ 'sass-loader',
-319 silly dependencyIsSatisfied   '^7.0.1',
-319 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-320 verbose dependencyIsSatisfied sass-loader true
-321 silly hasDependencyInstalled flambe-electron sinon
-322 silly dependencyIsSatisfied [ 'sinon',
-322 silly dependencyIsSatisfied   '^5.0.10',
-322 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-323 verbose dependencyIsSatisfied sinon true
-324 silly hasDependencyInstalled flambe-electron spectron
-325 silly dependencyIsSatisfied [ 'spectron',
-325 silly dependencyIsSatisfied   '^3.8.0',
-325 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-326 verbose dependencyIsSatisfied spectron true
-327 silly hasDependencyInstalled flambe-electron style-loader
-328 silly dependencyIsSatisfied [ 'style-loader',
-328 silly dependencyIsSatisfied   '^0.21.0',
-328 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-329 verbose dependencyIsSatisfied style-loader true
-330 silly hasDependencyInstalled flambe-electron stylefmt
-331 silly dependencyIsSatisfied [ 'stylefmt',
-331 silly dependencyIsSatisfied   '^6.0.0',
-331 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-332 verbose dependencyIsSatisfied stylefmt true
-333 silly hasDependencyInstalled flambe-electron stylelint
-334 silly dependencyIsSatisfied [ 'stylelint',
-334 silly dependencyIsSatisfied   '^9.2.1',
-334 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-335 verbose dependencyIsSatisfied stylelint true
-336 silly hasDependencyInstalled flambe-electron stylelint-config-standard
-337 silly dependencyIsSatisfied [ 'stylelint-config-standard',
-337 silly dependencyIsSatisfied   '^18.2.0',
-337 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-338 verbose dependencyIsSatisfied stylelint-config-standard true
-339 silly hasDependencyInstalled flambe-electron url-loader
-340 silly dependencyIsSatisfied [ 'url-loader',
-340 silly dependencyIsSatisfied   '^1.0.1',
-340 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-341 verbose dependencyIsSatisfied url-loader true
-342 silly hasDependencyInstalled flambe-electron webpack-cli
-343 silly dependencyIsSatisfied [ 'webpack-cli',
-343 silly dependencyIsSatisfied   '^2.1.4',
-343 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-344 verbose dependencyIsSatisfied webpack-cli true
-345 silly hasDependencyInstalled flambe-electron devtron
-346 silly dependencyIsSatisfied [ 'devtron',
-346 silly dependencyIsSatisfied   '^1.4.0',
-346 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-347 verbose dependencyIsSatisfied devtron true
-348 silly hasDependencyInstalled flambe-electron electron-debug
-349 silly dependencyIsSatisfied [ 'electron-debug',
-349 silly dependencyIsSatisfied   '^1.5.0',
-349 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-350 verbose dependencyIsSatisfied electron-debug true
-351 silly hasDependencyInstalled flambe-electron flambe-core
-352 silly dependencyIsSatisfied [ 'flambe-core',
-352 silly dependencyIsSatisfied   '^0.0.0',
-352 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-353 verbose dependencyIsSatisfied flambe-core true
-354 silly hasDependencyInstalled flambe-electron font-awesome
-355 silly dependencyIsSatisfied [ 'font-awesome',
-355 silly dependencyIsSatisfied   '^4.7.0',
-355 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-356 verbose dependencyIsSatisfied font-awesome true
-357 silly hasDependencyInstalled flambe-electron react-router
-358 silly dependencyIsSatisfied [ 'react-router',
-358 silly dependencyIsSatisfied   '^4.2.0',
-358 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-359 verbose dependencyIsSatisfied react-router true
-360 silly hasDependencyInstalled flambe-electron source-map-support
-361 silly dependencyIsSatisfied [ 'source-map-support',
-361 silly dependencyIsSatisfied   '^0.5.6',
-361 silly dependencyIsSatisfied   '/Users/david/Development/flambe/frontend/packages/electron/node_modules' ]
-362 verbose dependencyIsSatisfied source-map-support true
-363 silly root dependencies []
-364 silly leaf dependencies {
-364 silly leaf dependencies   "flambe-electron": [
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-core@^6.26.3",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-eslint@^8.2.3",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-jest@^23.0.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-loader@^7.1.4",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "chalk@^2.4.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "cross-env@^5.1.6",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint@^4.19.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-config-airbnb@^16.1.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-plugin-import@^2.12.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-plugin-jsx-a11y@6.0.3",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-plugin-react@^7.8.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "flow-bin@^0.72.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "jest@^23.0.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "uglifyjs-webpack-plugin@1.2.5",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "webpack@^4.8.3",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "webpack-bundle-analyzer@^2.13.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "webpack-dev-server@^3.1.4",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "webpack-merge@^4.1.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "history@^4.7.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react@^16.4.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-dom@^16.4.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-hot-loader@^4.2.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-redux@^5.0.7",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-router-dom@^4.2.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-router-redux@^5.0.0-alpha.6",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "redux@^4.0.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "redux-thunk@^2.2.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-plugin-add-module-exports@^0.2.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-plugin-dev-expression@^0.2.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-plugin-flow-runtime@^0.17.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-plugin-transform-class-properties@^6.24.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-plugin-transform-es2015-classes@^6.24.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-preset-env@^1.7.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-preset-react@^6.24.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-preset-react-optimize@^1.0.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-preset-stage-0@^6.24.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "babel-register@^6.26.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "concurrently@^3.5.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "cross-spawn@^6.0.5",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "css-loader@^0.28.11",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "detect-port@^1.2.3",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "electron@^2.0.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "electron-builder@^20.14.7",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "electron-devtools-installer@^2.2.4",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "electron-rebuild@^1.7.3",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "enzyme@^3.3.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "enzyme-adapter-react-16@^1.1.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "enzyme-to-json@^3.3.4",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-config-prettier@^2.9.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-formatter-pretty@^1.3.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-import-resolver-webpack@^0.10.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-plugin-compat@^2.2.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-plugin-flowtype@^2.47.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-plugin-jest@^21.15.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "eslint-plugin-promise@^3.7.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "express@^4.16.3",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "extract-text-webpack-plugin@^4.0.0-beta.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "fbjs-scripts@^0.8.3",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "file-loader@^1.1.11",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "flow-runtime@^0.17.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "flow-typed@^2.4.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "husky@^0.14.3",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "identity-obj-proxy@^3.0.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "lint-staged@^7.1.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "minimist@^1.2.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "node-sass@^4.9.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "npm-logical-tree@^1.2.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "prettier@^1.12.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-test-renderer@^16.4.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "redux-logger@^3.0.6",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "rimraf@^2.6.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "sass-loader@^7.0.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "sinon@^5.0.10",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "spectron@^3.8.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "style-loader@^0.21.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "stylefmt@^6.0.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "stylelint@^9.2.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "stylelint-config-standard@^18.2.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "url-loader@^1.0.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "webpack-cli@^2.1.4",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "devtron@^1.4.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "electron-debug@^1.5.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "flambe-core@^0.0.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "font-awesome@^4.7.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-router@^4.2.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "source-map-support@^0.5.6",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     }
-364 silly leaf dependencies   ],
-364 silly leaf dependencies   "flambe-core": [
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "@babel/polyfill@^7.0.0-beta.46",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "dayjs@^1.5.19",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "downshift@^1.9.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "emoji-regex@^6.5.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "fuzzaldrin-plus@^0.5.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "history@^4.7.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "humanize-duration@^3.12.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "lodash@^4.17.4",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "match-sorter@^2.0.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "phoenix@^1.3.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react@^16.3.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-color@^2.13.5",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-commander@^0.0.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-contexify@^3.0.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-dnd@^2.5.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-dnd-html5-backend@^2.5.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-dom@^16.2.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-hot-loader@^3.0.0-beta.7",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-modal@^3.4.4",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-redux@^5.0.6",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-router-dom@^4.2.2",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "react-router-redux@^5.0.0-alpha.9",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "recompose@^0.25.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "redux@4.0.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "redux-saga@^0.16.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "redux-thunk@^2.2.0",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "regenerator-runtime@^0.11.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "styled-components@^3.2.6",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     },
-364 silly leaf dependencies     {
-364 silly leaf dependencies       "dependency": "tinycolor2@^1.4.1",
-364 silly leaf dependencies       "isSatisfied": true
-364 silly leaf dependencies     }
-364 silly leaf dependencies   ]
-364 silly leaf dependencies }
-365 info Symlinking packages and binaries
-366 silly existsSync /Users/david/Development/flambe/frontend/packages/logo/package.json
-367 silly hasMatchingDependency flambe-core flambe-logo
-368 silly existsSync /Users/david/Development/flambe/frontend/packages/core/node_modules/flambe-logo
-369 silly isSymlink /Users/david/Development/flambe/frontend/packages/core/node_modules/flambe-logo
-370 verbose isSymlink [ '/Users/david/Development/flambe/frontend/packages/core/node_modules/flambe-logo',
-370 verbose isSymlink   '/Users/david/Development/flambe/frontend/packages/logo' ]
-371 silly existsSync /Users/david/Development/flambe/frontend/packages/core/package.json
-372 silly hasMatchingDependency flambe-electron flambe-core
-373 silly mkdirp /Users/david/Development/flambe/frontend/packages/core/node_modules
-374 silly symlink [ '/Users/david/Development/flambe/frontend/packages/logo',
-374 silly symlink   '/Users/david/Development/flambe/frontend/packages/core/node_modules/flambe-logo',
-374 silly symlink   'junction' ]
-375 silly createSymbolicLink [ '../../logo',
-375 silly createSymbolicLink   '/Users/david/Development/flambe/frontend/packages/core/node_modules/flambe-logo',
-375 silly createSymbolicLink   'junction' ]
-376 silly packageActions finished flambe-core
-377 silly packageActions finished flambe-electron
-378 silly packageActions finished flambe-logo
-379 info lifecycle postinstall
-380 silly runScript postinstall flambe-electron
-381 silly runScriptInDir postinstall [] electron
-382 silly getExecOpts { cwd: '/Users/david/Development/flambe/frontend/packages/electron' }
-383 silly runScript postinstall flambe-logo
-384 silly flambe-logo
-385 silly flambe-electron
-386 error execute Error occured with 'flambe-electron' while running 'npm run postinstall'
-387 error npm run postinstall [flambe-electron] Output from stdout:
-388 error npm run postinstall [flambe-electron] Output from stderr:
-389 error execute Error occured with 'flambe-electron' while running 'npm run postinstall'
+104 verbose dependencyIsSatisfied tinycolor2 false
+105 silly root dependencies []
+106 silly leaf dependencies {
+106 silly leaf dependencies   "undefined": [
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "@babel/polyfill@^7.0.0-beta.46",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "dayjs@^1.5.19",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "downshift@^1.9.1",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "emoji-regex@^6.5.1",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "fuzzaldrin-plus@^0.5.0",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "history@^4.7.2",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "humanize-duration@^3.12.0",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "lodash@^4.17.4",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "match-sorter@^2.0.2",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "mdx@^0.3.1",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "phoenix@^1.3.0",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react@^16.3.2",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-color@^2.13.5",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-commander@^0.0.1",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-contexify@^3.0.0",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-dnd@^2.5.1",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-dnd-html5-backend@^2.5.1",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-dom@^16.2.0",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-hot-loader@^3.0.0-beta.7",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-modal@^3.4.4",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-redux@^5.0.6",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-router-dom@^4.2.2",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "react-router-redux@^5.0.0-alpha.9",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "recompose@^0.25.0",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "redux@4.0.0",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "redux-saga@^0.16.0",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "redux-thunk@^2.2.0",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "regenerator-runtime@^0.11.1",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "styled-components@^3.2.6",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     },
+106 silly leaf dependencies     {
+106 silly leaf dependencies       "dependency": "tinycolor2@^1.4.1",
+106 silly leaf dependencies       "isSatisfied": false
+106 silly leaf dependencies     }
+106 silly leaf dependencies   ]
+106 silly leaf dependencies }
+107 info Installing external dependencies
+108 verbose actions 1 actions, concurrency 4
+109 silly installInDir core [ '@babel/polyfill@^7.0.0-beta.46',
+109 silly installInDir   'dayjs@^1.5.19',
+109 silly installInDir   'downshift@^1.9.1',
+109 silly installInDir   'emoji-regex@^6.5.1',
+109 silly installInDir   'fuzzaldrin-plus@^0.5.0',
+109 silly installInDir   'history@^4.7.2',
+109 silly installInDir   'humanize-duration@^3.12.0',
+109 silly installInDir   'lodash@^4.17.4',
+109 silly installInDir   'match-sorter@^2.0.2',
+109 silly installInDir   'mdx@^0.3.1',
+109 silly installInDir   'phoenix@^1.3.0',
+109 silly installInDir   'react@^16.3.2',
+109 silly installInDir   'react-color@^2.13.5',
+109 silly installInDir   'react-commander@^0.0.1',
+109 silly installInDir   'react-contexify@^3.0.0',
+109 silly installInDir   'react-dnd@^2.5.1',
+109 silly installInDir   'react-dnd-html5-backend@^2.5.1',
+109 silly installInDir   'react-dom@^16.2.0',
+109 silly installInDir   'react-hot-loader@^3.0.0-beta.7',
+109 silly installInDir   'react-modal@^3.4.4',
+109 silly installInDir   'react-redux@^5.0.6',
+109 silly installInDir   'react-router-dom@^4.2.2',
+109 silly installInDir   'react-router-redux@^5.0.0-alpha.9',
+109 silly installInDir   'recompose@^0.25.0',
+109 silly installInDir   'redux@4.0.0',
+109 silly installInDir   'redux-saga@^0.16.0',
+109 silly installInDir   'redux-thunk@^2.2.0',
+109 silly installInDir   'regenerator-runtime@^0.11.1',
+109 silly installInDir   'styled-components@^3.2.6',
+109 silly installInDir   'tinycolor2@^1.4.1' ]
+110 silly installInDir backup /Users/david/Development/flambe/frontend/packages/core/package.json
+111 silly rename [ '/Users/david/Development/flambe/frontend/packages/core/package.json',
+111 silly rename   '/Users/david/Development/flambe/frontend/packages/core/package.json.lerna_backup' ]
+112 silly installInDir writing tempJson { dependencies:
+112 silly installInDir    { '@babel/polyfill': '^7.0.0-beta.46',
+112 silly installInDir      dayjs: '^1.5.19',
+112 silly installInDir      downshift: '^1.9.1',
+112 silly installInDir      'emoji-regex': '^6.5.1',
+112 silly installInDir      'fuzzaldrin-plus': '^0.5.0',
+112 silly installInDir      history: '^4.7.2',
+112 silly installInDir      'humanize-duration': '^3.12.0',
+112 silly installInDir      lodash: '^4.17.4',
+112 silly installInDir      'match-sorter': '^2.0.2',
+112 silly installInDir      mdx: '^0.3.1',
+112 silly installInDir      phoenix: '^1.3.0',
+112 silly installInDir      react: '^16.3.2',
+112 silly installInDir      'react-color': '^2.13.5',
+112 silly installInDir      'react-commander': '^0.0.1',
+112 silly installInDir      'react-contexify': '^3.0.0',
+112 silly installInDir      'react-dnd': '^2.5.1',
+112 silly installInDir      'react-dnd-html5-backend': '^2.5.1',
+112 silly installInDir      'react-dom': '^16.2.0',
+112 silly installInDir      'react-hot-loader': '^3.0.0-beta.7',
+112 silly installInDir      'react-modal': '^3.4.4',
+112 silly installInDir      'react-redux': '^5.0.6',
+112 silly installInDir      'react-router-dom': '^4.2.2',
+112 silly installInDir      'react-router-redux': '^5.0.0-alpha.9',
+112 silly installInDir      recompose: '^0.25.0',
+112 silly installInDir      redux: '4.0.0',
+112 silly installInDir      'redux-saga': '^0.16.0',
+112 silly installInDir      'redux-thunk': '^2.2.0',
+112 silly installInDir      'regenerator-runtime': '^0.11.1',
+112 silly installInDir      'styled-components': '^3.2.6',
+112 silly installInDir      tinycolor2: '^1.4.1' } }
+113 silly getExecOpts { cwd: '/Users/david/Development/flambe/frontend/packages/core' }
+114 silly installInDir [ 'npm', [ 'install' ] ]
+115 silly installInDir cleanup /Users/david/Development/flambe/frontend/packages/core/package.json
+116 silly renameSync [ '/Users/david/Development/flambe/frontend/packages/core/package.json.lerna_backup',
+116 silly renameSync   '/Users/david/Development/flambe/frontend/packages/core/package.json' ]
+117 verbose installed leaf undefined
+118 error execute callback with error
+119 error Error: Command failed: npm install
+119 error npm WARN checkPermissions Missing write access to /Users/david/Development/flambe/frontend/packages/core/node_modules
+119 error npm WARN core No description
+119 error npm WARN core No repository field.
+119 error npm WARN core No license field.
+119 error
+119 error npm ERR! path /Users/david/Development/flambe/frontend/packages/core/node_modules
+119 error npm ERR! code EACCES
+119 error npm ERR! errno -13
+119 error npm ERR! syscall access
+119 error npm ERR! Error: EACCES: permission denied, access '/Users/david/Development/flambe/frontend/packages/core/node_modules'
+119 error npm ERR!  { Error: EACCES: permission denied, access '/Users/david/Development/flambe/frontend/packages/core/node_modules'
+119 error npm ERR!   stack: 'Error: EACCES: permission denied, access \'/Users/david/Development/flambe/frontend/packages/core/node_modules\'',
+119 error npm ERR!   errno: -13,
+119 error npm ERR!   code: 'EACCES',
+119 error npm ERR!   syscall: 'access',
+119 error npm ERR!   path: '/Users/david/Development/flambe/frontend/packages/core/node_modules' }
+119 error npm ERR!
+119 error npm ERR! Please try running this command again as root/Administrator.
+119 error
+119 error npm ERR! A complete log of this run can be found in:
+119 error npm ERR!     /Users/david/.npm/_logs/2018-06-04T17_53_49_360Z-debug.log
+119 error
+119 error     at Promise.all.then.arr (/usr/local/lib/node_modules/lerna/node_modules/execa/index.js:236:11)
