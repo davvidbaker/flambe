@@ -7,7 +7,7 @@
   "scripts": {
     "analyze": "webpack-bundle-analyzer stats.json",
     "start": "(cd packages/core && npm start)",
-    "start:desktop": "(cd packages/electron && npm run dev)",
+    "start:docs": "(cd packages/docs && npm start)",
     "test": "lerna run test",
     "flow": "flow",
     "lib": "lerna run lib",

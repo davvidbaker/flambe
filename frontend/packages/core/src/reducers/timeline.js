@@ -1,6 +1,6 @@
-import mapKeys from "lodash/fp/mapKeys";
-import mapValues from "lodash/fp/mapValues";
-import omit from "lodash/fp/omit";
+import mapKeys from 'lodash/fp/mapKeys';
+import mapValues from 'lodash/fp/mapValues';
+import omit from 'lodash/fp/omit';
 
 import {
   ACTIVITY_CREATE,
@@ -27,11 +27,11 @@ import {
   TIMELINE_ZOOM,
   TIMELINE_PAN,
   TODO_BEGIN,
-  TRACE_SELECT,
-} from "../actions";
+  TRACE_SELECT
+} from '../actions';
 
-import { zoom, pan, processTrace } from "../utilities";
-import { terminateBlock } from "../utilities/processTrace";
+import { zoom, pan, processTrace } from '../utilities';
+import { terminateBlock } from '../utilities/processTrace';
 
 export const getTimeline = state => state.timeline;
 
@@ -70,8 +70,8 @@ function createBlock(
   thread_id,
   timestamp,
   threadLevels,
-  activity_id = "optimisticActivity",
-  beginning = "B"
+  activity_id = 'optimisticActivity',
+  beginning = 'B'
 ) {
   // eslint-disable-next-line no-param-reassign
   blocks = blocks || [];
@@ -127,6 +127,7 @@ function timeline(state = initialState, action) {
       };
 
     case PROCESS_TIMELINE_TRACE:
+    console.log(`action.threads`, action.threads);
       const {
         activities,
         blocks,
@@ -139,11 +140,11 @@ function timeline(state = initialState, action) {
         events
       } = processTrace(action.events, action.threads);
 
-      console.log("threads", threads);
+      console.log('threads', threads);
 
       return {
         ...state,
-        minTime: min,
+        minTime: min - 1000 * 60 * 10, // 10 minutes before the beginning
         maxTime: max,
         activities,
         blocks,
@@ -201,10 +202,10 @@ function timeline(state = initialState, action) {
           ...state.activities,
           optimisticActivity: {
             name: action.name,
-            flavor: action.phase === "Q" ? "question" : "task",
+            flavor: action.phase === 'Q' ? 'question' : 'task',
             startTime: action.timestamp,
             categories: [action.category_id],
-            status: "active",
+            status: 'active',
             thread_id: action.thread_id
           }
         },
@@ -218,13 +219,19 @@ function timeline(state = initialState, action) {
 
     case `${TODO_BEGIN}_SUCCEEDED`:
     case `${ACTIVITY_CREATE}_SUCCEEDED`:
+      console.log(`action.data`, action.data);
+      // debugger
       return {
         ...state,
         blocks: state.blocks.map(block =>
-          (block.activity_id === "optimisticActivity"
-            ? { ...block, activity_id: action.data.id }
+          (block.activity_id === 'optimisticActivity'
+            ? {
+              ...block,
+              activity_id: action.data.activity.id,
+              events: [action.data.event.id]
+            }
             : block)),
-        activities: mapKeys(key => (key === "optimisticActivity" ? action.data.id : key))(state.activities)
+        activities: mapKeys(key => (key === 'optimisticActivity' ? action.data.activity.id : key))(state.activities)
       };
 
     case ACTIVITY_RESUME:
@@ -235,7 +242,7 @@ function timeline(state = initialState, action) {
           [action.id]: {
             ...state.activities[action.id],
             endTime: action.timestamp,
-            status: "active"
+            status: 'active'
           }
         },
         ...createBlock(
@@ -244,7 +251,7 @@ function timeline(state = initialState, action) {
           action.timestamp,
           state.threadLevels,
           action.id,
-          "R"
+          'R'
         )
       };
 
@@ -256,7 +263,7 @@ function timeline(state = initialState, action) {
           [action.id]: {
             ...state.activities[action.id],
             endTime: action.timestamp,
-            status: "active"
+            status: 'active'
           }
         },
         ...createBlock(
@@ -265,7 +272,7 @@ function timeline(state = initialState, action) {
           action.timestamp,
           state.threadLevels,
           action.id,
-          "X"
+          'X'
         )
       };
 
@@ -321,14 +328,14 @@ function timeline(state = initialState, action) {
           [action.id]: {
             ...state.activities[action.id],
             endTime: action.timestamp,
-            status: "complete"
+            status: 'complete'
           }
         },
         blocks: terminateBlock(
           state.blocks,
           action.id,
           action.timestamp,
-          action.eventFlavor || "E",
+          action.eventFlavor || 'E',
           action.message
         ),
         lastThread_id: action.thread_id,
@@ -348,14 +355,14 @@ function timeline(state = initialState, action) {
           [action.id]: {
             ...state.activities[action.id],
             endTime: action.timestamp,
-            status: "suspended"
+            status: 'suspended'
           }
         },
         blocks: terminateBlock(
           state.blocks,
           action.id,
           action.timestamp,
-          "S",
+          'S',
           action.message
         ),
         lastThread_id: action.thread_id,
@@ -370,7 +377,6 @@ function timeline(state = initialState, action) {
     /** ⚠️ need to handle network failures */
     case ACTIVITY_UPDATE:
       const activity = state.activities[action.id];
-      console.log("activity", activity);
       return {
         ...state,
         lastThread_id: action.thread_id,
@@ -404,7 +410,7 @@ function timeline(state = initialState, action) {
             ...state.activities[action.activity_id],
             categories: [
               ...state.activities[action.activity_id].categories,
-              "optimisticCategory"
+              'optimisticCategory'
             ]
           }
         }
@@ -414,10 +420,10 @@ function timeline(state = initialState, action) {
       return {
         ...state,
         activities: mapValues(act =>
-          (act.categories.includes("optimisticCategory")
+          (act.categories.includes('optimisticCategory')
             ? {
               ...act,
-              categories: act.categories.map(cat => (cat === "optimisticCategory" ? action.data.id : cat))
+              categories: act.categories.map(cat => (cat === 'optimisticCategory' ? action.data.id : cat))
             }
             : act))(state.activities)
       };
@@ -442,8 +448,8 @@ function timeline(state = initialState, action) {
     case `${THREAD_CREATE}_SUCCEEDED`:
       return {
         ...state,
-        threads: mapKeys((value, key) => (key === "optimisticThread" ? action.data.id : key))(state.threads),
-        threadLevels: mapKeys((_val, key) => (key === "optimisticThread" ? action.data.id : key))(state.threadLevels)
+        threads: mapKeys((value, key) => (key === 'optimisticThread' ? action.data.id : key))(state.threads),
+        threadLevels: mapKeys((_val, key) => (key === 'optimisticThread' ? action.data.id : key))(state.threadLevels)
       };
     /** ⚠️ need to handle failures */
     case THREAD_DELETE:

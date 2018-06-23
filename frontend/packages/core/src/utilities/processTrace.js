@@ -11,7 +11,10 @@ import type { TraceEvent } from '../types/TraceEvent';
 import type { Thread } from '../types/Thread';
 
 export function lastActivityBlock(blocks, activity_id) {
-  const block = pipe(filter(block => block.activity_id === activity_id), last)(blocks);
+  const block = pipe(
+    filter(block => block.activity_id === activity_id),
+    last
+  )(blocks);
   if (!block.events) {
     debugger;
   }
@@ -274,6 +277,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           startMessage: event.message,
           events: [event.id]
         });
+
         threadOpenActivities = {
           ...threadOpenActivities,
           [thread_id]: [...threadOpenActivities[thread_id], event.activity.id]

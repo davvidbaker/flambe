@@ -1,6 +1,5 @@
 import 'regenerator-runtime/runtime';
 
-import App from './containers/App';
-import store from './store';
+import Timeline from './components/Timeline';
 
-export { App, store };
+export default Timeline;

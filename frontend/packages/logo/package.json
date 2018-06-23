@@ -9,8 +9,8 @@
     "lib": "npm run clean && babel ./ -d lib --config-file ../../.babelrc"
   },
   "peerDependencies": {
-    "react": "^16.3.2",
-    "styled-components": "^3.2.6"
+    "react": "^16.4.0",
+    "styled-components": "^3.3.2"
   },
   "author": "David Baker",
   "license": "MIT",

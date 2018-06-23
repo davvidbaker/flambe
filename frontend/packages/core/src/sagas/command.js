@@ -25,6 +25,7 @@ import {
   deleteActivity,
   expandAllThreads,
   endActivity,
+  processTimelineTrace,
   resumeActivity,
   resurrectActivity,
   shiftAttention,
@@ -106,6 +107,12 @@ function* handleCommand({ operand, command }) {
           message: command.message ? command.message : '',
           thread_id: operand.thread_id
         }));
+        
+        /* ⚠️ Ideally we'd only process the tail of the trace */
+        yield put(processTimelineTrace(
+          timeline.events,
+          Object.values(timeline.threads)
+        ));
         break;
 
       case ATTENTION_SHIFT:
