@@ -36,7 +36,7 @@ function pan(
   return {
     leftBoundaryTime: newLeftBoundaryTime,
     rightBoundaryTime: newRightBoundaryTime,
-    topOffset: newTopOffset
+    topOffset: newTopOffset,
   };
 }
 
