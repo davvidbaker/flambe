@@ -10,16 +10,16 @@ module.exports = {
   env: {
     browser: true,
     commonjs: true,
-    es6: true,
+    es6: true
   },
   parser: 'babel-eslint',
   extends: 'airbnb',
   parserOptions: {
     ecmaFeatures: {
-      experimentalObjectRestSpread: true,
+      experimentalObjectRestSpread: true
     },
     // ecmaVersion: 6,
-    sourceType: 'module',
+    sourceType: 'module'
   },
   plugins: ['babel', 'import', 'react', 'jsx-a11y'],
   globals: {
@@ -27,7 +27,7 @@ module.exports = {
     SERVER: true,
     describe: true,
     it: true,
-    expect: true,
+    expect: true
   },
   rules: {
     'arrow-parens': 'off',
@@ -41,14 +41,14 @@ module.exports = {
     'no-debugger': 'off',
     'no-nested-ternary': 'off',
     'no-plusplus': 'off',
-    'no-unused-vars: ["error", { "argsIgnorePattern": "^_" }],
+    'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-unused-expressions': 'off',
     indent: [
       'error',
       2,
       {
-        SwitchCase: 1,
-      },
+        SwitchCase: 1
+      }
     ],
     quotes: 'off',
     'babel/no-unused-expressions': 'error',
@@ -63,13 +63,13 @@ module.exports = {
     'react/jsx-filename-extension': 'off',
     'react/no-multi-comp': 'off',
     'react/prop-types': 'off',
-    'react/sort-comp': 'off',
+    'react/sort-comp': 'off'
   },
   settings: {
     'import/resolver': {
       webpack: {
-        config: './webpack.common.js',
-      },
-    },
-  },
+        config: './webpack.common.js'
+      }
+    }
+  }
 };

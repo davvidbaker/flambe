@@ -4,30 +4,24 @@ import throttle from 'lodash/throttle';
 import sortBy from 'lodash/fp/sortBy';
 import last from 'lodash/last';
 
-import FlameChart from '../components/FlameChart';
-import NetworkChart from '../components/NetworkChart';
-import ActivityDetail from '../components/ActivityDetail';
-import ThreadDetail from '../components/ThreadDetail';
-import WithDropTarget from './WithDropTarget';
-import WithEventListeners from '../components/WithEventListeners';
+import FlameChart from './FlameChart';
+import TimeSeries from './TimeSeries';
+import ActivityDetail from './ActivityDetail';
+import ThreadDetail from './ThreadDetail';
+import WithDropTarget from '../containers/WithDropTarget';
+import WithEventListeners from './WithEventListeners';
 
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import {
   visibleThreadLevels,
-  rankThreadsByAttention
+  rankThreadsByAttention,
+  timeToPixels,
+  pixelsToTime
 } from '../utilities/timelineChart';
-import { getTimeline } from '../reducers/timeline';
-import { getUser } from '../reducers/user';
+
 import { layout } from '../styles';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
-import {
-  updateActivity,
-  updateEvent,
-  createThread,
-  collapseThread,
-  expandThread
-} from '../actions';
 
 import type { Activity } from '../types/Activity';
 
@@ -38,6 +32,8 @@ const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
 const MONTH = 4 * WEEK; // ⚠️ not a real month
 
+const MIN_GRID_SLICE_PX = 60;
+
 // minTime is smallest timestamp in the entire timeline
 // maxTime is largest timestamp in the entire timeline
 // leftBoundaryTime is timestamp of left bound of current view
@@ -47,7 +43,8 @@ type Thread = {
   id: string,
   name: string,
   __typename: 'Thread',
-  activities: (?Activity)[]
+  activities: (?Activity)[],
+  dividersData: { offsets: { position: number, time: number }[] }
 };
 
 type Props = {
@@ -69,9 +66,12 @@ type State = {
 
 class Timeline extends Component<Props, State> {
   state = {
-    leftBoundaryTime: 1506456399223.1394,
-    rightBoundaryTime: 1506482474608.5562,
+    leftBoundaryTime: Date.now() - WEEK,
+    rightBoundaryTime: Date.now(),
     topOffset: 0,
+    dividersData: {
+      offsets: []
+    },
     composingZoomChord: false
   };
 
@@ -89,6 +89,8 @@ class Timeline extends Component<Props, State> {
       this.state.leftBoundaryTime = lbt;
       this.state.rightBoundaryTime = rbt;
     }
+
+    this.state.dividersData = this.calculateGridOffsets();
 
     props.addCommand({
       action: command => {
@@ -113,29 +115,102 @@ class Timeline extends Component<Props, State> {
     });
   }
 
+  /* 💁 mostly borrowed from chrome devtools-frontend ❤️ */
+  calculateGridOffsets() {
+    const clientWidth = this.t ? this.t.clientWidth : window.innerWidth;
+    //
+    const zeroTime = 0;
+
+    const { leftBoundaryTime, rightBoundaryTime } = this.state;
+
+    const boundarySpan = rightBoundaryTime - leftBoundaryTime;
+
+    // calculator.computePosition(rightBoundaryTime);
+    let dividersCount = clientWidth / MIN_GRID_SLICE_PX;
+    let gridSliceTime = boundarySpan / dividersCount;
+    const pixelsPerTime = clientWidth / boundarySpan;
+
+    // Align gridSliceTime to a nearest round value.
+    // We allow spans that fit into the formula: span = (1|2|5)x10^n,
+    // e.g.: ...  .1  .2  .5  1  2  5  10  20  50  ...
+    // After a span has been chosen make grid lines at multiples of the span.
+
+    const logGridSliceTime = Math.ceil(Math.log(gridSliceTime) / Math.LN10);
+    gridSliceTime = 10 ** logGridSliceTime;
+    if (gridSliceTime * pixelsPerTime >= 5 * MIN_GRID_SLICE_PX) {
+      gridSliceTime /= 5;
+    }
+    if (gridSliceTime * pixelsPerTime >= 2 * MIN_GRID_SLICE_PX) {
+      gridSliceTime /= 2;
+    }
+
+    const firstDividerTime =
+      Math.ceil((leftBoundaryTime - zeroTime) / gridSliceTime) * gridSliceTime +
+      zeroTime;
+    let lastDividerTime = rightBoundaryTime;
+    // Add some extra space past the right boundary as the rightmost divider label text
+    // may be partially shown rather than just pop up when a new rightmost divider gets into the view.
+    lastDividerTime += MIN_GRID_SLICE_PX / pixelsPerTime;
+    dividersCount = Math.ceil((lastDividerTime - firstDividerTime) / gridSliceTime);
+
+    if (!gridSliceTime) dividersCount = 0;
+
+    const offsets = [];
+    for (let i = 0; i < dividersCount; ++i) {
+      const time = firstDividerTime + gridSliceTime * i;
+      offsets.push({
+        position: Math.floor(this.timeToPixels(time)),
+        time
+      });
+    }
+
+    return {
+      offsets,
+      precision: Math.max(
+        0,
+        -Math.floor(Math.log(gridSliceTime * 1.01) / Math.LN10)
+      )
+    };
+  }
+
+  timeToPixels(timestamp) {
+    const { leftBoundaryTime, rightBoundaryTime } = this.state;
+
+    return timeToPixels(
+      timestamp,
+      leftBoundaryTime,
+      rightBoundaryTime,
+      this.t ? this.t.clientWidth : window.innerWidth
+    );
+  }
+
   zoomTo(timePeriod) {
     switch (timePeriod) {
       // shows about the last 10 minutes
       case 'now':
         this.setState({
+          dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 10 * MINUTE,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
         });
         break;
       case 'day':
         this.setState({
+          dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 1 * DAY,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
         });
         break;
       case 'week':
         this.setState({
+          dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 1 * WEEK,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
         });
         break;
       case 'month':
         this.setState({
+          dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 1 * MONTH,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
         });
@@ -147,6 +222,8 @@ class Timeline extends Component<Props, State> {
   }
 
   zoom = (dy, offsetX, zoomCenterTime, canvasWidth) => {
+    const dividersData = this.calculateGridOffsets();
+
     const { leftBoundaryTime, rightBoundaryTime } = zoom(
       dy,
       offsetX,
@@ -159,12 +236,17 @@ class Timeline extends Component<Props, State> {
     );
 
     this.setState(
-      { leftBoundaryTime, rightBoundaryTime },
+      {
+        dividersData,
+        leftBoundaryTime,
+        rightBoundaryTime
+      },
       this.setLocalStorage
     );
   };
 
   pan = (dx, dy, canvasWidth) => {
+    const dividersData = this.calculateGridOffsets();
     const { leftBoundaryTime, rightBoundaryTime, topOffset } = pan(
       dx,
       this.props.shiftModifier && dy,
@@ -175,8 +257,14 @@ class Timeline extends Component<Props, State> {
       Date.now(),
       this.props.minTime
     );
+
     this.setState(
-      { leftBoundaryTime, rightBoundaryTime, topOffset },
+      {
+        leftBoundaryTime,
+        rightBoundaryTime,
+        topOffset,
+        dividersData
+      },
       this.setLocalStorage
     );
   };
@@ -263,58 +351,68 @@ class Timeline extends Component<Props, State> {
         {() => (
           <>
             <div
+              ref={t => {
+                this.t = t;
+              }}
               style={{
                 position: 'relative',
                 height: `calc(${window.innerHeight}px - ${layout.headerHeight})`
               }}
             >
-              <NetworkChart
+              <TimeSeries
                 leftBoundaryTime={leftBoundaryTime}
                 rightBoundaryTime={rightBoundaryTime}
                 searchTerms={props.searchTerms}
                 mantras={props.mantras}
                 tabs={props.tabs}
               />
-              <WithDropTarget
+              {/* <WithDropTarget
                 targetName="flame-chart"
                 threads={props.threads}
                 trace_id={props.trace_id}
-              >
-                <FlameChart
-                  activities={props.activities}
-                  uniformBlockHeight={props.settings.uniformBlockHeight}
-                  attentionShifts={props.attentionShifts}
-                  blocks={props.blocks}
-                  categories={props.user.categories}
-                  currentAttention={last(props.attentionShifts).thread_id}
-                  leftBoundaryTime={leftBoundaryTime}
-                  maxTime={props.maxTime}
-                  minTime={props.minTime}
-                  modifiers={props.modifiers}
-                  pan={this.pan}
-                  rightBoundaryTime={rightBoundaryTime}
-                  showAttentionFlows={props.settings.attentionFlows}
-                  showThreadDetail={this.showThreadDetail}
-                  showSuspendResumeFlows={props.settings.suspendResumeFlows}
-                  // threadLevels={props.threadLevels}
-                  threadLevels={
-                    props.activities && props.settings.reactiveThreadHeight
-                      ? visibleThreadLevels(
-                        props.blocks,
-                        props.activities,
-                        leftBoundaryTime,
-                        rightBoundaryTime,
-                        props.threads
-                      )
-                      : props.threadLevels
-                  }
-                  threads={threads}
-                  toggleThread={props.toggleThread}
-                  topOffset={this.state.topOffset || 0}
-                  updateEvent={props.updateEvent}
-                  zoom={this.zoom}
-                />
-              </WithDropTarget>
+              > */}
+              <FlameChart
+                activities={props.activities}
+                dividersData={this.state.dividersData}
+                uniformBlockHeight={props.settings.uniformBlockHeight}
+                attentionShifts={props.attentionShifts}
+                blocks={props.blocks}
+                categories={props.categories}
+                currentAttention={last(props.attentionShifts).thread_id}
+                leftBoundaryTime={leftBoundaryTime}
+                maxTime={props.maxTime}
+                minTime={props.minTime}
+                modifiers={props.modifiers}
+                pan={this.pan}
+                rightBoundaryTime={rightBoundaryTime}
+                showAttentionFlows={props.settings.attentionFlows}
+                showThreadDetail={this.showThreadDetail}
+                showSuspendResumeFlows={props.settings.suspendResumeFlows}
+                // threadLevels={props.threadLevels}
+                threadLevels={
+                  props.activities && props.settings.reactiveThreadHeight
+                    ? visibleThreadLevels(
+                      props.blocks,
+                      props.activities,
+                      leftBoundaryTime,
+                      rightBoundaryTime,
+                      props.threads
+                    )
+                    : props.threadLevels
+                }
+                hoverBlock={props.hoverBlock}
+                focusBlock={props.focusBlock}
+                focusedBlockIndex={props.focusedBlockIndex}
+                hoveredBlockIndex={props.hoveredBlockIndex}
+                threads={threads}
+                toggleThread={props.toggleThread}
+                topOffset={this.state.topOffset || 0}
+                updateEvent={props.updateEvent}
+                zoom={this.zoom}
+              />
+              {/* </WithDropTarget> */}
+
+              {/* ⚠️ Moved these up? */}
               <ThreadDetail
                 closeThreadDetail={this.closeThreadDetail}
                 id={this.state.threadModal_id}
@@ -331,7 +429,7 @@ class Timeline extends Component<Props, State> {
                     ...focusedActivity
                   }}
                   activityBlocks={props.blocks.filter(block => block.activity_id === props.focusedBlockActivity_id)}
-                  categories={props.user.categories}
+                  categories={props.categories}
                   updateActivity={props.updateActivity}
                   trace_id={props.trace_id}
                   threadLevels={props.threadLevels}
@@ -350,29 +448,4 @@ class Timeline extends Component<Props, State> {
   }
 }
 
-export default connect(
-  state => ({
-    activities: getTimeline(state).activities,
-    blocks: getTimeline(state).blocks,
-    focusedBlockActivity_id: getTimeline(state).focusedBlockActivity_id,
-    mantras: getUser(state).mantras,
-    minTime: getTimeline(state).minTime,
-    maxTime: getTimeline(state).maxTime,
-    modifiers: state.modifiers,
-    threadLevels: getTimeline(state).threadLevels,
-    threads: getTimeline(state).threads,
-    lastCategory_id: getTimeline(state).lastCategory_id,
-    lastThread_id: getTimeline(state).lastThread_id,
-    attentionShifts: getUser(state).attentionShifts,
-    searchTerms: getUser(state).searchTerms,
-    settings: state.settings,
-    tabs: getUser(state).tabs
-  }),
-  dispatch => ({
-    createThread: (name, rank) => dispatch(createThread(name, rank)),
-    toggleThread: (id, isCollapsed = false) =>
-      dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
-    updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
-    updateEvent: (id, updates) => dispatch(updateEvent(id, updates))
-  })
-)(Timeline);
+export default Timeline;

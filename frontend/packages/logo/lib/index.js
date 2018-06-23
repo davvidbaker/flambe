@@ -1,4 +1,12 @@
-var _templateObject = /*#__PURE__*/ _taggedTemplateLiteral(["\n  font-size: ", "px;\n  font-family: 'Yesteryear', cursive;\n  width: max-content;\n  position: relative;\n  /* font-weight: bold; */\n\n  &::after {\n    content: '\uD83D\uDD25';\n    position: absolute;\n    right: 0;\n    transform-origin: top right;\n    transform: translate(30%, 23%) scale(0.5) rotate(30deg);\n    z-index: -1;\n  }\n"]);
+function _templateObject() {
+  var data = _taggedTemplateLiteral(["\n  font-size: ", "px;\n  font-family: 'Yesteryear', cursive;\n  width: max-content;\n  position: relative;\n  /* font-weight: bold; */\n\n  &::after {\n    content: '\uD83D\uDD25';\n    position: absolute;\n    right: 0;\n    transform-origin: top right;\n    transform: translate(30%, 23%) scale(0.5) rotate(30deg);\n    z-index: -1;\n  }\n"]);
+
+  _templateObject = function _templateObject() {
+    return data;
+  };
+
+  return data;
+}
 
 function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
@@ -10,7 +18,7 @@ function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(
  */
 import React from 'react';
 import styled from 'styled-components';
-var Wrapper = styled.div(_templateObject, function (props) {
+var Wrapper = styled.div(_templateObject(), function (props) {
   return props.size;
 });
 

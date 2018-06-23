@@ -14,8 +14,9 @@ import Commander from 'react-commander';
 import Modal from 'react-modal';
 import Toaster from './Toaster';
 import Dashboard from './Dashboard';
-import Timeline from './Timeline';
+import ConnectedTimeline from './ConnectedTimeline';
 import SingleThreadView from './SingleThreadView';
+import Editor from './Editor';
 // import Todos from './Todos';
 import Login from '../components/Login';
 import Register from '../components/Register';
@@ -40,7 +41,7 @@ import {
   showSettings,
   createMantra,
   createToast,
-  FIND,
+  FIND
 } from '../actions';
 import COMMANDS, { ACTIVITY_COMMANDS } from '../constants/commands';
 import { getTimeline } from '../reducers/timeline';
@@ -114,13 +115,13 @@ class App extends React.Component<
     user: { id: string, name: string },
     userTraces: (?Trace)[],
     userTodos: (?Todo)[],
-    todosVisible: boolean,
+    todosVisible: boolean
   },
   { commanderVisible: boolean }
 > {
   state = {
     commanderVisible: false,
-    additionalCommands: [],
+    additionalCommands: []
   };
 
   componentDidCatch(e, info) {
@@ -173,7 +174,7 @@ class App extends React.Component<
 
   addCommand = command => {
     this.setState(state => ({
-      additionalCommands: [command, ...state.additionalCommands],
+      additionalCommands: [command, ...state.additionalCommands]
     }));
   };
 
@@ -196,7 +197,7 @@ class App extends React.Component<
       : this.props.trace && this.props.trace.id;
 
     return trace_id ? (
-      <Timeline
+      <ConnectedTimeline
         trace_id={trace_id}
         user={this.props.user}
         key="timeline"
@@ -213,10 +214,8 @@ class App extends React.Component<
       switch (operand.type) {
         case 'activity':
           return [
-            ...ACTIVITY_COMMANDS.filter(
-              cmd => cmd.status.indexOf(operand.activityStatus) >= 0
-            ),
-            ...baseCommands,
+            ...ACTIVITY_COMMANDS.filter(cmd => cmd.status.indexOf(operand.activityStatus) >= 0),
+            ...baseCommands
           ];
         default:
           return baseCommands;
@@ -241,9 +240,7 @@ class App extends React.Component<
           if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
             e.preventDefault();
             this.showCommander();
-            this.commander.enterCommand(
-              COMMANDS.find(({ action }) => action === FIND)
-            );
+            this.commander.enterCommand(COMMANDS.find(({ action }) => action === FIND));
           }
 
           if (e.key === ',' && (e.metaKey || e.ctrlKey)) {
@@ -261,7 +258,7 @@ class App extends React.Component<
               this.props.collapseAllThreads();
             }
           }
-        },
+        }
       ],
       [
         'keyup',
@@ -283,20 +280,14 @@ class App extends React.Component<
                       if (
                         isEndable(
                           this.props.activities[this.props.operand.activity_id],
-                          this.props.blocks.filter(
-                            block =>
-                              block.activity_id ===
-                              this.props.operand.activity_id
-                          ),
+                          this.props.blocks.filter(block =>
+                            block.activity_id ===
+                              this.props.operand.activity_id),
                           this.props.threadLevels
                         )
                       ) {
                         this.showCommander();
-                        this.commander.enterCommand(
-                          this.getCommands(this.props.operand).find(
-                            cmd => cmd.shortcut === e.key.toUpperCase()
-                          )
-                        );
+                        this.commander.enterCommand(this.getCommands(this.props.operand).find(cmd => cmd.shortcut === e.key.toUpperCase()));
                       }
                       break;
                     case 's':
@@ -306,11 +297,7 @@ class App extends React.Component<
                           .status === 'active'
                       ) {
                         this.showCommander();
-                        this.commander.enterCommand(
-                          ACTIVITY_COMMANDS.find(
-                            ({ shortcut }) => shortcut === 'S'
-                          )
-                        );
+                        this.commander.enterCommand(ACTIVITY_COMMANDS.find(({ shortcut }) => shortcut === 'S'));
                       }
                     default:
                       break;
@@ -321,8 +308,8 @@ class App extends React.Component<
                 break;
             }
           }
-        },
-      ],
+        }
+      ]
     ];
     return (
       <ConnectedRouter history={history}>
@@ -332,9 +319,9 @@ class App extends React.Component<
               <Route exact path="/login" render={() => <Login />} />
               <Route exact path="/register" render={() => <Register />} />
               <Route exact path="/dashboard" render={() => <Dashboard />} />
+              <Route exact path="/editor" render={() => <Editor />} />
               {/* /* ⚠️ I might have fucked up the route logic */}
               <Route
-                exact
                 path="/"
                 render={() => (
                   <>
@@ -354,6 +341,7 @@ class App extends React.Component<
                         if (this.props.view === 'multithread') {
                           <>
                             <Route
+                              exact
                               path="/traces/:trace_id"
                               render={this.renderTimeline}
                             />
@@ -414,7 +402,7 @@ export default compose(
       user: getUser(state),
       userTraces: getUser(state).traces,
       view: state.view,
-      viewThread: state.viewThread,
+      viewThread: state.viewThread
     }),
     dispatch => ({
       collapseAllThreads: id => dispatch(collapseAllThreads(id)),
@@ -431,7 +419,7 @@ export default compose(
       showSettings: () => dispatch(showSettings()),
       createMantra: (id, note) => dispatch(createMantra(id, note)),
       createToast: (message, notificationType) =>
-        dispatch(createToast(message, notificationType)),
+        dispatch(createToast(message, notificationType))
     })
   )
 )(App);

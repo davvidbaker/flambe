@@ -12,9 +12,9 @@
   "dependencies": {
     "flambe-core": "^0.1.8",
     "flambe-logo": "^0.1.8",
-    "react": "^16.3.2",
-    "react-dom": "^16.2.0",
+    "react": "^16.4.0",
+    "react-dom": "^16.4.0",
     "regenerator-runtime": "^0.11.1",
-    "styled-components": "^3.2.6"
+    "styled-components": "^3.3.2"
   }
 }

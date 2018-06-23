@@ -1,4 +1,3 @@
-/* 🤔 maybe change the name of this component */
 import React, { Component } from 'react';
 import last from 'lodash/last';
 import styled from 'styled-components';
@@ -23,11 +22,11 @@ const CountsBar = styled.div`
   font-size: 11px;
   visibility: ${props => (props.hidden ? 'hidden' : 'visible')};
 `;
-class NetworkChart extends Component {
+class TimeSeries extends Component {
   static textPadding = { x: 5, y: 13.5 };
   static chartPadding = { x: 0, y: 15 };
   blockHeight = 20;
-  chartHeight = 50 - NetworkChart.chartPadding.y * 2;
+  chartHeight = 50 - TimeSeries.chartPadding.y * 2;
 
   state = {
     mouseIsOver: false,
@@ -48,7 +47,7 @@ class NetworkChart extends Component {
     if (this.canvas) {
       const { ctx, minTextWidth, state } = setCanvasSize(
         this.canvas,
-        NetworkChart.textPadding
+        TimeSeries.textPadding
       );
       this.ctx = ctx;
       this.ctx.font = '11px sans-serif';
@@ -286,7 +285,7 @@ class NetworkChart extends Component {
 
   countToY(count, maxCount) {
     return (
-      NetworkChart.chartPadding.y +
+      TimeSeries.chartPadding.y +
       this.chartHeight -
       count * this.chartHeight / maxCount
     );
@@ -315,7 +314,7 @@ class NetworkChart extends Component {
       let text = trimTextMiddle(
         this.ctx,
         term,
-        blockWidth // - 2 * NetworkChart.textPadding.x
+        blockWidth // - 2 * TimeSeries.textPadding.x
       );
 
       if (text.length === 0) {
@@ -331,4 +330,4 @@ class NetworkChart extends Component {
   }
 }
 
-export default NetworkChart;
+export default TimeSeries;

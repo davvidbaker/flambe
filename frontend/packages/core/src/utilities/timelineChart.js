@@ -167,7 +167,7 @@ export function rankThreadsByAttention(attentionShifts, threads) {
     reduce((acc, { thread_id }) => {
       if (isUndefined(acc[thread_id])) {
         acc[thread_id] = rank;
-        threads[thread_id].rank = rank;
+        if (threads[thread_id] )threads[thread_id].rank = rank;
         rank++;
       }
       return acc;
