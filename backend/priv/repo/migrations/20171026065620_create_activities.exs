@@ -1,4 +1,4 @@
-defmodule Flambe.Repo.Migrations.CreateActivities do
+defmodule Steady.Repo.Migrations.CreateActivities do
   use Ecto.Migration
 
   def change do

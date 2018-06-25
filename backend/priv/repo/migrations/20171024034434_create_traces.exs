@@ -1,4 +1,4 @@
-defmodule Flambe.Repo.Migrations.CreateTraces do
+defmodule Steady.Repo.Migrations.CreateTraces do
   use Ecto.Migration
 
   def change do

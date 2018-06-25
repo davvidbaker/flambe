@@ -1,8 +1,8 @@
-defmodule FlambeWeb.UserControllerTest do
-  use FlambeWeb.ConnCase
+defmodule SteadyWeb.UserControllerTest do
+  use SteadyWeb.ConnCase
 
-  alias Flambe.Accounts
-  alias Flambe.Accounts.User
+  alias Steady.Accounts
+  alias Steady.Accounts.User
 
   # ⚠️ email is actually a credential, not as closely coupled to account user
   @create_attrs %{credential: %{email: "some email"}, name: "some name"}

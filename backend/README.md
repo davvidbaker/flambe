@@ -1,4 +1,4 @@
-# Flambe
+# Steady
 
 To start your Phoenix server:
 

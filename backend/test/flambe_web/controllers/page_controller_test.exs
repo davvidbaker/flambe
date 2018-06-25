@@ -1,5 +1,5 @@
-defmodule FlambeWeb.PageControllerTest do
-  use FlambeWeb.ConnCase
+defmodule SteadyWeb.PageControllerTest do
+  use SteadyWeb.ConnCase
 
   test "GET /", %{conn: conn} do
     conn = get(conn, "/")

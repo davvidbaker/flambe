@@ -1,8 +1,8 @@
-defmodule FlambeWeb.AttentionControllerTest do
-  use FlambeWeb.ConnCase
+defmodule SteadyWeb.AttentionControllerTest do
+  use SteadyWeb.ConnCase
 
-  alias Flambe.Accounts
-  alias Flambe.Accounts.Attention
+  alias Steady.Accounts
+  alias Steady.Accounts.Attention
 
   @create_attrs %{}
   @update_attrs %{}

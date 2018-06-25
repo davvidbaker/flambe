@@ -1,4 +1,4 @@
-defmodule Flambe.Repo.Migrations.AddThreadColumnsToActivities do
+defmodule Steady.Repo.Migrations.AddThreadColumnsToActivities do
   use Ecto.Migration
 
   def change do

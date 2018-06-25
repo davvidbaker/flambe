@@ -1,4 +1,4 @@
-defmodule Flambe.DataCase do
+defmodule Steady.DataCase do
   @moduledoc """
   This module defines the setup for tests requiring
   access to the application's data layer.
@@ -16,20 +16,20 @@ defmodule Flambe.DataCase do
 
   using do
     quote do
-      alias Flambe.Repo
+      alias Steady.Repo
 
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
-      import Flambe.DataCase
+      import Steady.DataCase
     end
   end
 
   setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Flambe.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Steady.Repo)
 
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Flambe.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(Steady.Repo, {:shared, self()})
     end
 
     :ok

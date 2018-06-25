@@ -1,10 +1,10 @@
-defmodule Flambe.TracesTest do
-  use Flambe.DataCase
+defmodule Steady.TracesTest do
+  use Steady.DataCase
 
-  alias Flambe.{Traces, TestHelper}
+  alias Steady.{Traces, TestHelper}
 
   describe "traces" do
-    alias Flambe.Traces.Trace
+    alias Steady.Traces.Trace
 
     @valid_attrs %{name: "some trace name"}
     @update_attrs %{name: "some updated trace name"}
@@ -68,7 +68,7 @@ defmodule Flambe.TracesTest do
   end
 
   describe "events" do
-    alias Flambe.Traces.Event
+    alias Steady.Traces.Event
 
     @valid_attrs %{
       message: "some message",
@@ -145,7 +145,7 @@ defmodule Flambe.TracesTest do
   end
 
   describe "activities" do
-    alias Flambe.Traces.Activity
+    alias Steady.Traces.Activity
 
     @valid_attrs %{description: "some description", name: "some activity name"}
     @update_attrs %{description: "some updated description", name: "some updated activity name"}
@@ -204,7 +204,7 @@ defmodule Flambe.TracesTest do
   end
 
   describe "threads" do
-    alias Flambe.Traces.Thread
+    alias Steady.Traces.Thread
 
     @valid_attrs %{name: "some thread name"}
     @update_attrs %{name: "some updated thread name"}

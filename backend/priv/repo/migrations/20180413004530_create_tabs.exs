@@ -1,4 +1,4 @@
-defmodule Flambe.Repo.Migrations.CreateTabs do
+defmodule Steady.Repo.Migrations.CreateTabs do
   use Ecto.Migration
 
   def change do
