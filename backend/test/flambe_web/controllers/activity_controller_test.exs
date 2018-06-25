@@ -1,9 +1,9 @@
-defmodule FlambeWeb.ActivityControllerTest do
-  use FlambeWeb.ConnCase
+defmodule SteadyWeb.ActivityControllerTest do
+  use SteadyWeb.ConnCase
 
-  alias Flambe.Traces
-  alias Flambe.Traces.Activity
-  alias Flambe.TestHelper
+  alias Steady.Traces
+  alias Steady.Traces.Activity
+  alias Steady.TestHelper
 
   @create_attrs %{name: "some activity", description: "some description"}
   @update_attrs %{name: "some updated activity", description: "some updated description"}
@@ -16,7 +16,7 @@ defmodule FlambeWeb.ActivityControllerTest do
 
     [main_thread | _tail] =
       trace
-      |> Flambe.Repo.preload(:threads)
+      |> Steady.Repo.preload(:threads)
       |> Traces.list_trace_threads()
 
     {:ok, %Activity{} = activity} = Traces.create_activity(main_thread.id, @create_attrs)
@@ -31,7 +31,7 @@ defmodule FlambeWeb.ActivityControllerTest do
 
       [main_thread | _tail] =
         trace
-        |> Flambe.Repo.preload(:threads)
+        |> Steady.Repo.preload(:threads)
         |> Traces.list_trace_threads()
 
       # {:ok, %Activity{id: activity_id}} =

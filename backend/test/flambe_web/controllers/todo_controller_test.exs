@@ -1,8 +1,8 @@
-defmodule FlambeWeb.TodoControllerTest do
-  use FlambeWeb.ConnCase
+defmodule SteadyWeb.TodoControllerTest do
+  use SteadyWeb.ConnCase
 
-  alias Flambe.Accounts
-  alias Flambe.Accounts.Todo
+  alias Steady.Accounts
+  alias Steady.Accounts.Todo
 
   @create_attrs %{description: "some description", name: "some name"}
   @update_attrs %{description: "some updated description", name: "some updated name"}

@@ -1,10 +1,10 @@
-defmodule Flambe.AccountsTest do
-  use Flambe.DataCase
+defmodule Steady.AccountsTest do
+  use Steady.DataCase
 
-  alias Flambe.{Accounts, TestHelper}
+  alias Steady.{Accounts, TestHelper}
 
   describe "users" do
-    alias Flambe.Accounts.User
+    alias Steady.Accounts.User
 
     @valid_attrs %{email: "some email", name: "some name"}
     @update_attrs %{email: "some updated email", name: "some updated name"}
@@ -68,7 +68,7 @@ defmodule Flambe.AccountsTest do
   end
 
   describe "credentials" do
-    alias Flambe.Accounts.Credential
+    alias Steady.Accounts.Credential
 
     @valid_attrs %{email: "some email"}
     @update_attrs %{email: "some updated email"}
@@ -127,7 +127,7 @@ defmodule Flambe.AccountsTest do
   end
 
   describe "categories" do
-    alias Flambe.Accounts.Category
+    alias Steady.Accounts.Category
 
     @valid_attrs %{color: "some color", name: "some name"}
     @update_attrs %{color: "some updated color", name: "some updated name"}
@@ -189,7 +189,7 @@ defmodule Flambe.AccountsTest do
   end
 
   describe "todos" do
-    alias Flambe.Accounts.Todo
+    alias Steady.Accounts.Todo
 
     @valid_attrs %{description: "some description", name: "some name"}
     @update_attrs %{description: "some updated description", name: "some updated name"}
@@ -251,7 +251,7 @@ defmodule Flambe.AccountsTest do
   end
 
   describe "mantras" do
-    alias Flambe.Accounts.Mantra
+    alias Steady.Accounts.Mantra
 
     @valid_attrs %{name: "some name"}
     @update_attrs %{name: "some updated name"}
@@ -311,7 +311,7 @@ defmodule Flambe.AccountsTest do
   end
 
   describe "attentions" do
-    alias Flambe.Accounts.Attention
+    alias Steady.Accounts.Attention
 
     @valid_attrs %{}
     @update_attrs %{}
@@ -369,7 +369,7 @@ defmodule Flambe.AccountsTest do
   end
 
   describe "tabs" do
-    alias Flambe.Accounts.Tabs
+    alias Steady.Accounts.Tabs
 
     @valid_attrs %{count: 42}
     @update_attrs %{count: 43}
@@ -429,7 +429,7 @@ defmodule Flambe.AccountsTest do
   end
 
   describe "searches" do
-    alias Flambe.Accounts.Searches
+    alias Steady.Accounts.Searches
 
     @valid_attrs %{term: "some term", timestamp: "2010-04-17 14:00:00.000000Z"}
     @update_attrs %{term: "some updated term", timestamp: "2011-05-18 15:01:01.000000Z"}

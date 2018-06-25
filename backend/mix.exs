@@ -1,9 +1,9 @@
-defmodule Flambe.Mixfile do
+defmodule Steady.Mixfile do
   use Mix.Project
 
   def project do
     [
-      app: :flambe,
+      app: :steady,
       version: "0.0.1",
       elixir: "~> 1.4",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -19,7 +19,7 @@ defmodule Flambe.Mixfile do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Flambe.Application, []},
+      mod: {Steady.Application, []},
       extra_applications: [:logger, :runtime_tools, :ueberauth, :ueberauth_github]
     ]
   end

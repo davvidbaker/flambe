@@ -1,11 +1,11 @@
 # 💁 Right now you can only create events. They can't be changed.
 
-defmodule FlambeWeb.EventControllerTest do
-  use FlambeWeb.ConnCase
+defmodule SteadyWeb.EventControllerTest do
+  use SteadyWeb.ConnCase
 
-  alias Flambe.Traces
-  alias Flambe.Traces.{Activity, Trace}
-  alias Flambe.TestHelper
+  alias Steady.Traces
+  alias Steady.Traces.{Activity, Trace}
+  alias Steady.TestHelper
 
   # 💁 The only way a begin event is created is when a new activity is created.
   # @create_begin_attrs %{phase: "B", timestamp_integer: 1509092227708, message: ""}
@@ -17,7 +17,7 @@ defmodule FlambeWeb.EventControllerTest do
   # ⚠️ I don't know how and when to use fixtures yet
   def activity_fixture(:event) do
     # trace =
-    #   TestHelper.create_dummy_user 
+    #   TestHelper.create_dummy_user
     #   |> TestHelper.create_dummy_trace()
 
     # [main_thread | _tail] = Traces.list_trace_threads(trace)
@@ -37,7 +37,7 @@ defmodule FlambeWeb.EventControllerTest do
 
       [main_thread | _tail] =
         trace
-        |> Flambe.Repo.preload(:threads)
+        |> Steady.Repo.preload(:threads)
         |> Traces.list_trace_threads()
 
       {:ok, %Activity{id: activity_id}} =

@@ -1,4 +1,4 @@
-defmodule Flambe.Repo.Migrations.CreateSearchTerms do
+defmodule Steady.Repo.Migrations.CreateSearchTerms do
   use Ecto.Migration
 
   def change do

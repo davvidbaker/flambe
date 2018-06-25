@@ -1,8 +1,8 @@
-defmodule FlambeWeb.SearchTermControllerTest do
-  use FlambeWeb.ConnCase
+defmodule SteadyWeb.SearchTermControllerTest do
+  use SteadyWeb.ConnCase
 
-  alias Flambe.Accounts
-  alias Flambe.Accounts.SearchTerm
+  alias Steady.Accounts
+  alias Steady.Accounts.SearchTerm
 
   @create_attrs %{term: "some term", timestamp: "2010-04-17 14:00:00.000000Z"}
   @update_attrs %{term: "some updated term", timestamp: "2011-05-18 15:01:01.000000Z"}

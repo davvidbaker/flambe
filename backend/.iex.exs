@@ -1,3 +1,3 @@
 IO.puts "hello david"
 
-alias Flambe.{Accounts}
+alias Steady.{Accounts}

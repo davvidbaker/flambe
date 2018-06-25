@@ -1,8 +1,8 @@
-defmodule FlambeWeb.CategoryControllerTest do
-  use FlambeWeb.ConnCase
+defmodule SteadyWeb.CategoryControllerTest do
+  use SteadyWeb.ConnCase
 
-  alias Flambe.Accounts
-  alias Flambe.Accounts.Category
+  alias Steady.Accounts
+  alias Steady.Accounts.Category
 
   @create_attrs %{color: "some color", name: "some name"}
   @update_attrs %{color: "some updated color", name: "some updated name"}
@@ -24,7 +24,7 @@ defmodule FlambeWeb.CategoryControllerTest do
     end
   end
 
-  # ⚠️ the next time you test this, I bet this function fails, since now to create a category you need an associated activity 
+  # ⚠️ the next time you test this, I bet this function fails, since now to create a category you need an associated activity
   describe "create category" do
     test "renders category when data is valid", %{conn: conn} do
       conn = post(conn, category_path(conn, :create), category: @create_attrs)

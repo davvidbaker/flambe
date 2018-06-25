@@ -1,4 +1,4 @@
-defmodule Flambe.Repo.Migrations.AddWindowCountToTabs do
+defmodule Steady.Repo.Migrations.AddWindowCountToTabs do
   use Ecto.Migration
 
   def change do
