@@ -1,4 +1,4 @@
-defmodule FlambeWeb.ChannelCase do
+defmodule SteadyWeb.ChannelCase do
   @moduledoc """
   This module defines the test case to be used by
   channel tests.
@@ -21,15 +21,15 @@ defmodule FlambeWeb.ChannelCase do
       use Phoenix.ChannelTest
 
       # The default endpoint for testing
-      @endpoint FlambeWeb.Endpoint
+      @endpoint SteadyWeb.Endpoint
     end
   end
 
   setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Flambe.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Steady.Repo)
 
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Flambe.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(Steady.Repo, {:shared, self()})
     end
 
     :ok

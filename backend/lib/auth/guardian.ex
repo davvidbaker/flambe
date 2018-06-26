@@ -1,5 +1,5 @@
-defmodule Flambe.Guardian do
-  use Guardian, otp_app: :flambe
+defmodule Steady.Guardian do
+  use Guardian, otp_app: :steady
 
   def subject_for_token(resource, _claims) do
     sub = to_string(resource.id)
@@ -14,7 +14,7 @@ defmodule Flambe.Guardian do
   def resource_from_claims(claims) do
     id = claims["sub"]
     # ⚠️ might want to use get_user (no bang) and handle error...
-    resource = Flambe.Accounts.get_user!(id)
+    resource = Steady.Accounts.get_user!(id)
     {:ok, resource}
   end
 

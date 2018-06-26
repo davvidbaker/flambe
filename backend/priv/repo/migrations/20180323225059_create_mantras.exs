@@ -1,4 +1,4 @@
-defmodule Flambe.Repo.Migrations.CreateMantras do
+defmodule Steady.Repo.Migrations.CreateMantras do
   use Ecto.Migration
 
   def change do

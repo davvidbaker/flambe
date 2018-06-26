@@ -1,4 +1,4 @@
-defmodule Flambe.Repo.Migrations.CreateActivitiesCategoriesJoinTable do
+defmodule Steady.Repo.Migrations.CreateActivitiesCategoriesJoinTable do
   use Ecto.Migration
 
   def change do

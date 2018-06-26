@@ -1,4 +1,4 @@
-defmodule Flambe.AuthErrorHandler do
+defmodule Steady.AuthErrorHandler do
   import Plug.Conn
 
   def auth_error(conn, {type, reason}, _opts) do
