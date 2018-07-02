@@ -1,6 +1,7 @@
 {
   "name": "flambe-docs",
-  "version": "0.1.8",
+  "private": true,
+  "version": "0.1.9",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,11 +11,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "flambe-core": "^0.1.8",
+    "flambe-core": "^0.1.9",
     "flambe-logo": "^0.1.8",
     "react": "^16.4.0",
     "react-dom": "^16.4.0",
     "regenerator-runtime": "^0.11.1",
-    "styled-components": "^3.3.2"
+    "styled-components": "^3.3.3"
   }
 }
