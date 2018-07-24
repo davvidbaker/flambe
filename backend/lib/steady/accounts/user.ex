@@ -19,7 +19,7 @@ defmodule Steady.Accounts.User do
   @doc false
   def changeset(%User{} = user, attrs) do
     user
-    |> cast(attrs, [:name, :note_to_self])
+    |> cast(attrs, [:name, :username])
     |> validate_required([:name, :username])
     |> validate_length(:username, min: 1, max: 20)
     |> unique_constraint(:username)

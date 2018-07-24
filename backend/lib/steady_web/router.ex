@@ -8,16 +8,15 @@ defmodule SteadyWeb.Router do
     plug(:fetch_session)
     plug(:fetch_flash)
     plug(:protect_from_forgery)
-    plug(:put_secure_browser_headers)
   end
 
   pipeline :api do
     plug(:accepts, ["json"])
-    plug(:fetch_session)
+    plug(:fetch_cookies)
   end
 
   pipeline :authenticate_user do
-    # plug(Steady.AuthPipeline)
+    plug(Steady.AuthPipeline)
   end
 
   scope "/", SteadyWeb do
@@ -33,15 +32,8 @@ defmodule SteadyWeb.Router do
     resources("/sessions", SessionController, only: [:create, :delete], singleton: true)
   end
 
-  scope "/cms", SteadyWeb.CMS, as: :cms do
-    pipe_through([:browser, :authenticate_user])
-
-    resources("/pages", PageController)
-  end
-
   scope "/auth", SteadyWeb do
     pipe_through([:browser])
-
     get("/:provider", AuthController, :request)
     get("/:provider/callback", AuthController, :callback)
     post("/:provider/callback", AuthController, :callback)

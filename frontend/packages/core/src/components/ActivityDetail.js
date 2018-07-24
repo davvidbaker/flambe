@@ -3,12 +3,6 @@ import styled from 'styled-components';
 import Modal from 'react-modal';
 import { connect } from 'react-redux';
 
-import Category from './Category';
-import ActivityEventFlow from './ActivityEventFlow';
-import AddCategory from './AddCategory';
-import DeleteButton from './DeleteButton';
-import Grid from './Grid';
-import { InputFromButton } from './Button';
 import {
   deleteActivity,
   endActivity,
@@ -16,11 +10,20 @@ import {
   createCategory,
   updateCategory,
   hideActivityDetails,
+  ACTIVITY_DETAILS_SHOW
 } from '../actions';
 import { getUser } from '../reducers/user';
-
+// types
 import type { Activity } from '../types/Activity';
 import type { Category as CategoryType } from '../types/Category';
+import { activityCommandsByStatus } from '../constants/commands';
+
+import Category from './Category';
+import ActivityEventFlow from './ActivityEventFlow';
+import AddCategory from './AddCategory';
+import DeleteButton from './DeleteButton';
+import Grid from './Grid';
+import Button, { InputFromButton } from './Button';
 
 const P = styled.p`
   margin: 0;
@@ -44,7 +47,7 @@ type Props = {
   addCategory: ({ variables: {} }) => mixed,
   updateCategory: ({ name?: string, color?: string }) => mixed,
   updateName: ({ variables: { name: string } }) => mixed,
-  threadLevels: { [string]: number },
+  threadLevels: { [string]: number }
 };
 
 class ActivityDetail extends React.Component<Props> {
@@ -52,13 +55,13 @@ class ActivityDetail extends React.Component<Props> {
     this.props.createCategory({
       activity_id: this.props.activity.id,
       name,
-      color_background: hexString,
+      color_background: hexString
     });
   };
 
   addExistingCategory = (category_id: string) => {
     this.props.updateActivity(this.props.activity.id, {
-      category_ids: [category_id],
+      category_ids: [category_id]
     });
   };
 
@@ -72,6 +75,7 @@ class ActivityDetail extends React.Component<Props> {
       threadLevels,
       updateCategory,
       categories,
+      submitCommand
     } = this.props;
 
     return (
@@ -85,7 +89,7 @@ class ActivityDetail extends React.Component<Props> {
           submit={(value: string) => {
             updateActivity(activity.id, {
               name: value,
-              thread_id: activity.thread_id,
+              thread_id: activity.thread_id
             });
           }}
         >
@@ -100,7 +104,6 @@ class ActivityDetail extends React.Component<Props> {
         >
           Delete Activity
         </DeleteButton>
-
         <div>
           Categories:
           <ul>
@@ -130,6 +133,39 @@ class ActivityDetail extends React.Component<Props> {
           </ul>
         </div>
         <ActivityEventFlow activityBlocks={activityBlocks} />
+        {activityCommandsByStatus(activity.status)
+          .filter(cmd => cmd.action !== ACTIVITY_DETAILS_SHOW)
+          .map(cmd =>
+            (cmd.parameters && cmd.parameters.length > 0 ? (
+            /* ⚠️ right now there is only one parameter, so this works find */
+              <InputFromButton
+                submit={(value: string) => {
+                  submitCommand({
+                    ...cmd,
+                    message: value,
+                    activity_id: activity.id,
+                    thread_id: activity.thread_id
+                  });
+                }}
+                placeholder={cmd.parameters[0].placeholder}
+                key={cmd.copy}
+              >
+                {cmd.copy}
+              </InputFromButton>
+            ) : (
+              <Button
+                onClick={() =>
+                  submitCommand({
+                    ...cmd,
+                    activity_id: activity.id,
+                    thread_id: activity.thread_id
+                  })
+                } 
+                key={cmd.copy}
+              >
+                {cmd.copy}
+              </Button>
+            )))}
       </Modal>
     );
   }
@@ -139,7 +175,7 @@ export default // flow-ignore
 connect(
   state => ({
     categories: getUser(state).categories,
-    activityDetailsVisible: state.activityDetailsVisible,
+    activityDetailsVisible: state.activityDetailsVisible
   }),
   dispatch => ({
     createCategory: ({ activity_id, name, color_background }) =>
@@ -148,15 +184,15 @@ connect(
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
-    endActivity: ({ id, timestamp, message, thread_id, eventFlavor = 'E' }) =>
-      dispatch(
-        endActivity({
-          id,
-          timestamp,
-          message,
-          thread_id,
-          eventFlavor,
-        })
-      ),
+    endActivity: ({
+      id, timestamp, message, thread_id, eventFlavor = 'E'
+    }) =>
+      dispatch(endActivity({
+        id,
+        timestamp,
+        message,
+        thread_id,
+        eventFlavor
+      }))
   })
 )(ActivityDetail);

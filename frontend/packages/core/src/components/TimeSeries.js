@@ -2,6 +2,10 @@ import React, { Component } from 'react';
 import last from 'lodash/last';
 import styled from 'styled-components';
 import findLast from 'lodash/fp/findLast';
+import sampleSize from 'lodash/sampleSize';
+import range from 'lodash/range';
+import pullAt from 'lodash/pullAt';
+import Measure from 'react-measure';
 
 import {
   setCanvasSize,
@@ -26,7 +30,6 @@ class TimeSeries extends Component {
   static textPadding = { x: 5, y: 13.5 };
   static chartPadding = { x: 0, y: 15 };
   blockHeight = 20;
-  chartHeight = 50 - TimeSeries.chartPadding.y * 2;
 
   state = {
     mouseIsOver: false,
@@ -37,6 +40,22 @@ class TimeSeries extends Component {
     canvasHeight: null,
     devicePixelRatio: 1
   };
+
+  shouldComponentUpdate(nextProps, nextState) {
+    if (
+      nextProps.tabs.length !== this.props.tabs.length ||
+      nextProps.rightBoundaryTime !== this.props.rightBoundaryTime
+    ) {
+      return true;
+    }
+    if (JSON.stringify(nextState) !== JSON.stringify(this.state)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  chartHeight = () => this.state.canvasHeight - TimeSeries.chartPadding.y * 2;
 
   componentDidMount() {
     window.addEventListener('resize', this.setCanvasSize.bind(this));
@@ -81,25 +100,44 @@ class TimeSeries extends Component {
     }
   };
   render() {
-    this.draw();
+    requestAnimationFrame(() => {
+      this.draw();
+    });
 
     return (
-      <>
-        <canvas
-          ref={canvas => {
-            this.canvas = canvas;
+      <div style={{width: '100%'}}>
+        <Measure
+          bounds
+          onResize={contentRect => {
+            this.setState({
+              canvasWidth: contentRect.bounds.width,
+              canvasHeight: contentRect.bounds.height
+            });
           }}
-          style={{
-            width: `${this.state.canvasWidth}px` || '100%',
-            height: `${this.state.canvasHeight}px` || '100%'
-          }}
-          height={this.state.canvasHeight * this.state.devicePixelRatio || 300}
-          width={this.state.canvasWidth * this.state.devicePixelRatio || 450}
-          /* ⚠️ this hs got to be an antipattern to put this in render, right? */
-          onMouseMove={this.onMouseMove}
-          onMouseEnter={this.onMouseEnter}
-          onMouseLeave={this.onMouseLeave}
-        />
+        >
+          {({ measureRef }) => (
+            <canvas
+              ref={canvas => {
+                measureRef(canvas);
+                this.canvas = canvas;
+              }}
+              style={{
+                width: '100%',
+                height: '100%'
+              }}
+              height={
+                this.state.canvasHeight * this.state.devicePixelRatio || 300
+              }
+              width={
+                this.state.canvasWidth * this.state.devicePixelRatio || 450
+              }
+              /* ⚠️ this hs got to be an antipattern to put this in render, right? */
+              onMouseMove={this.onMouseMove}
+              onMouseEnter={this.onMouseEnter}
+              onMouseLeave={this.onMouseLeave}
+            />
+          )}
+        </Measure>
         <CountsBar hidden={!this.state.mouseIsOver}>
           <div style={{ color: windowColor }}>
             windows: {this.state.hoverWindowCount}
@@ -108,7 +146,7 @@ class TimeSeries extends Component {
             tabs: {this.state.hoverTabCount}
           </div>
         </CountsBar>
-      </>
+      </div>
     );
   }
 
@@ -131,6 +169,7 @@ class TimeSeries extends Component {
         this.state.canvasWidth,
         this.state.canvasHeight
       );
+      /* ⚠️ big perf hit happening here, mostly from tabs and search terms when there are a lot. I need to filter them so there's less shown on the screen at a single time */
       this.drawMantras();
       this.drawTabs();
       this.drawSearchTerms();
@@ -169,15 +208,18 @@ class TimeSeries extends Component {
   }
 
   drawTabs() {
-    getBlockTransform();
-    const tabsWithinTimeWindow = this.props.tabs.filter(({ timestamp }) =>
-      timestamp > this.props.leftBoundaryTime &&
-        timestamp < this.props.rightBoundaryTime);
+    const randomIndices = sampleSize(range(this.props.tabs.length), 100).sort((a, b) => (a < b ? -1 : 1));
+
+    const tabsWithinTimeWindow = pullAt([...this.props.tabs], randomIndices);
+
+    if (tabsWithinTimeWindow.length === 0) return;
 
     const tabsWithX = tabsWithinTimeWindow.map(({ timestamp, ...rest }) => ({
       ...rest,
       x: this.timeToPixels(timestamp)
     }));
+
+    if (tabsWithX.length === 0) return;
 
     const maxTabs = tabsWithX.reduce(
       (acc, { count }) => Math.max(acc, count),
@@ -284,10 +326,9 @@ class TimeSeries extends Component {
   }
 
   countToY(count, maxCount) {
+    const chartHeight = this.chartHeight();
     return (
-      TimeSeries.chartPadding.y +
-      this.chartHeight -
-      count * this.chartHeight / maxCount
+      TimeSeries.chartPadding.y + chartHeight - (count * chartHeight) / maxCount
     );
   }
 

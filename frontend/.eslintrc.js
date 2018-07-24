@@ -10,7 +10,8 @@ module.exports = {
   env: {
     browser: true,
     commonjs: true,
-    es6: true
+    es6: true,
+    'cypress/globals': true
   },
   parser: 'babel-eslint',
   extends: 'airbnb',
@@ -21,7 +22,7 @@ module.exports = {
     // ecmaVersion: 6,
     sourceType: 'module'
   },
-  plugins: ['babel', 'import', 'react', 'jsx-a11y'],
+  plugins: ['babel', 'import', 'react', 'jsx-a11y', 'cypress'],
   globals: {
     NODE_ENV: true,
     SERVER: true,
@@ -57,13 +58,21 @@ module.exports = {
     'import/extensions': 'off',
     'import/prefer-default-export': 'off',
     'import/no-unresolved': 'off',
+    'import/order': [
+      'error',
+      {
+        groups: ['builtin', 'external', 'parent', 'sibling', 'index'],
+        'newlines-between': 'always'
+      }
+    ],
     'jsx-a11y/accessible-emoji': 'off',
     'jsx-a11y/href-no-hash': 'off',
     'jsx-a11y/label-has-for': 'off',
+    'react/jsx-curly-brace-presence': 'off',
     'react/jsx-filename-extension': 'off',
     'react/no-multi-comp': 'off',
     'react/prop-types': 'off',
-    'react/sort-comp': 'off'
+    'react/sort-comp': 'off',
   },
   settings: {
     'import/resolver': {

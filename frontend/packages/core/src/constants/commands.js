@@ -1,3 +1,4 @@
+// @flow
 import sortBy from 'lodash/fp/sortBy';
 import map from 'lodash/fp/map';
 import pipe from 'lodash/fp/pipe';
@@ -15,19 +16,17 @@ import {
   ACTIVITY_DETAILS_SHOW,
   ATTENTION_SHIFT,
   CATEGORY_MANAGER_SHOW,
-  FIND,
   THREAD_CREATE,
   THREADS_COLLAPSE_ALL,
   THREADS_EXPAND_ALL,
   TODOS_TOGGLE,
   SETTINGS_SHOW,
-  VIEW_CHANGE,
+  VIEW_CHANGE
 } from '../actions';
 import {
   rankThreadsByAttention,
-  sortThreadsByRank,
+  sortThreadsByRank
 } from '../utilities/timelineChart';
-
 import { colors } from '../styles';
 
 const threadParam = {
@@ -37,28 +36,20 @@ const threadParam = {
     console.log(
       'props',
 
-      map(([_id, obj]) => obj)(
-        sortThreadsByRank(
-          props.settings.attentionDrivenThreadOrder
-            ? rankThreadsByAttention(props.attentionShifts, props.threads)
-            : props.threads
-        )
-      )
+      map(([_id, obj]) => obj)(sortThreadsByRank(props.settings.attentionDrivenThreadOrder
+        ? rankThreadsByAttention(props.attentionShifts, props.threads)
+        : props.threads))
     ) ||
-    map(([_id, obj]) => obj)(
-      sortThreadsByRank(
-        props.settings.attentionDrivenThreadOrder
-          ? rankThreadsByAttention(props.attentionShifts, props.threads)
-          : props.threads
-      )
-    ),
+    map(([_id, obj]) => obj)(sortThreadsByRank(props.settings.attentionDrivenThreadOrder
+      ? rankThreadsByAttention(props.attentionShifts, props.threads)
+      : props.threads)),
   itemStringKey: 'name',
-  itemReturnKey: 'id',
+  itemReturnKey: 'id'
 };
 
 const categoryLabel = color => ({
   copy: ' ',
-  background: color,
+  background: color
 });
 
 const categoryParam = {
@@ -68,25 +59,23 @@ const categoryParam = {
     const cats = pipe(
       map(cat => ({
         ...cat,
-        label: categoryLabel(cat.color_background),
+        label: categoryLabel(cat.color_background)
       })),
-      sortBy(
-        ({ color_background }) =>
-          tinycolor(color_background)
-            .spin(180)
-            .toHsl().h
-      )
+      sortBy(({ color_background }) =>
+        tinycolor(color_background)
+          .spin(180)
+          .toHsl().h)
     )(props.user.categories);
     return [{ name: 'none', id: null, label: categoryLabel(null) }, ...cats];
   },
   itemStringKey: 'name',
   itemReturnKey: 'id',
-  label: item => categoryLabel(item.color),
+  label: item => categoryLabel(item.color)
 };
 
 const activityLabel = {
   copy: 'Activity',
-  background: colors.flames.main,
+  background: colors.flames.main
 };
 
 const COMMANDS = [
@@ -96,11 +85,11 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'gist/description of the activity',
+        placeholder: 'gist/description of the activity'
       },
       threadParam,
-      categoryParam,
-    ],
+      categoryParam
+    ]
   },
   {
     action: ACTIVITY_CREATE,
@@ -108,32 +97,32 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'what the fuck is happening?',
+        placeholder: 'what the fuck is happening?'
       },
       threadParam,
-      categoryParam,
-    ],
+      categoryParam
+    ]
   },
-  {
-    action: FIND,
-    copy: 'find...',
-    parameters: [
-      {
-        key: 'text',
-        placeholder: 'find',
-        selector: props => {
-          console.log(props);
-          const acts = Object.values(props.activities).map(({ name }) => ({
-            name,
-            value: null,
-          }));
-          return acts;
-          return props.user;
-        },
-      },
-    ],
-    shortcut: '⌘ F',
-  },
+  // {
+  //   action: FIND,
+  //   copy: 'find...',
+  //   parameters: [
+  //     {
+  //       key: 'text',
+  //       placeholder: 'find',
+  //       selector: props => {
+  //         console.log(props);
+  //         const acts = Object.values(props.activities).map(({ name }) => ({
+  //           name,
+  //           value: null,
+  //         }));
+  //         return acts;
+  //         return props.user;
+  //       },
+  //     },
+  //   ],
+  //   shortcut: '⌘ F',
+  // },
   /** ⚠️ TODO make sure the thread name is unique */
   {
     action: THREAD_CREATE,
@@ -141,37 +130,37 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'thread name',
-      },
-    ],
+        placeholder: 'thread name'
+      }
+    ]
   },
   {
     action: TODOS_TOGGLE,
-    copy: 'toggle todo list',
+    copy: 'toggle todo list'
   },
   {
     action: THREADS_COLLAPSE_ALL,
     copy: 'collapse all threads',
-    shortcut: '⇧ {',
+    shortcut: '⇧ {'
   },
   {
     action: THREADS_EXPAND_ALL,
     copy: 'expand all threads',
-    shortcut: '⇧ }',
+    shortcut: '⇧ }'
   },
   {
     action: ATTENTION_SHIFT,
     copy: 'shift attention to...',
-    parameters: [threadParam],
+    parameters: [threadParam]
   },
   {
     action: CATEGORY_MANAGER_SHOW,
-    copy: 'manage categories',
+    copy: 'manage categories'
   },
   {
     action: SETTINGS_SHOW,
     copy: 'open settings',
-    shortcut: '⌘ ,',
+    shortcut: '⌘ ,'
   },
   {
     action: VIEW_CHANGE,
@@ -183,15 +172,15 @@ const COMMANDS = [
         /* ⚠️ kinda hacky */
         selector: () => [
           { name: 'single thread', value: 'singlethread' },
-          { name: 'multithread', value: 'multithread' },
+          { name: 'multithread', value: 'multithread' }
         ],
         itemStringKey: 'name',
-        itemReturnKey: 'value',
+        itemReturnKey: 'value'
       },
       // ⚠️ need a way to make this conditional on choosing a single thread
-      threadParam,
-    ],
-  },
+      threadParam
+    ]
+  }
 ];
 
 const messageParam = { key: 'message', placeholder: 'why?' };
@@ -202,7 +191,7 @@ export const ACTIVITY_COMMANDS = [
     copy: 'just end it',
     status: ['active'],
     label: activityLabel,
-    shortcut: 'E',
+    shortcut: 'E'
   },
   {
     action: ACTIVITY_REJECT,
@@ -210,15 +199,15 @@ export const ACTIVITY_COMMANDS = [
     parameters: [messageParam],
     status: ['active'],
     label: activityLabel,
-    shortcut: 'J',
+    shortcut: 'J'
   },
   {
     action: ACTIVITY_RESOLVE,
     copy: 'end by resolution...',
-    parameters: [messageParam],
+    parameters: [{key: 'message', placeholder: 'closing remarks?'}],
     status: ['active'],
     label: activityLabel,
-    shortcut: 'V',
+    shortcut: 'V'
   },
 
   {
@@ -226,36 +215,41 @@ export const ACTIVITY_COMMANDS = [
     copy: 'resume...',
     parameters: [messageParam],
     status: ['suspended'],
-    label: activityLabel,
+    label: activityLabel
   },
   {
     action: ACTIVITY_RESURRECT,
     copy: 'resurrect...',
     parameters: [messageParam],
     status: ['complete'],
-    label: activityLabel,
+    label: activityLabel
   },
   {
     action: ACTIVITY_SUSPEND,
     copy: 'suspend...',
-    parameters: [messageParam],
+    parameters: [{key: 'message', placeholder: 'how bout a message?'}],
     status: ['active'],
     label: activityLabel,
-    shortcut: 'S',
+    shortcut: 'S'
   },
   {
     action: ACTIVITY_DELETE,
     copy: 'delete',
     status: ['active', 'suspended', 'complete'],
-    label: activityLabel,
+    label: activityLabel
   },
   {
     action: ACTIVITY_DETAILS_SHOW,
     copy: 'edit/view details',
     status: ['active', 'suspended', 'complete'],
     label: activityLabel,
-    shortcut: 'Space',
-  },
+    shortcut: 'Space'
+  }
 ];
+
+type Status = 'active' | 'suspended' | 'complete';
+export function activityCommandsByStatus(status: Status) {
+  return ACTIVITY_COMMANDS.filter(cmd => cmd.status.indexOf(status) >= 0);
+}
 
 export default COMMANDS;

@@ -4,12 +4,7 @@
     "@babel/plugin-proposal-class-properties",
     "@babel/plugin-proposal-object-rest-spread",
     "@babel/plugin-proposal-do-expressions",
-    "@babel/plugin-transform-react-jsx",
-    /**
-    Decorators are not officially supported yet in 6.x pending a proposal update.However, if you need to use them you can install the legacy decorators transform.
-    */
-    // "transform-decorators-legacy",
-    // "react-hot-loader/babel" // currently can't use with babel 7 I don't think
+    "@babel/plugin-transform-react-jsx"
   ],
   "presets": [["@babel/env", { "modules": "commonjs" }], "@babel/react", "@babel/flow"],
 

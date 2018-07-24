@@ -36,6 +36,7 @@ function sortByTime(arr) {
 function user(
   state = {
     name: 'david' /* ⚠️ TODO change */,
+    username: 'david', /* ⚠️ TODO change */
     id: '1',
     traces: [],
     categories: [],

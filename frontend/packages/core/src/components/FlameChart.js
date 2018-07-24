@@ -18,6 +18,7 @@ import zipWith from 'lodash/fp/zipWith';
 import identity from 'lodash/fp/identity';
 import mapValues from 'lodash/fp/mapValues';
 import isUndefined from 'lodash/isUndefined';
+import Measure from 'react-measure';
 
 import {
   setCanvasSize,
@@ -29,9 +30,8 @@ import {
   isVisible,
   sortThreadsByRank
 } from '../utilities/timelineChart';
+
 /* 🔮  abstract into parts of react-flame-chart? */
-import FocusActivity from './FocusActivity';
-import Tooltip from './Tooltip';
 
 import {
   constrain,
@@ -42,9 +42,11 @@ import {
 import { focusBlock, hoverBlock } from '../actions';
 import { getTimeline } from '../reducers/timeline';
 import { colors } from '../styles';
-
 import type { Activity } from '../types/Activity';
 import type { Category as CategoryType } from '../types/Category';
+
+import Tooltip from './Tooltip';
+import FocusActivity from './FocusActivity';
 
 const reduceWithIndices = reduce.convert({ cap: false });
 
@@ -102,8 +104,8 @@ class FlameChart extends Component<Props, State> {
 
   blockHeight = 20; // px
   state = {
-    canvasWidth: null,
-    canvasHeight: null,
+    canvasWidth: 300,
+    canvasHeight: 150,
     cursor: {
       x: 0,
       y: 0
@@ -567,26 +569,43 @@ class FlameChart extends Component<Props, State> {
           position: 'relative'
         }}
       >
-        <canvas
-          ref={canvas => {
-            this.canvas = canvas;
+        <Measure
+          bounds
+          onResize={contentRect => {
+            this.setState({
+              canvasWidth: contentRect.bounds.width,
+              canvasHeight: contentRect.bounds.height
+            });
           }}
-          onClick={this.onClick}
-          onContextMenu={this.onContextMenu}
-          onDrag={this.onDrag}
-          onMouseMove={this.onMouseMove}
-          onMouseDown={this.onMouseDown}
-          onMouseUp={this.onMouseUp}
-          onTouchMove={this.onTouchMove}
-          onTouchStart={this.onTouchStart}
-          onWheel={this.onWheel}
-          style={{
-            width: `${this.state.canvasWidth}px` || '100%',
-            height: `${this.state.canvasHeight}px` || '100%'
-          }}
-          height={this.state.canvasHeight * this.state.devicePixelRatio || 300}
-          width={this.state.canvasWidth * this.state.devicePixelRatio || 450}
-        />
+        >
+          {({ measureRef }) => (
+            <canvas
+              ref={canvas => {
+                measureRef(canvas);
+                this.canvas = canvas;
+              }}
+              onClick={this.onClick}
+              onContextMenu={this.onContextMenu}
+              onDrag={this.onDrag}
+              onMouseMove={this.onMouseMove}
+              onMouseDown={this.onMouseDown}
+              onMouseUp={this.onMouseUp}
+              onTouchMove={this.onTouchMove}
+              onTouchStart={this.onTouchStart}
+              onWheel={this.onWheel}
+              style={{
+                width: '100%',
+                height: '100%'
+              }}
+              height={
+                this.state.canvasHeight * this.state.devicePixelRatio || 300
+              }
+              width={
+                this.state.canvasWidth * this.state.devicePixelRatio || 450
+              }
+            />
+          )}
+        </Measure>
 
         {/* Probably want to lift FocusActivty and HoverActivity up so updating it doesn't cause entire re-render... */}
         {this.canvas && [

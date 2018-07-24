@@ -23,7 +23,7 @@ config :logger, :console,
 config :ueberauth, Ueberauth,
   providers: [
     # facebook: { Ueberauth.Strategy.Facebook, [ opt1: "value", opts2: "value" ]},
-    github: {Ueberauth.Strategy.Github, []}
+    github: {Ueberauth.Strategy.Github, [send_redirect_uri: false]}
   ]
 
 config :steady, Steady.AuthPipeline,

@@ -29,7 +29,7 @@ defmodule SteadyWeb do
   def view do
     quote do
       use Phoenix.View,
-        root: "lib/flambe_web/templates",
+        root: "lib/steady_web/templates",
         namespace: SteadyWeb
 
       # Import convenience functions from controllers

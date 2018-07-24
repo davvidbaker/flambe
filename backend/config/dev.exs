@@ -45,10 +45,12 @@ config :steady, SteadyWeb.Endpoint,
     patterns: [
       ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
       ~r{priv/gettext/.*(po)$},
-      ~r{lib/flambe_web/views/.*(ex)$},
-      ~r{lib/flambe_web/templates/.*(eex)$}
+      ~r{lib/steady_web/views/.*(ex)$},
+      ~r{lib/steady_web/templates/.*(eex)$}
     ]
   ]
+
+config :steady, frontend_url: "https://localhost:8081"
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"
@@ -62,6 +64,7 @@ config :steady, Steady.Repo,
   adapter: Ecto.Adapters.Postgres,
   username: "postgres",
   password: "postgres",
+  # ⚠️ i itntionally still flambe because thatii's the name of the db on my system
   database: "flambe_dev",
   hostname: "localhost",
   pool_size: 10

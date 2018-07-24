@@ -322,6 +322,10 @@ defmodule Steady.Traces do
   """
   def get_activity!(id), do: Repo.get!(Activity, id)
 
+  def get_activity_with_events(id) do
+    Repo.get!(Activity, id) |> Repo.preload(:events)
+  end
+
   @doc """
   Creates a activity.
 

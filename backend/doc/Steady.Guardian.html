@@ -1,0 +1,879 @@
+    <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.18.3">
+    <title>Steady.Guardian – steady v0.0.1</title>
+    <link rel="stylesheet" href="dist/app-480ffdc169.css" />
+    
+    <script src="dist/sidebar_items-f6d54bb38e.js"></script>
+    
+    
+    
+    
+  </head>
+  <body data-type="modules">
+    <script>try { if(localStorage.getItem('night-mode')) document.body.className += ' night-mode'; } catch (e) { }</script>
+
+    <div class="main">
+<button class="sidebar-button sidebar-toggle">
+  <span class="icon-menu" aria-hidden="true"></span>
+  <span class="sr-only">Toggle Sidebar</span>
+</button>
+<button class="sidebar-button night-mode-toggle">
+  <span class="icon-theme" aria-hidden="true"></span>
+  <span class="sr-only">Toggle Theme</span>
+</button>
+<section class="sidebar">
+
+  
+  <a href="api-reference.html" class="sidebar-projectLink">
+    <div class="sidebar-projectDetails">
+      <h1 class="sidebar-projectName">
+        steady
+      </h1>
+      <h2 class="sidebar-projectVersion">
+        v0.0.1
+      </h2>
+    </div>
+    
+  </a>
+
+  <form class="sidebar-search" action="search.html">
+    <button type="submit" class="search-button">
+      <span class="icon-search" aria-hidden="true"></span>
+    </button>
+    <input name="q" type="text" id="search-list" class="search-input" placeholder="Search" aria-label="Search" autocomplete="off" />
+  </form>
+
+  <ul class="sidebar-listNav">
+    <li><a id="extras-list" href="#full-list">Pages</a></li>
+
+    
+      <li><a id="modules-list" href="#full-list">Modules</a></li>
+    
+
+    
+
+    
+  </ul>
+  <div class="gradient"></div>
+  <ul id="full-list" class="sidebar-fullList"></ul>
+</section>
+
+<section class="content">
+  <div class="content-outer">
+    <div id="content" class="content-inner">
+
+
+      <h1>
+        <small class="visible-xs">steady v0.0.1</small>
+        Steady.Guardian
+        
+      </h1>
+
+      
+
+      
+        <section id="summary" class="details-list">
+          <h1 class="section-heading">
+            <a class="hover-link" href="#summary">
+              <span class="icon-link" aria-hidden="true"></span>
+              <span class="sr-only">Link to this section</span>
+            </a>
+            Summary
+          </h1>
+          
+
+          
+  <div class="summary-functions summary">
+    <h2>
+      <a href="#functions">Functions</a>
+    </h2>
+    <div class="summary-row">
+  <div class="summary-signature">
+    <a href="#after_encode_and_sign/4">after_encode_and_sign(r, claims, token, _)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An optional callback invoked after the token has been generated
+and signed</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#after_sign_in/5">after_sign_in(conn, r, t, c, o)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An optional callback invoked after sign in has been called</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#before_sign_out/3">before_sign_out(conn, location, opts)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An optional callback invoked before sign out has happened</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#build_claims/3">build_claims(c, _, _)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An optional callback that allows the claims to be modified
+while they’re being built.
+This is useful to hook into the encoding lifecycle</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#config/0">config()</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Fetches the configuration for this module</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#config/2">config(key, default \\ nil)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Returns a resolved value of the configuration found at a key</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#decode_and_verify/3">decode_and_verify(token, claims_to_check \\ %{}, opts \\ [])</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Decodes and verifies a token using the configuration on the implementation
+module</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#default_token_type/0">default_token_type()</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>The default type of token for this module</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#encode_and_sign/3">encode_and_sign(resource, claims \\ %{}, opts \\ [])</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Encodes the claims.
+See <code class="inline">Guardian.encode_and_sign</code> for more information</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#exchange/4">exchange(token, from_type, to_type, opts \\ [])</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Exchanges a token of one type for another</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#on_exchange/3">on_exchange(old_stuff, new_stuff, options)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An optional callback invoked when a token is exchanged</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#on_refresh/3">on_refresh(old_stuff, new_stuff, options)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An optional callback invoked when a token is refreshed</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#on_revoke/3">on_revoke(claims, token, options)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An optional callback invoked when a token is revoked</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#on_verify/3">on_verify(claims, token, options)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An optional callback invoked after the claims have been validated</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#peek/1">peek(token)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Provides the content of the token but without verification
+of either the claims or the signature</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#refresh/2">refresh(old_token, opts \\ [])</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Refresh a token</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#resource_from_claims/1">resource_from_claims(claims)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Fetches the resource that is represented by claims</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#resource_from_token/3">resource_from_token(token, claims_to_check \\ %{}, opts \\ [])</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Fetch the resource and claims directly from a token</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#revoke/2">revoke(token, opts \\ [])</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Revoke a token</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#subject_for_token/0">subject_for_token()</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#subject_for_token/2">subject_for_token(resource, claims)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Fetches the subject for a token for the provided resource and claims
+The subject should be a short identifier that can be used to identify
+the resource</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#verify_claims/2">verify_claims(claims, options)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An optional callback to add custom verification to claims when
+decoding a token</p>
+</div>
+  
+</div>
+
+  </div>
+
+
+          
+
+        </section>
+      
+
+      
+
+      
+        <section id="functions" class="details-list">
+          <h1 class="section-heading">
+            <a class="hover-link" href="#functions">
+              <span class="icon-link" aria-hidden="true"></span>
+              <span class="sr-only">Link to this section</span>
+            </a>
+            Functions
+          </h1>
+          <div class="detail" id="after_encode_and_sign/4">
+  
+  
+  <div class="detail-header">
+    <a href="#after_encode_and_sign/4" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">after_encode_and_sign(r, claims, token, _)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>An optional callback invoked after the token has been generated
+and signed.</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:after_encode_and_sign/4"><code class="inline">Guardian.after_encode_and_sign/4</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="after_sign_in/5">
+  
+  
+  <div class="detail-header">
+    <a href="#after_sign_in/5" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">after_sign_in(conn, r, t, c, o)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>An optional callback invoked after sign in has been called</p>
+<p>By returning an error the sign in will be halted</p>
+<ul>
+<li>Note that if you return an error, a token still may have been generated
+</li>
+</ul>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:after_sign_in/5"><code class="inline">Guardian.after_sign_in/5</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="before_sign_out/3">
+  
+  
+  <div class="detail-header">
+    <a href="#before_sign_out/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">before_sign_out(conn, location, opts)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>An optional callback invoked before sign out has happened</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:before_sign_out/3"><code class="inline">Guardian.before_sign_out/3</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="build_claims/3">
+  
+  
+  <div class="detail-header">
+    <a href="#build_claims/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">build_claims(c, _, _)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>An optional callback that allows the claims to be modified
+while they’re being built.
+This is useful to hook into the encoding lifecycle</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:build_claims/3"><code class="inline">Guardian.build_claims/3</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="config/0">
+  
+  
+  <div class="detail-header">
+    <a href="#config/0" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">config()</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>config() :: <a href="https://hexdocs.pm/elixir/Keyword.html#t:t/0">Keyword.t</a>()</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>Fetches the configuration for this module</p>
+
+  </section>
+</div>
+<div class="detail" id="config/2">
+  
+  
+    <span id="config/1"></span>
+  
+  <div class="detail-header">
+    <a href="#config/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">config(key, default \\ nil)</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>config(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>() | <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>()</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>Returns a resolved value of the configuration found at a key</p>
+<p>See <code class="inline">Guardian.Config.resolve_value</code></p>
+
+  </section>
+</div>
+<div class="detail" id="decode_and_verify/3">
+  
+  
+    <span id="decode_and_verify/1"></span>
+  
+    <span id="decode_and_verify/2"></span>
+  
+  <div class="detail-header">
+    <a href="#decode_and_verify/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">decode_and_verify(token, claims_to_check \\ %{}, opts \\ [])</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>decode_and_verify(
+  <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(),
+  <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>(),
+  <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#t:options/0">Guardian.options</a>()
+) :: {:ok, <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>()}</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>Decodes and verifies a token using the configuration on the implementation
+module.</p>
+<p>See <code class="inline">Guardian.decode_and_verify</code></p>
+
+  </section>
+</div>
+<div class="detail" id="default_token_type/0">
+  
+  
+  <div class="detail-header">
+    <a href="#default_token_type/0" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">default_token_type()</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>default_token_type() :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>The default type of token for this module</p>
+
+  </section>
+</div>
+<div class="detail" id="encode_and_sign/3">
+  
+  
+    <span id="encode_and_sign/1"></span>
+  
+    <span id="encode_and_sign/2"></span>
+  
+  <div class="detail-header">
+    <a href="#encode_and_sign/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">encode_and_sign(resource, claims \\ %{}, opts \\ [])</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>encode_and_sign(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#t:options/0">Guardian.options</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>()}</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>Encodes the claims.
+See <code class="inline">Guardian.encode_and_sign</code> for more information</p>
+
+  </section>
+</div>
+<div class="detail" id="exchange/4">
+  
+  
+    <span id="exchange/3"></span>
+  
+  <div class="detail-header">
+    <a href="#exchange/4" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">exchange(token, from_type, to_type, opts \\ [])</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>exchange(
+  token :: <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(),
+  from_type :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), ...],
+  to_type :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  options :: <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#t:options/0">Guardian.options</a>()
+) ::
+  {:ok, {<a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>()},
+   {<a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>()}}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>()}</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>Exchanges a token of one type for another.</p>
+<p>See <code class="inline">Guardian.exchange</code> for more information</p>
+
+  </section>
+</div>
+<div class="detail" id="on_exchange/3">
+  
+  
+  <div class="detail-header">
+    <a href="#on_exchange/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">on_exchange(old_stuff, new_stuff, options)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>An optional callback invoked when a token is exchanged</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:on_exchange/3"><code class="inline">Guardian.on_exchange/3</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="on_refresh/3">
+  
+  
+  <div class="detail-header">
+    <a href="#on_refresh/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">on_refresh(old_stuff, new_stuff, options)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>An optional callback invoked when a token is refreshed</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:on_refresh/3"><code class="inline">Guardian.on_refresh/3</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="on_revoke/3">
+  
+  
+  <div class="detail-header">
+    <a href="#on_revoke/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">on_revoke(claims, token, options)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>An optional callback invoked when a token is revoked</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:on_revoke/3"><code class="inline">Guardian.on_revoke/3</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="on_verify/3">
+  
+  
+  <div class="detail-header">
+    <a href="#on_verify/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">on_verify(claims, token, options)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>An optional callback invoked after the claims have been validated</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:on_verify/3"><code class="inline">Guardian.on_verify/3</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="peek/1">
+  
+  
+  <div class="detail-header">
+    <a href="#peek/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">peek(token)</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>peek(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>Provides the content of the token but without verification
+of either the claims or the signature</p>
+<p>Claims will be present at the <code class="inline">:claims</code> key.</p>
+<p>See <code class="inline">Guardian.peek</code> for more information</p>
+
+  </section>
+</div>
+<div class="detail" id="refresh/2">
+  
+  
+    <span id="refresh/1"></span>
+  
+  <div class="detail-header">
+    <a href="#refresh/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">refresh(old_token, opts \\ [])</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>refresh(<a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#t:options/0">Guardian.options</a>()) ::
+  {:ok, {<a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>()},
+   {<a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>()}}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>()}</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>Refresh a token.</p>
+<p>See <code class="inline">Guardian.refresh</code> for more information</p>
+
+  </section>
+</div>
+<div class="detail" id="resource_from_claims/1">
+  
+  
+  <div class="detail-header">
+    <a href="#resource_from_claims/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">resource_from_claims(claims)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>Fetches the resource that is represented by claims.</p>
+<p>For JWT this would normally be found in the <code class="inline">sub</code> field</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:resource_from_claims/1"><code class="inline">Guardian.resource_from_claims/1</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="resource_from_token/3">
+  
+  
+    <span id="resource_from_token/1"></span>
+  
+    <span id="resource_from_token/2"></span>
+  
+  <div class="detail-header">
+    <a href="#resource_from_token/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">resource_from_token(token, claims_to_check \\ %{}, opts \\ [])</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>resource_from_token(
+  token :: <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(),
+  claims_to_check :: <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>() | nil,
+  opts :: <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#t:options/0">Guardian.options</a>()
+) :: {:ok, <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:resource/0">Guardian.Token.resource</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>()}</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>Fetch the resource and claims directly from a token</p>
+<p>See <code class="inline">Guardian.resource_from_token</code> for more information</p>
+
+  </section>
+</div>
+<div class="detail" id="revoke/2">
+  
+  
+    <span id="revoke/1"></span>
+  
+  <div class="detail-header">
+    <a href="#revoke/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">revoke(token, opts \\ [])</span>
+    
+    
+    
+      <div class="specs">
+        
+          <pre>revoke(<a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:token/0">Guardian.Token.token</a>(), <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#t:options/0">Guardian.options</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.Token.html#t:claims/0">Guardian.Token.claims</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">any</a>()}</pre>
+        
+      </div>
+    
+  </div>
+  <section class="docstring">
+    <p>Revoke a token.</p>
+<p>See <code class="inline">Guardian.revoke</code> for more information</p>
+
+  </section>
+</div>
+<div class="detail" id="subject_for_token/0">
+  
+  
+  <div class="detail-header">
+    <a href="#subject_for_token/0" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">subject_for_token()</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="subject_for_token/2">
+  
+  
+  <div class="detail-header">
+    <a href="#subject_for_token/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">subject_for_token(resource, claims)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>Fetches the subject for a token for the provided resource and claims
+The subject should be a short identifier that can be used to identify
+the resource</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:subject_for_token/2"><code class="inline">Guardian.subject_for_token/2</code></a>.</p>
+
+  </section>
+</div>
+<div class="detail" id="verify_claims/2">
+  
+  
+  <div class="detail-header">
+    <a href="#verify_claims/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">verify_claims(claims, options)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    <p>An optional callback to add custom verification to claims when
+decoding a token</p>
+<p>Returning {:ok, claims} will allow the decoding to continue
+Returning {:error, reason} will stop the decoding and return the error</p>
+<p>Callback implementation for <a href="https://hexdocs.pm/guardian/1.0.1/Guardian.html#c:verify_claims/2"><code class="inline">Guardian.verify_claims/2</code></a>.</p>
+
+  </section>
+</div>
+
+        </section>
+      
+
+      
+          <footer class="footer">
+        <p>
+          <span class="line">
+            Built using
+            <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" rel="help" target="_blank">ExDoc</a> (v0.18.3),
+          </span>
+          <span class="line">
+            designed by
+            <a href="https://twitter.com/dignifiedquire" target="_blank" title="@dignifiedquire">Friedel Ziegelmayer</a>.
+            </span>
+        </p>
+      </footer>
+    </div>
+  </div>
+</section>
+</div>
+  <script src="dist/app-9bd040e5e5.js"></script>
+  
+  
+  
+  
+  </body>
+</html>
+
