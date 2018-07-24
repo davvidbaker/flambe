@@ -1,16 +1,10 @@
 import React, { Component } from 'react';
-import { connect } from 'react-redux';
+import SplitPane from 'react-split-pane';
 import throttle from 'lodash/throttle';
-import sortBy from 'lodash/fp/sortBy';
+import filter from 'lodash/fp/filter';
 import last from 'lodash/last';
 
-import FlameChart from './FlameChart';
-import TimeSeries from './TimeSeries';
-import ActivityDetail from './ActivityDetail';
-import ThreadDetail from './ThreadDetail';
 import WithDropTarget from '../containers/WithDropTarget';
-import WithEventListeners from './WithEventListeners';
-
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import {
   visibleThreadLevels,
@@ -18,12 +12,16 @@ import {
   timeToPixels,
   pixelsToTime
 } from '../utilities/timelineChart';
-
 import { layout } from '../styles';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
-
 import type { Activity } from '../types/Activity';
+
+import WithEventListeners from './WithEventListeners';
+import ThreadDetail from './ThreadDetail';
+import ActivityDetail from './ActivityDetail';
+import TimeSeries from './TimeSeries';
+import FlameChart from './FlameChart';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -61,7 +59,8 @@ type State = {
   leftBoundaryTime: number,
   rightBoundaryTime: number,
   topOffset: number,
-  threadModal_id: ?number
+  threadModal_id: ?number,
+  timeSeriesHeight: number
 };
 
 class Timeline extends Component<Props, State> {
@@ -72,7 +71,8 @@ class Timeline extends Component<Props, State> {
     dividersData: {
       offsets: []
     },
-    composingZoomChord: false
+    composingZoomChord: false,
+    timeSeriesHeight: 100
   };
 
   constructor(props) {
@@ -277,6 +277,11 @@ class Timeline extends Component<Props, State> {
     this.setState({ threadModal_id: null });
   };
 
+  handlePaneChange = (size: number) => {
+    this.setState({ timeSeriesHeight: `${size}px` });
+    console.log(`🔥size`, size);
+  };
+
   /**
    * 💁 I didn't want left and right boundary times to be part of redux, because they were changing too fast for a super silky smooth animation, but I did want them to persist through reloads. So, when this component will mount, if they exist in localStorage, they will take that initial value. They are then set in localStorage at most once a second.
    *
@@ -359,57 +364,66 @@ class Timeline extends Component<Props, State> {
                 height: `calc(${window.innerHeight}px - ${layout.headerHeight})`
               }}
             >
-              <TimeSeries
-                leftBoundaryTime={leftBoundaryTime}
-                rightBoundaryTime={rightBoundaryTime}
-                searchTerms={props.searchTerms}
-                mantras={props.mantras}
-                tabs={props.tabs}
-              />
-              {/* <WithDropTarget
+              <SplitPane
+                split="horizontal"
+                size={100}
+                onChange={this.handlePaneChange}
+              >
+                <TimeSeries
+                  leftBoundaryTime={leftBoundaryTime}
+                  rightBoundaryTime={rightBoundaryTime}
+                  searchTerms={props.searchTerms}
+                  mantras={props.mantras}
+                  tabs={filter(({ timestamp }) =>
+                    timestamp > leftBoundaryTime &&
+                      timestamp < rightBoundaryTime)(props.tabs)}
+                  height={this.state.timeSeriesHeight}
+                />
+                {/* <WithDropTarget
                 targetName="flame-chart"
                 threads={props.threads}
                 trace_id={props.trace_id}
               > */}
-              <FlameChart
-                activities={props.activities}
-                dividersData={this.state.dividersData}
-                uniformBlockHeight={props.settings.uniformBlockHeight}
-                attentionShifts={props.attentionShifts}
-                blocks={props.blocks}
-                categories={props.categories}
-                currentAttention={last(props.attentionShifts).thread_id}
-                leftBoundaryTime={leftBoundaryTime}
-                maxTime={props.maxTime}
-                minTime={props.minTime}
-                modifiers={props.modifiers}
-                pan={this.pan}
-                rightBoundaryTime={rightBoundaryTime}
-                showAttentionFlows={props.settings.attentionFlows}
-                showThreadDetail={this.showThreadDetail}
-                showSuspendResumeFlows={props.settings.suspendResumeFlows}
-                // threadLevels={props.threadLevels}
-                threadLevels={
-                  props.activities && props.settings.reactiveThreadHeight
-                    ? visibleThreadLevels(
-                      props.blocks,
-                      props.activities,
-                      leftBoundaryTime,
-                      rightBoundaryTime,
-                      props.threads
-                    )
-                    : props.threadLevels
-                }
-                hoverBlock={props.hoverBlock}
-                focusBlock={props.focusBlock}
-                focusedBlockIndex={props.focusedBlockIndex}
-                hoveredBlockIndex={props.hoveredBlockIndex}
-                threads={threads}
-                toggleThread={props.toggleThread}
-                topOffset={this.state.topOffset || 0}
-                updateEvent={props.updateEvent}
-                zoom={this.zoom}
-              />
+                <FlameChart
+                  activities={props.activities}
+                  dividersData={this.state.dividersData}
+                  uniformBlockHeight={props.settings.uniformBlockHeight}
+                  attentionShifts={props.attentionShifts}
+                  blocks={props.blocks}
+                  categories={props.categories}
+                  currentAttention={last(props.attentionShifts).thread_id}
+                  leftBoundaryTime={leftBoundaryTime}
+                  maxTime={props.maxTime}
+                  minTime={props.minTime}
+                  modifiers={props.modifiers}
+                  pan={this.pan}
+                  rightBoundaryTime={rightBoundaryTime}
+                  showAttentionFlows={props.settings.attentionFlows}
+                  showThreadDetail={this.showThreadDetail}
+                  showSuspendResumeFlows={props.settings.suspendResumeFlows}
+                  // threadLevels={props.threadLevels}
+                  threadLevels={
+                    props.activities && props.settings.reactiveThreadHeight
+                      ? visibleThreadLevels(
+                        props.blocks,
+                        props.activities,
+                        leftBoundaryTime,
+                        rightBoundaryTime,
+                        props.threads
+                      )
+                      : props.threadLevels
+                  }
+                  hoverBlock={props.hoverBlock}
+                  focusBlock={props.focusBlock}
+                  focusedBlockIndex={props.focusedBlockIndex}
+                  hoveredBlockIndex={props.hoveredBlockIndex}
+                  threads={threads}
+                  toggleThread={props.toggleThread}
+                  topOffset={this.state.topOffset || 0}
+                  updateEvent={props.updateEvent}
+                  zoom={this.zoom}
+                />
+              </SplitPane>
               {/* </WithDropTarget> */}
 
               {/* ⚠️ Moved these up? */}
@@ -433,6 +447,7 @@ class Timeline extends Component<Props, State> {
                   updateActivity={props.updateActivity}
                   trace_id={props.trace_id}
                   threadLevels={props.threadLevels}
+                  submitCommand={props.submitCommand}
                 />
               )}
             </div>

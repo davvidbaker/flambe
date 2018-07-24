@@ -42,11 +42,16 @@ defmodule SteadyWeb.Endpoint do
   plug(
     Plug.Session,
     store: :cookie,
-    key: "_flambe_key",
+    key: "_steady_key",
     signing_salt: "IFiVAZWC"
   )
 
-  plug(CORSPlug)
+  plug(
+    CORSPlug,
+    origin: [Application.get_env(:steady, :frontend_url)],
+    headers: ["Cache", "Content-Type"]
+  )
+
   plug(SteadyWeb.Router)
 
   @doc """

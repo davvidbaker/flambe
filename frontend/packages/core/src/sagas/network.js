@@ -31,15 +31,16 @@ import { getUser } from '../reducers/user';
 import { getTimeline } from '../reducers/timeline';
 
 async function hitNetwork({ resource, params = {} }) {
+  console.log(`params`, params);
   const response = await fetch(
     params.method === 'POST'
       ? `${SERVER}/api/${resource.path}`
       : `${SERVER}/api/${resource.path}/${resource.id}`,
     {
       headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json'
+        'content-type': 'application/json',
       },
+      credentials: 'include',
       ...params
     }
   );

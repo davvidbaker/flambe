@@ -41,8 +41,6 @@ export const COMMAND_RUN = 'COMMAND_RUN';
 
 export const EVENT_UPDATE = 'EVENT_UPDATE';
 
-export const FIND = 'FIND';
-
 export const MANTRA_CREATE = 'MANTRA_CREATE';
 
 export const SETTING_TOGGLE = 'SETTING_TOGGLE';
@@ -305,27 +303,6 @@ export function resurrectActivity({ id, timestamp, message, thread_id }) {
     thread_id,
   };
 }
-// /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-// export function rejectActivity(id, timestamp, message, thread_id) {
-//   return {
-//     type: ACTIVITY_REJECT,
-//     id,
-//     timestamp,
-//     message,
-//     thread_id,
-//   };
-// }
-
-// /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-// export function resolveActivity(id, timestamp, message = '', thread_id) {
-//   return {
-//     type: ACTIVITY_RESOLVE,
-//     id,
-//     timestamp,
-//     message,
-//     thread_id,
-//   };
-// }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
 export function deleteActivity(id, thread_id) {

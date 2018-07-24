@@ -1,4 +1,3 @@
-import { put, takeEvery, select } from 'redux-saga/effects';
 import {
   ACTIVITY_CREATE,
   ACTIVITY_DELETE,
@@ -35,8 +34,9 @@ import {
   suspendActivity,
   toggleTodos
 } from '../actions';
-
 import { getTimeline } from '../reducers/timeline';
+
+import { put, takeEvery, select } from 'redux-saga/effects';
 
 function* handleCommand({ operand, command }) {
   const timeline = yield select(getTimeline);
@@ -45,37 +45,41 @@ function* handleCommand({ operand, command }) {
     /* 💁 This may look funny, but is correct, because the command has been loaded up with arguments now */
     command.action(command);
   } else {
+    /* 💁 command may supply activity id and thread id, otherwise fall back to operand */
+    const activity_id = command.activity_id || operand.activity_id;
+    const thread_id = command.thread_id || operand.thread_id;
+
     switch (command.action) {
       case ACTIVITY_CREATE:
         yield put(createActivity({
           name: command.name,
           timestamp: Date.now(),
           description: '',
-          thread_id: command.thread_id,
+          thread_id,
           phase: command.copy.includes('question') ? 'Q' : 'B',
           category_id: command.category_id
         }));
-        yield put(shiftAttention(command.thread_id, Date.now()));
+        yield put(shiftAttention(thread_id, Date.now()));
         break;
 
       case ACTIVITY_RESUME:
         yield put(resumeActivity({
-          id: operand.activity_id,
+          id: activity_id,
           timestamp: Date.now(),
           message: command.message,
-          thread_id: operand.thread_id
+          thread_id
         }));
-        yield put(shiftAttention(operand.thread_id, Date.now()));
+        yield put(shiftAttention(thread_id, Date.now()));
         break;
 
       case ACTIVITY_RESURRECT:
         yield put(resurrectActivity({
-          id: operand.activity_id,
+          id: activity_id,
           timestamp: Date.now(),
           message: command.message,
-          thread_id: operand.thread_id
+          thread_id
         }));
-        yield put(shiftAttention(operand.thread_id, Date.now()));
+        yield put(shiftAttention(thread_id, Date.now()));
         break;
 
       case ACTIVITY_END:
@@ -88,36 +92,34 @@ function* handleCommand({ operand, command }) {
             ? 'V'
             : 'E';
         yield put(endActivity({
-          id: operand.activity_id,
+          id: activity_id,
           timestamp: Date.now(),
           message,
-          thread_id: operand.thread_id,
+          thread_id,
           eventFlavor
         }));
         break;
 
       case ACTIVITY_DELETE:
-        yield put(deleteActivity(operand.activity_id, operand.thread_id));
+        console.log(`🔥activity_id, thread_id`, activity_id, thread_id);
+        yield put(deleteActivity(activity_id, thread_id));
         break;
       /** 💁 if this isn't obvious, suspension can only happen on the most recent block of an activity (for activities that may have been suspended and resumed already) */
       case ACTIVITY_SUSPEND:
         yield put(suspendActivity({
-          id: operand.activity_id,
+          id: activity_id,
           timestamp: Date.now(),
           message: command.message ? command.message : '',
-          thread_id: operand.thread_id
+          thread_id
         }));
-        
+
         /* ⚠️ Ideally we'd only process the tail of the trace */
-        yield put(processTimelineTrace(
-          timeline.events,
-          Object.values(timeline.threads)
-        ));
+        yield put(processTimelineTrace(timeline.events, Object.values(timeline.threads)));
         break;
 
       case ATTENTION_SHIFT:
         console.log('command', command);
-        yield put(shiftAttention(command.thread_id, Date.now()));
+        yield put(shiftAttention(thread_id, Date.now()));
         break;
 
       case ACTIVITY_DETAILS_SHOW:
@@ -152,7 +154,7 @@ function* handleCommand({ operand, command }) {
         break;
 
       case VIEW_CHANGE:
-        yield put(changeView(command.view, command.thread_id));
+        yield put(changeView(command.view, thread_id));
         break;
 
       default:

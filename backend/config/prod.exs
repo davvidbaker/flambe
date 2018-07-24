@@ -18,6 +18,9 @@ config :steady, SteadyWeb.Endpoint,
   url: [host: "steady-postgres-1.cer3mpahz070.us-west-2.rds.amazonaws.com", port: 80],
   cache_static_manifest: "priv/static/cache_manifest.json"
 
+# ⚠️ or something like this
+config :steady, frontend_url: "https://shteady.now.sh"
+
 # Do not print debug messages in production
 config :logger, level: :info
 

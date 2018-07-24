@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script>
+    /* 💁 this gets ride of normalize.css
+    I couldn't figure out a better way to do it without editing the default theme
+     */
+    // Select the node that will be observed for mutations
+    var targetNode = document.head;
+
+    // Options for the observer (which mutations to observe)
+    var config = { attributes: true, childList: true, subtree: true };
+
+    // Callback function to execute when mutations are observed
+    var callback = function (mutationsList) {
+      for (var mutation of mutationsList) {
+        const node = mutation.addedNodes[0];
+        if (mutation.type == 'childList' && node.nodeName === "STYLE") {
+          if (mutation.addedNodes[0].innerText.includes('normalize')) {
+            console.log('removing normalize', node);
+            document.head.removeChild(node)
+            observer.disconnect();
+          }
+        }
+      }
+    };
+    
+    // Create an observer instance linked to the callback function
+    var observer = new MutationObserver(callback);
+    
+    // Start observing the target node for configured mutations
+    observer.observe(targetNode, config);
+    
+        // Later, you can stop observing
+
+  </script>
+  <meta charset="UTF-8">
+  <meta name="description" content="{{ description }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>{{ title }}</title>
+  <link href="https://fonts.googleapis.com/css?family=Yesteryear" rel="stylesheet">
+</head>
+
+<body>
+  <div id="root" />
+
+</body>
+
+</html>

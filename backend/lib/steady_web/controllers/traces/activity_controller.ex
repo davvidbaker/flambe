@@ -34,7 +34,7 @@ defmodule SteadyWeb.ActivityController do
 
   # 🔮 will fail next test probably
   def delete(conn, %{"id" => id, "delete_events" => delete_events}) do
-    activity = Traces.get_activity!(id) |> Steady.Repo.preload(:events)
+    activity = Traces.get_activity_with_events(id)
 
     if delete_events do
       for evt <- activity.events do

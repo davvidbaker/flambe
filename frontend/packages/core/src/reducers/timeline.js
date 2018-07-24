@@ -283,7 +283,7 @@ function timeline(state = initialState, action) {
       /** 💁 we need to adjust the levels of any affected blocks */
       for (let i = 0; i < remainingBlocks.length; i++) {
         if (
-          state.activities[remainingBlocks[i].activity_id].thread.id ===
+          state.activities[remainingBlocks[i].activity_id].thread_id ===
           action.thread_id
         ) {
           for (let j = 0; j < activityBlocks.length; j++) {
@@ -348,6 +348,7 @@ function timeline(state = initialState, action) {
     // 😃 optimism!
     /** ⚠️ TODO make sure the activity is suspendable! */
     case ACTIVITY_SUSPEND:
+      /* ⚠️ TODO process the whole trace so child blocks are also suspended */
       return {
         ...state,
         activities: {

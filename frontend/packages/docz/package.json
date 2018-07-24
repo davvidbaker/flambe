@@ -10,8 +10,7 @@
     "build": "docz build"
   },
   "dependencies": {
-    "flambe-core": "^0.1.9",
-    "flambe-logo": "^0.1.8"
+    "flambe-core": "^0.1.9"
   },
   "devDependencies": {
     "@babel/core": "^7.0.0-beta.51",
@@ -25,6 +24,7 @@
     "@babel/preset-flow": "^7.0.0-beta.51",
     "@babel/preset-react": "^7.0.0-beta.51",
     "@babel/preset-stage-2": "^7.0.0-beta.51",
+    "@babel/preset-typescript": "^7.0.0-beta.52",
     "babel-core": "^7.0.0-beta.51",
     "docz": "latest"
   },
