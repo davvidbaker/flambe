@@ -7,12 +7,17 @@ defmodule SteadyWeb.FallbackController do
   use SteadyWeb, :controller
 
   def call(conn, {:error, %Ecto.Changeset{} = changeset}) do
+    IO.puts "\n🔥conn"
+    IO.inspect conn
     conn
     |> put_status(:unprocessable_entity)
     |> render(SteadyWeb.ChangesetView, "error.json", changeset: changeset)
   end
 
   def call(conn, {:error, :not_found}) do
+    IO.puts "\n🔥conn"
+    IO.inspect conn
+
     conn
     |> put_status(:not_found)
     |> render(SteadyWeb.ErrorView, :"404")

@@ -7,7 +7,7 @@ defmodule SteadyWeb.SearchTermController do
   action_fallback(SteadyWeb.FallbackController)
 
   def index(conn, _params) do
-    search_term = Accounts.list_search_term()
+    search_term = Accounts.list_search_terms()
     render(conn, "index.json", search_term: search_term)
   end
 

@@ -124,6 +124,11 @@ defmodule Steady.Accounts do
     end
   end
 
+  def get_user_from_username(username) do
+    from(u in User, where: u.username == ^username, select: u)
+    |> Repo.one()
+  end
+
   @doc """
   Creates a user.
 
@@ -141,12 +146,15 @@ defmodule Steady.Accounts do
 
     {:ok, user} =
       %User{}
-      |> User.changeset(attrs)
+      |> User.registration_changeset(attrs)
       |> Repo.insert()
+  end
 
-    user |> Ecto.build_assoc(:credential, attrs) |> IO.inspect() |> Repo.insert()
-
-    {:ok, user}
+  def create_user_access_token(user) do
+    {:ok, jwt, claims} = Steady.Guardian.encode_and_sign(user)
+    IO.puts("\n🔥claims")
+    IO.inspect(claims)
+    jwt
   end
 
   @doc """
@@ -166,6 +174,10 @@ defmodule Steady.Accounts do
     |> User.changeset(attrs)
     |> Ecto.Changeset.cast_assoc(:credential, with: &Credential.changeset/2)
     |> Repo.update()
+  end
+
+  def add_user_integration(%User{} = user, attrs) do
+    user
   end
 
   @doc """
@@ -504,18 +516,6 @@ defmodule Steady.Accounts do
     Todo.changeset(todo, %{})
   end
 
-  @doc """
-  Returns the list of mantras.
-
-  ## Examples
-
-      iex> list_mantras()
-      [%Mantra{}, ...]
-
-  """
-  def list_mantras do
-    Repo.all(Mantra)
-  end
 
   @doc """
   Gets a single mantra.

@@ -9,10 +9,11 @@ module.exports = merge(common, {
   mode: 'development',
   // potentially insecure way to view on remote computer
   devServer: {
-    host: '0.0.0.0',
+    host: "localhost",
     port: 8081,
     hot: true,
-    historyApiFallback: true
+    historyApiFallback: true,
+    https: true
   },
 
   devtool: 'source-map',
@@ -25,8 +26,8 @@ module.exports = merge(common, {
 
   plugins: [
     new webpack.DefinePlugin({
-      SERVER: "'http://0.0.0.0:4000'",
-      SOCKET_SERVER: "'ws://0.0.0.0:4000'",
+      SERVER: "'http://localhost:4000'",
+      SOCKET_SERVER: "'ws://localhost:4000'",
       NODE_ENV: "'development'"
     }),
 

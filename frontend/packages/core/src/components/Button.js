@@ -21,13 +21,17 @@ const commonStyles = `
 `;
 
 const Button = styled.button`
-  ${commonStyles} cursor: pointer;
+  ${commonStyles}
+   cursor: ${props => (props.disabled ? 'default' : 'pointer')};
 
-  &:hover {
+  ${props =>
+    (props.disabled
+      ? ''
+      : `&:hover {
     background: ${tinycolor(colors.hover)
-    .darken(5)
-    .toString()};
-  }
+        .darken(5)
+        .toString()};
+  }`)}
 
   &:active {
     background: ${tinycolor(colors.hover)
