@@ -4,32 +4,8 @@ import reduce from 'lodash/fp/reduce';
 import pipe from 'lodash/fp/pipe';
 import sortBy from 'lodash/fp/sortBy';
 import map from 'lodash/fp/map';
-import curry from 'lodash/fp/curry';
 import reverse from 'lodash/fp/reverse';
 import isUndefined from 'lodash/fp/isUndefined';
-
-export function setCanvasSize(canvas, textPadding, isFlameChart) {
-  const header = document.querySelector('header');
-  const devicePixelRatio = window.devicePixelRatio;
-
-  const ctx = canvas.getContext('2d');
-
-  const minTextWidth = textPadding.x + ctx.measureText('\u2026').textWidth;
-
-  const state = {
-    devicePixelRatio,
-    canvasWidth: window.innerWidth,
-    canvasHeight: isFlameChart
-      ? window.innerHeight - header.clientHeight - 100
-      : 50,
-  };
-
-  return {
-    ctx,
-    minTextWidth,
-    state,
-  };
-}
 
 export function pixelsToTime(
   x,
@@ -150,8 +126,8 @@ export function visibleThreadLevels(
             acc[thread_id] ? acc[thread_id].max : 1,
             block.level + 1
           ),
-          current: block.level,
-        },
+          current: block.level
+        }
       };
     }, reduce((acc, { id }) => ({ ...acc, [id]: { current: 0, max: 0 } }), {})(threads))
   )(blocks);
@@ -167,7 +143,7 @@ export function rankThreadsByAttention(attentionShifts, threads) {
     reduce((acc, { thread_id }) => {
       if (isUndefined(acc[thread_id])) {
         acc[thread_id] = rank;
-        if (threads[thread_id] )threads[thread_id].rank = rank;
+        if (threads[thread_id]) threads[thread_id].rank = rank;
         rank++;
       }
       return acc;

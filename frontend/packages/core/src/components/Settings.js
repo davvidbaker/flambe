@@ -7,29 +7,33 @@ import { hideSettings as hideSettingsAction, toggleSetting } from '../actions';
 
 const SETTINGS = [
   {
-    setting: 'reactiveThreadHeight',
-    copy: 'Reactive Thread Height',
-    description:
-      'The height of a thread dynamically adjusts its height depending on how many levels are in the visible window.',
-  },
-  {
-    setting: 'suspendResumeFlows',
-    copy: 'Suspend/Resume Flows',
-  },
-  {
     setting: 'attentionFlows',
-    copy: 'Attention Flows',
-  },
-  {
-    setting: 'uniformBlockHeight',
-    copy: 'Uniform Block Height',
-    description: 'In collapsed threads, all blocks are the same height.',
+    copy: 'Attention Flows'
   },
   {
     setting: 'attentionDrivenThreadOrder',
     copy: 'Attention Driven Thread Order',
-    description: 'Threads are ordered by what was worked on most recently',
+    description: 'Threads are ordered by what was worked on most recently'
   },
+  {
+    setting: 'activityMute',
+    copy: 'Mute Activities'
+  },
+  {
+    setting: 'reactiveThreadHeight',
+    copy: 'Reactive Thread Height',
+    description:
+      'The height of a thread dynamically adjusts its height depending on how many levels are in the visible window.'
+  },
+  {
+    setting: 'suspendResumeFlows',
+    copy: 'Suspend/Resume Flows'
+  },
+  {
+    setting: 'uniformBlockHeight',
+    copy: 'Uniform Block Height',
+    description: 'In collapsed threads, all blocks are the same height.'
+  }
 ];
 
 const Setting = styled.div`
@@ -58,12 +62,9 @@ const Settings = ({
   settingsVisible,
   hideSettings,
   settings,
-  toggleSetting,
+  toggleSetting
 }) => (
-  <Modal
-    isOpen={settingsVisible}
-    onRequestClose={hideSettings}
-  >
+  <Modal isOpen={settingsVisible} onRequestClose={hideSettings}>
     <Wrapper>
       <h1>Settings</h1>
       <ul>
@@ -89,10 +90,10 @@ const Settings = ({
 export default connect(
   state => ({
     settingsVisible: state.settingsVisible,
-    settings: state.settings,
+    settings: state.settings
   }),
   dispatch => ({
     hideSettings: () => dispatch(hideSettingsAction()),
-    toggleSetting: setting => dispatch(toggleSetting(setting)),
+    toggleSetting: setting => dispatch(toggleSetting(setting))
   })
 )(Settings);

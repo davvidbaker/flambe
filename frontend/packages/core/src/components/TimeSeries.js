@@ -8,7 +8,6 @@ import pullAt from 'lodash/pullAt';
 import Measure from 'react-measure';
 
 import {
-  setCanvasSize,
   getBlockTransform,
   timeToPixels,
   pixelsToTime,
@@ -37,8 +36,7 @@ class TimeSeries extends Component {
     hoverTabCount: 0,
     cursor: { x: 0, y: 0 },
     canvasWidth: null,
-    canvasHeight: null,
-    devicePixelRatio: 1
+    canvasHeight: null
   };
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -58,20 +56,20 @@ class TimeSeries extends Component {
   chartHeight = () => this.state.canvasHeight - TimeSeries.chartPadding.y * 2;
 
   componentDidMount() {
-    window.addEventListener('resize', this.setCanvasSize.bind(this));
-    this.setCanvasSize();
+    const ctx = this.canvas.getContext('2d');
+    this.ctx = ctx;
+    this.setCanvasSize({ width: 300, height: 150 });
   }
 
-  setCanvasSize = () => {
+  setCanvasSize = ({ width, height }) => {
+    this.setState({
+      canvasWidth: width,
+      canvasHeight: height
+    });
     if (this.canvas) {
-      const { ctx, minTextWidth, state } = setCanvasSize(
-        this.canvas,
-        TimeSeries.textPadding
-      );
-      this.ctx = ctx;
       this.ctx.font = '11px sans-serif';
-      this.minTextWidth = minTextWidth;
-      this.setState(state, this.render);
+      this.minTextWidth =
+        TimeSeries.textPadding.x + this.ctx.measureText('\u2026').textWidth;
     }
   };
 
@@ -105,14 +103,17 @@ class TimeSeries extends Component {
     });
 
     return (
-      <div style={{width: '100%'}}>
+      <div style={{ width: '100%' }}>
         <Measure
           bounds
           onResize={contentRect => {
-            this.setState({
-              canvasWidth: contentRect.bounds.width,
-              canvasHeight: contentRect.bounds.height
-            });
+            /* 🤔 I feel like this shouldn't be necessary, but otherwise I get stuck in a render loop.bind.. */
+            if (
+              contentRect.bounds.width !== this.state.canvasWidth ||
+              contentRect.bounds.height !== this.state.canvasHeight
+            ) {
+              this.setCanvasSize(contentRect.bounds);
+            }
           }}
         >
           {({ measureRef }) => (
@@ -125,12 +126,8 @@ class TimeSeries extends Component {
                 width: '100%',
                 height: '100%'
               }}
-              height={
-                this.state.canvasHeight * this.state.devicePixelRatio || 300
-              }
-              width={
-                this.state.canvasWidth * this.state.devicePixelRatio || 450
-              }
+              height={this.state.canvasHeight * window.devicePixelRatio || 300}
+              width={this.state.canvasWidth * window.devicePixelRatio || 450}
               /* ⚠️ this hs got to be an antipattern to put this in render, right? */
               onMouseMove={this.onMouseMove}
               onMouseEnter={this.onMouseEnter}
@@ -154,7 +151,7 @@ class TimeSeries extends Component {
     if (this.canvas) {
       this.ctx.save();
 
-      this.ctx.scale(this.state.devicePixelRatio, this.state.devicePixelRatio);
+      this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
       // clear the canvas
       this.ctx.fillStyle = '#ffffff';
