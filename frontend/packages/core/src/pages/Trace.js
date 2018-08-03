@@ -38,7 +38,8 @@ import {
   showActivityDetails,
   showSettings,
   createMantra,
-  createToast
+  createToast,
+  toggleSetting
 } from '../actions';
 import COMMANDS, {
   ACTIVITY_COMMANDS,
@@ -173,6 +174,7 @@ class App extends React.Component<
   { commanderVisible: boolean }
 > {
   state = {
+    // modalIsOpen,
     searchPanelVisible: false,
     commanderVisible: false,
     additionalCommands: []
@@ -221,14 +223,15 @@ class App extends React.Component<
       });
     };
 
-    window.addEventListener('blur', e => {
-      document.documentElement.style.setProperty('--root-scale', '0.975');
-      document.documentElement.style.setProperty('--body-after-opacity', '1');
-    });
-    window.addEventListener('focus', e => {
-      document.documentElement.style.setProperty('--root-scale', '1');
-      document.documentElement.style.setProperty('--body-after-opacity', '0.1');
-    });
+    /* 💁 this is that blur transform scale thing */
+    // window.addEventListener('blur', e => {
+    //   document.documentElement.style.setProperty('--root-scale', '0.975');
+    //   document.documentElement.style.setProperty('--body-after-opacity', '1');
+    // });
+    // window.addEventListener('focus', e => {
+    //   document.documentElement.style.setProperty('--root-scale', '1');
+    //   document.documentElement.style.setProperty('--body-after-opacity', '0.1');
+    // });
 
     createKeyEvent('keydown', this.props.keyDown);
     createKeyEvent('keyup', this.props.keyUp);
@@ -273,7 +276,7 @@ class App extends React.Component<
   };
 
   renderTimeline = route => {
-    const trace_id = this.props.match.params.trace_id; // route.match.params.trace_id
+    const { trace_id } = this.props.match.params; // route.match.params.trace_id
     // ? route.match.params.trace_id
     // : this.props.trace && this.props.trace.id;
 
@@ -313,22 +316,37 @@ class App extends React.Component<
         e => {
           if (e.repeat) return;
 
-          if (e.shiftKey && (e.metaKey || e.ctrlKey) && e.key === 'p') {
-            /** 💁 By default, if chrome devtools are open, this will pull up their command palette, even if focus is in the page, not dev tools. */
-            e.preventDefault();
-            this.showCommander();
-          }
+          if (e.ctrlKey || e.metaKey) {
+            switch (e.key) {
+              case 'f':
+                if (!this.props.aModalIsOpen) {
+                  e.preventDefault();
+                  this.showSearchPanel();
+                }
+                break;
 
-          if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
-            e.preventDefault();
-            this.showSearchPanel();
-          }
+              case 'm':
+                e.preventDefault();
+                this.props.toggleActivityMute();
+                break;
 
-          if (e.key === ',' && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            this.props.showSettings();
-          }
+              case 'p':
+                if (e.shiftKey) {
+                  /** 💁 By default, if chrome devtools are open, this will pull up their command palette, even if focus is in the page, not dev tools. */
+                  e.preventDefault();
+                  this.showCommander();
+                }
+                break;
 
+              case ',':
+                e.preventDefault();
+                this.props.showSettings();
+                break;
+
+              default:
+                break;
+            }
+          }
           if (
             e.target.nodeName !== 'INPUT' &&
             e.target.nodeName !== 'TEXTAREA'
@@ -452,10 +470,13 @@ class App extends React.Component<
                     blocks={this.props.blocks}
                     focusBlock={this.props.focusBlock}
                     hideSearchBar={this.hideSearchPanel}
-                    inputRef={r => {this.searchRef = r}}
+                    inputRef={r => {
+                      this.searchRef = r;
+                    }}
                   />
                 </div>
               </main>
+
               <CategoryManager categories={this.props.categories} />
               <Settings />
               <Commander
@@ -482,6 +503,11 @@ export default compose(
   // flow-ignore
   connect(
     state => ({
+      aModalIsOpen:
+        state.settingsVisible ||
+        state.activityDetailsVisible ||
+        state.todosVisible ||
+        state.settingsVisible,
       activities: getTimeline(state).activities,
       blocks: getTimeline(state).blocks,
       categories: getUser(state).categories,
@@ -498,22 +524,23 @@ export default compose(
     }),
     dispatch => ({
       collapseAllThreads: id => dispatch(collapseAllThreads(id)),
+      createMantra: (id, note) => dispatch(createMantra(id, note)),
+      createToast: (message, notificationType) =>
+        dispatch(createToast(message, notificationType)),
       deleteCurrentTrace: () => dispatch(deleteCurrentTrace()),
       deleteTrace: (id: number) => dispatch(deleteTrace(id)),
       expandAllThreads: id => dispatch(expandAllThreads(id)),
       fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
       fetchUser: user_id => dispatch(fetchUser(user_id)),
+      focusBlock: ({ index, activity_id, thread_id }) =>
+        dispatch(focusBlock({ index, activity_id, thread_id })),
       keyDown: key => dispatch(keyDown(key)),
       keyUp: key => dispatch(keyUp(key)),
       runCommand: (operand, command) => dispatch(runCommand(operand, command)),
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       showActivityDetails: () => dispatch(showActivityDetails()),
       showSettings: () => dispatch(showSettings()),
-      createMantra: (id, note) => dispatch(createMantra(id, note)),
-      createToast: (message, notificationType) =>
-        dispatch(createToast(message, notificationType)),
-      focusBlock: ({ index, activity_id, thread_id }) =>
-        dispatch(focusBlock({ index, activity_id, thread_id }))
+      toggleActivityMute: () => dispatch(toggleSetting('activityMute'))
     })
   )
 )(App);

@@ -60,7 +60,9 @@ type State = {
   rightBoundaryTime: number,
   topOffset: number,
   threadModal_id: ?number,
-  timeSeriesHeight: number
+  timeSeriesHeight: number,
+  zoomChord: string,
+  zoomChordMultiplier: number
 };
 
 class Timeline extends Component<Props, State> {
@@ -72,7 +74,9 @@ class Timeline extends Component<Props, State> {
       offsets: []
     },
     composingZoomChord: false,
-    timeSeriesHeight: 100
+    timeSeriesHeight: 100,
+    zoomChord: '',
+    zoomChordMultiplier: 1
   };
 
   constructor(props) {
@@ -194,6 +198,12 @@ class Timeline extends Component<Props, State> {
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
         });
         break;
+      case 'hour':
+        this.setState({
+          dividersData: this.calculateGridOffsets(),
+          leftBoundaryTime: Date.now() - 60 * MINUTE,
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+        });
       case 'day':
         this.setState({
           dividersData: this.calculateGridOffsets(),
@@ -214,8 +224,20 @@ class Timeline extends Component<Props, State> {
           leftBoundaryTime: Date.now() - 1 * MONTH,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
         });
-
         break;
+      case 'year':
+        this.setState({
+          dividersData: this.calculateGridOffsets(),
+          leftBoundaryTime: Date.now() - 12 * MONTH,
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+        });
+        break;
+      case 'all':
+        this.setState({
+          dividersData: this.calculateGridOffsets(),
+          leftBoundaryTime: this.props.minTIme,
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+        });
       default:
         break;
     }
@@ -307,11 +329,26 @@ class Timeline extends Component<Props, State> {
     const rightBoundaryTime = this.state.rightBoundaryTime || props.maxTime;
     const leftBoundaryTime = this.state.leftBoundaryTime || props.minTime;
 
-    const threads = Array.isArray(props.threads)
+    let threads = Array.isArray(props.threads)
       ? {}
       : props.settings.attentionDrivenThreadOrder
         ? rankThreadsByAttention(props.attentionShifts, props.threads)
         : props.threads;
+
+    threads = Object.entries(props.activities).reduce(
+      (acc, [_id, activity]) =>
+        (activity.status === 'suspended'
+          ? {
+            ...acc,
+            [activity.thread_id]: {
+              ...acc[activity.thread_id],
+              suspendedActivityCount:
+                  acc[activity.thread_id].suspendedActivityCount + 1 || 1
+            }
+          }
+          : acc),
+      threads
+    );
 
     return (
       <WithEventListeners
@@ -322,26 +359,54 @@ class Timeline extends Component<Props, State> {
             e => {
               if (e.target.nodeName !== 'INPUT') {
                 if (this.state.composingZoomChord) {
-                  switch (e.key) {
-                    case 'n':
-                      this.setState({ composingZoomChord: false });
-                      this.zoomTo('now');
-                      break;
-                    case 'd':
-                      this.setState({ composingZoomChord: false });
-                      this.zoomTo('day');
-                      break;
-                    case 'w':
-                      this.setState({ composingZoomChord: false });
-                      this.zoomTo('week');
-                      break;
-                    case 'm':
-                      this.setState({ composingZoomChord: false });
-                      this.zoomTo('month');
-                      break;
-                    default:
-                      this.setState({ composingZoomChord: false });
-                      break;
+                  if (this.state.zoomChord.length === 0) {
+                    let zoomChord = '';
+                    switch (e.key) {
+                      case 'n':
+                        this.setState({ composingZoomChord: false });
+                        this.zoomTo('now');
+                        break;
+                      case 'h':
+                        // this.setState({ composingZoomChord: false });
+                        zoomChord = 'hour';
+                        break;
+                      case 'd':
+                        // this.setState({ composingZoomChord: false });
+                        zoomChord = 'day';
+                        break;
+                      case 'w':
+                        // this.setState({ composingZoomChord: false });
+                        zoomChord = 'week';
+                        break;
+                      case 'm':
+                        // this.setState({ composingZoomChord: false });
+                        zoomChord = 'month';
+                        break;
+                      case 'y':
+                        // this.setState({ composingZoomChord: false });
+                        zoomChord = 'year';
+                        break;
+                      case 'a':
+                        // this.setState({ composingZoomChord: false });
+                        zoomChord = 'all';
+                        break;
+
+                      default:
+                        this.setState({ composingZoomChord: false });
+                        break;
+                    }
+                    this.zoomTo(zoomChord);
+                    this.setState({ zoomChord });
+                  } else if (e.key.match(/\d/)) {
+                    console.log(`🔥e.key`, e.key, Number(e.key));
+                    this.setState({ zoomChordMultiplier: Number(e.key) });
+                    this.setState({ composingZoomChord: false });
+                  } else {
+                    this.setState({
+                      composingZoomChord: false,
+                      zoomChord: '',
+                      zoomChordMultiplier: 1
+                    });
                   }
                 } else if (e.key === 'n') {
                   this.zoomTo('now');
@@ -386,6 +451,8 @@ class Timeline extends Component<Props, State> {
               > */}
                 <FlameChart
                   activities={props.activities}
+                  activityMute={props.settings.activityMute}
+                  activityMuteOpactiy={props.settings.activityMuteOpacity}
                   dividersData={this.state.dividersData}
                   uniformBlockHeight={props.settings.uniformBlockHeight}
                   attentionShifts={props.attentionShifts}
@@ -453,7 +520,9 @@ class Timeline extends Component<Props, State> {
             </div>
             {this.state.composingZoomChord && (
               <div style={{ position: 'fixed', bottom: 0, left: 0 }}>
-                Zoom to... (Waiting for second key of chord)
+                Zoom to... (Waiting for second key of chord){' '}
+                {this.state.zoomChord} {this.state.zoomChordMultiplier} hours
+                ago
               </div>
             )}
           </>
