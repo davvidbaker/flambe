@@ -13,6 +13,7 @@ import timeline from './timeline';
 import modifiers from './modifiers';
 import user from './user';
 import operand from './operand';
+import search from './search';
 import settings from './settings';
 import toaster from './toaster';
 
@@ -82,10 +83,11 @@ export {
   categoryManagerVisible,
   modifiers,
   operand,
-  todosVisible,
+  search,
   settings,
   settingsVisible,
   timeline,
+  todosVisible,
   toaster,
   user,
   view,
