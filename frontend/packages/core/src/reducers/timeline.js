@@ -26,10 +26,10 @@ import {
   THREADS_EXPAND_ALL,
   TIMELINE_ZOOM,
   TIMELINE_PAN,
+  TIMELINE_SET,
   TODO_BEGIN,
   TRACE_SELECT
 } from '../actions';
-
 import { zoom, pan, processTrace } from '../utilities';
 import { terminateBlock } from '../utilities/processTrace';
 
@@ -127,7 +127,7 @@ function timeline(state = initialState, action) {
       };
 
     case PROCESS_TIMELINE_TRACE:
-    console.log(`action.threads`, action.threads);
+      console.log(`action.threads`, action.threads);
       const {
         activities,
         blocks,
@@ -520,6 +520,14 @@ function timeline(state = initialState, action) {
         ...state,
         hoveredBlockIndex: action.index,
         hoveredBlockActivity_id: action.activity_id
+      };
+
+    case TIMELINE_SET:
+      const { leftBoundaryTime: l, rightBoundaryTime: r } = action;
+      return {
+        ...state,
+        leftBoundaryTime: l,
+        rightBoundaryTime: r
       };
 
     default:

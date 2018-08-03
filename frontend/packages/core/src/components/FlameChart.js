@@ -293,11 +293,11 @@ class FlameChart extends Component<Props, State> {
         return { type: 'block', value: hitBlock };
       }
 
-      this.ctx.font = `${hitBlock.endTime ? '' : 'bold'} 11px sans-serif`;
+      this.ctx.font = `${hitBlock[1].endTime ? '' : 'bold'} 11px sans-serif`;
       const { width: textWidth } = this.ctx.measureText(activity.name);
       if (
-        mouseX > startX + textWidth + FlameChart.textPadding.x * 2 + 6 &&
-        mouseX < startX + textWidth + FlameChart.textPadding.x * 2 + 14 + 8
+        mouseX > startX + textWidth + FlameChart.textPadding.x * 2 + 2 &&
+        mouseX < startX + textWidth + FlameChart.textPadding.x * 2 + 14 +2
       ) {
         return { type: 'githubLink', githubLink, value: hitBlock };
       }
