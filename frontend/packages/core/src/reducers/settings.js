@@ -1,11 +1,14 @@
 import { SETTING_TOGGLE } from '../actions';
 
 const defaultState = {
+  attentionDrivenThreadOrder: true,
+  attentionFlows: false,
+  /* 💁 TODO make this adjustable */
+  activityMuteOpacity: 0.1,
+  activityMute: false,
   reactiveThreadHeight: true,
   suspendResumeFlows: true,
-  attentionFlows: false,
   uniformBlockHeight: false,
-  attentionDrivenThreadOrder: true,
 };
 
 function settings(state = defaultState, action) {
