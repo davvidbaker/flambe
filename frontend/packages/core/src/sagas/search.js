@@ -76,13 +76,12 @@ function* handleBlockIncrement({ direction }) {
 }
 
 function* focusSearchResult() {
-  console.log('here');
 
   const {
     matches, matchIndex, blockIndex, blocksForMatch
   } = yield select(state => state.search);
 
-  if (matches) {
+  if (matches.length > 0) {
     const match = matches[matchIndex];
     const activity_id = Number(match[0]);
     const index = Number(blocksForMatch[blockIndex][0]);
