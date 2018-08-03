@@ -18,7 +18,7 @@ import SingleThreadView from '../containers/SingleThreadView';
 import Editor from '../containers/Editor';
 // import Todos from './Todos';
 import Header from '../components/Header';
-import SearchBar from '../components/SearchBar';
+import SearchBar from '../containers/SearchBar';
 import { colors } from '../styles';
 import WithEventListeners from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
@@ -30,7 +30,6 @@ import {
   expandAllThreads,
   fetchTrace,
   fetchUser,
-  focusBlock,
   keyDown,
   keyUp,
   runCommand,
@@ -466,9 +465,6 @@ class App extends React.Component<
                   }}
                 >
                   <SearchBar
-                    activities={this.props.activities}
-                    blocks={this.props.blocks}
-                    focusBlock={this.props.focusBlock}
                     hideSearchBar={this.hideSearchPanel}
                     inputRef={r => {
                       this.searchRef = r;
@@ -532,8 +528,6 @@ export default compose(
       expandAllThreads: id => dispatch(expandAllThreads(id)),
       fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
       fetchUser: user_id => dispatch(fetchUser(user_id)),
-      focusBlock: ({ index, activity_id, thread_id }) =>
-        dispatch(focusBlock({ index, activity_id, thread_id })),
       keyDown: key => dispatch(keyDown(key)),
       keyUp: key => dispatch(keyUp(key)),
       runCommand: (operand, command) => dispatch(runCommand(operand, command)),

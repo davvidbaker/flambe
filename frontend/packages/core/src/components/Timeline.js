@@ -119,6 +119,18 @@ class Timeline extends Component<Props, State> {
     });
   }
 
+  componentWillReceiveProps(nextProps) {
+    if (
+      nextProps.leftBoundaryTime !== this.props.leftBoundaryTime ||
+      nextProps.rightBoundaryTime !== this.props.rightBoundaryTime
+    ) {
+      this.setState({
+        leftBoundaryTime: nextProps.leftBoundaryTime,
+        rightBoundaryTime: nextProps.rightBoundaryTime
+      });
+    }
+  }
+
   /* 💁 mostly borrowed from chrome devtools-frontend ❤️ */
   calculateGridOffsets() {
     const clientWidth = this.t ? this.t.clientWidth : window.innerWidth;

@@ -32,7 +32,11 @@ export default connect(
     attentionShifts: getUser(state).attentionShifts,
     searchTerms: getUser(state).searchTerms,
     settings: state.settings,
-    tabs: getUser(state).tabs
+    tabs: getUser(state).tabs,
+
+    // these are only used for overrides.
+    leftBoundaryTime: getTimeline(state).leftBoundaryTime,
+    rightBoundaryTime: getTimeline(state).rightBoundaryTime,
   }),
   dispatch => ({
     createThread: (name, rank) => dispatch(createThread(name, rank)),
