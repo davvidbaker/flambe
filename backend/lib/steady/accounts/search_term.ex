@@ -1,8 +1,8 @@
-defmodule Steady.Accounts.SearchTerm do
+defmodule Flambe.Accounts.SearchTerm do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Accounts.{User}
-  alias Steady.Utilities
+  alias Flambe.Accounts.{User}
+  alias Flambe.Utilities
 
   schema "search_terms" do
     field(:term, :string)

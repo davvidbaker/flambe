@@ -3,7 +3,7 @@ defmodule SteadyWeb.AuthController do
   plug(Ueberauth)
 
   alias Ueberauth.Strategy.Helpers
-  alias Steady.Accounts
+  alias Flambe.Accounts
 
   def request(conn, _params) do
     IO.puts("\n🐵conn")
@@ -20,7 +20,7 @@ defmodule SteadyWeb.AuthController do
 
         conn
         # |> put_resp_cookie("refresh", jwt)
-        |> Steady.Guardian.Plug.remember_me(user)
+        |> Flambe.Guardian.Plug.remember_me(user)
         |> IO.inspect
         |> redirect_to_frontend_path(user.username)
 
@@ -42,7 +42,7 @@ defmodule SteadyWeb.AuthController do
 
   def redirect_to_frontend_path(conn, path \\ '') do
     conn
-    |> redirect(external: "#{Application.get_env(:steady, :frontend_url)}/#{path}")
+    |> redirect(external: "#{Application.get_env(:flambe, :frontend_url)}/#{path}")
   end
 
   # redirect(conn, external: "http://localhost:8081")

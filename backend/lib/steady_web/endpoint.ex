@@ -1,5 +1,5 @@
 defmodule SteadyWeb.Endpoint do
-  use Phoenix.Endpoint, otp_app: :steady
+  use Phoenix.Endpoint, otp_app: :flambe
 
   socket("/socket", SteadyWeb.UserSocket)
 
@@ -10,7 +10,7 @@ defmodule SteadyWeb.Endpoint do
   plug(
     Plug.Static,
     at: "/",
-    from: :steady,
+    from: :flambe,
     gzip: false,
     only: ~w(css fonts images js favicon.ico robots.txt)
   )
@@ -48,7 +48,7 @@ defmodule SteadyWeb.Endpoint do
 
   plug(
     CORSPlug,
-    origin: [Application.get_env(:steady, :frontend_url)],
+    origin: [Application.get_env(:flambe, :frontend_url)],
     headers: ["Cache", "Content-Type"]
   )
 

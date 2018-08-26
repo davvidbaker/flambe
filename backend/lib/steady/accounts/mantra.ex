@@ -1,8 +1,8 @@
-defmodule Steady.Accounts.Mantra do
+defmodule Flambe.Accounts.Mantra do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Accounts.{User}
-  alias Steady.Utilities
+  alias Flambe.Accounts.{User}
+  alias Flambe.Utilities
 
   schema "mantras" do
     field(:name, :string)

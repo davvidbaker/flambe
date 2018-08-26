@@ -1,4 +1,4 @@
-defmodule Steady.Repo.Migrations.CreateAttentions do
+defmodule Flambe.Repo.Migrations.CreateAttentions do
   use Ecto.Migration
 
   def change do

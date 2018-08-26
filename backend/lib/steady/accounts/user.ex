@@ -1,7 +1,7 @@
-defmodule Steady.Accounts.User do
+defmodule Flambe.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Accounts.{User, Credential, Category, Mantra}
+  alias Flambe.Accounts.{User, Credential, Category, Mantra}
 
   schema "users" do
     field(:name, :string)
@@ -9,7 +9,7 @@ defmodule Steady.Accounts.User do
 
     # ⚠️ not sure if on_replace: :delete is correct/idk what it does, but thinking it might be correct
     has_many(:credential, Credential, on_replace: :delete)
-    has_many(:traces, Steady.Traces.Trace)
+    has_many(:traces, Flambe.Traces.Trace)
     has_many(:categories, Category)
     has_many(:mantras, Mantra)
 

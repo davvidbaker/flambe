@@ -301,6 +301,8 @@ class Timeline extends Component<Props, State> {
       },
       this.setLocalStorage
     );
+
+    return { topOffset };
   };
 
   showThreadDetail = (id: number) => {
@@ -456,6 +458,7 @@ class Timeline extends Component<Props, State> {
                       timestamp < rightBoundaryTime)(props.tabs)}
                   height={this.state.timeSeriesHeight}
                 />
+                {/* <div>doh</div> */}
                 {/* <WithDropTarget
                 targetName="flame-chart"
                 threads={props.threads}

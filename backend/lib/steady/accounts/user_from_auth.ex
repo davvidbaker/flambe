@@ -1,10 +1,10 @@
-defmodule Steady.Accounts.UserFromAuth do
+defmodule Flambe.Accounts.UserFromAuth do
   @moduledoc """
   Retrieve user info from auth request
   """
   alias Ueberauth.Auth
-  alias Steady.Accounts
-  alias Steady.Accounts.User
+  alias Flambe.Accounts
+  alias Flambe.Accounts.User
 
   def find_or_create(%Auth{} = auth) do
     basic_info = basic_info(auth)

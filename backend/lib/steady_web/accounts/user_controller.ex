@@ -1,8 +1,8 @@
 defmodule SteadyWeb.UserController do
   use SteadyWeb, :controller
 
-  alias Steady.{Accounts, Traces}
-  alias Steady.Accounts.User
+  alias Flambe.{Accounts, Traces}
+  alias Flambe.Accounts.User
 
   action_fallback(SteadyWeb.FallbackController)
 

@@ -20,5 +20,5 @@ defmodule SteadyWeb.Gettext do
 
   See the [Gettext Docs](https://hexdocs.pm/gettext) for detailed usage.
   """
-  use Gettext, otp_app: :steady
+  use Gettext, otp_app: :flambe
 end

@@ -4,6 +4,7 @@ import { connect } from 'react-redux';
 import { compose } from 'redux';
 import SplitPane from 'react-split-pane';
 import last from 'lodash/fp/last';
+import { Switch, Route, Redirect, withRouter } from 'react-router';
 
 // flow-ignore
 import { DragDropContext, DragDropManager } from 'react-dnd';
@@ -16,8 +17,10 @@ import Dashboard from '../containers/Dashboard';
 import ConnectedTimeline from '../containers/ConnectedTimeline';
 import SingleThreadView from '../containers/SingleThreadView';
 import Editor from '../containers/Editor';
+import AdvancedSearch from '../containers/AdvancedSearch';
 // import Todos from './Todos';
 import Header from '../components/Header';
+import SidePanel from '../components/SidePanel';
 import SearchBar from '../containers/SearchBar';
 import { colors } from '../styles';
 import WithEventListeners from '../components/WithEventListeners';
@@ -38,11 +41,11 @@ import {
   showSettings,
   createMantra,
   createToast,
-  toggleSetting
+  toggleSetting,
 } from '../actions';
 import COMMANDS, {
   ACTIVITY_COMMANDS,
-  activityCommandsByStatus
+  activityCommandsByStatus,
 } from '../constants/commands';
 import { getTimeline } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
@@ -73,36 +76,17 @@ injectGlobal`
   body {
     position: relative;
     height: 100vh;
-
-    &::before, &::after {
-      z-index: -1;
-      content: '';
-      position: absolute;
-      top: 0;
-      width: 100vw;
-      height: 100vh;
-      opacity: var(--body-after-opacity, 1);
-      transition: opacity 0.15s;
-    }
-  }
-
-  .body-with-background-gradient {
-    &::after {
-      background: linear-gradient(to top, transparent, #ff8c00, #ff0080);
-    }
-    &::before {
-      background: linear-gradient(to top, #40e0d0, #ff8c00, transparent);
-    }
+    font-size: 12px;
   }
 
   :root {
-    --root-scale: 1;
-    --body-after-opacity: 0.1;
+    --secondary-panel-background: #F3F3F3;
+    --secondary-panel-background-hover: #ddd;
+    --secondary-panel-color: #5A5A5A;
   }
 
   #app-root { 
     transition: transform 0.15s;
-    transform: scale(var(--root-scale, 1));
     background: ${colors.background};
     height: 100%;
     max-height:100vh;
@@ -168,21 +152,19 @@ class App extends React.Component<
     user: { id: string, name: string },
     userTraces: (?Trace)[],
     userTodos: (?Todo)[],
-    todosVisible: boolean
+    todosVisible: boolean,
   },
-  { commanderVisible: boolean }
+  { commanderVisible: boolean },
 > {
   state = {
     // modalIsOpen,
     searchPanelVisible: false,
     commanderVisible: false,
-    additionalCommands: []
+    additionalCommands: [],
   };
 
   constructor(props) {
     super(props);
-
-    document.body.className = 'body-with-background-gradient';
 
     /** ⚠️ come back */
     this.props.fetchUser(this.props.user.id);
@@ -190,10 +172,6 @@ class App extends React.Component<
     } else if (this.props.trace) {
       this.props.fetchTrace(this.props.trace);
     }
-  }
-
-  componentWillUnMount() {
-    document.body.className = '';
   }
 
   componentDidCatch(e, info) {
@@ -222,16 +200,6 @@ class App extends React.Component<
       });
     };
 
-    /* 💁 this is that blur transform scale thing */
-    // window.addEventListener('blur', e => {
-    //   document.documentElement.style.setProperty('--root-scale', '0.975');
-    //   document.documentElement.style.setProperty('--body-after-opacity', '1');
-    // });
-    // window.addEventListener('focus', e => {
-    //   document.documentElement.style.setProperty('--root-scale', '1');
-    //   document.documentElement.style.setProperty('--body-after-opacity', '0.1');
-    // });
-
     createKeyEvent('keydown', this.props.keyDown);
     createKeyEvent('keyup', this.props.keyUp);
   }
@@ -240,7 +208,7 @@ class App extends React.Component<
 
   addCommand = command => {
     this.setState(state => ({
-      additionalCommands: [command, ...state.additionalCommands]
+      additionalCommands: [command, ...state.additionalCommands],
     }));
   };
 
@@ -257,6 +225,7 @@ class App extends React.Component<
   showSearchPanel = () => {
     this.setState({ searchPanelVisible: true });
     this.searchRef.focus();
+    this.searchRef.setSelectionRange(0, this.searchRef.value.length);
   };
 
   hideSearchPanel = () => {
@@ -275,9 +244,7 @@ class App extends React.Component<
   };
 
   renderTimeline = route => {
-    const { trace_id } = this.props.match.params; // route.match.params.trace_id
-    // ? route.match.params.trace_id
-    // : this.props.trace && this.props.trace.id;
+    const { trace_id } = this.props.match.params;
 
     return trace_id ? (
       <ConnectedTimeline
@@ -299,7 +266,7 @@ class App extends React.Component<
         case 'activity':
           return [
             ...activityCommandsByStatus(operand.activityStatus),
-            ...baseCommands
+            ...baseCommands,
           ];
         default:
           return baseCommands;
@@ -356,7 +323,7 @@ class App extends React.Component<
               this.props.collapseAllThreads();
             }
           }
-        }
+        },
       ],
       [
         'keyup',
@@ -378,14 +345,20 @@ class App extends React.Component<
                       if (
                         isEndable(
                           this.props.activities[this.props.operand.activity_id],
-                          this.props.blocks.filter(block =>
-                            block.activity_id ===
-                              this.props.operand.activity_id),
-                          this.props.threadLevels
+                          this.props.blocks.filter(
+                            block =>
+                              block.activity_id ===
+                              this.props.operand.activity_id,
+                          ),
+                          this.props.threadLevels,
                         )
                       ) {
                         this.showCommander();
-                        this.enterCommand(this.getCommands(this.props.operand).find(cmd => cmd.shortcut === e.key.toUpperCase()));
+                        this.enterCommand(
+                          this.getCommands(this.props.operand).find(
+                            cmd => cmd.shortcut === e.key.toUpperCase(),
+                          ),
+                        );
                       }
                       break;
                     case 's':
@@ -395,7 +368,11 @@ class App extends React.Component<
                           .status === 'active'
                       ) {
                         this.showCommander();
-                        this.enterCommand(ACTIVITY_COMMANDS.find(({ shortcut }) => shortcut === 'S'));
+                        this.enterCommand(
+                          ACTIVITY_COMMANDS.find(
+                            ({ shortcut }) => shortcut === 'S',
+                          ),
+                        );
                       }
                     default:
                       break;
@@ -406,8 +383,8 @@ class App extends React.Component<
                 break;
             }
           }
-        }
-      ]
+        },
+      ],
     ];
     return (
       <WithEventListeners eventListeners={eventListeners} node={document}>
@@ -417,7 +394,7 @@ class App extends React.Component<
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                height: '100%'
+                height: '100%',
               }}
             >
               <Header
@@ -440,15 +417,25 @@ class App extends React.Component<
                   defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
                   onChange={size => localStorage.setItem('splitPos', size)}
                 >
-                  {true && <div>Advanced Search</div>}
+                  {true && (
+                    <SidePanel>
+                      <AdvancedSearch threads={this.props.threads} />
+                    </SidePanel>
+                  )}
                   <div>
                     {do {
                       if (this.props.view === 'multithread') {
                         this.renderTimeline();
                       } else if (this.props.view === 'singlethread') {
-                        <SingleThreadView
-                          thread={this.props.threads[this.props.viewThread]}
-                        />;
+                        <Route
+                          path={`${this.props.location.pathname}/threads/${
+                            this.props.viewThread
+                          }`}
+                        >
+                          <SingleThreadView
+                            thread={this.props.threads[this.props.viewThread]}
+                          />
+                        </Route>;
                       }
                     }}
                   </div>
@@ -461,7 +448,7 @@ class App extends React.Component<
                     zIndex: 1,
                     visibility: this.state.searchPanelVisible
                       ? 'visible'
-                      : 'hidden'
+                      : 'hidden',
                   }}
                 >
                   <SearchBar
@@ -516,7 +503,7 @@ export default compose(
       user: getUser(state),
       userTraces: getUser(state).traces,
       view: state.view,
-      viewThread: state.viewThread
+      viewThread: state.viewThread,
     }),
     dispatch => ({
       collapseAllThreads: id => dispatch(collapseAllThreads(id)),
@@ -534,7 +521,7 @@ export default compose(
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       showActivityDetails: () => dispatch(showActivityDetails()),
       showSettings: () => dispatch(showSettings()),
-      toggleActivityMute: () => dispatch(toggleSetting('activityMute'))
-    })
-  )
+      toggleActivityMute: () => dispatch(toggleSetting('activityMute')),
+    }),
+  ),
 )(App);

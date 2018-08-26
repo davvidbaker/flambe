@@ -1,8 +1,8 @@
 defmodule SteadyWeb.TabsControllerTest do
   use SteadyWeb.ConnCase
 
-  alias Steady.Accounts
-  alias Steady.Accounts.Tabs
+  alias Flambe.Accounts
+  alias Flambe.Accounts.Tabs
 
   @create_attrs %{count: 42}
   @update_attrs %{count: 43}

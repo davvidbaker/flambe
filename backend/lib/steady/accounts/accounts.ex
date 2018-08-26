@@ -1,12 +1,12 @@
-defmodule Steady.Accounts do
+defmodule Flambe.Accounts do
   @moduledoc """
   The Accounts context.
   """
 
   import Ecto.Query, warn: false
-  alias Steady.Repo
+  alias Flambe.Repo
 
-  alias Steady.Accounts.{User, Credential, Attention, Mantra, Category}
+  alias Flambe.Accounts.{User, Credential, Attention, Mantra, Category}
 
   @doc """
   Returns the list of todos for a particular user.
@@ -40,7 +40,7 @@ defmodule Steady.Accounts do
   def list_user_mantras(user_id) do
     query =
       from(
-        mantra in Steady.Accounts.Mantra,
+        mantra in Flambe.Accounts.Mantra,
         where: mantra.user_id == ^user_id,
         select: map(mantra, [:name, :timestamp])
       )
@@ -61,7 +61,7 @@ defmodule Steady.Accounts do
   def list_user_attentions(user_id) do
     query =
       from(
-        attention in Steady.Accounts.Attention,
+        attention in Flambe.Accounts.Attention,
         where: attention.user_id == ^user_id,
         select: map(attention, [:thread_id, :timestamp])
       )
@@ -151,7 +151,7 @@ defmodule Steady.Accounts do
   end
 
   def create_user_access_token(user) do
-    {:ok, jwt, claims} = Steady.Guardian.encode_and_sign(user)
+    {:ok, jwt, claims} = Flambe.Guardian.encode_and_sign(user)
     IO.puts("\n🔥claims")
     IO.inspect(claims)
     jwt
@@ -209,7 +209,7 @@ defmodule Steady.Accounts do
     User.changeset(user, %{})
   end
 
-  alias Steady.Accounts.Credential
+  alias Flambe.Accounts.Credential
 
   @doc """
   Returns the list of credentials.
@@ -366,9 +366,9 @@ defmodule Steady.Accounts do
     |> Category.changeset(attrs)
     |> Ecto.Changeset.put_assoc(
       :activities,
-      Enum.map(activity_ids, fn id -> Steady.Traces.get_activity!(id) end)
+      Enum.map(activity_ids, fn id -> Flambe.Traces.get_activity!(id) end)
     )
-    |> Ecto.Changeset.put_assoc(:user, Steady.Accounts.get_user!(user_id))
+    |> Ecto.Changeset.put_assoc(:user, Flambe.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
 
@@ -419,7 +419,7 @@ defmodule Steady.Accounts do
     Category.changeset(category, %{})
   end
 
-  alias Steady.Accounts.Todo
+  alias Flambe.Accounts.Todo
 
   @doc """
   Returns the list of todos.
@@ -465,7 +465,7 @@ defmodule Steady.Accounts do
   def create_todo(user_id, attrs \\ %{}) do
     %Todo{}
     |> Todo.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:user, Steady.Accounts.get_user!(user_id))
+    |> Ecto.Changeset.put_assoc(:user, Flambe.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
 
@@ -548,7 +548,7 @@ defmodule Steady.Accounts do
   def create_mantra(user_id, attrs \\ %{}) do
     %Mantra{}
     |> Mantra.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:user, Steady.Accounts.get_user!(user_id))
+    |> Ecto.Changeset.put_assoc(:user, Flambe.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
 
@@ -643,7 +643,7 @@ defmodule Steady.Accounts do
   def create_attention(user_id, attrs \\ %{}) do
     %Attention{}
     |> Attention.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:user, Steady.Accounts.get_user!(user_id))
+    |> Ecto.Changeset.put_assoc(:user, Flambe.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
 
@@ -694,7 +694,7 @@ defmodule Steady.Accounts do
     Attention.changeset(attention, %{})
   end
 
-  alias Steady.Accounts.Tabs
+  alias Flambe.Accounts.Tabs
 
   @doc """
   Returns the list of tabs.
@@ -751,7 +751,7 @@ defmodule Steady.Accounts do
   def create_tabs(user_id, attrs \\ %{}) do
     %Tabs{}
     |> Tabs.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:user, Steady.Accounts.get_user!(user_id))
+    |> Ecto.Changeset.put_assoc(:user, Flambe.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
 
@@ -802,7 +802,7 @@ defmodule Steady.Accounts do
     Tabs.changeset(tabs, %{})
   end
 
-  alias Steady.Accounts.SearchTerm
+  alias Flambe.Accounts.SearchTerm
 
   @doc """
   Returns the list of SearchTerms.
@@ -820,7 +820,7 @@ defmodule Steady.Accounts do
   def list_user_search_terms(user_id) do
     query =
       from(
-        search_term in Steady.Accounts.SearchTerm,
+        search_term in Flambe.Accounts.SearchTerm,
         where: search_term.user_id == ^user_id,
         select: map(search_term, [:term, :timestamp])
       )
@@ -859,7 +859,7 @@ defmodule Steady.Accounts do
   def create_search_term(user_id, attrs \\ %{}) do
     %SearchTerm{}
     |> SearchTerm.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:user, Steady.Accounts.get_user!(user_id))
+    |> Ecto.Changeset.put_assoc(:user, Flambe.Accounts.get_user!(user_id))
     |> Repo.insert()
   end
 

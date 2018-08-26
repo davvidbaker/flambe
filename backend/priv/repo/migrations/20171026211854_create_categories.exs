@@ -1,4 +1,4 @@
-defmodule Steady.Repo.Migrations.CreateCategories do
+defmodule Flambe.Repo.Migrations.CreateCategories do
   use Ecto.Migration
 
   def change do

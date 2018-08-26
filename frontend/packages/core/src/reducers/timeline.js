@@ -359,6 +359,17 @@ function timeline(state = initialState, action) {
             status: 'suspended'
           }
         },
+        events: [
+          ...state.events,
+          {
+            timestamp: action.timestamp,
+            phase: 'S',
+            message: action.message,
+            id: 'optimisticActivitySuspension',
+            /* ⚠️ Do I need the whole activity in here? or just the activity_id? */
+            activity: state.activities[action.id]
+          }
+        ],
         blocks: terminateBlock(
           state.blocks,
           action.id,
@@ -375,6 +386,7 @@ function timeline(state = initialState, action) {
           }
         }
       };
+
     /** ⚠️ need to handle network failures */
     case ACTIVITY_UPDATE:
       const activity = state.activities[action.id];

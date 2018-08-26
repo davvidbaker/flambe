@@ -6,7 +6,7 @@ use Mix.Config
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we use it
 # with brunch.io to recompile .js and .css sources.
-config :steady, SteadyWeb.Endpoint,
+config :flambe, SteadyWeb.Endpoint,
   http: [
     port: 4000,
     protocol_options: [
@@ -40,7 +40,7 @@ config :steady, SteadyWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :steady, SteadyWeb.Endpoint,
+config :flambe, SteadyWeb.Endpoint,
   live_reload: [
     patterns: [
       ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
@@ -50,7 +50,7 @@ config :steady, SteadyWeb.Endpoint,
     ]
   ]
 
-config :steady, frontend_url: "https://localhost:8081"
+config :flambe, frontend_url: "https://localhost:8081"
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"
@@ -60,7 +60,7 @@ config :logger, :console, format: "[$level] $message\n"
 config :phoenix, :stacktrace_depth, 20
 
 # Configure your database
-config :steady, Steady.Repo,
+config :flambe, Flambe.Repo,
   adapter: Ecto.Adapters.Postgres,
   username: "postgres",
   password: "postgres",
@@ -69,8 +69,8 @@ config :steady, Steady.Repo,
   hostname: "localhost",
   pool_size: 10
 
-config :steady, Steady.Guardian,
-  issuer: "steady",
+config :flambe, Flambe.Guardian,
+  issuer: "flambe",
   secret_key: "8K68whWQOJn1kvRuJ3NmgkK36GDF4Q6/Z5UMtzCK+c/Tw4BO6fU/1IH/JiMyu+C6"
 
 import_config "dev.secret.exs"

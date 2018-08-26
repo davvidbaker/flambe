@@ -6,14 +6,14 @@
 use Mix.Config
 
 # General application configuration
-config :steady, ecto_repos: [Steady.Repo]
+config :flambe, ecto_repos: [Flambe.Repo]
 
 # Configures the endpoint
-config :steady, SteadyWeb.Endpoint,
+config :flambe, SteadyWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "blTEMHWIkbiAPhmJWziLsANDEZMRLYl0OCK3BBydt1IVNRR3pk9qo7GojiF6zbbq",
   render_errors: [view: SteadyWeb.ErrorView, accepts: ~w(html json)],
-  pubsub: [name: Steady.PubSub, adapter: Phoenix.PubSub.PG2]
+  pubsub: [name: Flambe.PubSub, adapter: Phoenix.PubSub.PG2]
 
 # Configures Elixir's Logger
 config :logger, :console,
@@ -26,9 +26,9 @@ config :ueberauth, Ueberauth,
     github: {Ueberauth.Strategy.Github, [send_redirect_uri: false]}
   ]
 
-config :steady, Steady.AuthPipeline,
-  module: Steady.Guardian,
-  error_handler: Steady.AuthErrorHandler
+config :flambe, Flambe.AuthPipeline,
+  module: Flambe.Guardian,
+  error_handler: Flambe.AuthErrorHandler
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

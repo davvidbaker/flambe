@@ -1,0 +1,59 @@
+{
+  "config": {
+    "title": "Docz",
+    "description": "My awesome app using docz",
+    "themeConfig": {
+      "styles": {}
+    },
+    "ordering": "descending",
+    "version": "0.1.11",
+    "indexHtml": "index.html",
+    "src": "../"
+  },
+  "entries": {
+    "docz/components/button.mdx": {
+      "name": "Button",
+      "id": "01CN85KY9YJ9ZANSWA5S648KTR",
+      "filepath": "docz/components/button.mdx",
+      "link": null,
+      "slug": "docz-components-button",
+      "route": "/docz-components-button",
+      "order": 0,
+      "menu": null,
+      "headings": []
+    },
+    "docz/components/logo.mdx": {
+      "name": "Logo",
+      "id": "01CN85KY9Z513645JZ945GJKXM",
+      "filepath": "docz/components/logo.mdx",
+      "link": null,
+      "slug": "docz-components-logo",
+      "route": "/docz-components-logo",
+      "order": 0,
+      "menu": null,
+      "headings": []
+    },
+    "docz/components/search.mdx": {
+      "name": "Search",
+      "id": "01CN85KYA06TT8NYP7TEKA36TT",
+      "filepath": "docz/components/search.mdx",
+      "link": null,
+      "slug": "docz-components-search",
+      "route": "/docz-components-search",
+      "order": 0,
+      "menu": null,
+      "headings": []
+    },
+    "docz/components/searchBar.mdx": {
+      "name": "SearchBar",
+      "id": "01CN85KYA07F7KE5MHV9Q2Y0H8",
+      "filepath": "docz/components/searchBar.mdx",
+      "link": null,
+      "slug": "docz-components-search-bar",
+      "route": "/docz-components-search-bar",
+      "order": 0,
+      "menu": null,
+      "headings": []
+    }
+  }
+}

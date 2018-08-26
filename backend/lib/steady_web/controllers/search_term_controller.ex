@@ -1,8 +1,8 @@
 defmodule SteadyWeb.SearchTermController do
   use SteadyWeb, :controller
 
-  alias Steady.Accounts
-  alias Steady.Accounts.SearchTerm
+  alias Flambe.Accounts
+  alias Flambe.Accounts.SearchTerm
 
   action_fallback(SteadyWeb.FallbackController)
 

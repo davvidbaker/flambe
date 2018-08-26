@@ -1,4 +1,4 @@
-defmodule Steady.Repo.Migrations.CreateCredentials do
+defmodule Flambe.Repo.Migrations.CreateCredentials do
   use Ecto.Migration
 
   def change do

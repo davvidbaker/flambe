@@ -1,8 +1,8 @@
 defmodule SteadyWeb.EventController do
   use SteadyWeb, :controller
 
-  alias Steady.Traces
-  alias Steady.Traces.{Event, Trace}
+  alias Flambe.Traces
+  alias Flambe.Traces.{Event, Trace}
 
   action_fallback(SteadyWeb.FallbackController)
 

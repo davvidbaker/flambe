@@ -1,4 +1,4 @@
-defmodule Steady.Repo.Migrations.AddTimestampToMantras do
+defmodule Flambe.Repo.Migrations.AddTimestampToMantras do
   use Ecto.Migration
 
   def change do
