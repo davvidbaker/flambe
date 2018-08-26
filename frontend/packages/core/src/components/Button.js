@@ -21,7 +21,7 @@ const commonStyles = `
 `;
 
 const Button = styled.button`
-  ${commonStyles}
+  ${props => props.unstyled ? '' : commonStyles}
    cursor: ${props => (props.disabled ? 'default' : 'pointer')};
 
   ${props =>

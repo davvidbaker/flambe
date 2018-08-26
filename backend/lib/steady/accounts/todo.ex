@@ -1,7 +1,7 @@
-defmodule Steady.Accounts.Todo do
+defmodule Flambe.Accounts.Todo do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Accounts.{Todo, User}
+  alias Flambe.Accounts.{Todo, User}
 
   schema "todos" do
     field(:description, :string)

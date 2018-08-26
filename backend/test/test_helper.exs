@@ -1,10 +1,10 @@
 ExUnit.start()
 
-Ecto.Adapters.SQL.Sandbox.mode(Steady.Repo, :manual)
+Ecto.Adapters.SQL.Sandbox.mode(Flambe.Repo, :manual)
 
-defmodule Steady.TestHelper do
-  alias Steady.{Traces, Accounts}
-  alias Steady.Traces.Activity
+defmodule Flambe.TestHelper do
+  alias Flambe.{Traces, Accounts}
+  alias Flambe.Traces.Activity
 
   def user_fixture do
     {:ok, user} = Accounts.create_user(%{name: "dummy name", credential: %{email: "dummy@email"}})
@@ -20,7 +20,7 @@ defmodule Steady.TestHelper do
   def activity_fixture(trace, attrs) do
     [main_thread | _tail] =
       trace
-      |> Steady.Repo.preload(:threads)
+      |> Flambe.Repo.preload(:threads)
       |> Traces.list_trace_threads()
 
     case Traces.create_activity(main_thread.id, attrs) do

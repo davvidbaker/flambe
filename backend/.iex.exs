@@ -1,4 +1,4 @@
 IO.puts "hello david"
 
-alias Steady.{Accounts}
-alias Steady.Accounts.{User}
+alias Flambe.{Accounts}
+alias Flambe.Accounts.{User}

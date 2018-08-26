@@ -2,7 +2,7 @@ use Mix.Config
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
-config :steady, SteadyWeb.Endpoint,
+config :flambe, SteadyWeb.Endpoint,
   http: [port: 4001],
   server: false
 
@@ -10,7 +10,7 @@ config :steady, SteadyWeb.Endpoint,
 config :logger, level: :warn
 
 # Configure your database
-config :steady, Steady.Repo,
+config :flambe, Flambe.Repo,
   adapter: Ecto.Adapters.Postgres,
   username: "postgres",
   password: "postgres",

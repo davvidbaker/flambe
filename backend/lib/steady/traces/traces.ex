@@ -1,13 +1,13 @@
-defmodule Steady.Traces do
+defmodule Flambe.Traces do
   @moduledoc """
   The Traces context.
   """
 
   import Ecto.Query, warn: false
-  alias Steady.Repo
+  alias Flambe.Repo
 
-  alias Steady.Traces.{Trace, Activity}
-  alias Steady.Accounts.User
+  alias Flambe.Traces.{Trace, Activity}
+  alias Flambe.Accounts.User
 
   @doc """
   Returns the list of traces.
@@ -96,7 +96,7 @@ defmodule Steady.Traces do
 
   def get_trace_with_events(id) do
     query =
-      from(e in Steady.Traces.Event, where: e.trace_id == ^id, preload: [activity: :categories])
+      from(e in Flambe.Traces.Event, where: e.trace_id == ^id, preload: [activity: :categories])
 
     events = Repo.all(query)
 
@@ -120,7 +120,7 @@ defmodule Steady.Traces do
   def create_trace(%User{} = user, attrs \\ %{}) do
     %Trace{}
     |> Trace.changeset(attrs)
-    |> Ecto.Changeset.put_change(:user, Steady.Accounts.get_user!(user.id))
+    |> Ecto.Changeset.put_change(:user, Flambe.Accounts.get_user!(user.id))
     |> Repo.insert()
   end
 
@@ -171,7 +171,7 @@ defmodule Steady.Traces do
     Trace.changeset(trace, %{})
   end
 
-  alias Steady.Traces.Event
+  alias Flambe.Traces.Event
 
   @doc """
   Returns the list of events.
@@ -219,7 +219,7 @@ defmodule Steady.Traces do
   def create_event(trace_id, attrs \\ %{}) do
     %Event{}
     |> Event.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:trace, Steady.Traces.get_trace!(trace_id))
+    |> Ecto.Changeset.put_assoc(:trace, Flambe.Traces.get_trace!(trace_id))
     |> Repo.insert()
   end
 
@@ -239,8 +239,8 @@ defmodule Steady.Traces do
   def create_event(trace_id, activity_id, attrs) do
     %Event{}
     |> Event.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:trace, Steady.Traces.get_trace!(trace_id))
-    |> Ecto.Changeset.put_assoc(:activity, Steady.Traces.get_activity!(activity_id))
+    |> Ecto.Changeset.put_assoc(:trace, Flambe.Traces.get_trace!(trace_id))
+    |> Ecto.Changeset.put_assoc(:activity, Flambe.Traces.get_activity!(activity_id))
     |> Repo.insert()
   end
 
@@ -291,7 +291,7 @@ defmodule Steady.Traces do
     Event.changeset(event, %{})
   end
 
-  alias Steady.Traces.Activity
+  alias Flambe.Traces.Activity
 
   @doc """
   Returns the list of activities.
@@ -341,7 +341,7 @@ defmodule Steady.Traces do
   def create_activity(thread_id, attrs \\ %{}) do
     %Activity{}
     |> Activity.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:thread, Steady.Traces.get_thread!(thread_id))
+    |> Ecto.Changeset.put_assoc(:thread, Flambe.Traces.get_thread!(thread_id))
     |> Repo.insert()
   end
 
@@ -379,7 +379,7 @@ defmodule Steady.Traces do
     Repo.delete(activity)
   end
 
-  alias Steady.Traces.Thread
+  alias Flambe.Traces.Thread
 
   @doc """
   Returns the list of threads.
@@ -425,7 +425,7 @@ defmodule Steady.Traces do
   def create_thread(trace_id, attrs \\ %{}) do
     %Thread{}
     |> Thread.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:trace, Steady.Traces.get_trace!(trace_id))
+    |> Ecto.Changeset.put_assoc(:trace, Flambe.Traces.get_trace!(trace_id))
     |> Repo.insert()
   end
 

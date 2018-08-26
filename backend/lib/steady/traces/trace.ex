@@ -1,14 +1,14 @@
-defmodule Steady.Traces.Trace do
+defmodule Flambe.Traces.Trace do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Traces.{Trace, Event, Thread}
+  alias Flambe.Traces.{Trace, Event, Thread}
 
   schema "traces" do
     field(:name, :string)
 
     has_many(:events, Event)
     has_many(:threads, Thread, on_delete: :delete_all)
-    belongs_to(:user, Steady.Accounts.User)
+    belongs_to(:user, Flambe.Accounts.User)
 
     timestamps()
   end

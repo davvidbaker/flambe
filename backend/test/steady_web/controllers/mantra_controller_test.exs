@@ -1,8 +1,8 @@
 defmodule SteadyWeb.MantraControllerTest do
   use SteadyWeb.ConnCase
 
-  alias Steady.Accounts
-  alias Steady.Accounts.Mantra
+  alias Flambe.Accounts
+  alias Flambe.Accounts.Mantra
 
   @create_attrs %{name: "some name"}
   @update_attrs %{name: "some updated name"}

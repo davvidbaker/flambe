@@ -1,8 +1,8 @@
 defmodule SteadyWeb.AttentionController do
   use SteadyWeb, :controller
 
-  alias Steady.Accounts
-  alias Steady.Accounts.Attention
+  alias Flambe.Accounts
+  alias Flambe.Accounts.Attention
 
   action_fallback(SteadyWeb.FallbackController)
 

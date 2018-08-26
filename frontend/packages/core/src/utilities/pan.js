@@ -33,6 +33,7 @@ function pan(
   let newTopOffset = topOffset + deltaY;
   newTopOffset = Math.max(newTopOffset, 0);
 
+
   return {
     leftBoundaryTime: newLeftBoundaryTime,
     rightBoundaryTime: newRightBoundaryTime,

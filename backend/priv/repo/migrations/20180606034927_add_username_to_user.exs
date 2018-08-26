@@ -1,4 +1,4 @@
-defmodule Steady.Repo.Migrations.AddUsernameToUser do
+defmodule Flambe.Repo.Migrations.AddUsernameToUser do
   use Ecto.Migration
 
   def change do

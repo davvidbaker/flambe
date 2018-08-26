@@ -67,7 +67,7 @@ type Props = {
   rightBoundaryTime: number,
   threadLevels: { id: { current: number, max: number } }[],
   threads: { name: string, id: number, rank: number, collapsed: boolean }[],
-  topOffset: number,
+  // state.scrollTop: number,
   // functions
   activities?: { [id: string]: Activity },
   categories: CategoryType[],
@@ -88,6 +88,7 @@ type State = {
   mousedown: boolean,
   mousedownX: number,
   offsets: {},
+  scrollTop: number,
   threadStatuses: {}
 };
 
@@ -96,7 +97,6 @@ class FlameChart extends Component<Props, State> {
   canvas: ?HTMLCanvasElement;
   tooltip: ?HTMLElement;
   minTextWidth: number;
-  topOffset = 0;
 
   static textPadding = { x: 5, y: 13.5 };
   static foldedThreadHeight = 100;
@@ -122,7 +122,8 @@ class FlameChart extends Component<Props, State> {
     mousedown: false,
     mousedownX: null,
     offsets: {},
-    ratio: 1
+    ratio: 1,
+    scrollTop: 0
   };
 
   constructor(props) {
@@ -297,7 +298,7 @@ class FlameChart extends Component<Props, State> {
       const { width: textWidth } = this.ctx.measureText(activity.name);
       if (
         mouseX > startX + textWidth + FlameChart.textPadding.x * 2 + 2 &&
-        mouseX < startX + textWidth + FlameChart.textPadding.x * 2 + 14 +2
+        mouseX < startX + textWidth + FlameChart.textPadding.x * 2 + 14 + 2
       ) {
         return { type: 'githubLink', githubLink, value: hitBlock };
       }
@@ -331,10 +332,11 @@ class FlameChart extends Component<Props, State> {
 
         case 'githubLink':
           /* ⚠️ fix this and make it more customizable */
-          window.open(`https://github.com/elasticsuite/${hit.githubLink[2]}/issues/${hit.githubLink[3]}`)
+          window.open(`https://github.com/elasticsuite/${hit.githubLink[2]}/issues/${
+            hit.githubLink[3]
+          }`);
           break;
-        
-        
+
         case 'block':
           const block = this.props.blocks[hit.value[0]];
           const activity = this.props.activities[block.activity_id];
@@ -484,9 +486,17 @@ class FlameChart extends Component<Props, State> {
     const zoomCenterTime = this.pixelsToTime(e.nativeEvent.offsetX);
 
     // pan around if holding shift or scroll was mostly vertical
-    if (this.props.shiftModifier || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
-      this.props.pan(e.deltaX, e.deltaY, this.state.canvasWidth);
+    if (
+      Math.abs(e.deltaX) >= Math.abs(e.deltaY)
+    ) {
+      // props.pan just does left right panning of the timeline
+      this.props.pan(e.deltaX, 0, this.state.canvasWidth);
+
+      console.log(`🔥e.deltaY`, e.target.deltaY, e);
+
       requestAnimationFrame(this.draw.bind(this));
+    } else if (e.getModifierState('Shift')) {
+      if (typeof e.deltaY === 'number') { this.setState({ scrollTop: this.state.scrollTop + Number(e.deltaY) }); }
     } else {
       console.log('zoom');
       this.props.zoom(
@@ -516,7 +526,7 @@ class FlameChart extends Component<Props, State> {
         endTime,
         level,
         this.blockHeight,
-        this.topOffset +
+        this.state.scrollTop +
           this.state.offsets[activity.thread_id] +
           FlameChart.threadHeaderHeight
       );
@@ -958,16 +968,16 @@ class FlameChart extends Component<Props, State> {
           getBlockY(
             arrayOfBlocks[i - 1].level + 1,
             this.blockHeight,
-            this.topOffset
+            this.state.scrollTop
           ) +
-          this.topOffset +
+          this.state.scrollTop +
           this.state.offsets[block.thread_id] -
           1;
         const x2 = this.timeToPixels(block.startTime);
         const y2 =
-          getBlockY(block.level + 1, this.blockHeight, this.topOffset) +
+          getBlockY(block.level + 1, this.blockHeight, this.state.scrollTop) +
           this.state.offsets[block.thread_id] +
-          this.topOffset -
+          this.state.scrollTop -
           1;
 
         const aThird = (x2 - x1) / 3;
@@ -994,14 +1004,14 @@ class FlameChart extends Component<Props, State> {
           x1 + aThird,
           y1 + this.blockHeight / 2,
           x1 + aThird,
-          halfwayY, // this.topOffset + this.state.offsets[block.thread_id],
+          halfwayY, // this.state.scrollTop + this.state.offsets[block.thread_id],
           x1 + (x2 - x1) / 2,
-          // this.topOffset + this.state.offsets[block.thread_id],
+          // this.state.scrollTop + this.state.offsets[block.thread_id],
           halfwayY
         );
         this.ctx.bezierCurveTo(
           x2 - aThird,
-          halfwayY, // this.topOffset + this.state.offsets[block.thread_id],
+          halfwayY, // this.state.scrollTop + this.state.offsets[block.thread_id],
           x2 - aThird,
           y2 + this.blockHeight / 2,
           x2 + constrain(block2Width, 0, 5),
@@ -1044,7 +1054,7 @@ class FlameChart extends Component<Props, State> {
       collapsed ? -1 : level,
       this.blockHeight,
       (collapsed ? 1 : 0) +
-        this.topOffset +
+        this.state.scrollTop +
         this.state.offsets[activity.thread_id] +
         FlameChart.threadHeaderHeight
     );

@@ -1,8 +1,8 @@
 defmodule SteadyWeb.TodoController do
   use SteadyWeb, :controller
 
-  alias Steady.Accounts
-  alias Steady.Accounts.Todo
+  alias Flambe.Accounts
+  alias Flambe.Accounts.Todo
 
   action_fallback(SteadyWeb.FallbackController)
 

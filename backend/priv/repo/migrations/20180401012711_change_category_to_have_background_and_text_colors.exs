@@ -1,4 +1,4 @@
-defmodule Steady.Repo.Migrations.ChangeCategoryToHaveBackgroundAndTextColors do
+defmodule Flambe.Repo.Migrations.ChangeCategoryToHaveBackgroundAndTextColors do
   use Ecto.Migration
 
   def change do

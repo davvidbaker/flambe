@@ -33,7 +33,7 @@ module.exports = {
   rules: {
     'arrow-parens': 'off',
     camelcase: 'off',
-    'comma-dangle': 'off',
+    'comma-dangle': 'on',
     'max-len': 'off',
     'one-var': 'off',
     'no-bitwise': 'off',

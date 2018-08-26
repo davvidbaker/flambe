@@ -1,8 +1,8 @@
-defmodule Steady.Traces.Event do
+defmodule Flambe.Traces.Event do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Traces.{Event, Trace, Activity}
-  alias Steady.Utilities
+  alias Flambe.Traces.{Event, Trace, Activity}
+  alias Flambe.Utilities
 
   schema "events" do
     field(:message, :string)

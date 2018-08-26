@@ -1,8 +1,8 @@
 defmodule SteadyWeb.MantraController do
   use SteadyWeb, :controller
 
-  alias Steady.Accounts
-  alias Steady.Accounts.Mantra
+  alias Flambe.Accounts
+  alias Flambe.Accounts.Mantra
 
   action_fallback(SteadyWeb.FallbackController)
 

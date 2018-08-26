@@ -1,8 +1,22 @@
+// @flow
+/* ⚠️ Refactor to use Toggle */
 import React, { Component } from 'react';
 
 import Button from './Button';
+import { PropsTable } from 'docz';
 
-class ToggleButton extends Component {
+type State = {
+  toggledOn: boolean,
+};
+
+type Props = {
+  toggles: (toggles: func) => React.Component<*>,
+  children: string,
+  title: string,
+  unstyled?: bllean,
+};
+
+class ToggleButton extends Component<Props, State> {
   state = {
     toggledOn: false,
   };
@@ -18,12 +32,16 @@ class ToggleButton extends Component {
   };
 
   render() {
-    return [
-      <Button onClick={this.toggle} key="btn">
-        {this.props.children}
-      </Button>,
-      this.state.toggledOn === true ? this.props.toggles(this.toggle) : null,
-    ];
+    const { unstyled, title, toggles, children } = this.props;
+
+    return (
+      <>
+        <Button title={title} onClick={this.toggle} unstyled={unstyled}>
+          {children}
+        </Button>
+        {this.state.toggledOn === true ? toggles(this.toggle) : null}
+      </>
+    );
   }
 }
 

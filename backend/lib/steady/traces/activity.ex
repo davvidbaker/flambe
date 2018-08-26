@@ -1,13 +1,14 @@
-defmodule Steady.Traces.Activity do
+defmodule Flambe.Traces.Activity do
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query
-  alias Steady.Traces.{Activity, Event, Thread}
-  alias Steady.Accounts.{Category}
+  alias Flambe.Traces.{Activity, Event, Thread}
+  alias Flambe.Accounts.{Category}
 
   schema "activities" do
     field(:description, :string)
     field(:name, :string)
+    field(:weight, :integer)
     has_many(:events, Event)
     belongs_to(:thread, Thread)
 
@@ -25,8 +26,8 @@ defmodule Steady.Traces.Activity do
   @doc false
   def changeset(%Activity{} = activity, attrs) do
     activity
-    |> Steady.Repo.preload(:categories)
-    |> cast(attrs, [:name, :description])
+    |> Flambe.Repo.preload(:categories)
+    |> cast(attrs, [:name, :description, :weight])
     |> validate_required([:name])
     # ⚠️ really not sure if this is the right way to do this..., it is working though...👇 not.
     # I think I might have figured it out 🤩
@@ -45,6 +46,6 @@ defmodule Steady.Traces.Activity do
   end
 
   defp insert_and_get_all(categories) do
-    Steady.Repo.all(from(c in Steady.Accounts.Category, where: c.id in ^categories))
+    Flambe.Repo.all(from(c in Flambe.Accounts.Category, where: c.id in ^categories))
   end
 end

@@ -1,8 +1,8 @@
-defmodule Steady.Accounts.Attention do
+defmodule Flambe.Accounts.Attention do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Utilities
-  alias Steady.Accounts.{User}
+  alias Flambe.Utilities
+  alias Flambe.Accounts.{User}
 
   schema "attentions" do
     field(:thread_id, :id)
