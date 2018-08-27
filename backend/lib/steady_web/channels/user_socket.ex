@@ -1,7 +1,7 @@
 defmodule SteadyWeb.UserSocket do
   use Phoenix.Socket
 
-  alias Steady.Accounts
+  alias Flambe.Accounts
 
   ## Channels
   channel("events:*", SteadyWeb.EventChannel)

@@ -53,7 +53,7 @@ defmodule SteadyWeb.TraceView do
 
   def render("trace.json", %{trace: trace, events: events}) do
     # ⚠️ idk if this is the right place to be doing this
-    %{threads: threads} = Steady.Repo.preload(trace, :threads)
+    %{threads: threads} = Flambe.Repo.preload(trace, :threads)
 
     threads = Enum.map(threads, fn x -> %{id: x.id, name: x.name, rank: x.rank} end)
 
@@ -61,7 +61,7 @@ defmodule SteadyWeb.TraceView do
     # events = case Ecto.assoc_loaded?(trace.events) do
     #   true ->
     #     Enum.map(trace.events, fn evt_in ->
-    #       evt_in = Steady.Repo.preload(evt_in, [activity: [:categories]])
+    #       evt_in = Flambe.Repo.preload(evt_in, [activity: [:categories]])
     #       evt_out = %{
     #         timestamp: evt_in.timestamp,
     #         phase: evt_in.phase,

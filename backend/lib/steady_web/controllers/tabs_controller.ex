@@ -1,8 +1,8 @@
 defmodule SteadyWeb.TabsController do
   use SteadyWeb, :controller
 
-  alias Steady.Accounts
-  alias Steady.Accounts.Tabs
+  alias Flambe.Accounts
+  alias Flambe.Accounts.Tabs
 
   action_fallback(SteadyWeb.FallbackController)
 

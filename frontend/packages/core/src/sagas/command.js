@@ -39,7 +39,7 @@ import { getTimeline } from '../reducers/timeline';
 import { put, takeEvery, select } from 'redux-saga/effects';
 
 function* handleCommand({ operand, command }) {
-  const timeline = yield select(getTimeline);
+  let timeline = yield select(getTimeline);
 
   if (typeof command.action === 'function') {
     /* 💁 This may look funny, but is correct, because the command has been loaded up with arguments now */
@@ -112,6 +112,8 @@ function* handleCommand({ operand, command }) {
           message: command.message ? command.message : '',
           thread_id
         }));
+
+        timeline = yield select(getTimeline);
 
         /* ⚠️ Ideally we'd only process the tail of the trace */
         yield put(processTimelineTrace(timeline.events, Object.values(timeline.threads)));

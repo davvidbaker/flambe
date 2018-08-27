@@ -8,7 +8,7 @@
     "build:babel:cjs": "lerna exec --scope @flambe/logo -- babel src -d dist/cjs --config-file ../../../../../.babelrc",
     "analyze": "webpack-bundle-analyzer stats.json",
     "start": "(cd packages/core && npm start)",
-    "start:docs": "(cd packages/docs && npm start)",
+    "start:docz": "(cd packages/docz && npm start)",
     "test": "lerna run test",
     "flow": "flow",
     "lib": "lerna run lib",

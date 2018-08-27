@@ -5,7 +5,7 @@ import day from 'dayjs';
 const Div = styled.div`
   display: grid;
   align-items: center;
-  grid-template-columns: ${({ showTime }) => (showTime ? '75px 1fr' : '1fr')};
+  grid-template-columns: ${({ showTime }) => (showTime ? '90px 1fr' : '1fr')};
   max-width: 100%;
   width: 100%;
   overflow-x: scroll;
@@ -18,9 +18,8 @@ const Div = styled.div`
   }
 
   .time-message {
-    .type {
-      color: #aaa;
-    }
+    overflow: hidden;
+    overflow-x: visible;
 
     .time {
       color: #bbb;
@@ -77,6 +76,25 @@ const Div = styled.div`
   }
 `;
 
+const EventType = styled.div`
+  color: #aaa;
+  position: relative;
+
+  ${({ eventType }) =>
+    (eventType === 'X'
+      ? `
+    &::after {
+      content: "🧟";
+      display: block;
+      position: absolute;
+      font-size: 2em;
+      right: 0;
+      top: 0;
+    }
+`
+      : '')};
+`;
+
 const copy = {
   B: 'Began',
   J: 'Rejected',
@@ -101,7 +119,7 @@ const ActivityEvent = ({
     {showTime && (
       <div className="time-message">
         {/* 🔮 should be moved  */}
-        <div className="type">{copy[eventType]}</div>
+        <EventType eventType={eventType}>{copy[eventType]}</EventType>
         {/* 🔮 better formatting */}
         <div className="time">{day(time).format('YYYY-MM-DD')}</div>
       </div>

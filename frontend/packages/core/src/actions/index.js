@@ -84,24 +84,27 @@ export const VIEW_CHANGE = 'VIEW_CHANGE';
 export const SEARCH_TERMS_EVENT = 'SEARCH_TERMS_EVENT';
 export const TABS_EVENT = 'TABS_EVENT';
 
+export const SET_THREAD_INCLUDE_LIST = 'SET_THREAD_INCLUDE_LIST';
+export const SET_THREAD_EXCLUDE_LIST = 'SET_THREAD_EXCLUDE_LIST';
+
 export function toggleTodos(bool) {
   return {
     type: TODOS_TOGGLE,
-    bool
+    bool,
   };
 }
 
 export function incrementBlock(direction) {
   return {
     type: SEARCH_BLOCK_INCREMENT,
-    direction
+    direction,
   };
 }
 
 export function incrementMatch(direction) {
   return {
     type: SEARCH_MATCH_INCREMENT,
-    direction
+    direction,
   };
 }
 
@@ -110,7 +113,7 @@ export function processTimelineTrace(events, threads) {
   return {
     type: PROCESS_TIMELINE_TRACE,
     events,
-    threads
+    threads,
   };
 }
 
@@ -118,7 +121,7 @@ export function runCommand(operand, command) {
   return {
     type: COMMAND_RUN,
     operand,
-    command
+    command,
   };
 }
 
@@ -126,33 +129,33 @@ export function createThread(name, rank) {
   return {
     type: THREAD_CREATE,
     name,
-    rank
+    rank,
   };
 }
 
 export function collapseThread(id) {
   return {
     type: THREAD_COLLAPSE,
-    id
+    id,
   };
 }
 
 export function expandThread(id) {
   return {
     type: THREAD_EXPAND,
-    id
+    id,
   };
 }
 
 export function collapseAllThreads() {
   return {
-    type: THREADS_COLLAPSE_ALL
+    type: THREADS_COLLAPSE_ALL,
   };
 }
 
 export function expandAllThreads() {
   return {
-    type: THREADS_EXPAND_ALL
+    type: THREADS_EXPAND_ALL,
   };
 }
 
@@ -160,7 +163,7 @@ export function createTodo(name, description) {
   return {
     type: TODO_CREATE,
     name,
-    description
+    description,
   };
 }
 
@@ -169,7 +172,7 @@ export function beginTodo({
   thread_id,
   name,
   description,
-  timestamp
+  timestamp,
 }) {
   return {
     type: TODO_BEGIN,
@@ -177,24 +180,24 @@ export function beginTodo({
     name,
     description,
     timestamp,
-    thread_id
+    thread_id,
   };
 }
 
 export function createCategory({
   activity_id,
   name,
-  color_background
+  color_background,
 }: {
   activity_id: string,
   name: string,
-  color_background: string
+  color_background: string,
 }) {
   return {
     type: CATEGORY_CREATE,
     activity_id,
     name,
-    color_background
+    color_background,
   };
 }
 
@@ -202,14 +205,14 @@ export function updateCategory(id, updates) {
   return {
     type: CATEGORY_UPDATE,
     id,
-    updates
+    updates,
   };
 }
 
 export function createMantra(name) {
   return {
     type: MANTRA_CREATE,
-    name
+    name,
   };
 }
 
@@ -217,35 +220,35 @@ export function updateThread(id, updates) {
   return {
     type: THREAD_UPDATE,
     id,
-    updates
+    updates,
   };
 }
 
 export function fetchUser(id) {
   return {
     type: USER_FETCH,
-    id
+    id,
   };
 }
 
 export function createTrace(name: string) {
   return {
     type: TRACE_CREATE,
-    name
+    name,
   };
 }
 
 export function deleteTrace(id: number) {
   return {
     type: TRACE_DELETE,
-    id
+    id,
   };
 }
 
 export function deleteThread(id: number) {
   return {
     type: THREAD_DELETE,
-    id
+    id,
   };
 }
 
@@ -255,14 +258,14 @@ export function createActivity({
   description,
   thread_id /* message */,
   category_id,
-  phase
+  phase,
 }: {
   name: string,
   timestamp: number,
   description: string,
   thread_id: number /* message */,
   category_id: ?number,
-  phase: string
+  phase: string,
 }) {
   return {
     type: ACTIVITY_CREATE,
@@ -271,7 +274,7 @@ export function createActivity({
     description,
     thread_id,
     category_id,
-    phase
+    phase,
   };
 }
 
@@ -281,7 +284,7 @@ export function endActivity({
   timestamp,
   message,
   thread_id,
-  eventFlavor = 'E'
+  eventFlavor = 'E',
 }) {
   return {
     type: ACTIVITY_END,
@@ -289,46 +292,40 @@ export function endActivity({
     timestamp,
     message,
     thread_id,
-    eventFlavor
+    eventFlavor,
   };
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function suspendActivity({
-  id, timestamp, message, thread_id
-}) {
+export function suspendActivity({ id, timestamp, message, thread_id }) {
   return {
     type: ACTIVITY_SUSPEND,
     id,
     timestamp,
     message,
-    thread_id
+    thread_id,
   };
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function resumeActivity({
-  id, timestamp, message, thread_id
-}) {
+export function resumeActivity({ id, timestamp, message, thread_id }) {
   return {
     type: ACTIVITY_RESUME,
     id,
     timestamp,
     message,
-    thread_id
+    thread_id,
   };
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function resurrectActivity({
-  id, timestamp, message, thread_id
-}) {
+export function resurrectActivity({ id, timestamp, message, thread_id }) {
   return {
     type: ACTIVITY_RESURRECT,
     id,
     timestamp,
     message,
-    thread_id
+    thread_id,
   };
 }
 
@@ -337,7 +334,7 @@ export function deleteActivity(id, thread_id) {
   return {
     type: ACTIVITY_DELETE,
     id,
-    thread_id
+    thread_id,
   };
 }
 
@@ -346,7 +343,7 @@ export function updateActivity(id, updates) {
   return {
     type: ACTIVITY_UPDATE,
     id,
-    updates
+    updates,
   };
 }
 
@@ -354,63 +351,61 @@ export function updateEvent(id, updates) {
   return {
     type: EVENT_UPDATE,
     id,
-    updates
+    updates,
   };
 }
 
 export function showActivityDetails() {
   return {
-    type: ACTIVITY_DETAILS_SHOW
+    type: ACTIVITY_DETAILS_SHOW,
   };
 }
 
 export function hideActivityDetails() {
   return {
-    type: ACTIVITY_DETAILS_HIDE
+    type: ACTIVITY_DETAILS_HIDE,
   };
 }
 
 export function showCategoryManager() {
   return {
-    type: CATEGORY_MANAGER_SHOW
+    type: CATEGORY_MANAGER_SHOW,
   };
 }
 
 export function hideCategoryManager() {
   return {
-    type: CATEGORY_MANAGER_HIDE
+    type: CATEGORY_MANAGER_HIDE,
   };
 }
 
 export function showSettings() {
   return {
-    type: SETTINGS_SHOW
+    type: SETTINGS_SHOW,
   };
 }
 
 export function hideSettings() {
   return {
-    type: SETTINGS_HIDE
+    type: SETTINGS_HIDE,
   };
 }
 
 /** 💁 the thread_id is just being used here for optimistic updates when a command is run that operated on the activity */
-export function focusBlock({
-  index, activity_id, activityStatus, thread_id
-}) {
+export function focusBlock({ index, activity_id, activityStatus, thread_id }) {
   return {
     type: BLOCK_FOCUS,
     index,
     activity_id,
     activityStatus,
-    thread_id
+    thread_id,
   };
 }
 
 export function hoverBlock(index: number) {
   return {
     type: BLOCK_HOVER,
-    index
+    index,
   };
 }
 
@@ -433,34 +428,34 @@ export function hoverBlock(index: number) {
 export function keyDown(key: string) {
   return {
     type: KEY_DOWN,
-    key
+    key,
   };
 }
 
 export function keyUp(key: string) {
   return {
     type: KEY_UP,
-    key
+    key,
   };
 }
 
 export function selectTrace(trace: Trace) {
   return {
     type: TRACE_SELECT,
-    trace
+    trace,
   };
 }
 
 export function fetchTrace(trace: Trace) {
   return {
     type: TRACE_FETCH,
-    trace
+    trace,
   };
 }
 
 export function deleteCurrentTrace() {
   return {
-    type: DELETE_CURRENT_TRACE
+    type: DELETE_CURRENT_TRACE,
   };
 }
 
@@ -468,25 +463,25 @@ export function changeView(view: string, thread_id?: number) {
   return {
     type: VIEW_CHANGE,
     view,
-    thread_id
+    thread_id,
   };
 }
 
 export function fetchResource(
   resource: ?{ type: string, id: string },
-  params: ?{} = { method: 'GET' }
+  params: ?{} = { method: 'GET' },
 ) {
   return {
     type: FETCH_RESOURCE,
     params,
-    resource
+    resource,
   };
 }
 
 export function toggleSetting(setting) {
   return {
     type: SETTING_TOGGLE,
-    setting
+    setting,
   };
 }
 
@@ -494,14 +489,14 @@ export function createToast(message, notificationType) {
   return {
     type: TOAST_CREATE,
     message,
-    notificationType
+    notificationType,
   };
 }
 
 export function popToast(index = 0) {
   return {
     type: TOAST_POP,
-    index
+    index,
   };
 }
 
@@ -509,12 +504,28 @@ export function search(searchTerm, options) {
   return {
     type: SEARCH,
     searchTerm,
-    options
+    options,
   };
 }
 
 export function setTimeline(leftBoundaryTime, rightBoundaryTime) {
   return { type: TIMELINE_SET, leftBoundaryTime, rightBoundaryTime };
+}
+
+export function setThreadIncludeList(thread_ids: number[], inputValue: string) {
+  return {
+    type: SET_THREAD_INCLUDE_LIST,
+    thread_ids,
+    inputValue,
+  };
+}
+
+export function setThreadExcludeList(thread_ids: number[], inputValue: string) {
+  return {
+    type: SET_THREAD_EXCLUDE_LIST,
+    thread_ids,
+    inputValue,
+  };
 }
 
 /**
@@ -539,7 +550,7 @@ export function zoomTimeline(
   rightBoundaryTime: number,
   width: number,
   nowTime: number,
-  minTime: number
+  minTime: number,
 ) {
   return {
     type: TIMELINE_ZOOM,
@@ -550,7 +561,7 @@ export function zoomTimeline(
     rightBoundaryTime,
     width,
     nowTime,
-    minTime
+    minTime,
   };
 }
 
@@ -562,7 +573,7 @@ export function panTimeline(
   width: number,
   topOffset: number,
   nowTime: number,
-  minTime: number
+  minTime: number,
 ) {
   return {
     type: TIMELINE_PAN,
@@ -573,7 +584,7 @@ export function panTimeline(
     width,
     topOffset,
     nowTime,
-    minTime
+    minTime,
   };
 }
 
@@ -582,6 +593,6 @@ export function shiftAttention(thread_id, timestamp) {
   return {
     type: ATTENTION_SHIFT,
     thread_id,
-    timestamp
+    timestamp,
   };
 }

@@ -1,12 +1,12 @@
-defmodule Steady.Traces.Thread do
+defmodule Flambe.Traces.Thread do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Traces.{Thread, Activity}
+  alias Flambe.Traces.{Thread, Activity}
 
   schema "threads" do
     field(:name, :string)
     field(:rank, :integer, default: 0)
-    belongs_to(:trace, Steady.Traces.Trace)
+    belongs_to(:trace, Flambe.Traces.Trace)
     has_many(:activities, Activity, on_delete: :delete_all)
 
     timestamps()

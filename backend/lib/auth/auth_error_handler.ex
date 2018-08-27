@@ -1,9 +1,9 @@
-defmodule Steady.AuthErrorHandler do
+defmodule Flambe.AuthErrorHandler do
   import Plug.Conn
 
   def auth_error(conn, {type, reason}, opts) do
     # {:ok, claims} =
-      # Steady.Guardian.decode_and_verify(conn.cookies["steady_token"], %{"typ" => "access"})
+      # Flambe.Guardian.decode_and_verify(conn.cookies["steady_token"], %{"typ" => "access"})
 
       key = Guardian.Plug.Pipeline.current_key(conn)
       IO.puts "\n🔥key"

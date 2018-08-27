@@ -16,7 +16,7 @@ defmodule SteadyWeb.Router do
   end
 
   pipeline :authenticate_user do
-    plug(Steady.AuthPipeline)
+    plug(Flambe.AuthPipeline)
   end
 
   scope "/", SteadyWeb do

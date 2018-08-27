@@ -1,39 +1,39 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
-import Modal from 'react-modal';
 
+import DraggableModal from '../components/DraggableModal';
 import { hideSettings as hideSettingsAction, toggleSetting } from '../actions';
 
 const SETTINGS = [
   {
     setting: 'attentionFlows',
-    copy: 'Attention Flows'
+    copy: 'Attention Flows',
   },
   {
     setting: 'attentionDrivenThreadOrder',
     copy: 'Attention Driven Thread Order',
-    description: 'Threads are ordered by what was worked on most recently'
+    description: 'Threads are ordered by what was worked on most recently',
   },
   {
     setting: 'activityMute',
-    copy: 'Mute Activities'
+    copy: 'Mute Activities',
   },
   {
     setting: 'reactiveThreadHeight',
     copy: 'Reactive Thread Height',
     description:
-      'The height of a thread dynamically adjusts its height depending on how many levels are in the visible window.'
+      'The height of a thread dynamically adjusts its height depending on how many levels are in the visible window.',
   },
   {
     setting: 'suspendResumeFlows',
-    copy: 'Suspend/Resume Flows'
+    copy: 'Suspend/Resume Flows',
   },
   {
     setting: 'uniformBlockHeight',
     copy: 'Uniform Block Height',
-    description: 'In collapsed threads, all blocks are the same height.'
-  }
+    description: 'In collapsed threads, all blocks are the same height.',
+  },
 ];
 
 const Setting = styled.div`
@@ -62,11 +62,22 @@ const Settings = ({
   settingsVisible,
   hideSettings,
   settings,
-  toggleSetting
+  toggleSetting,
 }) => (
-  <Modal isOpen={settingsVisible} onRequestClose={hideSettings}>
+  <DraggableModal
+    isOpen={settingsVisible}
+    onRequestClose={hideSettings}
+    onDragStop={(e, { x, y }) => {
+      window.localStorage.setItem('settingsPositionX', x);
+      window.localStorage.setItem('settingsPositionY', y);
+    }}
+    defaultPosition={{
+      x: Number(window.localStorage.getItem('settingsPositionX')),
+      y: Number(window.localStorage.getItem('settingsPositionY')),
+    }}
+  >
     <Wrapper>
-      <h1>Settings</h1>
+      <h1 style={{ marginTop: 0 }}>Settings</h1>
       <ul>
         {SETTINGS.map(({ setting, copy, description }) => (
           <li key={setting}>
@@ -84,16 +95,16 @@ const Settings = ({
         ))}
       </ul>
     </Wrapper>
-  </Modal>
+  </DraggableModal>
 );
 
 export default connect(
   state => ({
     settingsVisible: state.settingsVisible,
-    settings: state.settings
+    settings: state.settings,
   }),
   dispatch => ({
     hideSettings: () => dispatch(hideSettingsAction()),
-    toggleSetting: setting => dispatch(toggleSetting(setting))
-  })
+    toggleSetting: setting => dispatch(toggleSetting(setting)),
+  }),
 )(Settings);

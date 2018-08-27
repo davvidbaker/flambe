@@ -1,8 +1,8 @@
-defmodule Steady.Accounts.Category do
+defmodule Flambe.Accounts.Category do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Accounts.{Category, User}
-  alias Steady.Traces.{Activity}
+  alias Flambe.Accounts.{Category, User}
+  alias Flambe.Traces.{Activity}
 
   schema "categories" do
     field(:color_background, :string)

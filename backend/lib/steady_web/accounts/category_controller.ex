@@ -1,8 +1,8 @@
 defmodule SteadyWeb.CategoryController do
   use SteadyWeb, :controller
 
-  alias Steady.Accounts
-  alias Steady.Accounts.Category
+  alias Flambe.Accounts
+  alias Flambe.Accounts.Category
 
   action_fallback(SteadyWeb.FallbackController)
 

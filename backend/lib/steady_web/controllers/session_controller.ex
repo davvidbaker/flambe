@@ -1,7 +1,7 @@
 defmodule SteadyWeb.SessionController do
   use SteadyWeb, :controller
 
-  alias Steady.Accounts
+  alias Flambe.Accounts
 
   # 👇 this is what the create function looked like when we were returning html.
   # def create(conn, %{"user" => %{"email" => email, "password" => password}}) do

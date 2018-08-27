@@ -1,5 +1,5 @@
-defmodule Steady.AuthPipeline do
-  use Guardian.Plug.Pipeline, otp_app: :steady
+defmodule Flambe.AuthPipeline do
+  use Guardian.Plug.Pipeline, otp_app: :flambe
 
   plug(Guardian.Plug.VerifyCookie, claims: %{"typ" => "access"})
   # plug(Guardian.Plug.VerifyHeader, claims: %{"typ" => "access"})

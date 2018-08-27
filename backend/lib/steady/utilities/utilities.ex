@@ -1,4 +1,4 @@
-defmodule Steady.Utilities do
+defmodule Flambe.Utilities do
   import Ecto.Changeset
 
   def convert_timestamp_integer_to_datetime(changeset) do

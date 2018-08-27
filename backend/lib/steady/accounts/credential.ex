@@ -1,7 +1,7 @@
-defmodule Steady.Accounts.Credential do
+defmodule Flambe.Accounts.Credential do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Steady.Accounts.{Credential, User}
+  alias Flambe.Accounts.{Credential, User}
 
   schema "credentials" do
     field(:email, :string)

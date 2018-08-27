@@ -1,9 +1,9 @@
 defmodule SteadyWeb.ThreadControllerTest do
   use SteadyWeb.ConnCase
 
-  alias Steady.Traces
-  alias Steady.Traces.{Thread, Trace}
-  alias Steady.TestHelper
+  alias Flambe.Traces
+  alias Flambe.Traces.{Thread, Trace}
+  alias Flambe.TestHelper
 
   @create_attrs %{name: "some thread name"}
   @update_attrs %{name: "some updated thread name"}

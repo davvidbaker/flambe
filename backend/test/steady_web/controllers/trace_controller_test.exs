@@ -1,8 +1,8 @@
 defmodule SteadyWeb.TraceControllerTest do
   use SteadyWeb.ConnCase
 
-  alias Steady.{Traces, TestHelper}
-  alias Steady.Traces.Trace
+  alias Flambe.{Traces, TestHelper}
+  alias Flambe.Traces.Trace
 
   @create_attrs %{name: "some trace name"}
   @update_attrs %{name: "some updated trace name"}
@@ -27,7 +27,7 @@ defmodule SteadyWeb.TraceControllerTest do
 
   describe "create trace" do
     test "renders trace when data is valid", %{conn: conn} do
-      %Steady.Accounts.User{id: user_id} = TestHelper.create_dummy_user()
+      %Flambe.Accounts.User{id: user_id} = TestHelper.create_dummy_user()
       conn = post(conn, trace_path(conn, :create), %{user_id: user_id, trace: @create_attrs})
 
       assert %{"id" => id} = json_response(conn, 201)["data"]
@@ -42,22 +42,22 @@ defmodule SteadyWeb.TraceControllerTest do
     end
 
     test "creates a main thread when data is valid", %{conn: conn} do
-      %Steady.Accounts.User{id: user_id} = TestHelper.create_dummy_user()
+      %Flambe.Accounts.User{id: user_id} = TestHelper.create_dummy_user()
       conn = post(conn, trace_path(conn, :create), %{user_id: user_id, trace: @create_attrs})
 
       #  ⚠️ this will likely change if I return more with the trace
       %{"id" => id} = json_response(conn, 201)["data"]
 
       [main_thread | _tail] =
-        Steady.Traces.get_trace!(id)
-        |> Steady.Repo.preload(:threads)
-        |> Steady.Traces.list_trace_threads()
+        Flambe.Traces.get_trace!(id)
+        |> Flambe.Repo.preload(:threads)
+        |> Flambe.Traces.list_trace_threads()
 
       assert main_thread.name == "Main"
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
-      %Steady.Accounts.User{id: user_id} = TestHelper.create_dummy_user()
+      %Flambe.Accounts.User{id: user_id} = TestHelper.create_dummy_user()
       conn = post(conn, trace_path(conn, :create), %{user_id: user_id, trace: @invalid_attrs})
       assert json_response(conn, 422)["errors"] != %{}
     end

@@ -1,8 +1,8 @@
 defmodule SteadyWeb.ThreadController do
   use SteadyWeb, :controller
 
-  alias Steady.Traces
-  alias Steady.Traces.Thread
+  alias Flambe.Traces
+  alias Flambe.Traces.Thread
 
   action_fallback(SteadyWeb.FallbackController)
 

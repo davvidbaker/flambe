@@ -50,6 +50,7 @@ store.subscribe(() => {
     activityDetailsVisible: state.activityDetailsVisible,
     categoryManagerVisible: state.categoryManagerVisible,
     operand: state.operand,
+    search: state.search,
     settings: state.settings,
     settingsVisible: state.settingsVisible,
     timeline: getTimeline(state),

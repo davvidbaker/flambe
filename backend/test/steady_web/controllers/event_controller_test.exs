@@ -3,9 +3,9 @@
 defmodule SteadyWeb.EventControllerTest do
   use SteadyWeb.ConnCase
 
-  alias Steady.Traces
-  alias Steady.Traces.{Activity, Trace}
-  alias Steady.TestHelper
+  alias Flambe.Traces
+  alias Flambe.Traces.{Activity, Trace}
+  alias Flambe.TestHelper
 
   # 💁 The only way a begin event is created is when a new activity is created.
   # @create_begin_attrs %{phase: "B", timestamp_integer: 1509092227708, message: ""}
@@ -37,7 +37,7 @@ defmodule SteadyWeb.EventControllerTest do
 
       [main_thread | _tail] =
         trace
-        |> Steady.Repo.preload(:threads)
+        |> Flambe.Repo.preload(:threads)
         |> Traces.list_trace_threads()
 
       {:ok, %Activity{id: activity_id}} =

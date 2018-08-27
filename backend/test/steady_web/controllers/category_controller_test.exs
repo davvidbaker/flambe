@@ -1,8 +1,8 @@
 defmodule SteadyWeb.CategoryControllerTest do
   use SteadyWeb.ConnCase
 
-  alias Steady.Accounts
-  alias Steady.Accounts.Category
+  alias Flambe.Accounts
+  alias Flambe.Accounts.Category
 
   @create_attrs %{color: "some color", name: "some name"}
   @update_attrs %{color: "some updated color", name: "some updated name"}
