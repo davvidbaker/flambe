@@ -28,6 +28,14 @@ const SETTINGS = [
   {
     setting: 'suspendResumeFlows',
     copy: 'Suspend/Resume Flows',
+    subsettings: [
+      {
+        copy: 'Only show flows for the focused  activity.',
+        setting: 'suspendResumeFlowsOnlyForFocusedActivity',
+        description:
+          'This should be more performant than showing all the flows.',
+      },
+    ],
   },
   {
     setting: 'uniformBlockHeight',
@@ -46,6 +54,13 @@ const Setting = styled.div`
     margin-left: 0;
   }
 `;
+
+const Subsetting = styled.div`
+  margin-left: 20px;
+
+  color: ${props => (props.disabled ? 'lightgrey' : 'auto')};
+`;
+
 const Wrapper = styled.div`
   font-size: 11px;
 
@@ -79,7 +94,7 @@ const Settings = ({
     <Wrapper>
       <h1 style={{ marginTop: 0 }}>Settings</h1>
       <ul>
-        {SETTINGS.map(({ setting, copy, description }) => (
+        {SETTINGS.map(({ setting, copy, description, subsettings }) => (
           <li key={setting}>
             <Setting>
               <input
@@ -90,6 +105,24 @@ const Settings = ({
               />
               <label htmlFor={setting}>{copy}</label>
               <span>{description}</span>
+              {subsettings &&
+                subsettings.map(
+                  ({ copy, description, setting: subsetting }) => (
+                    <Setting key={subsetting}>
+                      <Subsetting disabled={!settings[setting]}>
+                        <input
+                          checked={settings[subsetting]}
+                          onChange={() => toggleSetting(subsetting)}
+                          type="checkbox"
+                          id={subsetting}
+                          disabled={!settings[setting]}
+                        />
+                        <label htmlFor={subsetting}>{copy}</label>
+                        <span>{description}</span>
+                      </Subsetting>
+                    </Setting>
+                  ),
+                )}
             </Setting>
           </li>
         ))}

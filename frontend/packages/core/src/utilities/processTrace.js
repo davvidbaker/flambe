@@ -13,7 +13,7 @@ import type { Thread } from '../types/Thread';
 export function lastActivityBlock(blocks, activity_id) {
   const block = pipe(
     filter(block => block.activity_id === activity_id),
-    last
+    last,
   )(blocks);
   if (!block.events) {
     debugger;
@@ -24,7 +24,9 @@ export function lastActivityBlock(blocks, activity_id) {
 export function removeActivity(activity_id, thread_id, threadOpenActivities) {
   return {
     ...threadOpenActivities,
-    [thread_id]: threadOpenActivities[thread_id].filter(act_id => act_id !== activity_id)
+    [thread_id]: threadOpenActivities[thread_id].filter(
+      act_id => act_id !== activity_id,
+    ),
   };
 }
 
@@ -50,7 +52,7 @@ export function terminateBlock(
   timestamp,
   phase,
   message = '',
-  event_id
+  event_id,
 ) {
   const block = lastActivityBlock(blocks, activity_id);
   block.endTime = timestamp;
@@ -78,12 +80,12 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     threadsObject[thread.id] = thread;
     threadLevels = {
       ...threadLevels,
-      [thread.id]: { current: 0, max: 0 }
+      [thread.id]: { current: 0, max: 0 },
     };
 
     threadOpenActivities = {
       ...threadOpenActivities,
-      [thread.id]: []
+      [thread.id]: [],
     };
   });
 
@@ -93,12 +95,14 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       max: Date.now() + 1000, // arbitrary
       activities: {},
       threadLevels,
-      threads
+      threads,
     };
   }
 
   // 👇 The trace from the database is not necessarily ordered.
-  const orderedTrace: TraceEvent[] = sortBy((event: TraceEvent) => event.timestamp)(trace);
+  const orderedTrace: TraceEvent[] = sortBy(
+    (event: TraceEvent) => event.timestamp,
+  )(trace);
 
   // ⚠️ maybe one day don't have this redundancy.
   // Activities on client are slightly different than how they are stored on server. On client, activities have fields for their start and end times, while activities on server do not. Originally I was calling them entries on the client, but I stopped because the confusion around that being a keyword for objects in javascript. (Object.entries()...).
@@ -119,14 +123,14 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
     activities = {
       ...activities,
-      [event.activity.id]: activities[event.activity.id] || {}
+      [event.activity.id]: activities[event.activity.id] || {},
     };
 
     const thread_id = event.activity.thread.id;
 
     threadLevels = {
       ...threadLevels,
-      [thread_id]: threadLevels[thread_id] || { current: 0, max: 0 }
+      [thread_id]: threadLevels[thread_id] || { current: 0, max: 0 },
     };
 
     const threadLevel = threadLevels[thread_id];
@@ -137,7 +141,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
 
     activity.categories = pushToMaybeNullArray(
       activity.categories,
-      ...event.activity.categories
+      ...event.activity.categories,
     );
     activity.categories = uniq(activity.categories);
     activity.suspendedChildren = activity.suspendedChildren || [];
@@ -161,7 +165,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           event.timestamp,
           event.phase,
           event.message,
-          event.id
+          event.id,
         );
 
         threadLevel.current = decrementThreadLevel(threadLevel.current);
@@ -171,7 +175,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         threadOpenActivities = removeActivity(
           event.activity.id,
           thread_id,
-          threadOpenActivities
+          threadOpenActivities,
         );
         threadOpenActivities[thread_id].forEach(activity_id => {
           if (isChildActivity(activity_id, blocks, event)) {
@@ -184,14 +188,14 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
               activity_id,
               event.timestamp,
               event.phase,
-              event.message
+              event.message,
             );
             threadLevel.current--;
             threadLevel.current = Math.max(0, threadLevel.current);
             threadOpenActivities = removeActivity(
               activity_id,
               thread_id,
-              threadOpenActivities
+              threadOpenActivities,
             );
           }
         });
@@ -205,13 +209,13 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           level: threadLevel.current,
           activity_id: event.activity.id,
           beginning: event.phase,
-          events: [event.id]
+          events: [event.id],
         });
         threadLevel.current++;
         threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
         threadOpenActivities = {
           ...threadOpenActivities,
-          [thread_id]: [...threadOpenActivities[thread_id], event.activity.id]
+          [thread_id]: [...threadOpenActivities[thread_id], event.activity.id],
         };
         activity.status = 'active';
         break;
@@ -224,13 +228,18 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           break;
         }
 
+        // if an activity was already resumed, you can't resume again
+        if (activities[event.activity.id].status === 'active') {
+          break;
+        }
+
         blocks.push({
           startTime: event.timestamp,
           level: threadLevel.current,
           activity_id: event.activity.id,
           beginning: event.phase,
           startMessage: event.message,
-          events: [event.id]
+          events: [event.id],
         });
         threadLevel.current++;
         threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
@@ -243,20 +252,20 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
               level: threadLevel.current,
               activity_id,
               beginning: event.phase,
-              events: [event.id]
+              events: [event.id],
             });
             threadLevel.current++;
             threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
             threadOpenActivities = {
               ...threadOpenActivities,
-              [thread_id]: [...threadOpenActivities[thread_id], activity_id]
+              [thread_id]: [...threadOpenActivities[thread_id], activity_id],
             };
           });
         }
         activity.suspendedChildren = [];
         threadOpenActivities = {
           ...threadOpenActivities,
-          [thread_id]: [...threadOpenActivities[thread_id], event.activity.id]
+          [thread_id]: [...threadOpenActivities[thread_id], event.activity.id],
         };
         activity.status = 'active';
         break;
@@ -266,6 +275,10 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         activity.startTime = event.timestamp; // 👈 do i need this?
         activity.status = 'active';
         activity.name = event.activity.name;
+        activity.weight = event.activity.weight;
+        if (activity.weight) {
+          console.log(`🔥  activity.weight`, activity.weight);
+        }
         activity.description = event.activity.description;
         activity.thread_id = event.activity.thread.id;
         activity.flavor = event.phase === 'Q' ? 'question' : 'task';
@@ -275,12 +288,12 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           activity_id: event.activity.id,
           beginning: event.phase,
           startMessage: event.message,
-          events: [event.id]
+          events: [event.id],
         });
 
         threadOpenActivities = {
           ...threadOpenActivities,
-          [thread_id]: [...threadOpenActivities[thread_id], event.activity.id]
+          [thread_id]: [...threadOpenActivities[thread_id], event.activity.id],
         };
         // if (threadStatuses[thread_id].status === 'suspended') {
         //   blocks = terminateBlock(
@@ -303,7 +316,9 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         activity.ending = event.phase; // ⚠️ need the message!
         activity.status = 'complete';
         /* ⚠️ bad name */
-        const openActs = threadOpenActivities[thread_id].map(act_id => activities[thread_id]);
+        const openActs = threadOpenActivities[thread_id].map(
+          act_id => activities[thread_id],
+        );
         /* ⚠️ mutation */
         openActs.forEach((act, ind) => {
           const act_id = threadOpenActivities[thread_id][ind];
@@ -314,7 +329,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
               event.timestamp,
               event.phase,
               event.message,
-              event.id
+              event.id,
             );
             threadLevel.current = decrementThreadLevel(threadLevel.current);
 
@@ -322,7 +337,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
             threadOpenActivities = removeActivity(
               act_id,
               thread_id,
-              threadOpenActivities
+              threadOpenActivities,
             );
           }
         });
@@ -333,13 +348,13 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           event.timestamp,
           event.phase,
           event.message,
-          event.id
+          event.id,
         );
         threadLevel.current = decrementThreadLevel(threadLevel.current);
         threadOpenActivities = removeActivity(
           event.activity.id,
           thread_id,
-          threadOpenActivities
+          threadOpenActivities,
         );
         break;
 
@@ -372,7 +387,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     max: rightTime,
     threadLevels,
     threads: threadsObject,
-    events: trace
+    events: trace,
   };
 }
 

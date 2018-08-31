@@ -8,6 +8,7 @@ const defaultState = {
   activityMute: false,
   reactiveThreadHeight: true,
   suspendResumeFlows: true,
+  suspendResumeFlowsOnlyForFocusedActivity: false,
   uniformBlockHeight: false,
 };
 
