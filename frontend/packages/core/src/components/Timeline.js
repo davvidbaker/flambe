@@ -10,7 +10,7 @@ import {
   visibleThreadLevels,
   rankThreadsByAttention,
   timeToPixels,
-  pixelsToTime
+  pixelsToTime,
 } from '../utilities/timelineChart';
 import { layout } from '../styles';
 import zoom from '../utilities/zoom';
@@ -23,12 +23,7 @@ import ActivityDetail from './ActivityDetail';
 import TimeSeries from './TimeSeries';
 import FlameChart from './FlameChart';
 
-const SECOND = 1000;
-const MINUTE = 60 * SECOND;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
-const WEEK = 7 * DAY;
-const MONTH = 4 * WEEK; // ⚠️ not a real month
+import { SECOND, MINUTE, HOUR, DAY, WEEK, MONTH } from '../utilities/time';
 
 const MIN_GRID_SLICE_PX = 60;
 
@@ -42,7 +37,7 @@ type Thread = {
   name: string,
   __typename: 'Thread',
   activities: (?Activity)[],
-  dividersData: { offsets: { position: number, time: number }[] }
+  dividersData: { offsets: { position: number, time: number }[] },
 };
 
 type Props = {
@@ -52,7 +47,7 @@ type Props = {
   focusedBlockActivity_id: ?string,
   activities: { [string]: Activity },
   threads: (?Thread)[],
-  toggleThread: () => mixed
+  toggleThread: () => mixed,
 };
 
 type State = {
@@ -62,7 +57,7 @@ type State = {
   threadModal_id: ?number,
   timeSeriesHeight: number,
   zoomChord: string,
-  zoomChordMultiplier: number
+  zoomChordMultiplier: number,
 };
 
 class Timeline extends Component<Props, State> {
@@ -71,12 +66,12 @@ class Timeline extends Component<Props, State> {
     rightBoundaryTime: Date.now(),
     topOffset: 0,
     dividersData: {
-      offsets: []
+      offsets: [],
     },
     composingZoomChord: false,
     timeSeriesHeight: 100,
     zoomChord: '',
-    zoomChordMultiplier: 1
+    zoomChordMultiplier: 1,
   };
 
   constructor(props) {
@@ -84,7 +79,7 @@ class Timeline extends Component<Props, State> {
 
     const savedTimes = {
       lbt: localStorage.getItem('lbt'),
-      rbt: localStorage.getItem('rbt')
+      rbt: localStorage.getItem('rbt'),
     };
     const lbt = savedTimes.lbt && Number.parseFloat(savedTimes.lbt);
     const rbt = savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
@@ -110,12 +105,12 @@ class Timeline extends Component<Props, State> {
             { name: 'now', value: 'now' },
             { name: 'the last day', value: 'day' },
             { name: 'the last week', value: 'week' },
-            { name: 'the last month', value: 'month' }
+            { name: 'the last month', value: 'month' },
           ],
           itemStringKey: 'name',
-          itemReturnKey: 'value'
-        }
-      ]
+          itemReturnKey: 'value',
+        },
+      ],
     });
   }
 
@@ -126,7 +121,7 @@ class Timeline extends Component<Props, State> {
     ) {
       this.setState({
         leftBoundaryTime: nextProps.leftBoundaryTime,
-        rightBoundaryTime: nextProps.rightBoundaryTime
+        rightBoundaryTime: nextProps.rightBoundaryTime,
       });
     }
   }
@@ -167,7 +162,9 @@ class Timeline extends Component<Props, State> {
     // Add some extra space past the right boundary as the rightmost divider label text
     // may be partially shown rather than just pop up when a new rightmost divider gets into the view.
     lastDividerTime += MIN_GRID_SLICE_PX / pixelsPerTime;
-    dividersCount = Math.ceil((lastDividerTime - firstDividerTime) / gridSliceTime);
+    dividersCount = Math.ceil(
+      (lastDividerTime - firstDividerTime) / gridSliceTime,
+    );
 
     if (!gridSliceTime) dividersCount = 0;
 
@@ -176,7 +173,7 @@ class Timeline extends Component<Props, State> {
       const time = firstDividerTime + gridSliceTime * i;
       offsets.push({
         position: Math.floor(this.timeToPixels(time)),
-        time
+        time,
       });
     }
 
@@ -184,8 +181,8 @@ class Timeline extends Component<Props, State> {
       offsets,
       precision: Math.max(
         0,
-        -Math.floor(Math.log(gridSliceTime * 1.01) / Math.LN10)
-      )
+        -Math.floor(Math.log(gridSliceTime * 1.01) / Math.LN10),
+      ),
     };
   }
 
@@ -196,7 +193,7 @@ class Timeline extends Component<Props, State> {
       timestamp,
       leftBoundaryTime,
       rightBoundaryTime,
-      this.t ? this.t.clientWidth : window.innerWidth
+      this.t ? this.t.clientWidth : window.innerWidth,
     );
   }
 
@@ -207,48 +204,48 @@ class Timeline extends Component<Props, State> {
         this.setState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 10 * MINUTE,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'hour':
         this.setState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 60 * MINUTE,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
       case 'day':
         this.setState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 1 * DAY,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'week':
         this.setState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 1 * WEEK,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'month':
         this.setState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 1 * MONTH,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'year':
         this.setState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 12 * MONTH,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'all':
         this.setState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: this.props.minTIme,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE
+          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
       default:
         break;
@@ -266,16 +263,16 @@ class Timeline extends Component<Props, State> {
       this.state.rightBoundaryTime,
       canvasWidth,
       Date.now(),
-      this.props.minTime
+      this.props.minTime,
     );
 
     this.setState(
       {
         dividersData,
         leftBoundaryTime,
-        rightBoundaryTime
+        rightBoundaryTime,
       },
-      this.setLocalStorage
+      this.setLocalStorage,
     );
   };
 
@@ -289,7 +286,7 @@ class Timeline extends Component<Props, State> {
       canvasWidth,
       this.state.topOffset,
       Date.now(),
-      this.props.minTime
+      this.props.minTime,
     );
 
     this.setState(
@@ -297,9 +294,9 @@ class Timeline extends Component<Props, State> {
         leftBoundaryTime,
         rightBoundaryTime,
         topOffset,
-        dividersData
+        dividersData,
       },
-      this.setLocalStorage
+      this.setLocalStorage,
     );
 
     return { topOffset };
@@ -351,17 +348,17 @@ class Timeline extends Component<Props, State> {
 
     threads = Object.entries(props.activities).reduce(
       (acc, [_id, activity]) =>
-        (activity.status === 'suspended'
+        activity.status === 'suspended'
           ? {
-            ...acc,
-            [activity.thread_id]: {
-              ...acc[activity.thread_id],
-              suspendedActivityCount:
-                  acc[activity.thread_id].suspendedActivityCount + 1 || 1
+              ...acc,
+              [activity.thread_id]: {
+                ...acc[activity.thread_id],
+                suspendedActivityCount:
+                  acc[activity.thread_id].suspendedActivityCount + 1 || 1,
+              },
             }
-          }
-          : acc),
-      threads
+          : acc,
+      threads,
     );
 
     return (
@@ -419,7 +416,7 @@ class Timeline extends Component<Props, State> {
                     this.setState({
                       composingZoomChord: false,
                       zoomChord: '',
-                      zoomChordMultiplier: 1
+                      zoomChordMultiplier: 1,
                     });
                   }
                 } else if (e.key === 'n') {
@@ -428,8 +425,8 @@ class Timeline extends Component<Props, State> {
                   this.setState({ composingZoomChord: true });
                 }
               }
-            }
-          ]
+            },
+          ],
         ]}
       >
         {() => (
@@ -440,7 +437,7 @@ class Timeline extends Component<Props, State> {
               }}
               style={{
                 position: 'relative',
-                height: `calc(${window.innerHeight}px - ${layout.headerHeight})`
+                height: '100%',
               }}
             >
               <SplitPane
@@ -453,9 +450,11 @@ class Timeline extends Component<Props, State> {
                   rightBoundaryTime={rightBoundaryTime}
                   searchTerms={props.searchTerms}
                   mantras={props.mantras}
-                  tabs={filter(({ timestamp }) =>
-                    timestamp > leftBoundaryTime &&
-                      timestamp < rightBoundaryTime)(props.tabs)}
+                  tabs={filter(
+                    ({ timestamp }) =>
+                      timestamp > leftBoundaryTime &&
+                      timestamp < rightBoundaryTime,
+                  )(props.tabs)}
                   height={this.state.timeSeriesHeight}
                 />
                 {/* <div>doh</div> */}
@@ -483,16 +482,19 @@ class Timeline extends Component<Props, State> {
                   showAttentionFlows={props.settings.attentionFlows}
                   showThreadDetail={this.showThreadDetail}
                   showSuspendResumeFlows={props.settings.suspendResumeFlows}
+                  showSuspendResumeFlowsOnlyForFocusedActivity={
+                    props.settings.suspendResumeFlowsOnlyForFocusedActivity
+                  }
                   // threadLevels={props.threadLevels}
                   threadLevels={
                     props.activities && props.settings.reactiveThreadHeight
                       ? visibleThreadLevels(
-                        props.blocks,
-                        props.activities,
-                        leftBoundaryTime,
-                        rightBoundaryTime,
-                        props.threads
-                      )
+                          props.blocks,
+                          props.activities,
+                          leftBoundaryTime,
+                          rightBoundaryTime,
+                          props.threads,
+                        )
                       : props.threadLevels
                   }
                   hoverBlock={props.hoverBlock}
@@ -522,9 +524,12 @@ class Timeline extends Component<Props, State> {
                 <ActivityDetail
                   activity={{
                     id: props.focusedBlockActivity_id,
-                    ...focusedActivity
+                    ...focusedActivity,
                   }}
-                  activityBlocks={props.blocks.filter(block => block.activity_id === props.focusedBlockActivity_id)}
+                  activityBlocks={props.blocks.filter(
+                    block =>
+                      block.activity_id === props.focusedBlockActivity_id,
+                  )}
                   categories={props.categories}
                   updateActivity={props.updateActivity}
                   trace_id={props.trace_id}

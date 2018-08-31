@@ -32,8 +32,22 @@ defmodule Flambe.Traces.Activity do
     # ⚠️ really not sure if this is the right way to do this..., it is working though...👇 not.
     # I think I might have figured it out 🤩
     # I think put_assoc is what I need to use when the activity is being created, and cast assoc at other times. Does that make sense? Why would I need to do that?
-    |> put_assoc(:categories, upsert_categories(attrs))
+    |> maybe_upsert_categories(attrs)
+
     # |> cast_assoc(:categories, with: &Category.changeset/2)
+  end
+
+  # ⚠️ be more consistent about sending down "category_ids" or "categories"
+  defp maybe_upsert_categories(changeset, %{"category_ids" => _category_ids} = attrs) do
+    put_assoc(changeset, :categories, upsert_categories(attrs))
+  end
+
+  defp maybe_upsert_categories(changeset, %{"categories" => _categories} = attrs) do
+    put_assoc(changeset, :categories, upsert_categories(attrs))
+  end
+
+  defp maybe_upsert_categories(changeset, _attrs) do
+    changeset
   end
 
   defp upsert_categories(attrs) do

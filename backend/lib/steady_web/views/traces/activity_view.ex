@@ -25,7 +25,8 @@ defmodule SteadyWeb.ActivityView do
     %{
       id: activity.id,
       name: activity.name,
-      description: activity.description
+      description: activity.description,
+      weight: activity.weight,
     }
   end
 end

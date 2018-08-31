@@ -28,6 +28,7 @@ function getBlocksForMatch(blocks, activity_id) {
 
 /* ⚠️ TODO options */
 function* handleSearch({ searchTerm, options }) {
+  if (searchTerm.length <= 0) return;
   const timeline = yield select(getTimeline);
   const { advancedOptions } = yield select(state => state.search);
   const { threadIncludeList, threadExcludeList } = advancedOptions;

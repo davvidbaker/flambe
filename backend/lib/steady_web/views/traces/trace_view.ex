@@ -27,7 +27,8 @@ defmodule SteadyWeb.TraceView do
                 name: evt.activity.name,
                 id: evt.activity.id,
                 thread: %{id: evt.activity.thread_id},
-                categories: Enum.map(evt.activity.categories, fn cat -> cat.id end)
+                categories: Enum.map(evt.activity.categories, fn cat -> cat.id end),
+                weight: evt.activity.weight
               }
             else
               nil
