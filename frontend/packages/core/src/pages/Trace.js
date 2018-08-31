@@ -26,6 +26,7 @@ import { colors } from '../styles';
 import WithEventListeners from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
+import LimboContainer from '../components/LimboContainer';
 import {
   collapseAllThreads,
   deleteCurrentTrace,
@@ -96,16 +97,11 @@ injectGlobal`
         background: #000;
         opacity: .2;
         z-index: 1;
-        -moz-box-sizing: border-box;
-        -webkit-box-sizing: border-box;
         box-sizing: border-box;
-        -moz-background-clip: padding;
-        -webkit-background-clip: padding;
         background-clip: padding-box;
     }
 
      .Resizer:hover {
-        -webkit-transition: all 2s ease;
         transition: all 2s ease;
     }
 
@@ -141,6 +137,11 @@ injectGlobal`
     .Resizer.disabled:hover {
       border-color: transparent;
     }
+
+  .Pane.horizontal {
+    height: 100%;
+  }
+    
 `;
 
 class App extends React.Component<
@@ -422,22 +423,40 @@ class App extends React.Component<
                       <AdvancedSearch threads={this.props.threads} />
                     </SidePanel>
                   )}
-                  <div>
-                    {do {
-                      if (this.props.view === 'multithread') {
-                        this.renderTimeline();
-                      } else if (this.props.view === 'singlethread') {
-                        <Route
-                          path={`${this.props.location.pathname}/threads/${
-                            this.props.viewThread
-                          }`}
-                        >
-                          <SingleThreadView
-                            thread={this.props.threads[this.props.viewThread]}
-                          />
-                        </Route>;
+                  <div style={{ height: '100%' }}>
+                    <SplitPane
+                      split="horizontal"
+                      defaultSize={parseInt(
+                        localStorage.getItem('splitPosHo'),
+                        10,
+                      )}
+                      onChange={size =>
+                        localStorage.setItem('splitPosHo', size)
                       }
-                    }}
+                    >
+                      <div style={{ width: '100%' }}>
+                        {do {
+                          if (this.props.view === 'multithread') {
+                            this.renderTimeline();
+                          } else if (this.props.view === 'singlethread') {
+                            <Route
+                              path={`${this.props.location.pathname}/threads/${
+                                this.props.viewThread
+                              }`}
+                            >
+                              <SingleThreadView
+                                thread={
+                                  this.props.threads[this.props.viewThread]
+                                }
+                              />
+                            </Route>;
+                          }
+                        }}
+                      </div>
+                      <div style={{ height: '100%' }}>
+                        <LimboContainer />
+                      </div>
+                    </SplitPane>
                   </div>
                 </SplitPane>
                 <div
