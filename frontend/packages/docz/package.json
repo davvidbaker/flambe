@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "npm run dev",
-    "dev": "docz dev",
+    "dev": "docz dev --port 4002",
     "build": "docz build"
   },
   "dependencies": {
@@ -26,7 +26,7 @@
     "@babel/preset-stage-2": "^7.0.0-beta.51",
     "@babel/preset-typescript": "^7.0.0-beta.52",
     "babel-core": "^7.0.0-beta.51",
-    "docz": "latest"
+    "docz": "^0.11.0"
   },
   "author": "",
   "license": "ISC"

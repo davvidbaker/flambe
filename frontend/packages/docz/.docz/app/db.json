@@ -7,13 +7,14 @@
     },
     "ordering": "descending",
     "version": "0.1.11",
+    "repository": null,
     "indexHtml": "index.html",
     "src": "../"
   },
   "entries": {
     "docz/components/button.mdx": {
       "name": "Button",
-      "id": "01CN85KY9YJ9ZANSWA5S648KTR",
+      "id": "b465aded9783bc5bc85dc1827ec52482",
       "filepath": "docz/components/button.mdx",
       "link": null,
       "slug": "docz-components-button",
@@ -22,9 +23,20 @@
       "menu": null,
       "headings": []
     },
+    "docz/components/draggableModal.mdx": {
+      "name": "DraggableModal",
+      "id": "99e12eb02815e8e53768d225eceac02d",
+      "filepath": "docz/components/draggableModal.mdx",
+      "link": null,
+      "slug": "docz-components-draggable-modal",
+      "route": "/docz-components-draggable-modal",
+      "order": 0,
+      "menu": null,
+      "headings": []
+    },
     "docz/components/logo.mdx": {
       "name": "Logo",
-      "id": "01CN85KY9Z513645JZ945GJKXM",
+      "id": "6976d6f9335535320857ebda5df08b19",
       "filepath": "docz/components/logo.mdx",
       "link": null,
       "slug": "docz-components-logo",
@@ -35,7 +47,7 @@
     },
     "docz/components/search.mdx": {
       "name": "Search",
-      "id": "01CN85KYA06TT8NYP7TEKA36TT",
+      "id": "8f99fa33c6e6ba71129b0870718959ca",
       "filepath": "docz/components/search.mdx",
       "link": null,
       "slug": "docz-components-search",
@@ -46,7 +58,7 @@
     },
     "docz/components/searchBar.mdx": {
       "name": "SearchBar",
-      "id": "01CN85KYA07F7KE5MHV9Q2Y0H8",
+      "id": "b1d53b0cdd2357b7a674f0d6505667a8",
       "filepath": "docz/components/searchBar.mdx",
       "link": null,
       "slug": "docz-components-search-bar",

@@ -9,7 +9,6 @@ import Login from './Login';
 import Register from './Register';
 import Trace from './Trace';
 import UserProfile from './UserProfile';
-
 /* ⚠️  */
 const Routes = ({ loggedIn, username }) => (
   <>
@@ -44,8 +43,10 @@ const Routes = ({ loggedIn, username }) => (
 
 // the reason we need withRouter has to do with context, see more:
 // https://stackoverflow.com/questions/42875949/react-router-v4-redirect-not-working?rq=1
-export default withRouter(connect(state => ({
-  /* ⚠️ need to make this a thing */
-  loggedIn: true , //state.loggedIn,
-  username: getUser(state).username
-}))(Routes));
+export default withRouter(
+  connect(state => ({
+    /* ⚠️ need to make this a thing */
+    loggedIn: true, //state.loggedIn,
+    username: getUser(state).username,
+  }))(Routes),
+);

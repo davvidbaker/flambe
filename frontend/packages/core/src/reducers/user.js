@@ -14,7 +14,7 @@ import {
   TRACE_CREATE,
   USER_FETCH,
   SEARCH_TERMS_EVENT,
-  TABS_EVENT
+  TABS_EVENT,
 } from '../actions';
 
 export const getUser = state => state.user;
@@ -22,30 +22,31 @@ export const getUser = state => state.user;
 function timestampStringToTimestampInteger({ timestamp, ...rest }) {
   return {
     timestamp: new Date(timestamp).getTime(),
-    ...rest
+    ...rest,
   };
 }
 
 function sortByTime(arr) {
-  return pipe(
-    map(timestampStringToTimestampInteger),
-    sortBy(({ timestamp }) => timestamp)
-  )(arr);
+  return (
+    arr
+    |> map(timestampStringToTimestampInteger)
+    |> sortBy(({ timestamp }) => timestamp)
+  );
 }
 
 function user(
   state = {
     name: 'david' /* ⚠️ TODO change */,
-    username: 'david', /* ⚠️ TODO change */
+    username: 'david' /* ⚠️ TODO change */,
     id: '1',
     traces: [],
     categories: [],
     todos: [],
     mantras: [],
     attentionShifts: [],
-    search_terms: []
+    search_terms: [],
   },
-  action
+  action,
 ) {
   switch (action.type) {
     // 😃 optimism!
@@ -58,9 +59,9 @@ function user(
             name: action.name,
             id: 'optimisticCategory',
             color_background: action.color_background,
-            color_text: action.color_text || '#000000'
-          }
-        ]
+            color_text: action.color_text || '#000000',
+          },
+        ],
       };
     // this is optimistic, need to handle failure
     case MANTRA_CREATE:
@@ -68,8 +69,8 @@ function user(
         ...state,
         mantras: [
           ...state.mantras,
-          { name: action.name, timestamp: Date.now() }
-        ]
+          { name: action.name, timestamp: Date.now() },
+        ],
       };
     /** ⚠️ need to make sure the user doesn't do anything before this tho...
      */
@@ -78,10 +79,10 @@ function user(
         ...state,
         categories: state.categories.map(
           cat =>
-            (cat.id === 'optimisticCategory'
+            cat.id === 'optimisticCategory'
               ? { ...cat, id: action.data.id }
-              : cat)
-        )
+              : cat,
+        ),
       };
     /** ⚠️ TODO handle category failure (AND OTHER TYPES TOO!) */
 
@@ -89,20 +90,20 @@ function user(
       return {
         ...state,
         categories: state.categories.map(
-          cat => (cat.id === action.id ? { ...cat, ...action.updates } : cat)
-        )
+          cat => (cat.id === action.id ? { ...cat, ...action.updates } : cat),
+        ),
       };
     /* ⚠️ this is optimistic, need to handle failure */
     case ATTENTION_SHIFT:
       return action.thread_id === last(state.attentionShifts.thread_id)
         ? state
         : {
-          ...state,
-          attentionShifts: [
-            ...state.attentionShifts,
-            { timestamp: action.timestamp, thread_id: action.thread_id }
-          ]
-        };
+            ...state,
+            attentionShifts: [
+              ...state.attentionShifts,
+              { timestamp: action.timestamp, thread_id: action.thread_id },
+            ],
+          };
     // 😃 optimism!
 
     case TODO_CREATE:
@@ -113,9 +114,9 @@ function user(
           {
             name: action.name,
             description: action.description,
-            id: 'optimisticTodo'
-          }
-        ]
+            id: 'optimisticTodo',
+          },
+        ],
       };
 
     case `${TODO_CREATE}_SUCCEEDED`:
@@ -123,28 +124,28 @@ function user(
         ...state,
         todos: state.todos.map(
           todo =>
-            (todo.id === 'optimisticTodo'
+            todo.id === 'optimisticTodo'
               ? { ...todo, id: action.data.id }
-              : todo)
-        )
+              : todo,
+        ),
       };
 
     case TODO_BEGIN:
       return {
         ...state,
-        todos: state.todos.filter(todo => todo.id !== action.todo_id)
+        todos: state.todos.filter(todo => todo.id !== action.todo_id),
       };
 
     case TRACE_DELETE:
       return {
         ...state,
-        traces: state.traces.filter(trace => trace.id !== action.id)
+        traces: state.traces.filter(trace => trace.id !== action.id),
       };
     /** 💁 optimistic update... */
     case TRACE_CREATE:
       return {
         ...state,
-        traces: [...state.traces, { name: action.name, id: -1 }]
+        traces: [...state.traces, { name: action.name, id: -1 }],
       };
     /** ...then update id when received
      *
@@ -155,10 +156,10 @@ function user(
         ...state,
         traces: state.traces.map(
           trace =>
-            (trace.name === action.data.name
+            trace.name === action.data.name
               ? { ...trace, id: action.data.id }
-              : trace)
-        )
+              : trace,
+        ),
       };
     /** ⚠️ TODO handle TRACE_CREATE_FAILED */
 
@@ -166,11 +167,11 @@ function user(
       return {
         ...action.data,
         attentionShifts: action.data.attentionShifts.map(
-          timestampStringToTimestampInteger
+          timestampStringToTimestampInteger,
         ),
         mantras: sortByTime(action.data.mantras),
         searchTerms: sortByTime(action.data.searchTerms),
-        tabs: sortByTime(action.data.tabs)
+        tabs: sortByTime(action.data.tabs),
       };
 
     case `${USER_FETCH}_FAILED`:
@@ -181,8 +182,8 @@ function user(
         ...state,
         searchTerms: [
           ...state.searchTerms,
-          { term: action.term, timestamp: action.timestamp }
-        ]
+          { term: action.term, timestamp: action.timestamp },
+        ],
       };
 
     case TABS_EVENT:
@@ -193,9 +194,9 @@ function user(
           {
             count: action.tabs_count,
             timestamp: action.timestamp,
-            window_count: action.window_count
-          }
-        ]
+            window_count: action.window_count,
+          },
+        ],
       };
 
     default:

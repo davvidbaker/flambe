@@ -1,6 +1,12 @@
-import mapKeys from 'lodash/fp/mapKeys';
-import mapValues from 'lodash/fp/mapValues';
-import omit from 'lodash/fp/omit';
+import {
+  uniq,
+  omit,
+  mapKeys,
+  mapValues,
+  remove,
+  filter,
+  omitBy,
+} from 'lodash/fp';
 
 import {
   ACTIVITY_CREATE,
@@ -29,16 +35,44 @@ import {
   TIMELINE_SET,
   TODO_BEGIN,
   TRACE_SELECT,
+  TRACE_FILTER,
 } from '../actions';
 import { zoom, pan, processTrace } from '../utilities';
+import { getFilteredThreads } from '../utilities/timeline';
 import { terminateBlock } from '../utilities/processTrace';
 
 export const getTimeline = state => state.timeline;
+export const getFilterExcludes = state => state.timeline.trace.filterExcludes;
+
+export const getTimelineWithFiltersApplied = state => {
+  const filterExcludes = getFilterExcludes(state);
+  const timeline = getTimeline(state);
+
+  const activities = omitBy(a => filterExcludes.includes(a.thread_id))(
+    timeline.activities,
+  );
+
+  return {
+    ...timeline,
+    activities,
+    blocks: filter(b =>
+      Object.keys(activities)
+        .map(k => Number(k))
+        .includes(b.activity_id),
+    )(timeline.blocks),
+    threads: getFilteredThreads(filterExcludes, timeline.threads),
+    lastThread_id: filterExcludes.includes(state.lastThread_id)
+      ? state.lastThread_id
+      : null,
+    threadLevels: getFilteredThreads(filterExcludes, timeline.threadLevels),
+  };
+};
 
 const initialState = {
   trace: {
     id: null,
     name: null,
+    filterExcludes: [],
   },
   focusedBlockIndex: null,
   focusedBlockActivity_id: null,
@@ -47,7 +81,7 @@ const initialState = {
   leftBoundaryTime: 0,
   rightBoundaryTime: 0,
   flameChartTopOffset: 0,
-  lastThread: null,
+  lastThread_id: null,
   lastCategory_id: null,
 };
 
@@ -173,6 +207,19 @@ function timeline(state = initialState, action) {
         trace: action.trace,
       };
 
+    case TRACE_FILTER:
+      return {
+        ...state,
+        trace: {
+          ...state.trace,
+          filterExcludes: action.shouldInclude
+            ? remove(t_id => t_id === action.thread_id)(
+                state.trace.filterExcludes || [],
+              )
+            : uniq([...(state.trace.filterExcludes || []), action.thread_id]),
+        },
+      };
+
     case DELETE_CURRENT_TRACE:
       return {
         ...state,
@@ -222,7 +269,6 @@ function timeline(state = initialState, action) {
     case `${TODO_BEGIN}_SUCCEEDED`:
     case `${ACTIVITY_CREATE}_SUCCEEDED`:
       console.log(`action.data`, action.data);
-      // debugger
       return {
         ...state,
         blocks: state.blocks.map(
@@ -367,6 +413,10 @@ function timeline(state = initialState, action) {
             ...state.activities[action.id],
             endTime: action.timestamp,
             status: 'suspended',
+            events: [
+              ...state.activities[action.id].events,
+              'optimisticActivitySuspension',
+            ],
           },
         },
         events: [
@@ -376,8 +426,10 @@ function timeline(state = initialState, action) {
             phase: 'S',
             message: action.message,
             id: 'optimisticActivitySuspension',
-            /* ⚠️ Do I need the whole activity in here? or just the activity_id? */
-            activity: state.activities[action.id],
+            activity: {
+              ...state.activities[action.id],
+              id: action.id, // this is only here because of optimism
+            },
           },
         ],
         blocks: terminateBlock(

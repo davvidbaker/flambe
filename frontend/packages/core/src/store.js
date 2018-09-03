@@ -47,7 +47,7 @@ sagaMiddleware.run(sagas);
 store.subscribe(() => {
   const state = store.getState();
   saveState({
-    activityDetailsVisible: state.activityDetailsVisible,
+    activityDetailModalVisible: state.activityDetailModalVisible,
     categoryManagerVisible: state.categoryManagerVisible,
     operand: state.operand,
     search: state.search,

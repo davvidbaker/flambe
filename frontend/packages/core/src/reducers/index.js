@@ -27,7 +27,7 @@ function todosVisible(state = false, action) {
   }
 }
 
-function activityDetailsVisible(state = false, action) {
+function activityDetailModalVisible(state = false, action) {
   switch (action.type) {
     case ACTIVITY_DETAILS_SHOW:
       return true;
@@ -79,7 +79,7 @@ function viewThread(state = null, action) {
 }
 
 export {
-  activityDetailsVisible,
+  activityDetailModalVisible,
   categoryManagerVisible,
   modifiers,
   operand,

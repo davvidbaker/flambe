@@ -21,22 +21,22 @@ const commonStyles = `
 `;
 
 const Button = styled.button`
-  ${props => props.unstyled ? '' : commonStyles}
+  ${props => (props.unstyled ? '' : commonStyles)}
    cursor: ${props => (props.disabled ? 'default' : 'pointer')};
 
   ${props =>
-    (props.disabled
+    props.disabled
       ? ''
       : `&:hover {
     background: ${tinycolor(colors.hover)
-        .darken(5)
-        .toString()};
-  }`)}
+      .darken(5)
+      .toString()};
+  }`}
 
   &:active {
     background: ${tinycolor(colors.hover)
-    .darken(10)
-    .toString()};
+      .darken(10)
+      .toString()};
   }
 
   ${props => (props.looksLikeButton ? 'border-color: #ccc' : '')};
@@ -55,16 +55,16 @@ type Props = {
   children: Component<*>,
   placeholder?: string,
   placeholderIsDefaultValue?: boolean,
-  submit: (value: string) => mixed
+  submit: (value: string) => mixed,
 };
 
 /* 💁 aka MagicButton */
 export class InputFromButton extends Component<
   Props,
-  { isInput: boolean, width: number }
+  { isInput: boolean, width: number },
 > {
   state = {
-    isInput: false
+    isInput: false,
   };
 
   transformIntoInput = () => {
@@ -74,9 +74,9 @@ export class InputFromButton extends Component<
         this.transformedInput.focus();
         this.transformedInput.setSelectionRange(
           0,
-          this.transformedInput.value.length
+          this.transformedInput.value.length,
         );
-      }
+      },
     );
   };
 
@@ -107,7 +107,7 @@ export class InputFromButton extends Component<
       </Button>
     ) : (
       <StyledInputFromButton
-        type="text"
+        type={'text'}
         style={{ width: `${this.state.width}px` }}
         placeholder={this.props.placeholder || this.props.children}
         onBlur={this.transformIntoButton}

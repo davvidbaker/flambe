@@ -76,6 +76,7 @@ export const TRACE_CREATE = 'TRACE_CREATE';
 export const TRACE_DELETE = 'TRACE_DELETE';
 export const TRACE_SELECT = 'TRACE_SELECT';
 export const TRACE_FETCH = 'TRACE_FETCH';
+export const TRACE_FILTER = 'TRACE_FILTER';
 
 export const USER_FETCH = 'USER_FETCH';
 
@@ -297,13 +298,14 @@ export function endActivity({
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function suspendActivity({ id, timestamp, message, thread_id }) {
+export function suspendActivity({ id, timestamp, message, thread_id, weight }) {
   return {
     type: ACTIVITY_SUSPEND,
     id,
     timestamp,
     message,
     thread_id,
+    weight,
   };
 }
 
@@ -361,7 +363,7 @@ export function showActivityDetails() {
   };
 }
 
-export function hideActivityDetails() {
+export function hideActivityDetailModal() {
   return {
     type: ACTIVITY_DETAILS_HIDE,
   };
@@ -525,6 +527,14 @@ export function setThreadExcludeList(thread_ids: number[], inputValue: string) {
     type: SET_THREAD_EXCLUDE_LIST,
     thread_ids,
     inputValue,
+  };
+}
+
+export function filterTrace(shouldInclude: boolean, thread_id: number) {
+  return {
+    type: TRACE_FILTER,
+    shouldInclude,
+    thread_id,
   };
 }
 

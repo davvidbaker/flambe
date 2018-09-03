@@ -9,8 +9,8 @@ import {
   updateActivity,
   createCategory,
   updateCategory,
-  hideActivityDetails,
-  ACTIVITY_DETAILS_SHOW
+  hideActivityDetailModal,
+  ACTIVITY_DETAILS_SHOW,
 } from '../actions';
 import { getUser } from '../reducers/user';
 // types
@@ -36,10 +36,8 @@ type Props = {
   endActivity: (
     activity_id: number,
     timestamp: number,
-    message: string
+    message: string,
   ) => mixed,
-  hideActivityDetails: () => mixed,
-  showActivityDetails: () => mixed,
   DeleteButton: ({ variables: {} }) => mixed,
   deleteActivity: (id, thread_id) => mixed,
   deleteEvent: ({ variables: {} }) => mixed,
@@ -47,21 +45,29 @@ type Props = {
   addCategory: ({ variables: {} }) => mixed,
   updateCategory: ({ name?: string, color?: string }) => mixed,
   updateName: ({ variables: { name: string } }) => mixed,
-  threadLevels: { [string]: number }
 };
 
 class ActivityDetail extends React.Component<Props> {
+  state = {
+    caughtError: null,
+  };
+
+  componentDidCatch(e) {
+    console.log(`🔥  e`, e);
+    this.setState({ caughtError: e });
+  }
+
   addNewCategory = (name, hexString) => {
     this.props.createCategory({
       activity_id: this.props.activity.id,
       name,
-      color_background: hexString
+      color_background: hexString,
     });
   };
 
   addExistingCategory = (category_id: string) => {
     this.props.updateActivity(this.props.activity.id, {
-      category_ids: [category_id]
+      category_ids: [category_id],
     });
   };
 
@@ -72,24 +78,22 @@ class ActivityDetail extends React.Component<Props> {
       updateActivity,
       endActivity,
       deleteActivity,
-      threadLevels,
       updateCategory,
       categories,
-      submitCommand
+      submitCommand,
     } = this.props;
 
-    return (
-      <Modal
-        isOpen={Boolean(this.props.activityDetailsVisible)}
-        onRequestClose={this.props.hideActivityDetails}
-      >
+    return this.state.caughtError ? (
+      <div>{this.state.caughtError}</div>
+    ) : (
+      <>
         {/* // flow-ignore */}
         <InputFromButton
           placeholderIsDefaultValue
           submit={(value: string) => {
             updateActivity(activity.id, {
               name: value,
-              thread_id: activity.thread_id
+              thread_id: activity.thread_id,
             });
           }}
         >
@@ -104,6 +108,20 @@ class ActivityDetail extends React.Component<Props> {
         >
           Delete Activity
         </DeleteButton>
+        <div>
+          Weight:{' '}
+          <InputFromButton
+            placeholder={'🏋'}
+            submit={(value: string) => {
+              updateActivity(activity.id, {
+                weight: Number(value),
+                thread_id: activity.thread_id,
+              });
+            }}
+          >
+            {activity.weight || '🏋'}
+          </InputFromButton>
+        </div>
         <div>
           Categories:
           <ul>
@@ -135,38 +153,40 @@ class ActivityDetail extends React.Component<Props> {
         <ActivityEventFlow activityBlocks={activityBlocks} />
         {activityCommandsByStatus(activity.status)
           .filter(cmd => cmd.action !== ACTIVITY_DETAILS_SHOW)
-          .map(cmd =>
-            (cmd.parameters && cmd.parameters.length > 0 ? (
-            /* ⚠️ right now there is only one parameter, so this works find */
-              <InputFromButton
-                submit={(value: string) => {
-                  submitCommand({
-                    ...cmd,
-                    message: value,
-                    activity_id: activity.id,
-                    thread_id: activity.thread_id
-                  });
-                }}
-                placeholder={cmd.parameters[0].placeholder}
-                key={cmd.copy}
-              >
-                {cmd.copy}
-              </InputFromButton>
-            ) : (
-              <Button
-                onClick={() =>
-                  submitCommand({
-                    ...cmd,
-                    activity_id: activity.id,
-                    thread_id: activity.thread_id
-                  })
-                } 
-                key={cmd.copy}
-              >
-                {cmd.copy}
-              </Button>
-            )))}
-      </Modal>
+          .map(
+            cmd =>
+              cmd.parameters && cmd.parameters.length > 0 ? (
+                /* ⚠️ right now there is only one parameter, so this works find */
+                <InputFromButton
+                  submit={(value: string) => {
+                    submitCommand({
+                      ...cmd,
+                      message: value,
+                      activity_id: activity.id,
+                      thread_id: activity.thread_id,
+                    });
+                  }}
+                  placeholder={cmd.parameters[0].placeholder}
+                  key={cmd.copy}
+                >
+                  {cmd.copy}
+                </InputFromButton>
+              ) : (
+                <Button
+                  onClick={() =>
+                    submitCommand({
+                      ...cmd,
+                      activity_id: activity.id,
+                      thread_id: activity.thread_id,
+                    })
+                  }
+                  key={cmd.copy}
+                >
+                  {cmd.copy}
+                </Button>
+              ),
+          )}
+      </>
     );
   }
 }
@@ -175,24 +195,22 @@ export default // flow-ignore
 connect(
   state => ({
     categories: getUser(state).categories,
-    activityDetailsVisible: state.activityDetailsVisible
   }),
   dispatch => ({
     createCategory: ({ activity_id, name, color_background }) =>
       dispatch(createCategory({ activity_id, name, color_background })),
-    hideActivityDetails: () => dispatch(hideActivityDetails()),
     updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
-    endActivity: ({
-      id, timestamp, message, thread_id, eventFlavor = 'E'
-    }) =>
-      dispatch(endActivity({
-        id,
-        timestamp,
-        message,
-        thread_id,
-        eventFlavor
-      }))
-  })
+    endActivity: ({ id, timestamp, message, thread_id, eventFlavor = 'E' }) =>
+      dispatch(
+        endActivity({
+          id,
+          timestamp,
+          message,
+          thread_id,
+          eventFlavor,
+        }),
+      ),
+  }),
 )(ActivityDetail);
