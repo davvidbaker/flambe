@@ -1,7 +1,10 @@
 import { connect } from 'react-redux';
 
 import Timeline from '../components/Timeline';
-import { getTimeline } from '../reducers/timeline';
+import {
+  getTimeline,
+  getTimelineWithFiltersApplied,
+} from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import {
   createThread,
@@ -10,25 +13,26 @@ import {
   focusBlock,
   hoverBlock,
   updateActivity,
-  updateEvent
+  updateEvent,
 } from '../actions';
 
 export default connect(
   state => ({
-    activities: getTimeline(state).activities,
-    blocks: getTimeline(state).blocks,
+    activities: getTimelineWithFiltersApplied(state).activities,
+    blocks: getTimelineWithFiltersApplied(state).blocks,
     categories: getUser(state).categories,
-    focusedBlockActivity_id: getTimeline(state).focusedBlockActivity_id,
-    focusedBlockIndex: getTimeline(state).focusedBlockIndex,
-    hoveredBlockIndex: getTimeline(state).hoveredBlockIndex,
+    focusedBlockActivity_id: getTimelineWithFiltersApplied(state)
+      .focusedBlockActivity_id,
+    focusedBlockIndex: getTimelineWithFiltersApplied(state).focusedBlockIndex,
+    hoveredBlockIndex: getTimelineWithFiltersApplied(state).hoveredBlockIndex,
     mantras: getUser(state).mantras,
-    minTime: getTimeline(state).minTime,
-    maxTime: getTimeline(state).maxTime,
+    minTime: getTimelineWithFiltersApplied(state).minTime,
+    maxTime: getTimelineWithFiltersApplied(state).maxTime,
     modifiers: state.modifiers,
-    threadLevels: getTimeline(state).threadLevels,
-    threads: getTimeline(state).threads,
-    lastCategory_id: getTimeline(state).lastCategory_id,
-    lastThread_id: getTimeline(state).lastThread_id,
+    threadLevels: getTimelineWithFiltersApplied(state).threadLevels,
+    threads: getTimelineWithFiltersApplied(state).threads,
+    lastCategory_id: getTimelineWithFiltersApplied(state).lastCategory_id,
+    lastThread_id: getTimelineWithFiltersApplied(state).lastThread_id,
     attentionShifts: getUser(state).attentionShifts,
     searchTerms: getUser(state).searchTerms,
     settings: state.settings,
@@ -44,15 +48,15 @@ export default connect(
       dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     updateEvent: (id, updates) => dispatch(updateEvent(id, updates)),
-    focusBlock: ({
-      index, activity_id, activityStatus, thread_id
-    }) =>
-      dispatch(focusBlock({
-        index,
-        activity_id,
-        activityStatus,
-        thread_id
-      })),
-    hoverBlock: index => dispatch(hoverBlock(index))
-  })
+    focusBlock: ({ index, activity_id, activityStatus, thread_id }) =>
+      dispatch(
+        focusBlock({
+          index,
+          activity_id,
+          activityStatus,
+          thread_id,
+        }),
+      ),
+    hoverBlock: index => dispatch(hoverBlock(index)),
+  }),
 )(Timeline);

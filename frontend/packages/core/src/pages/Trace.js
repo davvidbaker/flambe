@@ -138,8 +138,8 @@ injectGlobal`
       border-color: transparent;
     }
 
-  .Pane.horizontal {
-    height: 100%;
+  .ReactModalPortal > div {
+    z-index: 1000;
   }
     
 `;
@@ -453,9 +453,7 @@ class App extends React.Component<
                           }
                         }}
                       </div>
-                      <div style={{ height: '100%' }}>
-                        <LimboContainer />
-                      </div>
+                      <LimboContainer submitCommand={this.submitCommand} />
                     </SplitPane>
                   </div>
                 </SplitPane>
@@ -507,7 +505,7 @@ export default compose(
     state => ({
       aModalIsOpen:
         state.settingsVisible ||
-        state.activityDetailsVisible ||
+        state.activityDetailModalVisible ||
         state.todosVisible ||
         state.settingsVisible,
       activities: getTimeline(state).activities,

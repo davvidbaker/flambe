@@ -32,7 +32,7 @@ import {
   showCategoryManager,
   showSettings,
   suspendActivity,
-  toggleTodos
+  toggleTodos,
 } from '../actions';
 import { getTimeline } from '../reducers/timeline';
 
@@ -51,34 +51,40 @@ function* handleCommand({ operand, command }) {
 
     switch (command.action) {
       case ACTIVITY_CREATE:
-        yield put(createActivity({
-          name: command.name,
-          timestamp: Date.now(),
-          description: '',
-          thread_id,
-          phase: command.copy.includes('question') ? 'Q' : 'B',
-          category_id: command.category_id
-        }));
+        yield put(
+          createActivity({
+            name: command.name,
+            timestamp: Date.now(),
+            description: '',
+            thread_id,
+            phase: command.copy.includes('question') ? 'Q' : 'B',
+            category_id: command.category_id,
+          }),
+        );
         yield put(shiftAttention(thread_id, Date.now()));
         break;
 
       case ACTIVITY_RESUME:
-        yield put(resumeActivity({
-          id: activity_id,
-          timestamp: Date.now(),
-          message: command.message,
-          thread_id
-        }));
+        yield put(
+          resumeActivity({
+            id: activity_id,
+            timestamp: Date.now(),
+            message: command.message,
+            thread_id,
+          }),
+        );
         yield put(shiftAttention(thread_id, Date.now()));
         break;
 
       case ACTIVITY_RESURRECT:
-        yield put(resurrectActivity({
-          id: activity_id,
-          timestamp: Date.now(),
-          message: command.message,
-          thread_id
-        }));
+        yield put(
+          resurrectActivity({
+            id: activity_id,
+            timestamp: Date.now(),
+            message: command.message,
+            thread_id,
+          }),
+        );
         yield put(shiftAttention(thread_id, Date.now()));
         break;
 
@@ -91,13 +97,15 @@ function* handleCommand({ operand, command }) {
           : command.action.includes('RESOLVE')
             ? 'V'
             : 'E';
-        yield put(endActivity({
-          id: activity_id,
-          timestamp: Date.now(),
-          message,
-          thread_id,
-          eventFlavor
-        }));
+        yield put(
+          endActivity({
+            id: activity_id,
+            timestamp: Date.now(),
+            message,
+            thread_id,
+            eventFlavor,
+          }),
+        );
         break;
 
       case ACTIVITY_DELETE:
@@ -106,17 +114,25 @@ function* handleCommand({ operand, command }) {
         break;
       /** 💁 if this isn't obvious, suspension can only happen on the most recent block of an activity (for activities that may have been suspended and resumed already) */
       case ACTIVITY_SUSPEND:
-        yield put(suspendActivity({
-          id: activity_id,
-          timestamp: Date.now(),
-          message: command.message ? command.message : '',
-          thread_id
-        }));
+        yield put(
+          suspendActivity({
+            id: activity_id,
+            timestamp: Date.now(),
+            message: command.message ? command.message : '',
+            thread_id,
+            weight: command.weight ? Number(command.weight) : null,
+          }),
+        );
 
         timeline = yield select(getTimeline);
 
         /* ⚠️ Ideally we'd only process the tail of the trace */
-        yield put(processTimelineTrace(timeline.events, Object.values(timeline.threads)));
+        yield put(
+          processTimelineTrace(
+            timeline.events,
+            Object.values(timeline.threads),
+          ),
+        );
         break;
 
       case ATTENTION_SHIFT:

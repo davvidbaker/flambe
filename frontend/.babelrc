@@ -4,9 +4,14 @@
     "@babel/plugin-proposal-class-properties",
     "@babel/plugin-proposal-object-rest-spread",
     "@babel/plugin-proposal-do-expressions",
+    ["@babel/plugin-proposal-pipeline-operator", { "proposal": "minimal" }],
     "@babel/plugin-transform-react-jsx"
   ],
-  "presets": [["@babel/env", { "modules": "commonjs" }], "@babel/react", "@babel/flow"],
+  "presets": [
+    ["@babel/env", { "modules": "commonjs" }],
+    "@babel/react",
+    "@babel/flow"
+  ],
 
   "env": {
     "test": {

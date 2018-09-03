@@ -1,10 +1,9 @@
-import pipe from 'lodash/fp/pipe';
-import filter from 'lodash/fp/filter';
-import map from 'lodash/fp/map';
-import identity from 'lodash/fp/identity';
+import { pipe, filter, map, identity, mapKeys } from 'lodash/fp';
 import { call, put, takeLatest, select } from 'redux-saga/effects';
 
 import { getTimeline } from '../reducers/timeline';
+import { blocksForActivityWithIndices } from '../utilities/timeline';
+
 import {
   focusBlock,
   search,
@@ -20,12 +19,6 @@ import {
 } from '../actions';
 import circularIncrement from '../utilities/circularIncrement';
 
-function getBlocksForMatch(blocks, activity_id) {
-  return Object.entries(blocks).filter(
-    ([_key, val]) => val.activity_id === activity_id,
-  );
-}
-
 /* ⚠️ TODO options */
 function* handleSearch({ searchTerm, options }) {
   if (searchTerm.length <= 0) return;
@@ -37,24 +30,25 @@ function* handleSearch({ searchTerm, options }) {
   console.log(`🔥  threadIncludeList`, threadIncludeList);
   console.log(`🔥  threadExcludeList`, threadExcludeList);
 
-  const matches = pipe(
-    Object.entries,
-    threadIncludeList.length > 0
+  const matches =
+    activities
+    |> Object.entries
+    |> mapKeys(Number)
+    |> (threadIncludeList.length > 0
       ? filter(([_key, val]) => threadIncludeList.includes(val.thread_id))
-      : identity,
-    threadExcludeList.length > 0
+      : identity)
+    |> (threadExcludeList.length > 0
       ? filter(([_key, val]) => !threadExcludeList.includes(val.thread_id))
-      : identity,
-    filter(([_key, val]) => val.name.includes(searchTerm)),
-  )(activities);
+      : identity)
+    |> filter(([_key, val]) => val.name.includes(searchTerm));
 
   if (matches.length > 0) {
     const match = matches[0];
-    const activity_id = Number(match[0]);
+    const activity_id = match[0]
 
     const blocksForMatch = do {
       if (matches.length > 0) {
-        getBlocksForMatch(blocks, activity_id);
+        blocksForActivityWithIndices(activity_id, blocks);
       } else {
         [];
       }
@@ -77,9 +71,9 @@ function* handleMatchIncrement({ direction }) {
     matchCount,
   );
 
-  const blocksForMatch = getBlocksForMatch(
-    blocks,
+  const blocksForMatch = blocksForActivityWithIndices(
     Number(searchState.matches[matchIndex][0]),
+    blocks,
   );
 
   yield put({
@@ -111,6 +105,8 @@ function* focusSearchResult() {
     const match = matches[matchIndex];
     const activity_id = Number(match[0]);
     const index = Number(blocksForMatch[blockIndex][0]);
+
+    console.log(`🔥  index`, index);
 
     const activity = match[1];
 
