@@ -19,11 +19,15 @@ import type { Activity } from '../types/Activity';
 
 import WithEventListeners from './WithEventListeners';
 import ThreadDetail from './ThreadDetail';
-import ActivityDetail from './ActivityDetail';
+import ActivityDetailModal from './ActivityDetailModal';
 import TimeSeries from './TimeSeries';
 import FlameChart from './FlameChart';
 
 import { SECOND, MINUTE, HOUR, DAY, WEEK, MONTH } from '../utilities/time';
+import {
+  loadSuspendedActivityCount,
+  blocksForActivity,
+} from '../utilities/timeline';
 
 const MIN_GRID_SLICE_PX = 60;
 
@@ -346,20 +350,8 @@ class Timeline extends Component<Props, State> {
         ? rankThreadsByAttention(props.attentionShifts, props.threads)
         : props.threads;
 
-    threads = Object.entries(props.activities).reduce(
-      (acc, [_id, activity]) =>
-        activity.status === 'suspended'
-          ? {
-              ...acc,
-              [activity.thread_id]: {
-                ...acc[activity.thread_id],
-                suspendedActivityCount:
-                  acc[activity.thread_id].suspendedActivityCount + 1 || 1,
-              },
-            }
-          : acc,
-      threads,
-    );
+    // load in the sense of bearing load
+    threads = loadSuspendedActivityCount(props.activities, threads);
 
     return (
       <WithEventListeners
@@ -521,19 +513,15 @@ class Timeline extends Component<Props, State> {
                 activities={props.activities}
               />
               {props.focusedBlockActivity_id && (
-                <ActivityDetail
+                <ActivityDetailModal
                   activity={{
                     id: props.focusedBlockActivity_id,
                     ...focusedActivity,
                   }}
-                  activityBlocks={props.blocks.filter(
-                    block =>
-                      block.activity_id === props.focusedBlockActivity_id,
+                  activityBlocks={blocksForActivity(
+                    props.focusedBlockActivity_id,
+                    props.blocks,
                   )}
-                  categories={props.categories}
-                  updateActivity={props.updateActivity}
-                  trace_id={props.trace_id}
-                  threadLevels={props.threadLevels}
                   submitCommand={props.submitCommand}
                 />
               )}

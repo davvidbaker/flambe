@@ -3,13 +3,16 @@ import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 
 import ToggleButton from './ToggleButton';
+import FilterTrace from './FilterTrace';
+import Unbutton from './Unbutton';
+import Toggle from './Toggle';
 import { InputFromButton } from './Button';
 import TraceList from './TraceList';
 import { colors, layout } from '../styles';
 
+import filterIcon from '../images/filter_icon.svg';
+
 const StyledHeader = styled.header`
-  font-weight: bold;
-  font-size: large;
   width: 100%;
   padding: 5px;
   background: #eee;
@@ -29,10 +32,10 @@ const StyledHeader = styled.header`
     margin: 0;
     /* flex: 1; */
     text-align: center;
-    font-size: large;
+    font-size: 2em;
     color: ${tinycolor(colors.background)
-    .darken(25)
-    .toString()};
+      .darken(25)
+      .toString()};
   }
 `;
 
@@ -43,7 +46,7 @@ const Header = ({
   deleteTrace,
   deleteCurrentTrace,
   currentMantra,
-  createMantra
+  createMantra,
 }) => (
   <StyledHeader>
     {traces && (
@@ -63,6 +66,20 @@ const Header = ({
         Traces
       </ToggleButton>
     )}
+    <Toggle>
+      {({ on, toggle }) => (
+        <div style={{ position: 'relative' }}>
+          <Unbutton onClick={toggle}>
+            <img height="24px" src={filterIcon} alt="filter" />
+          </Unbutton>
+          {on && (
+            <div style={{ position: 'absolute', zIndex: 100 }}>
+              <FilterTrace />
+            </div>
+          )}
+        </div>
+      )}
+    </Toggle>
     <InputFromButton submit={createMantra} placeholderIsDefaultValue>
       {currentMantra || 'Note to self'}
     </InputFromButton>

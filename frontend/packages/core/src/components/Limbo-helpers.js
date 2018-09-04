@@ -111,8 +111,6 @@ export function simulatePointCharge({ x, y }, sinks, forceCarrier) {
   let trajectory = [{ x, y }];
   let hitSink;
 
-  console.log(`🔥  forceCarrier`, forceCarrier);
-
   let px = x;
   let py = y;
 
@@ -172,4 +170,34 @@ export function pathTween(path) {
       .attr('cx', point.x) // Set the cx
       .attr('cy', point.y); // Set the cy
   };
+}
+
+// Returns an attrTween for translating along the specified path element.
+// Notice how the transition is slow for the first quarter of the aniimation
+// is fast for the second and third quarters and is slow again in the final quarter
+// This is normal behavior for d3.transition()
+export function translateAlong(path) {
+  var l = path.getTotalLength() * 2;
+  return function(d, i, a) {
+    return function(t) {
+      if (t * l >= l / 2) {
+        var p = path.getPointAtLength(l - t * l);
+      } else {
+        var p = path.getPointAtLength(t * l);
+      }
+      return 'translate(' + p.x + ',' + p.y + ')';
+    };
+  };
+}
+
+export function transition(dot, trajectory_path) {
+  dot
+    // .transition()
+    // .duration(0)
+    // .attr('transform', 'translate(0,0)')
+    .transition()
+    .duration(trajectory_path.node().getTotalLength() * 10)
+    .each(d3.easeLinear)
+    .attrTween('transform', translateAlong(trajectory_path.node()))
+    .on('end', () => transition(dot, trajectory_path));
 }

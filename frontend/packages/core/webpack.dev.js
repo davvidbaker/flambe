@@ -16,7 +16,7 @@ module.exports = merge(common, {
     https: true
   },
 
-  devtool: 'source-map',
+  devtool: 'inline-cheap-source-map',
 
   output: {
     path: path.resolve(__dirname, 'dist'),

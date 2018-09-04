@@ -17,7 +17,7 @@ type Props = {
   closeThreadDetail: () => mixed,
   activities: Activity[],
   id: number,
-  name: string
+  name: string,
 };
 
 class ThreadDetail extends Component<Props> {
@@ -31,10 +31,10 @@ class ThreadDetail extends Component<Props> {
   };
 
   render() {
-    const suspendedActivities = pipe(
-      filter(activity => activity.thread_id === this.props.id),
-      filter(activity => activity.status === 'suspended')
-    )(this.props.activities);
+    const suspendedActivities =
+      this.props.activities
+      |> filter(activity => activity.thread_id === this.props.id)
+      |> filter(activity => activity.status === 'suspended');
 
     return (
       <Modal
@@ -53,13 +53,20 @@ class ThreadDetail extends Component<Props> {
           onConfirm={this.delete}
         />
         <h2>Suspended Activities</h2>
-        <ul>{suspendedActivities.map(a => <li key={a.name}>{a.name}</li>)}</ul>
+        <ul>
+          {suspendedActivities.map(a => (
+            <li key={a.name}>{a.name}</li>
+          ))}
+        </ul>
       </Modal>
     );
   }
 }
 
-export default connect(null, dispatch => ({
-  updateThread: (id, updates) => dispatch(updateThread(id, updates)),
-  deleteThread: (id: number) => dispatch(deleteThread(id))
-}))(ThreadDetail);
+export default connect(
+  null,
+  dispatch => ({
+    updateThread: (id, updates) => dispatch(updateThread(id, updates)),
+    deleteThread: (id: number) => dispatch(deleteThread(id)),
+  }),
+)(ThreadDetail);

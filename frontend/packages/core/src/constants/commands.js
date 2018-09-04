@@ -21,11 +21,11 @@ import {
   THREADS_EXPAND_ALL,
   TODOS_TOGGLE,
   SETTINGS_SHOW,
-  VIEW_CHANGE
+  VIEW_CHANGE,
 } from '../actions';
 import {
   rankThreadsByAttention,
-  sortThreadsByRank
+  sortThreadsByRank,
 } from '../utilities/timelineChart';
 import { colors } from '../styles';
 
@@ -36,46 +36,56 @@ const threadParam = {
     console.log(
       'props',
 
-      map(([_id, obj]) => obj)(sortThreadsByRank(props.settings.attentionDrivenThreadOrder
-        ? rankThreadsByAttention(props.attentionShifts, props.threads)
-        : props.threads))
+      map(([_id, obj]) => obj)(
+        sortThreadsByRank(
+          props.settings.attentionDrivenThreadOrder
+            ? rankThreadsByAttention(props.attentionShifts, props.threads)
+            : props.threads,
+        ),
+      ),
     ) ||
-    map(([_id, obj]) => obj)(sortThreadsByRank(props.settings.attentionDrivenThreadOrder
-      ? rankThreadsByAttention(props.attentionShifts, props.threads)
-      : props.threads)),
+    map(([_id, obj]) => obj)(
+      sortThreadsByRank(
+        props.settings.attentionDrivenThreadOrder
+          ? rankThreadsByAttention(props.attentionShifts, props.threads)
+          : props.threads,
+      ),
+    ),
   itemStringKey: 'name',
-  itemReturnKey: 'id'
+  itemReturnKey: 'id',
 };
 
 const categoryLabel = color => ({
   copy: ' ',
-  background: color
+  background: color,
 });
 
 const categoryParam = {
   key: 'category_id',
   placeholder: 'category',
   selector: props => {
-    const cats = pipe(
-      map(cat => ({
+    const cats =
+      props.user.categories
+      |> map(cat => ({
         ...cat,
-        label: categoryLabel(cat.color_background)
-      })),
-      sortBy(({ color_background }) =>
-        tinycolor(color_background)
-          .spin(180)
-          .toHsl().h)
-    )(props.user.categories);
+        label: categoryLabel(cat.color_background),
+      }))
+      |> sortBy(
+        ({ color_background }) =>
+          tinycolor(color_background)
+            .spin(180)
+            .toHsl().h,
+      );
     return [{ name: 'none', id: null, label: categoryLabel(null) }, ...cats];
   },
   itemStringKey: 'name',
   itemReturnKey: 'id',
-  label: item => categoryLabel(item.color)
+  label: item => categoryLabel(item.color),
 };
 
 const activityLabel = {
   copy: 'Activity',
-  background: colors.flames.main
+  background: colors.flames.main,
 };
 
 const COMMANDS = [
@@ -85,11 +95,11 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'gist/description of the activity'
+        placeholder: 'gist/description of the activity',
       },
       threadParam,
-      categoryParam
-    ]
+      categoryParam,
+    ],
   },
   {
     action: ACTIVITY_CREATE,
@@ -97,11 +107,11 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'what the fuck is happening?'
+        placeholder: 'what the fuck is happening?',
       },
       threadParam,
-      categoryParam
-    ]
+      categoryParam,
+    ],
   },
   // {
   //   action: FIND,
@@ -130,37 +140,37 @@ const COMMANDS = [
     parameters: [
       {
         key: 'name',
-        placeholder: 'thread name'
-      }
-    ]
+        placeholder: 'thread name',
+      },
+    ],
   },
   {
     action: TODOS_TOGGLE,
-    copy: 'toggle todo list'
+    copy: 'toggle todo list',
   },
   {
     action: THREADS_COLLAPSE_ALL,
     copy: 'collapse all threads',
-    shortcut: '⇧ {'
+    shortcut: '⇧ {',
   },
   {
     action: THREADS_EXPAND_ALL,
     copy: 'expand all threads',
-    shortcut: '⇧ }'
+    shortcut: '⇧ }',
   },
   {
     action: ATTENTION_SHIFT,
     copy: 'shift attention to...',
-    parameters: [threadParam]
+    parameters: [threadParam],
   },
   {
     action: CATEGORY_MANAGER_SHOW,
-    copy: 'manage categories'
+    copy: 'manage categories',
   },
   {
     action: SETTINGS_SHOW,
     copy: 'open settings',
-    shortcut: '⌘ ,'
+    shortcut: '⌘ ,',
   },
   {
     action: VIEW_CHANGE,
@@ -172,15 +182,15 @@ const COMMANDS = [
         /* ⚠️ kinda hacky */
         selector: () => [
           { name: 'single thread', value: 'singlethread' },
-          { name: 'multithread', value: 'multithread' }
+          { name: 'multithread', value: 'multithread' },
         ],
         itemStringKey: 'name',
-        itemReturnKey: 'value'
+        itemReturnKey: 'value',
       },
       // ⚠️ need a way to make this conditional on choosing a single thread
-      threadParam
-    ]
-  }
+      threadParam,
+    ],
+  },
 ];
 
 const messageParam = { key: 'message', placeholder: 'why?' };
@@ -189,25 +199,25 @@ export const ACTIVITY_COMMANDS = [
   {
     action: ACTIVITY_END,
     copy: 'just end it',
-    status: ['active'],
+    status: ['active', 'suspended'],
     label: activityLabel,
-    shortcut: 'E'
+    shortcut: 'E',
   },
   {
     action: ACTIVITY_REJECT,
     copy: 'end by rejection...',
     parameters: [messageParam],
-    status: ['active'],
+    status: ['active', 'suspended'],
     label: activityLabel,
-    shortcut: 'J'
+    shortcut: 'J',
   },
   {
     action: ACTIVITY_RESOLVE,
     copy: 'end by resolution...',
-    parameters: [{key: 'message', placeholder: 'closing remarks?'}],
-    status: ['active'],
+    parameters: [{ key: 'message', placeholder: 'closing remarks?' }],
+    status: ['active', 'suspended'],
     label: activityLabel,
-    shortcut: 'V'
+    shortcut: 'V',
   },
 
   {
@@ -215,41 +225,50 @@ export const ACTIVITY_COMMANDS = [
     copy: 'resume...',
     parameters: [messageParam],
     status: ['suspended'],
-    label: activityLabel
+    label: activityLabel,
   },
   {
     action: ACTIVITY_RESURRECT,
     copy: 'resurrect...',
     parameters: [messageParam],
     status: ['complete'],
-    label: activityLabel
+    label: activityLabel,
   },
   {
     action: ACTIVITY_SUSPEND,
     copy: 'suspend...',
-    parameters: [{key: 'message', placeholder: 'how bout a message?'}],
+    parameters: [
+      { key: 'message', placeholder: 'how bout a message?' },
+
+      /* ⚠️ need to do a validation here that only accepts positive numbers */
+      // also would be nice to be able to cast as a Number here, eg:
+      // { key: 'weight', placeholder: 'give it a weight? 1+', castFunc: Number },
+
+      // need a way to filter out parameters
+      { key: 'weight', placeholder: 'give it a weight? 1+' },
+    ],
     status: ['active'],
     label: activityLabel,
-    shortcut: 'S'
+    shortcut: 'S',
   },
   {
     action: ACTIVITY_DELETE,
     copy: 'delete',
     status: ['active', 'suspended', 'complete'],
-    label: activityLabel
+    label: activityLabel,
   },
   {
     action: ACTIVITY_DETAILS_SHOW,
     copy: 'edit/view details',
     status: ['active', 'suspended', 'complete'],
     label: activityLabel,
-    shortcut: 'Space'
-  }
+    shortcut: 'Space',
+  },
 ];
 
 type Status = 'active' | 'suspended' | 'complete';
-export function activityCommandsByStatus(status: Status) {
-  return ACTIVITY_COMMANDS.filter(cmd => cmd.status.indexOf(status) >= 0);
+export function activityCommandsByStatus(status: Status): Command[] {
+  return ACTIVITY_COMMANDS.filter(cmd => cmd.status.includes(status));
 }
 
 export default COMMANDS;

@@ -11,7 +11,7 @@ export function pixelsToTime(
   x,
   leftBoundaryTime,
   rightBoundaryTime,
-  canvasWidth
+  canvasWidth,
 ) {
   return (
     leftBoundaryTime +
@@ -23,7 +23,7 @@ export function timeToPixels(
   timestamp: number,
   leftBoundaryTime: number,
   rightBoundaryTime: number,
-  canvasWidth: number
+  canvasWidth: number,
 ) {
   return (
     ((timestamp - leftBoundaryTime) * canvasWidth) /
@@ -43,7 +43,7 @@ export function getBlockTransform(
   offsetFromTop: number,
   leftBoundaryTime: number,
   rightBoundaryTime: number,
-  canvasWidth: number
+  canvasWidth: number,
 ): { blockX: number, blockY: number, blockWidth: number } {
   if (endTime == null) {
     // eslint-disable-next-line no-param-reassign
@@ -54,7 +54,7 @@ export function getBlockTransform(
     startTime > leftBoundaryTime ? startTime : leftBoundaryTime,
     leftBoundaryTime,
     rightBoundaryTime,
-    canvasWidth
+    canvasWidth,
   );
   const blockY = getBlockY(level, blockHeight, offsetFromTop);
   const blockWidth =
@@ -69,7 +69,7 @@ export function drawFutureWindow(
   leftBoundaryTime,
   rightBoundaryTime,
   canvasWidth,
-  canvasHeight
+  canvasHeight,
 ) {
   ctx.globalAlpha = 0.2;
   ctx.fillStyle = '#B6C8E8';
@@ -81,7 +81,7 @@ export function drawFutureWindow(
       now,
       leftBoundaryTime,
       rightBoundaryTime,
-      canvasWidth
+      canvasWidth,
     );
     ctx.fillRect(nowPixels, 0, canvasWidth - nowPixels + 10, canvasHeight);
     ctx.strokeRect(nowPixels, 0, canvasWidth - nowPixels + 10, canvasHeight);
@@ -91,7 +91,7 @@ export function drawFutureWindow(
 export function isVisible(
   { startTime, endTime },
   leftBoundaryTime,
-  rightBoundaryTime
+  rightBoundaryTime,
 ) {
   return (
     (startTime > leftBoundaryTime && startTime < rightBoundaryTime) ||
@@ -106,17 +106,16 @@ export function visibleThreadLevels(
   activities,
   leftBoundaryTime,
   rightBoundaryTime,
-  threads
+  threads,
 ) {
   /* ⚠️ weird code ahead. Should use a better pattern for *this* kinda thing. something something currying */
   function thisIsVisible(block) {
     return isVisible(block, leftBoundaryTime, rightBoundaryTime);
   }
-
-  return pipe(
-    filter(thisIsVisible),
-
-    reduce((acc, block) => {
+  return (
+    blocks
+    |> filter(thisIsVisible)
+    |> reduce((acc, block) => {
       const { thread_id } = activities[block.activity_id];
 
       return {
@@ -124,13 +123,13 @@ export function visibleThreadLevels(
         [thread_id]: {
           max: Math.max(
             acc[thread_id] ? acc[thread_id].max : 1,
-            block.level + 1
+            block.level + 1,
           ),
-          current: block.level
-        }
+          current: block.level,
+        },
       };
-    }, reduce((acc, { id }) => ({ ...acc, [id]: { current: 0, max: 0 } }), {})(threads))
-  )(blocks);
+    }, threads |> reduce((acc, { id }) => ({ ...acc, [id]: { current: 0, max: 0 } }), {}))
+  );
 }
 
 export function rankThreadsByAttention(attentionShifts, threads) {
@@ -138,27 +137,26 @@ export function rankThreadsByAttention(attentionShifts, threads) {
 
   /* ⚠️ maybe bad code ahead */
   let rank = 0;
-  const ranks = pipe(
-    reverse,
-    reduce((acc, { thread_id }) => {
+  const ranks =
+    attentionShifts
+    |> reverse
+    |> reduce((acc, { thread_id }) => {
       if (isUndefined(acc[thread_id])) {
         acc[thread_id] = rank;
         if (threads[thread_id]) threads[thread_id].rank = rank;
         rank++;
       }
       return acc;
-    }, {})
-  )(attentionShifts);
-
-  // return map(thread => {...thread})(threads)
+    }, {});
 
   return threads;
 }
 
 export function sortThreadsByRank(threads) {
-  return pipe(
-    entries,
-    sortBy(([_id, { rank }]) => rank),
-    map(([key, val]) => [Number(key), val])
-  )(threads);
+  return (
+    threads
+    |> entries
+    |> sortBy(([_id, { rank }]) => rank)
+    |> map(([key, val]) => [Number(key), val])
+  );
 }

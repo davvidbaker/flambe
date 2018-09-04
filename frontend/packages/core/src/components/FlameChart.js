@@ -29,6 +29,7 @@ import {
   isVisible,
   sortThreadsByRank,
 } from '../utilities/timelineChart';
+import { getShamefulColor } from '../utilities/timeline';
 import containsGithubLink from '../utilities/containsGithubLink';
 
 /* 🔮  abstract into parts of react-flame-chart? */
@@ -498,15 +499,12 @@ class FlameChart extends Component<Props, State> {
       // props.pan just does left right panning of the timeline
       this.props.pan(e.deltaX, 0, this.state.canvasWidth);
 
-      console.log(`🔥e.deltaY`, e.target.deltaY, e);
-
       requestAnimationFrame(this.draw.bind(this));
     } else if (e.getModifierState('Shift')) {
       if (typeof e.deltaY === 'number') {
         this.setState({ scrollTop: this.state.scrollTop + Number(e.deltaY) });
       }
     } else {
-      console.log('zoom');
       this.props.zoom(
         e.deltaY,
         e.nativeEvent.offsetX,
@@ -640,10 +638,8 @@ class FlameChart extends Component<Props, State> {
 
   render() {
     // debugger;
-    this.maxThreadLevels = pipe(
-      map(({ max }) => max),
-      maxx,
-    )(this.props.threadLevels);
+    this.maxThreadLevels =
+      this.props.threadLevels |> map(({ max }) => max) |> maxx;
     const focusedBlock =
       this.props.blocks &&
       this.getBlockDetails(
@@ -864,7 +860,7 @@ class FlameChart extends Component<Props, State> {
 
         /* 🔮 USE A SETTING */
         if (true) {
-          // this.drawLimbo(this.ctx);
+          this.drawLimbo(this.ctx);
         }
         this.drawMeasurementWindow(this.ctx, this.state.measurement);
       }
@@ -1217,10 +1213,8 @@ class FlameChart extends Component<Props, State> {
   }
 
   pixelsToThreadPosition(y: number): number {
-    const reverseOffsets = pipe(
-      sortBy(identity),
-      reverse,
-    )(this.state.offsets);
+    const reverseOffsets = this.state.offsets |> sortBy(identity) |> reverse;
+
     let i = 0;
     while (y < reverseOffsets[i]) {
       i++;
@@ -1230,10 +1224,7 @@ class FlameChart extends Component<Props, State> {
   }
 
   pixelsToLevel(y: number): number {
-    const reverseOffsets = pipe(
-      sortBy(identity),
-      reverse,
-    )(this.state.offsets);
+    const reverseOffsets = this.state.offsets |> sortBy(identity) |> reverse;
     let i = 0;
     while (y < reverseOffsets[i]) {
       i++;
@@ -1306,7 +1297,7 @@ class FlameChart extends Component<Props, State> {
         ctx.fill();
       }
 
-      ctx.fillStyle = `rgba(${thread.suspendedActivityCount * 5}, 0, 0, 0.5)`;
+      ctx.fillStyle = getShamefulColor(thread.suspendedActivityCount * 5);
       if (thread.suspendedActivityCount) {
         ctx.fillText(
           ` (${thread.suspendedActivityCount})`,

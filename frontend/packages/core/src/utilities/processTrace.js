@@ -11,11 +11,10 @@ import type { TraceEvent } from '../types/TraceEvent';
 import type { Thread } from '../types/Thread';
 
 export function lastActivityBlock(blocks, activity_id) {
-  const block = pipe(
-    filter(block => block.activity_id === activity_id),
-    last,
-  )(blocks);
-  if (!block.events) {
+  const block =
+    blocks |> filter(block => block.activity_id === activity_id) |> last;
+
+  if (!block || !block.events) {
     debugger;
   }
   return block;
@@ -126,7 +125,9 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       [event.activity.id]: activities[event.activity.id] || {},
     };
 
-    const thread_id = event.activity.thread.id;
+    const thread_id = event.activity.thread
+      ? event.activity.thread.id
+      : event.activity.thread_id; // this is what would be used for suspended activities in the optimistic time
 
     threadLevels = {
       ...threadLevels,
@@ -276,9 +277,6 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
         activity.status = 'active';
         activity.name = event.activity.name;
         activity.weight = event.activity.weight;
-        if (activity.weight) {
-          console.log(`🔥  activity.weight`, activity.weight);
-        }
         activity.description = event.activity.description;
         activity.thread_id = event.activity.thread.id;
         activity.flavor = event.phase === 'Q' ? 'question' : 'task';
@@ -312,6 +310,11 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
       case 'E':
       case 'J':
       case 'V':
+        // for activities that were closed without being resumed, which is perfectly acceptable
+        if (activity.status === 'suspended') {
+          activity.status = 'complete';
+          break;
+        }
         activity.endTime = event.timestamp;
         activity.ending = event.phase; // ⚠️ need the message!
         activity.status = 'complete';

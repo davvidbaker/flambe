@@ -9,9 +9,13 @@ import {
   hexProjection,
   distance,
   pathTween,
+  translateAlong,
+  transition,
 } from './Limbo-helpers';
 import { SECOND, MINUTE, HOUR, DAY, WEEK, MONTH } from '../utilities/time';
 import { colors } from '../styles';
+
+const drawTrajectories = false;
 
 const Tooltip = styled.div`
   color: white;
@@ -19,9 +23,11 @@ const Tooltip = styled.div`
   padding: 10px;
 `;
 
+const Controls = styled.div``;
+
 const Wrapper = styled.div`
   svg {
-    border-radius: 50%;
+    /* border-radius: 50%; */
   }
 
   .dot {
@@ -127,7 +133,7 @@ class Limbo extends Component {
     tooltipY: 0,
 
     width: 1000,
-    height: 800,
+    height: 200,
 
     hexagonRadius: 20,
 
@@ -147,16 +153,14 @@ class Limbo extends Component {
       } = calculateTheseThings(a, this.props.events);
 
       const { x, y } = randomXYinUnitCircle();
-      console.log(`🔥  a`, a);
 
       const category = this.props.categories.find(
         ({ id }) => a.categories[0] === id,
       );
 
-      console.log(`🔥  category`, category);
       return {
         x: x * 1000,
-        y: y * 800,
+        y: y * 200,
         weight: Math.abs(a.weight),
         daysSinceLastSuspension,
         daysSinceBeginning,
@@ -180,15 +184,17 @@ class Limbo extends Component {
   render() {
     return (
       <Wrapper>
-        <label htmlFor="forceCarrier">forceCarrier</label>
-        <select name="forceCarrier" onChange={this.handleForceCarrierChange}>
-          <option value="weight">weight</option>
-          <option value="churn">churn</option>
-          <option value="daysSinceLastSuspension">
-            days since last suspension
-          </option>
-          <option value="daysSinceBeginning">days since beginning</option>
-        </select>
+        <Controls>
+          <label htmlFor="forceCarrier">forceCarrier</label>
+          <select name="forceCarrier" onChange={this.handleForceCarrierChange}>
+            <option value="weight">weight</option>
+            <option value="churn">churn</option>
+            <option value="daysSinceLastSuspension">
+              days since last suspension
+            </option>
+            <option value="daysSinceBeginning">days since beginning</option>
+          </select>
+        </Controls>
         <svg
           id="limboSvg"
           width={this.state.width}
@@ -232,8 +238,6 @@ class Limbo extends Component {
 
     var projection = hexProjection(radius);
 
-    console.log(`🔥  projection`, projection);
-
     var path = d3.geoPath().projection(projection);
 
     const hexagon = svg.selectAll('.hexagon').selectAll('path');
@@ -271,7 +275,6 @@ class Limbo extends Component {
         return d.y;
       });
 
-    const drawTrajectories = true;
     if (drawTrajectories) {
       /* ⚠️ this is bad d3 code 🤣 */
       topology.trajectories.forEach(traj => {
@@ -411,7 +414,7 @@ class Limbo extends Component {
         return d.y;
       });
 
-    const drawTrajectories = true;
+    // const drawTrajectories = true;
     if (drawTrajectories) {
       /* ⚠️ this is bad d3 code 🤣 */
       topology.trajectories.forEach(traj => {
@@ -454,28 +457,9 @@ class Limbo extends Component {
                   tooltipCopy: that.props.activities[d.hitSink].name,
                 }
               : state,
-          () => console.log(`🔥  that.state`, that.state),
         );
 
-      // Returns an attrTween for translating along the specified path element.
-      // Notice how the transition is slow for the first quarter of the aniimation
-      // is fast for the second and third quarters and is slow again in the final quarter
-      // This is normal behavior for d3.transition()
-      function translateAlong(path) {
-        var l = path.getTotalLength() * 2;
-        return function(d, i, a) {
-          return function(t) {
-            if (t * l >= l / 2) {
-              var p = path.getPointAtLength(l - t * l);
-            } else {
-              var p = path.getPointAtLength(t * l);
-            }
-            return 'translate(' + p.x + ',' + p.y + ')';
-          };
-        };
-      }
-
-      if (d && d.trajectory_id) {
+      if (drawTrajectories && d && d.trajectory_id) {
         const trajectory_path = d3.select(`#${d.trajectory_id}`);
         trajectory_path.style('opacity', 1);
 
@@ -485,36 +469,15 @@ class Limbo extends Component {
 
         dot.attr('fill', _d => `hsl(${d.hitSink || 0}, 70%, 80%)`);
 
-        console.log(`🔥  trajectory_path`, trajectory_path);
-        console.log(`🔥  trajectory_path node`);
         // ball animated along the trajectory path
         const ease = d3['easeCircleInOut'] || d3.easeLinearIn;
 
-        function transition() {
-          dot
-            .transition()
-            .duration(0)
-            .attr('transform', 'translate(0,0)')
-            .transition()
-            .duration(trajectory_path.node().getTotalLength() * 10)
-            .each(d3.easeLinear)
-            .attrTween('transform', translateAlong(trajectory_path.node()))
-            .on('end', transition);
-        }
-
-        transition();
-
-        // });
-
-        //
-        // .tween("pathTween", pathTween); //Custom tween to set the cx and cy attributes
+        transition(dot, trajectory_path);
       }
     }
 
     function mouseleave(d) {
-      console.log(`🔥  d`, d);
-
-      if (d && d.trajectory_id) {
+      if (drawTrajectories && d && d.trajectory_id) {
         d3.select(`#${d.trajectory_id}`).style('opacity', 0);
       }
     }
@@ -543,7 +506,6 @@ class Limbo extends Component {
     }
 
     const forceCarrier = this.state.forceCarrier;
-    console.log(`🔥  forceCarrier`, forceCarrier);
   };
 }
 export default Limbo;

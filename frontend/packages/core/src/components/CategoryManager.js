@@ -10,7 +10,7 @@ import tinycolor from 'tinycolor2';
 import Category from './Category';
 import {
   updateCategory as updateCategoryAction,
-  hideCategoryManager as hideCategoryManagerAction
+  hideCategoryManager as hideCategoryManagerAction,
 } from '../actions';
 
 const Wrapper = styled.div``;
@@ -19,7 +19,7 @@ const CategoryManager = ({
   categoryManagerVisible,
   categories,
   updateCategory,
-  hideCategoryManager
+  hideCategoryManager,
 }) => (
   <Modal
     isOpen={categoryManagerVisible}
@@ -29,19 +29,20 @@ const CategoryManager = ({
   >
     <h1>Manage Categories</h1>
     <ul>
-      {pipe(
-        sortBy(({ color_background }) =>
-          tinycolor(color_background)
-            .spin(180)
-            .toHsl().h),
-        map(category => (
+      {categories
+        |> sortBy(
+          ({ color_background }) =>
+            tinycolor(color_background)
+              .spin(180)
+              .toHsl().h,
+        )
+        |> map(category => (
           <Category
             key={category.name}
             {...category}
             updateCategory={updateCategory}
           />
-        ))
-      )(categories)}
+        ))}
     </ul>
   </Modal>
 );
@@ -51,6 +52,6 @@ export default connect(
   dispatch => ({
     updateCategory: (id, updates) =>
       dispatch(updateCategoryAction(id, updates)),
-    hideCategoryManager: () => dispatch(hideCategoryManagerAction())
-  })
+    hideCategoryManager: () => dispatch(hideCategoryManagerAction()),
+  }),
 )(CategoryManager);
