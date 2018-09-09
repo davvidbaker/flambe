@@ -11,7 +11,8 @@ import {
   getBlockTransform,
   timeToPixels,
   pixelsToTime,
-  drawFutureWindow
+  drawFutureWindow,
+  handleWheel3,
 } from '../utilities/timelineChart';
 import { trimTextMiddle } from '../utilities';
 
@@ -36,7 +37,7 @@ class TimeSeries extends Component {
     hoverTabCount: 0,
     cursor: { x: 0, y: 0 },
     canvasWidth: null,
-    canvasHeight: null
+    canvasHeight: null,
   };
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -64,7 +65,7 @@ class TimeSeries extends Component {
   setCanvasSize = ({ width, height }) => {
     this.setState({
       canvasWidth: width,
-      canvasHeight: height
+      canvasHeight: height,
     });
     if (this.canvas) {
       this.ctx.font = '11px sans-serif';
@@ -85,22 +86,22 @@ class TimeSeries extends Component {
     const x = e.nativeEvent.offsetX;
 
     this.setState({
-      cursor: { x, y: e.nativeEvent.offsetY }
+      cursor: { x, y: e.nativeEvent.offsetY },
     });
 
     const time = this.pixelsToTime(x);
-    const closestPoint = this.props.tabs.find(({ timestamp }) => time < timestamp);
+    const closestPoint = this.props.tabs.find(
+      ({ timestamp }) => time < timestamp,
+    );
     if (closestPoint) {
       this.setState({
         hoverWindowCount: closestPoint.window_count || 0,
-        hoverTabCount: closestPoint.count
+        hoverTabCount: closestPoint.count,
       });
     }
   };
   render() {
-    requestAnimationFrame(() => {
-      this.draw();
-    });
+    requestIdleCallback(() => requestAnimationFrame(this.draw.bind(this)));
 
     return (
       <>
@@ -125,7 +126,7 @@ class TimeSeries extends Component {
                 }}
                 style={{
                   width: '100%',
-                  height: '100%'
+                  height: '100%',
                 }}
                 height={
                   this.state.canvasHeight * window.devicePixelRatio || 300
@@ -135,6 +136,7 @@ class TimeSeries extends Component {
                 onMouseMove={this.onMouseMove}
                 onMouseEnter={this.onMouseEnter}
                 onMouseLeave={this.onMouseLeave}
+                onWheel={this.onWheel}
               />
             )}
           </Measure>
@@ -168,7 +170,7 @@ class TimeSeries extends Component {
         this.props.leftBoundaryTime,
         this.props.rightBoundaryTime,
         this.state.canvasWidth,
-        this.state.canvasHeight
+        this.state.canvasHeight,
       );
       /* ⚠️ big perf hit happening here, mostly from tabs and search terms when there are a lot. I need to filter them so there's less shown on the screen at a single time */
       this.drawMantras();
@@ -180,6 +182,8 @@ class TimeSeries extends Component {
     }
   }
 
+  onWheel = handleWheel3.bind(this);
+
   drawMantras() {
     this.ctx.globalAlpha = 1;
     this.props.mantras.forEach(({ name, timestamp }, i) => {
@@ -190,7 +194,7 @@ class TimeSeries extends Component {
           : Date.now(),
         0,
         this.blockHeight,
-        0
+        0,
       );
 
       // don't draw if bar is left or right of view
@@ -209,45 +213,50 @@ class TimeSeries extends Component {
   }
 
   drawTabs() {
-    const randomIndices = sampleSize(range(this.props.tabs.length), 100).sort((a, b) => (a < b ? -1 : 1));
+    const randomIndices = sampleSize(range(this.props.tabs.length), 100).sort(
+      (a, b) => (a < b ? -1 : 1),
+    );
 
-    const tabsWithinTimeWindow = pullAt([...this.props.tabs], randomIndices);
+    const tabsWithinTimeWindow = this.props.tabs;
+    // pullAt([...this.props.tabs], randomIndices);
 
     if (tabsWithinTimeWindow.length === 0) return;
 
     const tabsWithX = tabsWithinTimeWindow.map(({ timestamp, ...rest }) => ({
       ...rest,
-      x: this.timeToPixels(timestamp)
+      x: this.timeToPixels(timestamp),
     }));
 
     if (tabsWithX.length === 0) return;
 
     const maxTabs = tabsWithX.reduce(
       (acc, { count }) => Math.max(acc, count),
-      0
+      0,
     );
     const maxWindows = tabsWithX.reduce(
       (acc, { window_count }) => Math.max(acc, window_count || 0),
-      0
+      0,
     );
 
     this.ctx.lineWidth = 1;
     this.ctx.strokeStyle = tabColor;
     this.ctx.fillStyle = tabColor;
     this.ctx.beginPath();
-    const firstTab = findLast(({ timestamp }) => timestamp < this.props.leftBoundaryTime)(this.props.tabs) || { count: 0 };
+    const firstTab = findLast(
+      ({ timestamp }) => timestamp < this.props.leftBoundaryTime,
+    )(this.props.tabs) || { count: 0 };
 
     this.ctx.moveTo(0, this.countToY(firstTab.count, maxTabs));
     tabsWithX.forEach(({ count, x }, i) => {
       this.ctx.lineTo(
         tabsWithX[i - 1] ? tabsWithX[i - 1].x : 0,
-        this.countToY(count, maxTabs)
+        this.countToY(count, maxTabs),
       );
       this.ctx.lineTo(x, this.countToY(count, maxTabs));
     });
     this.ctx.lineTo(
       this.timeToPixels(Date.now()),
-      this.countToY(last(this.props.tabs).count, maxTabs)
+      this.countToY(last(this.props.tabs).count, maxTabs),
     );
     this.ctx.stroke();
 
@@ -258,7 +267,7 @@ class TimeSeries extends Component {
         this.countToY(this.state.hoverTabCount, maxTabs),
         2,
         0,
-        2 * Math.PI
+        2 * Math.PI,
       );
       this.ctx.fill();
     }
@@ -266,19 +275,21 @@ class TimeSeries extends Component {
     this.ctx.strokeStyle = windowColor;
     this.ctx.fillStyle = windowColor;
     this.ctx.beginPath();
-    const firstWindow = findLast(({ timestamp }) => timestamp < this.props.leftBoundaryTime)(this.props.tabs) || { window_count: 0 };
+    const firstWindow = findLast(
+      ({ timestamp }) => timestamp < this.props.leftBoundaryTime,
+    )(this.props.tabs) || { window_count: 0 };
 
     this.ctx.moveTo(0, this.countToY(firstWindow.window_count, maxWindows));
     tabsWithX.forEach(({ window_count: count, x }, i) => {
       this.ctx.lineTo(
         tabsWithX[i - 1] ? tabsWithX[i - 1].x : 0,
-        this.countToY(count, maxWindows)
+        this.countToY(count, maxWindows),
       );
       this.ctx.lineTo(x, this.countToY(count, maxWindows));
     });
     this.ctx.lineTo(
       this.timeToPixels(Date.now()),
-      this.countToY(last(this.props.tabs).window_count, maxWindows)
+      this.countToY(last(this.props.tabs).window_count, maxWindows),
     );
     this.ctx.stroke();
 
@@ -289,7 +300,7 @@ class TimeSeries extends Component {
         this.countToY(this.state.hoverWindowCount, maxWindows),
         2,
         0,
-        2 * Math.PI
+        2 * Math.PI,
       );
       this.ctx.fill();
     }
@@ -300,7 +311,7 @@ class TimeSeries extends Component {
       x,
       this.props.leftBoundaryTime,
       this.props.rightBoundaryTime,
-      this.state.canvasWidth
+      this.state.canvasWidth,
     );
   }
 
@@ -309,7 +320,7 @@ class TimeSeries extends Component {
       timestamp,
       this.props.leftBoundaryTime,
       this.props.rightBoundaryTime,
-      this.state.canvasWidth
+      this.state.canvasWidth,
     );
   }
 
@@ -322,7 +333,7 @@ class TimeSeries extends Component {
       offsetFromTop,
       this.props.leftBoundaryTime,
       this.props.rightBoundaryTime,
-      this.state.canvasWidth
+      this.state.canvasWidth,
     );
   }
 
@@ -340,7 +351,7 @@ class TimeSeries extends Component {
         timestamp + 10 * ONE_MINUTE,
         0,
         this.blockHeight,
-        0
+        0,
       );
 
       // don't draw bar if whole thing is this.left of view
@@ -356,7 +367,7 @@ class TimeSeries extends Component {
       let text = trimTextMiddle(
         this.ctx,
         term,
-        blockWidth // - 2 * TimeSeries.textPadding.x
+        blockWidth, // - 2 * TimeSeries.textPadding.x
       );
 
       if (text.length === 0) {

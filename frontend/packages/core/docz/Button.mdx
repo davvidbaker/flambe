@@ -1,0 +1,37 @@
+---
+name: Buttons
+---
+
+import { Playground, PropsTable } from 'docz';
+import Button, {InputFromButton} from '../src/components/Button';
+import Unbutton from '../src/components/Unbutton';
+
+<Playground>
+  <div>
+    <Button>A button</Button>
+    <Button looksLikeButton>A button that looks more like a button</Button>
+  </div>
+
+  <div>
+  <InputFromButton>A button that turns into text input</InputFromButton>
+  <InputFromButton placeholder={"hello"}>A button that turns into text input</InputFromButton>
+  <InputFromButton placeholderIsDefaultValue>A button that turns into text input</InputFromButton>
+  </div>
+
+  <Unbutton>An unbutton</Unbutton>
+</Playground>
+
+<PropsTable of={Button} />
+<PropsTable of={InputFromButton} />
+
+import ActivityBlockDetails from '../src/components/ActivityBlockDetails';
+
+Fix the styling associated with this.
+And add in fixtures for pete's sake.
+And use separate pages sometimes.
+
+<ActivityBlockDetails />
+
+Hello, I'm still a mdx file, but now I have a button component!
+
+

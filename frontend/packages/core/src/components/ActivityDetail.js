@@ -29,6 +29,14 @@ const P = styled.p`
   margin: 0;
 `;
 
+const Actions = styled.div`
+  display: flex;
+
+  & > button {
+    margin: 0 5px;
+  }
+`;
+
 type Props = {
   activity: Activity,
   categories: CategoryType[],
@@ -151,41 +159,46 @@ class ActivityDetail extends React.Component<Props> {
           </ul>
         </div>
         <ActivityEventFlow activityBlocks={activityBlocks} />
-        {activityCommandsByStatus(activity.status)
-          .filter(cmd => cmd.action !== ACTIVITY_DETAILS_SHOW)
-          .map(
-            cmd =>
-              cmd.parameters && cmd.parameters.length > 0 ? (
-                /* ⚠️ right now there is only one parameter, so this works find */
-                <InputFromButton
-                  submit={(value: string) => {
-                    submitCommand({
-                      ...cmd,
-                      message: value,
-                      activity_id: activity.id,
-                      thread_id: activity.thread_id,
-                    });
-                  }}
-                  placeholder={cmd.parameters[0].placeholder}
-                  key={cmd.copy}
-                >
-                  {cmd.copy}
-                </InputFromButton>
-              ) : (
-                <Button
-                  onClick={() =>
-                    submitCommand({
-                      ...cmd,
-                      activity_id: activity.id,
-                      thread_id: activity.thread_id,
-                    })
-                  }
-                  key={cmd.copy}
-                >
-                  {cmd.copy}
-                </Button>
-              ),
-          )}
+        <Actions>
+          {activityCommandsByStatus(activity.status)
+            .filter(cmd => cmd.action !== ACTIVITY_DETAILS_SHOW)
+            .map(
+              cmd =>
+                cmd.parameters && cmd.parameters.length > 0 ? (
+                  /* ⚠️ right now there is only one parameter, so this works find */
+                  <InputFromButton
+                    looksLikeButton
+                    canBeBlank
+                    submit={(value: string) => {
+                      submitCommand({
+                        ...cmd,
+                        message: value,
+                        activity_id: activity.id,
+                        thread_id: activity.thread_id,
+                      });
+                    }}
+                    placeholder={cmd.parameters[0].placeholder}
+                    key={cmd.copy}
+                  >
+                    {cmd.copy}
+                  </InputFromButton>
+                ) : (
+                  <Button
+                    looksLikeButton
+                    onClick={() =>
+                      submitCommand({
+                        ...cmd,
+                        activity_id: activity.id,
+                        thread_id: activity.thread_id,
+                      })
+                    }
+                    key={cmd.copy}
+                  >
+                    {cmd.copy}
+                  </Button>
+                ),
+            )}
+        </Actions>
       </>
     );
   }
