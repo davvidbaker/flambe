@@ -8,7 +8,8 @@ defmodule Flambe.Accounts.User do
     field(:username, :string)
 
     # ⚠️ not sure if on_replace: :delete is correct/idk what it does, but thinking it might be correct
-    has_many(:credential, Credential, on_replace: :delete)
+    # maybe has_many is a bad idea here
+    has_many(:credentials, Credential, on_replace: :delete)
     has_many(:traces, Flambe.Traces.Trace)
     has_many(:categories, Category)
     has_many(:mantras, Mantra)
@@ -28,6 +29,12 @@ defmodule Flambe.Accounts.User do
   def registration_changeset(user, params) do
     user
     |> changeset(params)
-    |> cast_assoc(:credential, with: &Credential.changeset/2)
+    |> cast_assoc(
+      :credentials,
+      with: &Credential.changeset/2,
+      required: true,
+      required_message: "something is missing",
+      invalid_message: "something is fucked up"
+    )
   end
 end

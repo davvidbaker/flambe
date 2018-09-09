@@ -6,6 +6,9 @@ config :flambe, SteadyWeb.Endpoint,
   http: [port: 4001],
   server: false
 
+# for faster testing do less hashing
+config :pbkdf2_elixir, :rounds, 1
+
 # Print only warnings and errors during test
 config :logger, level: :warn
 
