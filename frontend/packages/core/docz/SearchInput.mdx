@@ -1,0 +1,12 @@
+---
+name: Search
+---
+
+import { Playground, PropsTable } from 'docz';
+import SearchInput from '../src/components/SearchInput';
+
+<Playground>
+  <SearchInput onSubmit={(v) => {console.log(v)}}/>
+</Playground>
+
+<PropsTable of={SearchInput} />

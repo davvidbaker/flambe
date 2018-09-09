@@ -22,6 +22,7 @@ defmodule Flambe.DataCase do
       import Ecto.Changeset
       import Ecto.Query
       import Flambe.DataCase
+      import Flambe.TestHelper
     end
   end
 

@@ -150,7 +150,7 @@ export default connect(
       getTimeline(state).activities
       |> Object.entries
       |> filter(([_id, a]) => a.status === 'suspended')
-      |> filter(([_id, a]) => a.thread_id === 1)
+      |> filter(([_id, a]) => a.thread_id === 2)
       |> fromPairs,
     events: getTimeline(state).events,
     categories: getUser(state).categories,
