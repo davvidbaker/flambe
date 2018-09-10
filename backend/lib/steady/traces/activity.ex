@@ -27,14 +27,23 @@ defmodule Flambe.Traces.Activity do
   def changeset(%Activity{} = activity, attrs) do
     activity
     |> Flambe.Repo.preload(:categories)
-    |> cast(attrs, [:name, :description, :weight])
+    |> cast(attrs, [:name, :description, :weight, :thread_id])
     |> validate_required([:name])
+    |> maybe_change_thread(attrs)
     # ⚠️ really not sure if this is the right way to do this..., it is working though...👇 not.
     # I think I might have figured it out 🤩
     # I think put_assoc is what I need to use when the activity is being created, and cast assoc at other times. Does that make sense? Why would I need to do that?
     |> maybe_upsert_categories(attrs)
 
     # |> cast_assoc(:categories, with: &Category.changeset/2)
+  end
+
+  defp maybe_change_thread(changeset, %{"thread_id" => thread_id}) do
+    put_assoc(changeset, :thread, thread_id)
+  end
+
+  defp maybe_change_thread(changeset, _attrs) do
+    changeset
   end
 
   # ⚠️ be more consistent about sending down "category_ids" or "categories"

@@ -160,3 +160,88 @@ export function sortThreadsByRank(threads) {
     |> map(([key, val]) => [Number(key), val])
   );
 }
+
+/* ⚠️ by no means was this a *GOOD* idea */
+export const handleWheel = (
+  e: SyntheticWheelEvent<HTMLCanvasElement>,
+  that,
+) => {
+  const { pixelsToTime, state, props, setState, draw } = that;
+
+  e.preventDefault();
+  const zoomCenterTime = pixelsToTime.bind(that).apply(e.nativeEvent.offsetX);
+
+  // pan around if holding shift or scroll was mostly vertical
+  if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
+    // props.pan just does left right panning of the timeline
+    props.pan(e.deltaX, 0, state.canvasWidth);
+
+    requestAnimationFrame(draw.bind(that));
+  } else if (e.getModifierState('Shift')) {
+    if (typeof e.deltaY === 'number') {
+      setState({ scrollTop: state.scrollTop + Number(e.deltaY) });
+    }
+  } else {
+    props.zoom(
+      e.deltaY,
+      e.nativeEvent.offsetX,
+      zoomCenterTime,
+      state.canvasWidth,
+    );
+    requestAnimationFrame(draw.bind(that));
+  }
+};
+
+export const handleWheel2 = e => (
+  pixelsToTime,
+  canvasWidth,
+  scrollTop,
+  rAF_func,
+  zoom,
+  pan,
+  setState,
+) => {
+  e.preventDefault();
+  const zoomCenterTime = pixelsToTime(e.nativeEvent.offsetX);
+
+  // pan around if holding shift or scroll was mostly vertical
+  if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
+    // props.pan just does left right panning of the timeline
+    pan(e.deltaX, 0, canvasWidth);
+
+    requestAnimationFrame(rAF_func);
+  } else if (e.getModifierState('Shift')) {
+    if (typeof e.deltaY === 'number') {
+      setState({ scrollTop: scrollTop + Number(e.deltaY) });
+    }
+  } else {
+    zoom(e.deltaY, e.nativeEvent.offsetX, zoomCenterTime, canvasWidth);
+    requestAnimationFrame(rAF_func);
+  }
+};
+
+/* ⚠️ probably not a good idea to rely on `this` in here, but the other ways look like they've been much less performant */
+export function handleWheel3(e: SyntheticWheelEvent<HTMLCanvasElement>) {
+  e.preventDefault();
+  const zoomCenterTime = this.pixelsToTime(e.nativeEvent.offsetX);
+
+  // pan around if holding shift or scroll was mostly vertical
+  if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
+    // props.pan just does left right panning of the timeline
+    this.props.pan(e.deltaX, 0, this.state.canvasWidth);
+
+    requestAnimationFrame(this.draw.bind(this));
+  } else if (e.getModifierState('Shift')) {
+    if (typeof e.deltaY === 'number') {
+      this.setState({ scrollTop: this.state.scrollTop + Number(e.deltaY) });
+    }
+  } else {
+    this.props.zoom(
+      e.deltaY,
+      e.nativeEvent.offsetX,
+      zoomCenterTime,
+      this.state.canvasWidth,
+    );
+    requestAnimationFrame(this.draw.bind(this));
+  }
+}

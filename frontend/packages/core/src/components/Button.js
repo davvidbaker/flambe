@@ -1,6 +1,7 @@
 // @flow
 
 import React, { Component } from 'react';
+import Measure from 'react-measure';
 import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 
@@ -43,19 +44,21 @@ const Button = styled.button`
   ${props => (props.additionalStyles ? props.additionalStyles : '')};
 `;
 
-const StyledInputFromButton = styled.textarea`
+const StyledTextarea = styled.textarea`
   /* min-width: unset; */
   /* width: unset; */
+  vertical-align: middle;
+  line-height: unset;
   ${commonStyles};
 `;
 
 type Props = {
   canBeBlank: boolean,
-  looksLikeButton: boolean,
   children: Component<*>,
+  looksLikeButton: boolean,
+  submit: (value: string) => mixed,
   placeholder?: string,
   placeholderIsDefaultValue?: boolean,
-  submit: (value: string) => mixed,
 };
 
 /* 💁 aka MagicButton */
@@ -69,7 +72,7 @@ export class InputFromButton extends Component<
 
   transformIntoInput = () => {
     this.setState(
-      { isInput: true, width: this.button.getBoundingClientRect().width },
+      { isInput: true /* width: this.button.getBoundingClientRect().width */ },
       () => {
         this.transformedInput.focus();
         this.transformedInput.setSelectionRange(
@@ -81,12 +84,12 @@ export class InputFromButton extends Component<
   };
 
   onKeyPress = e => {
-    if (
-      e.key === 'Enter' &&
-      (this.props.canBeBlank || e.target.value.length > 0)
-    ) {
-      this.props.submit(e.target.value);
-      this.transformIntoButton();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (this.props.canBeBlank || e.target.value.length > 0) {
+        this.props.submit(e.target.value);
+        this.transformIntoButton();
+      }
     }
   };
 
@@ -94,25 +97,49 @@ export class InputFromButton extends Component<
     this.setState({ isInput: false });
   };
 
+  setTextareaSize = ({ width, height }) => {
+    this.setState({
+      width,
+      height,
+    });
+  };
+
   render() {
     return this.state.isInput === false ? (
-      <Button
-        innerRef={b => {
-          this.button = b;
+      <Measure
+        bounds
+        onResize={contentRect => {
+          /* 🤔 I feel like this shouldn't be necessary, but otherwise I get stuck in a render loop.bind.. */
+          if (
+            // contentRect.bounds.width !== this.state.textareaWidth ||
+            contentRect.bounds.height !== this.state.height
+          ) {
+            this.setTextareaSize(contentRect.bounds);
+          }
         }}
-        onClick={this.transformIntoInput}
-        looksLikeButton={this.props.looksLikeButton}
       >
-        {this.props.children}
-      </Button>
+        {({ measureRef }) => (
+          <Button
+            innerRef={b => {
+              measureRef(b);
+              this.button = b;
+            }}
+            onClick={this.transformIntoInput}
+            looksLikeButton={this.props.looksLikeButton}
+          >
+            {this.props.children}
+          </Button>
+        )}
+      </Measure>
     ) : (
-      <StyledInputFromButton
-        type={'text'}
-        style={{ width: `${this.state.width}px` }}
+      <StyledTextarea
+        style={{
+          width: `${this.state.width}px`,
+          height: `${this.state.height}px`,
+        }}
         placeholder={this.props.placeholder || this.props.children}
         onBlur={this.transformIntoButton}
         onKeyPress={this.onKeyPress}
-        size={1}
         defaultValue={
           this.props.placeholderIsDefaultValue
             ? this.props.placeholder || this.props.children

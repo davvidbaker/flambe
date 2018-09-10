@@ -3,31 +3,38 @@ import React, { Component } from 'react';
 import emojiRegex from 'emoji-regex';
 import { connect } from 'react-redux';
 /* 💁     👇 intentionally "maxx"  */
-import maxx from 'lodash/fp/max';
-import map from 'lodash/fp/map';
-import pipe from 'lodash/fp/pipe';
-import pickBy from 'lodash/fp/pickBy';
-import sortBy from 'lodash/fp/sortBy';
-import reduce from 'lodash/fp/reduce';
-import filter from 'lodash/fp/filter';
-import compose from 'lodash/fp/compose';
-import isEqual from 'lodash/isEqual';
-import reverse from 'lodash/fp/reverse';
-import zipWith from 'lodash/fp/zipWith';
-import identity from 'lodash/fp/identity';
-import mapValues from 'lodash/fp/mapValues';
-import isUndefined from 'lodash/isUndefined';
+import {
+  debounce,
+  map,
+  max as maxx,
+  pipe,
+  isEqual,
+  pickBy,
+  sortBy,
+  reduce,
+  filter,
+  compose,
+  reverse,
+  zipWith,
+  identity,
+  mapValues,
+  isUndefined,
+} from 'lodash/fp';
+
 import Measure from 'react-measure';
 
 import GithubMark from '../images/GitHub-Mark-32px.png';
 import {
-  pixelsToTime,
-  timeToPixels,
+  drawFutureWindow,
   getBlockTransform,
   getBlockY,
-  drawFutureWindow,
+  handleWheel,
+  handleWheel2,
+  handleWheel3,
   isVisible,
+  pixelsToTime,
   sortThreadsByRank,
+  timeToPixels,
 } from '../utilities/timelineChart';
 import { getShamefulColor } from '../utilities/timeline';
 import containsGithubLink from '../utilities/containsGithubLink';
@@ -58,23 +65,23 @@ function activityByBlockIndex(blocks, index) {
 }
 
 type Props = {
-  hoverBlock: (?string) => mixed,
+  // functions
+  // state.scrollTop: number,
+  activities?: { [id: string]: Activity },
+  categories: CategoryType[],
+  focusBlock: (id: number, thread_id: number) => mixed,
   focusedBlockIndex?: string,
+  hoverBlock: (?string) => mixed,
+  hoveredBlockIndex?: string,
   leftBoundaryTime: number,
   maxTime?: number,
   minTime?: number,
   modifiers: { shift: boolean },
-  hoveredBlockIndex?: string,
   rightBoundaryTime: number,
+  showSuspendResumeFlows: boolean,
+  showThreadDetail: (id: number) => mixed,
   threadLevels: { id: { current: number, max: number } }[],
   threads: { name: string, id: number, rank: number, collapsed: boolean }[],
-  // state.scrollTop: number,
-  // functions
-  activities?: { [id: string]: Activity },
-  categories: CategoryType[],
-  focusBlock: (id: number, thread_id: number) => mixed,
-  showThreadDetail: (id: number) => mixed,
-  showSuspendResumeFlows: boolean,
   toggleThread: (id: number, isCollapsed: boolean) => mixed,
 };
 
@@ -490,31 +497,32 @@ class FlameChart extends Component<Props, State> {
     }
   };
 
-  onWheel = (e: SyntheticWheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const zoomCenterTime = this.pixelsToTime(e.nativeEvent.offsetX);
+  onWheel = handleWheel3.bind(this);
 
-    // pan around if holding shift or scroll was mostly vertical
-    if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
-      // props.pan just does left right panning of the timeline
-      this.props.pan(e.deltaX, 0, this.state.canvasWidth);
+  // (e: SyntheticWheelEvent<HTMLCanvasElement>) => {
+  //   e.preventDefault();
+  //   const zoomCenterTime = this.pixelsToTime(e.nativeEvent.offsetX);
 
-      requestAnimationFrame(this.draw.bind(this));
-    } else if (e.getModifierState('Shift')) {
-      if (typeof e.deltaY === 'number') {
-        this.setState({ scrollTop: this.state.scrollTop + Number(e.deltaY) });
-      }
-    } else {
-      this.props.zoom(
-        e.deltaY,
-        e.nativeEvent.offsetX,
-        zoomCenterTime,
-        this.state.canvasWidth,
-      );
-      requestAnimationFrame(this.draw.bind(this));
-    }
-  };
+  //   // pan around if holding shift or scroll was mostly vertical
+  //   if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
+  //     // props.pan just does left right panning of the timeline
+  //     this.props.pan(e.deltaX, 0, this.state.canvasWidth);
 
+  //     requestAnimationFrame(this.draw.bind(this));
+  //   } else if (e.getModifierState('Shift')) {
+  //     if (typeof e.deltaY === 'number') {
+  //       this.setState({ scrollTop: this.state.scrollTop + Number(e.deltaY) });
+  //     }
+  //   } else {
+  //     this.props.zoom(
+  //       e.deltaY,
+  //       e.nativeEvent.offsetX,
+  //       zoomCenterTime,
+  //       this.state.canvasWidth,
+  //     );
+  //     requestAnimationFrame(this.draw.bind(this));
+  //   }
+  // };
   getBlockDetails = blockIndex => {
     if (blockIndex !== null && blockIndex !== undefined) {
       const block = this.props.blocks[blockIndex];
@@ -658,7 +666,12 @@ class FlameChart extends Component<Props, State> {
           ]
         : null;
 
-    requestAnimationFrame(this.draw.bind(this));
+    /* ⚠️ this is definitely not what I want to be doing */
+    // debounce(() =>
+      // requestIdleCallback(() => {
+        requestAnimationFrame(this.draw.bind(this));
+      // }),
+    // );
 
     // flow-ignore
     return (
@@ -802,6 +815,8 @@ class FlameChart extends Component<Props, State> {
   }
 
   draw() {
+    console.time('flamechart draw');
+
     if (this.canvas) {
       this.ctx.save();
 
@@ -859,7 +874,7 @@ class FlameChart extends Component<Props, State> {
         }
 
         /* 🔮 USE A SETTING */
-        if (true) {
+        if (false) {
           this.drawLimbo(this.ctx);
         }
         this.drawMeasurementWindow(this.ctx, this.state.measurement);
@@ -867,6 +882,7 @@ class FlameChart extends Component<Props, State> {
       this.ctx.scale(0.5, 0.5);
       this.ctx.restore();
     }
+    console.timeEnd('flamechart draw');
   }
 
   drawDraggingThreads() {

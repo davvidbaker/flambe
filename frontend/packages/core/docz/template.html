@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}">
 
 <head>
   <script>
-    /* 💁 this gets ride of normalize.css
+    /* 💁 this gets rid of normalize.css
     I couldn't figure out a better way to do it without editing the default theme
      */
     // Select the node that will be observed for mutations
@@ -36,16 +36,17 @@
 
   </script>
   <meta charset="UTF-8">
-  <meta name="description" content="My awesome app using docz">
+  <meta name="description" content="{{ description }}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Docz</title>
+  <title>{{ title }}</title>
   <link href="https://fonts.googleapis.com/css?family=Yesteryear" rel="stylesheet">
+  {{ head }}
 </head>
 
 <body>
   <div id="root" />
-
+  {{ footer }}
 </body>
 
 </html>

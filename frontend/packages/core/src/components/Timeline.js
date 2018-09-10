@@ -438,16 +438,18 @@ class Timeline extends Component<Props, State> {
                 onChange={this.handlePaneChange}
               >
                 <TimeSeries
+                  height={this.state.timeSeriesHeight}
                   leftBoundaryTime={leftBoundaryTime}
+                  mantras={props.mantras}
+                  pan={this.pan}
                   rightBoundaryTime={rightBoundaryTime}
                   searchTerms={props.searchTerms}
-                  mantras={props.mantras}
                   tabs={filter(
                     ({ timestamp }) =>
                       timestamp > leftBoundaryTime &&
                       timestamp < rightBoundaryTime,
                   )(props.tabs)}
-                  height={this.state.timeSeriesHeight}
+                  zoom={this.zoom}
                 />
                 {/* <div>doh</div> */}
                 {/* <WithDropTarget
