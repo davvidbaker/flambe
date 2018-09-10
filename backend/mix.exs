@@ -38,14 +38,16 @@ defmodule Flambe.Mixfile do
       {:ex_doc, "~> 0.13"},
       {:gettext, "~> 0.11"},
       {:guardian, "~> 1.1"},
-      {:phoenix, "~> 1.3.0"},
+      {:phoenix, "~> 1.3.4"},
       {:phoenix_pubsub, "~> 1.0"},
       {:phoenix_ecto, "~> 3.2"},
       {:phoenix_html, "~> 2.10"},
       {:phoenix_live_reload, "~> 1.0", only: :dev},
       {:postgrex, ">= 0.0.0"},
       {:ueberauth, "~> 0.4"},
-      {:ueberauth_github, "~> 0.6"}
+      {:ueberauth_github, "~> 0.6"},
+      {:comeonin, "~> 4.1"},
+      {:pbkdf2_elixir, "~> 0.12"}
     ]
   end
 

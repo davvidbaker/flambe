@@ -81,7 +81,7 @@ defmodule Flambe.Accounts do
   def list_users do
     User
     |> Repo.all()
-    |> Repo.preload(:credential)
+    |> Repo.preload(:credentials)
   end
 
   @doc """
@@ -101,7 +101,7 @@ defmodule Flambe.Accounts do
   def get_user!(id) do
     User
     |> Repo.get!(id)
-    |> Repo.preload(:credential)
+    |> Repo.preload(:credentials)
   end
 
   def get_user_from_credential_info(%{provider: provider, uid: uid}) do
@@ -142,12 +142,15 @@ defmodule Flambe.Accounts do
 
   """
   def create_user(attrs \\ %{}) do
-    IO.inspect(attrs)
+    %User{}
+    |> User.changeset(attrs)
+    |> Repo.insert()
+  end
 
-    {:ok, user} =
-      %User{}
-      |> User.registration_changeset(attrs)
-      |> Repo.insert()
+  def register_user(attrs \\ %{}) do
+    %User{}
+    |> User.registration_changeset(attrs)
+    |> Repo.insert()
   end
 
   def create_user_access_token(user) do
@@ -515,7 +518,6 @@ defmodule Flambe.Accounts do
   def change_todo(%Todo{} = todo) do
     Todo.changeset(todo, %{})
   end
-
 
   @doc """
   Gets a single mantra.

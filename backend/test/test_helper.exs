@@ -2,7 +2,7 @@ ExUnit.start()
 
 Ecto.Adapters.SQL.Sandbox.mode(Flambe.Repo, :manual)
 
-defmodule Flambe.TestHelpers do
+defmodule Flambe.TestHelper do
   alias Flambe.{Traces, Accounts}
   alias Flambe.Traces.Activity
 
