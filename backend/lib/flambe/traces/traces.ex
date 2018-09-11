@@ -31,12 +31,12 @@ defmodule Flambe.Traces do
       [%{id: integer, name: "my trace"}, ...]
 
   """
-  def list_user_traces(user_id) do
+  def list_user_traces(%User{id: user_id}) do
     query =
       from(
-        trace in "traces",
+        trace in Trace,
         where: trace.user_id == ^user_id,
-        select: map(trace, [:name, :id])
+        select: trace
       )
 
     Repo.all(query)

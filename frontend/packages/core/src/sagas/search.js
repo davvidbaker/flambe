@@ -44,7 +44,7 @@ function* handleSearch({ searchTerm, options }) {
 
   if (matches.length > 0) {
     const match = matches[0];
-    const activity_id = match[0]
+    const activity_id = match[0];
 
     const blocksForMatch = do {
       if (matches.length > 0) {
@@ -103,7 +103,10 @@ function* focusSearchResult() {
 
   if (matches.length > 0) {
     const match = matches[matchIndex];
-    const activity_id = Number(match[0]);
+    const activity_id = match && Number(match[0]);
+    if (!activity_id) return;
+
+    if (!blocksForMatch[blockIndex]) return;
     const index = Number(blocksForMatch[blockIndex][0]);
 
     console.log(`🔥  index`, index);
