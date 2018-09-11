@@ -2,10 +2,9 @@ defmodule Flambe.AccountsTest do
   use Flambe.DataCase
 
   alias Flambe.{Accounts}
+  alias Flambe.Accounts.{User}
 
   describe "users" do
-    alias Flambe.Accounts.User
-
     @valid_attrs %{
       name: "dummy name",
       username: "dummyuser",
@@ -18,7 +17,7 @@ defmodule Flambe.AccountsTest do
     }
     @update_attrs %{email: "some updated email", name: "some updated name"}
 
-    test "with valid data creates inserts user" do
+    test "with valid data inserts user" do
       assert {:ok, %User{id: id} = user} = Accounts.register_user(@valid_attrs)
       assert user.name == "dummy name"
       assert user.username == "dummyuser"
@@ -106,12 +105,25 @@ defmodule Flambe.AccountsTest do
     # end
   end
 
-  describe "authenticate_by_email_and_pass/2" do
+  describe "authenticate_by_email_and_password/2" do
     @email "user@localhost"
     @pass "123456"
 
     setup do
       {:ok, user: user_fixture(email: @email, password: @pass)}
+    end
+
+    test "returns user with correct password", %{user: %User{id: id}} do
+      assert {:ok, %User{id: ^id}} = Accounts.authenticate_by_email_password(@email, @pass)
+    end
+
+    test "returns unauthorized error with invalid password" do
+      assert {:error, :unauthorized} = Accounts.authenticate_by_email_password(@email, "badpass")
+    end
+
+    test "returns not found error with no matching user for email" do
+      assert {:error, :not_found} =
+               Accounts.authenticate_by_email_password("bademail@localhost", @pass)
     end
   end
 

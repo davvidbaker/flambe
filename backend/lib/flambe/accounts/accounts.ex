@@ -308,18 +308,28 @@ defmodule Flambe.Accounts do
     Credential.changeset(credential, %{})
   end
 
-  def authenticate_by_email_password(email, _password) do
-    query =
-      from(
-        u in "users",
-        inner_join: c in assoc(u, :credential),
-        where: c.email == ^email
-      )
+  def get_user_by_email(email) do
+    from(u in User, join: c in assoc(u, :credentials), where: c.email == ^email)
+    |> Repo.one()
+    |> Repo.preload(:credentials)
+  end
 
-    # ⚠️ we are discarding the password field for now! Could add authwith guardian here, I think.
-    case Repo.one(query) do
-      %User{} = user -> {:ok, user}
-      nil -> {:error, :unauthorized}
+  def authenticate_by_email_password(email, given_pass) do
+    user = get_user_by_email(email)
+
+    # ⚠️ hacky. Should probably be using a `with` block...
+    [%{password_hash: password_hash}] = (user && user.credentials) || [%{password_hash: nil}]
+
+    cond do
+      user && Comeonin.Pbkdf2.checkpw(given_pass, password_hash) ->
+        {:ok, user}
+
+      user ->
+        {:error, :unauthorized}
+
+      true ->
+        Comeonin.Bcrypt.dummy_checkpw()
+        {:error, :not_found}
     end
   end
 

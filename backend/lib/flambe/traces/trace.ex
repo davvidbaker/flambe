@@ -3,6 +3,8 @@ defmodule Flambe.Traces.Trace do
   import Ecto.Changeset
   alias Flambe.Traces.{Trace, Event, Thread}
 
+# ⚠️ not positive I only want to encode the :name and :id...
+  @derive {Poison.Encoder, only: [:name, :id]}
   schema "traces" do
     field(:name, :string)
 

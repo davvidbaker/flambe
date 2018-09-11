@@ -34,6 +34,7 @@ defmodule Flambe.Mixfile do
   defp deps do
     [
       {:cors_plug, "~> 1.5"},
+
       {:cowboy, "~> 1.0"},
       {:ex_doc, "~> 0.13"},
       {:gettext, "~> 0.11"},
@@ -47,7 +48,8 @@ defmodule Flambe.Mixfile do
       {:ueberauth, "~> 0.4"},
       {:ueberauth_github, "~> 0.6"},
       {:comeonin, "~> 4.1"},
-      {:pbkdf2_elixir, "~> 0.12"}
+      {:pbkdf2_elixir, "~> 0.12"},
+      {:bcrypt_elixir, "~> 1.0"}
     ]
   end
 
