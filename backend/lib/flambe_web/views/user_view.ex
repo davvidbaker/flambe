@@ -14,10 +14,13 @@ defmodule SteadyWeb.UserView do
   def render("user.json", %{user: user}) do
     # ⚠️ this might not be how you're supposed to do this, email is really not part of the user, but the user credentials. This could be refactored.
     mantras = user.mantras
-    user = Flambe.Repo.preload(user.user, [:credential, :categories])
+    user = Flambe.Repo.preload(user.user, [:credentials, :categories])
 
-    # ⚠️ Is this where this should happen? I doubt it.
-    traces = Flambe.Traces.list_user_traces(user.id)
+    traces = Flambe.Traces.list_user_traces(user)
+    # |> Enum.map(fn trace ->
+    #   %{id: trace.id, name: trace.name}
+    # end)
+
     todos = Flambe.Accounts.list_user_todos(user.id)
     attentions = Flambe.Accounts.list_user_attentions(user.id)
     search_terms = Flambe.Accounts.list_user_search_terms(user.id)

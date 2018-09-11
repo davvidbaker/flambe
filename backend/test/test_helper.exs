@@ -6,8 +6,23 @@ defmodule Flambe.TestHelper do
   alias Flambe.{Traces, Accounts}
   alias Flambe.Traces.Activity
 
-  def user_fixture do
-    {:ok, user} = Accounts.create_user(%{name: "dummy name", credential: %{email: "dummy@email"}})
+  def user_fixture(attrs \\ %{}) do
+    username = "user#{System.unique_integer([:positive])}"
+
+    {:ok, user} =
+      attrs
+      |> Enum.into(%{
+        name: "Some User",
+        username: username,
+        credentials: [
+          %{
+            email: attrs[:email] || "#{username}@example.com",
+            password: attrs[:password] || "supersecret"
+          }
+        ]
+      })
+      |> Accounts.register_user()
+
     user
   end
 

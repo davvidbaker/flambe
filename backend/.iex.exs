@@ -1,4 +1,5 @@
 IO.puts "hello david"
 
-alias Flambe.{Accounts}
+alias Flambe.{Accounts, Traces}
 alias Flambe.Accounts.{User}
+
