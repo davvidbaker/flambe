@@ -11,8 +11,9 @@ defmodule SteadyWeb.EventController do
         "activity_id" => activity_id,
         "event" => event_params
       }) do
-    # ⚠️ 🔒 this is bad. Should rely on the connection or token for authentication
-    with {:ok, %Event{} = event} <- Traces.create_event(trace_id, activity_id, event_params) do
+    with trace <- Traces.get_trace!(trace_id),
+         activity <- Traces.get_activity!(activity_id),
+         {:ok, %Event{} = event} <- Traces.create_event(trace, activity, event_params) do
       # with {:ok, %Trace{} = trace} <- Traces.create_trace(conn.assigns.current_user, trace_params) do
       conn
       |> put_status(:created)

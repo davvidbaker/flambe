@@ -1,3 +1,5 @@
+const webpack = require('webpack');
+
 const themeConfig = {
   /**
    * Mode
@@ -129,4 +131,16 @@ export default {
   src: './',
   themeConfig,
   wrapper: 'packages/core/docz/wrapper.js',
+  modifyBundlerConfig: config =>
+    console.log(`🔥 config`, config) || {
+      ...config,
+      plugins: [
+        ...config.plugins,
+        new webpack.DefinePlugin({
+          SERVER: "'http://localhost:4000'",
+          SOCKET_SERVER: "'ws://localhost:4000'",
+          NODE_ENV: "'development'",
+        }),
+      ],
+    },
 };

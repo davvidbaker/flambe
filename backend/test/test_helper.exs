@@ -26,9 +26,13 @@ defmodule Flambe.TestHelper do
     user
   end
 
+  def trace_fixture() do
+    user = user_fixture(%{})
+    trace_fixture(user)
+  end
+
   def trace_fixture(user) do
     {:ok, trace} = Traces.create_trace(user, %{name: "dummy trace"})
-    Traces.create_thread(trace.id, %{name: "Main"})
     trace
   end
 

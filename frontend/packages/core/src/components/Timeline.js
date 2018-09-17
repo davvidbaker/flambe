@@ -1,8 +1,9 @@
-import React, { Component } from 'react';
+import * as React from 'react';
 import SplitPane from 'react-split-pane';
 import throttle from 'lodash/throttle';
 import filter from 'lodash/fp/filter';
 import last from 'lodash/last';
+import Measure from 'react-measure';
 
 import WithDropTarget from '../containers/WithDropTarget';
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
@@ -64,7 +65,7 @@ type State = {
   zoomChordMultiplier: number,
 };
 
-class Timeline extends Component<Props, State> {
+class Timeline extends React.Component<Props, State> {
   state = {
     leftBoundaryTime: Date.now() - WEEK,
     rightBoundaryTime: Date.now(),
@@ -80,6 +81,9 @@ class Timeline extends Component<Props, State> {
 
   constructor(props) {
     super(props);
+
+    this.flameChart = React.createRef();
+    this.timeSeries = React.createRef();
 
     const savedTimes = {
       lbt: localStorage.getItem('lbt'),
@@ -129,6 +133,41 @@ class Timeline extends Component<Props, State> {
       });
     }
   }
+
+  handleWheel = e => {
+    e.preventDefault();
+    const zoomCenterTime = pixelsToTime(
+      e.nativeEvent.offsetX,
+      this.state.leftBoundaryTime,
+      this.state.rightBoundaryTime,
+      this.state.width,
+    );
+
+    // pan around if holding shift or scroll was mostly vertical
+    if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
+      // props.pan just does left right panning of the timeline
+      this.pan(e.deltaX, 0, this.state.width);
+
+      requestAnimationFrame(this.drawChildren.bind(this));
+    } else if (e.getModifierState('Shift')) {
+      if (typeof e.deltaY === 'number') {
+        this.setState({ scrollTop: this.state.scrollTop + Number(e.deltaY) });
+      }
+    } else {
+      this.zoom(
+        e.deltaY,
+        e.nativeEvent.offsetX,
+        zoomCenterTime,
+        this.state.width,
+      );
+      requestAnimationFrame(this.drawChildren.bind(this));
+    }
+  };
+
+  drawChildren = () => {
+    this.timeSeries.current.draw();
+    this.flameChart.current.draw();
+  };
 
   /* 💁 mostly borrowed from chrome devtools-frontend ❤️ */
   calculateGridOffsets() {
@@ -423,111 +462,130 @@ class Timeline extends Component<Props, State> {
       >
         {() => (
           <>
-            <div
-              ref={t => {
-                this.t = t;
-              }}
-              style={{
-                position: 'relative',
-                height: '100%',
+            <Measure
+              bounds
+              onResize={contentRect => {
+                /* 🤔 I feel like this shouldn't be necessary, but otherwise I get stuck in a render loop.bind.. */
+                if (
+                  contentRect.bounds.width !== this.state.width ||
+                  contentRect.bounds.height !== this.state.height
+                ) {
+                  this.setState({
+                    width: contentRect.bounds.width,
+                    height: contentRect.bounds.height,
+                  });
+                }
               }}
             >
-              <SplitPane
-                split="horizontal"
-                size={100}
-                onChange={this.handlePaneChange}
-              >
-                <TimeSeries
-                  height={this.state.timeSeriesHeight}
-                  leftBoundaryTime={leftBoundaryTime}
-                  mantras={props.mantras}
-                  pan={this.pan}
-                  rightBoundaryTime={rightBoundaryTime}
-                  searchTerms={props.searchTerms}
-                  tabs={filter(
-                    ({ timestamp }) =>
-                      timestamp > leftBoundaryTime &&
-                      timestamp < rightBoundaryTime,
-                  )(props.tabs)}
-                  zoom={this.zoom}
-                />
-                {/* <div>doh</div> */}
-                {/* <WithDropTarget
+              {({ measureRef }) => (
+                <div
+                  ref={measureRef}
+                  style={{
+                    position: 'relative',
+                    height: '100%',
+                  }}
+                  onWheel={this.handleWheel}
+                >
+                  <SplitPane
+                    split="horizontal"
+                    size={100}
+                    onChange={this.handlePaneChange}
+                  >
+                    <TimeSeries
+                      ref={this.timeSeries}
+                      height={this.state.timeSeriesHeight}
+                      leftBoundaryTime={leftBoundaryTime}
+                      mantras={props.mantras}
+                      pan={this.pan}
+                      rightBoundaryTime={rightBoundaryTime}
+                      searchTerms={props.searchTerms}
+                      tabs={filter(
+                        ({ timestamp }) =>
+                          timestamp > leftBoundaryTime &&
+                          timestamp < rightBoundaryTime,
+                      )(props.tabs)}
+                      zoom={this.zoom}
+                    />
+                    {/* <div>doh</div> */}
+                    {/* <WithDropTarget
                 targetName="flame-chart"
                 threads={props.threads}
                 trace_id={props.trace_id}
               > */}
-                <FlameChart
-                  activities={props.activities}
-                  activityMute={props.settings.activityMute}
-                  activityMuteOpactiy={props.settings.activityMuteOpacity}
-                  dividersData={this.state.dividersData}
-                  uniformBlockHeight={props.settings.uniformBlockHeight}
-                  attentionShifts={props.attentionShifts}
-                  blocks={props.blocks}
-                  categories={props.categories}
-                  currentAttention={last(props.attentionShifts).thread_id}
-                  leftBoundaryTime={leftBoundaryTime}
-                  maxTime={props.maxTime}
-                  minTime={props.minTime}
-                  modifiers={props.modifiers}
-                  pan={this.pan}
-                  rightBoundaryTime={rightBoundaryTime}
-                  showAttentionFlows={props.settings.attentionFlows}
-                  showThreadDetail={this.showThreadDetail}
-                  showSuspendResumeFlows={props.settings.suspendResumeFlows}
-                  showSuspendResumeFlowsOnlyForFocusedActivity={
-                    props.settings.suspendResumeFlowsOnlyForFocusedActivity
-                  }
-                  // threadLevels={props.threadLevels}
-                  threadLevels={
-                    props.activities && props.settings.reactiveThreadHeight
-                      ? visibleThreadLevels(
-                          props.blocks,
-                          props.activities,
-                          leftBoundaryTime,
-                          rightBoundaryTime,
-                          props.threads,
-                        )
-                      : props.threadLevels
-                  }
-                  hoverBlock={props.hoverBlock}
-                  focusBlock={props.focusBlock}
-                  focusedBlockIndex={props.focusedBlockIndex}
-                  hoveredBlockIndex={props.hoveredBlockIndex}
-                  threads={threads}
-                  toggleThread={props.toggleThread}
-                  topOffset={this.state.topOffset || 0}
-                  updateEvent={props.updateEvent}
-                  zoom={this.zoom}
-                />
-              </SplitPane>
-              {/* </WithDropTarget> */}
+                    <FlameChart
+                      ref={this.flameChart}
+                      activities={props.activities}
+                      activityMute={props.settings.activityMute}
+                      activityMuteOpactiy={props.settings.activityMuteOpacity}
+                      dividersData={this.state.dividersData}
+                      uniformBlockHeight={props.settings.uniformBlockHeight}
+                      attentionShifts={props.attentionShifts}
+                      blocks={props.blocks}
+                      categories={props.categories}
+                      currentAttention={last(props.attentionShifts).thread_id}
+                      leftBoundaryTime={leftBoundaryTime}
+                      maxTime={props.maxTime}
+                      minTime={props.minTime}
+                      modifiers={props.modifiers}
+                      pan={this.pan}
+                      rightBoundaryTime={rightBoundaryTime}
+                      showAttentionFlows={props.settings.attentionFlows}
+                      showThreadDetail={this.showThreadDetail}
+                      showSuspendResumeFlows={props.settings.suspendResumeFlows}
+                      showSuspendResumeFlowsOnlyForFocusedActivity={
+                        props.settings.suspendResumeFlowsOnlyForFocusedActivity
+                      }
+                      // threadLevels={props.threadLevels}
+                      threadLevels={
+                        props.activities && props.settings.reactiveThreadHeight
+                          ? visibleThreadLevels(
+                              props.blocks,
+                              props.activities,
+                              leftBoundaryTime,
+                              rightBoundaryTime,
+                              props.threads,
+                            )
+                          : props.threadLevels
+                      }
+                      hoverBlock={props.hoverBlock}
+                      focusBlock={props.focusBlock}
+                      focusedBlockIndex={props.focusedBlockIndex}
+                      hoveredBlockIndex={props.hoveredBlockIndex}
+                      threads={threads}
+                      toggleThread={props.toggleThread}
+                      topOffset={this.state.topOffset || 0}
+                      updateEvent={props.updateEvent}
+                      zoom={this.zoom}
+                    />
+                  </SplitPane>
+                  {/* </WithDropTarget> */}
 
-              {/* ⚠️ Moved these up? */}
-              <ThreadDetail
-                closeThreadDetail={this.closeThreadDetail}
-                id={this.state.threadModal_id}
-                name={
-                  this.state.threadModal_id &&
-                  props.threads[this.state.threadModal_id].name
-                }
-                activities={props.activities}
-              />
-              {props.focusedBlockActivity_id && (
-                <ActivityDetailModal
-                  activity={{
-                    id: props.focusedBlockActivity_id,
-                    ...focusedActivity,
-                  }}
-                  activityBlocks={blocksForActivity(
-                    props.focusedBlockActivity_id,
-                    props.blocks,
+                  {/* ⚠️ Moved these up? */}
+                  <ThreadDetail
+                    closeThreadDetail={this.closeThreadDetail}
+                    id={this.state.threadModal_id}
+                    name={
+                      this.state.threadModal_id &&
+                      props.threads[this.state.threadModal_id].name
+                    }
+                    activities={props.activities}
+                  />
+                  {props.focusedBlockActivity_id && (
+                    <ActivityDetailModal
+                      activity={{
+                        id: props.focusedBlockActivity_id,
+                        ...focusedActivity,
+                      }}
+                      activityBlocks={blocksForActivity(
+                        props.focusedBlockActivity_id,
+                        props.blocks,
+                      )}
+                      submitCommand={props.submitCommand}
+                    />
                   )}
-                  submitCommand={props.submitCommand}
-                />
+                </div>
               )}
-            </div>
+            </Measure>
             {this.state.composingZoomChord && (
               <div style={{ position: 'fixed', bottom: 0, left: 0 }}>
                 Zoom to... (Waiting for second key of chord){' '}

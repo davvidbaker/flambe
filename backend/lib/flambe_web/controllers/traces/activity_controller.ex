@@ -2,13 +2,12 @@ defmodule SteadyWeb.ActivityController do
   use SteadyWeb, :controller
 
   alias Flambe.{Traces, Accounts}
-  alias Flambe.Traces.{Activity, Event, Trace}
+  alias Flambe.Traces.{Activity, Event, Thread, Trace}
 
   action_fallback(SteadyWeb.FallbackController)
 
   def create(conn, %{
         "thread_id" => thread_id,
-        "trace_id" => trace_id,
         "todo_id" => todo_id,
         "event" => event_params,
         "activity" => activity_params
@@ -17,10 +16,24 @@ defmodule SteadyWeb.ActivityController do
       Accounts.delete_todo(Accounts.get_todo!(todo_id))
     end
 
-    # ⚠️ 🔒 this is bad. Should rely on the connection or token for authentication
-    with {:ok, %Activity{} = activity} <- Traces.create_activity(thread_id, activity_params),
-         {:ok, %Event{} = event} <- Traces.create_event(trace_id, activity.id, event_params) do
-      # with {:ok, %Trace{} = trace} <- Traces.create_trace(conn.assigns.current_user, trace_params) do
+    # IO.inspect(Traces.get_thread!(thread_id))
+
+    # thread = Traces.get_thread!(thread_id)
+    # IO.puts("\n🔥 thread)")
+    # IO.inspect(thread)
+
+    # {:ok, %Activity{} = activity, %Event{} = event} =
+    #   Traces.create_activity(thread, activity_params, event_params)
+
+    # IO.puts("\n🔥 )")
+    # IO.inspect(activity)
+
+    # conn |> put_status(:created) |> render("show.json", activity: activity, event: event)
+    #        Traces.create_activity(thread, activity_params, event_params)
+
+    with thread <- Traces.get_thread!(thread_id),
+         {:ok, %Activity{} = activity, %Event{} = event} <-
+           Traces.create_activity(thread, activity_params, event_params) do
       conn
       |> put_status(:created)
       |> render("show.json", activity: activity, event: event)

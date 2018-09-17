@@ -12,7 +12,8 @@ defmodule SteadyWeb.ThreadController do
   end
 
   def create(conn, %{"trace_id" => trace_id, "thread" => thread_params}) do
-    with {:ok, %Thread{} = thread} <- Traces.create_thread(trace_id, thread_params) do
+    with trace <- Traces.get_trace!(trace_id),
+         {:ok, %Thread{} = thread} <- Traces.create_thread(trace, thread_params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", thread_path(conn, :show, thread))

@@ -1,12 +1,16 @@
 import {
   TODOS_TOGGLE,
+  ADVANCED_SEARCH_SHOW,
+  ADVANCED_SEARCH_HIDE,
   ACTIVITY_DETAILS_SHOW,
   ACTIVITY_DETAILS_HIDE,
   CATEGORY_MANAGER_SHOW,
   CATEGORY_MANAGER_HIDE,
+  LOG_IN,
+  LOG_OUT,
   SETTINGS_SHOW,
   SETTINGS_HIDE,
-  VIEW_CHANGE
+  VIEW_CHANGE,
 } from '../actions';
 
 import timeline from './timeline';
@@ -16,7 +20,6 @@ import operand from './operand';
 import search from './search';
 import settings from './settings';
 import toaster from './toaster';
-
 
 function todosVisible(state = false, action) {
   switch (action.type) {
@@ -78,9 +81,33 @@ function viewThread(state = null, action) {
   }
 }
 
+function advancedSearchVisible(state = false, action) {
+  switch (action.type) {
+    case ADVANCED_SEARCH_SHOW:
+      return true;
+    case ADVANCED_SEARCH_HIDE:
+      return false;
+    default:
+      return state;
+  }
+}
+
+function loggedIn(state = false, action) {
+  switch (action.type) {
+    case LOG_IN:
+      return true;
+    case LOG_OUT:
+      return false;
+    default:
+      return state;
+  }
+}
+
 export {
   activityDetailModalVisible,
+  advancedSearchVisible,
   categoryManagerVisible,
+  loggedIn,
   modifiers,
   operand,
   search,
@@ -91,5 +118,5 @@ export {
   toaster,
   user,
   view,
-  viewThread
+  viewThread,
 };

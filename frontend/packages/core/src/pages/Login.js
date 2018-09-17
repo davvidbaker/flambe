@@ -5,8 +5,6 @@ import Logo from '@flambe/logo';
 
 import Button from '../components/Button';
 
-
-
 const CenterFlex = styled.div`
   width: 100%;
   height: 100vh;
@@ -27,6 +25,15 @@ const CenterFlex = styled.div`
   }
 `;
 
+const Form = styled.form`
+  text-align: left;
+  label,
+  input {
+    display: block;
+    width: 100%;
+  }
+`;
+
 const Padded = styled.div`
   /* 🤔  maybe bad/weird pattern here*/
   padding: 30px;
@@ -36,9 +43,38 @@ const Login = () => (
   <CenterFlex>
     <div className="inner">
       <Padded>
-        <Logo isAnimated size={90} className="padded" />
+        <Logo isAnimated size={90} />
       </Padded>
-      <h1>Log in please</h1>
+      <h1>Log in!</h1>
+      <Form
+        onSubmit={e => {
+          e.preventDefault();
+          console.log(`🔥 e`, e) || console.log(`🔥 e.target`, e.target);
+
+          // fetch(`${SERVER}/auth/get-csrf-token`)
+          //   .then(res => console.log(`🔥 res`, res) || res.text())
+          //   .then(token => {
+          //     console.log(`🔥  token`, token);
+          fetch(`${SERVER}/auth/identity/callback`, {
+            /* ⚠️ PROBABLY NOT WHAT I WANT TO SEND */
+            body: e.target.value,
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-csrf-token': token,
+            },
+          });
+          //     });
+        }}
+      >
+        <div>
+          <label htmlFor="login-username">Username or Email</label>
+          <input type="text" name="username" id="login-username" required />
+          <label htmlFor="login-password">Password</label>
+          <input type="password" required name="password" id="login-password" />
+        </div>
+        <button type="submit">Log In</button>
+      </Form>
       <a
         // onClick={() =>
         //   window.open(
