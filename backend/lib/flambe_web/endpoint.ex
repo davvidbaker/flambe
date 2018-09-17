@@ -49,7 +49,7 @@ defmodule SteadyWeb.Endpoint do
   plug(
     CORSPlug,
     origin: [Application.get_env(:flambe, :frontend_url)],
-    headers: ["Cache", "Content-Type"]
+    headers: ["Cache", "Content-Type", "x-csrf-token"]
   )
 
   plug(SteadyWeb.Router)

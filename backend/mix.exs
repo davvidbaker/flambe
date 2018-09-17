@@ -20,7 +20,13 @@ defmodule Flambe.Mixfile do
   def application do
     [
       mod: {Flambe.Application, []},
-      extra_applications: [:logger, :runtime_tools, :ueberauth, :ueberauth_github]
+      extra_applications: [
+        :logger,
+        :runtime_tools,
+        :ueberauth,
+        :ueberauth_github,
+        :ueberauth_identity
+      ]
     ]
   end
 
@@ -34,7 +40,6 @@ defmodule Flambe.Mixfile do
   defp deps do
     [
       {:cors_plug, "~> 1.5"},
-
       {:cowboy, "~> 1.0"},
       {:ex_doc, "~> 0.13"},
       {:gettext, "~> 0.11"},
@@ -47,6 +52,7 @@ defmodule Flambe.Mixfile do
       {:postgrex, ">= 0.0.0"},
       {:ueberauth, "~> 0.4"},
       {:ueberauth_github, "~> 0.6"},
+      {:ueberauth_identity, "~> 0.2"},
       {:comeonin, "~> 4.1"},
       {:pbkdf2_elixir, "~> 0.12"},
       {:bcrypt_elixir, "~> 1.0"}

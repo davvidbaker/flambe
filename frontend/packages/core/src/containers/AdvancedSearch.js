@@ -101,10 +101,6 @@ const SearchResult = ({ match }) => {
 
 const Wrapper = styled.div`
   height: 100%;
-
-  h3 {
-    padding: 5px;
-  }
 `;
 
 const Settings = styled.div`
@@ -171,7 +167,6 @@ class AdvancedSearch extends Component {
 
     return (
       <Wrapper>
-        <h3>Advanced Search</h3>
         <div style={{ height: '30px', padding: '0 5px' }}>
           <SearchInput
             onSubmit={this.search}

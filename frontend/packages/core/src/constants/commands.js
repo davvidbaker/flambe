@@ -245,7 +245,7 @@ export const ACTIVITY_COMMANDS = [
       // { key: 'weight', placeholder: 'give it a weight? 1+', castFunc: Number },
 
       // need a way to filter out parameters
-      { key: 'weight', placeholder: 'give it a weight? 1+' },
+      { key: 'weight', placeholder: "give it a weight? 1+     ...or don't" },
     ],
     status: ['active'],
     label: activityLabel,

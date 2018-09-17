@@ -6,7 +6,7 @@ defmodule Flambe.Traces do
   import Ecto.Query, warn: false
   alias Flambe.Repo
 
-  alias Flambe.Traces.{Trace, Activity}
+  alias Flambe.Traces.{Trace, Activity, Thread, Event}
   alias Flambe.Accounts.User
 
   @doc """
@@ -54,9 +54,8 @@ defmodule Flambe.Traces do
   def list_trace_events(%Trace{} = trace) do
     query =
       from(
-        event in "events",
-        where: event.trace_id == ^trace.id,
-        select: map(event, [:timestamp, :phase, :message])
+        event in Event,
+        where: event.trace_id == ^trace.id
       )
 
     Repo.all(query)
@@ -66,9 +65,8 @@ defmodule Flambe.Traces do
   def list_trace_threads(%Trace{} = trace) do
     query =
       from(
-        thread in "threads",
-        where: thread.trace_id == ^trace.id,
-        select: map(thread, [:name, :id])
+        thread in Thread,
+        where: thread.trace_id == ^trace.id
       )
 
     Repo.all(query)
@@ -94,6 +92,11 @@ defmodule Flambe.Traces do
     |> Repo.preload(:threads)
   end
 
+  @spec get_trace_with_events(any()) ::
+          {any(),
+           nil
+           | [%{:__struct__ => atom(), optional(atom()) => any()}]
+           | %{:__struct__ => atom(), optional(atom()) => any()}}
   def get_trace_with_events(id) do
     query =
       from(e in Flambe.Traces.Event, where: e.trace_id == ^id, preload: [activity: :categories])
@@ -105,23 +108,16 @@ defmodule Flambe.Traces do
     {events, trace}
   end
 
-  @doc """
-  Creates a trace.
-
-  ## Examples
-
-      iex> create_trace(%{field: value})
-      {:ok, %Trace{}}
-
-      iex> create_trace(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
+  # 💁 A trace **always** comes with a Main thread
   def create_trace(%User{} = user, attrs \\ %{}) do
-    %Trace{}
-    |> Trace.changeset(attrs)
-    |> Ecto.Changeset.put_change(:user, Flambe.Accounts.get_user!(user.id))
-    |> Repo.insert()
+    with {:ok, trace} <-
+           %Trace{}
+           |> Trace.changeset(attrs)
+           |> Ecto.Changeset.put_change(:user, user)
+           |> Repo.insert(),
+         {:ok, _thread} <- create_thread(trace, %{name: "Main"}) do
+      {:ok, trace}
+    end
   end
 
   @doc """
@@ -203,27 +199,6 @@ defmodule Flambe.Traces do
   def get_event!(id), do: Repo.get!(Event, id)
 
   @doc """
-  Creates a event.
-
-  ## Examples
-
-      iex> create_event(%{field: value})
-      {:ok, %Event{}}
-
-      iex> create_event(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  #   ⚠️ need to do validation to make sure trace exists
-  #   something like ... Traces.get_trace!(trace_id)...
-  def create_event(trace_id, attrs \\ %{}) do
-    %Event{}
-    |> Event.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:trace, Flambe.Traces.get_trace!(trace_id))
-    |> Repo.insert()
-  end
-
-  @doc """
   Creates an event that is tied to a particular activity.
 
   ## Examples
@@ -236,11 +211,11 @@ defmodule Flambe.Traces do
 
   """
   #   ⚠️ need to do validation on trace_id and activity_id
-  def create_event(trace_id, activity_id, attrs) do
+  def create_event(%Trace{} = trace, %Activity{} = activity, attrs) do
     %Event{}
     |> Event.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:trace, Flambe.Traces.get_trace!(trace_id))
-    |> Ecto.Changeset.put_assoc(:activity, Flambe.Traces.get_activity!(activity_id))
+    |> Ecto.Changeset.put_assoc(:trace, trace)
+    |> Ecto.Changeset.put_assoc(:activity, activity)
     |> Repo.insert()
   end
 
@@ -326,38 +301,33 @@ defmodule Flambe.Traces do
     Repo.get!(Activity, id) |> Repo.preload(:events)
   end
 
-  @doc """
-  Creates a activity.
+  # 💁 an activity always comes with at least one event
+  def create_activity(thread, attrs, event_attrs) do
+    trace = get_trace!(thread.trace_id)
 
-  ## Examples
+    IO.puts "\n🔥 trace"
+    IO.inspect trace
 
-      iex> create_activity(%{field: value})
-      {:ok, %Activity{}}
-
-      iex> create_activity(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def create_activity(thread_id, attrs \\ %{}) do
-    %Activity{}
-    |> Activity.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:thread, Flambe.Traces.get_thread!(thread_id))
-    |> Repo.insert()
+    with {:ok, %Activity{} = activity} <-
+           %Activity{}
+           |> Activity.changeset(attrs)
+           |> Ecto.Changeset.put_assoc(:thread, thread)
+           |> Repo.insert(),
+         {:ok, %Event{} = event} <- create_event(trace, activity, event_attrs) do
+      {:ok, activity, event}
+    end
   end
 
-  @doc """
-  Updates a activity.
+  def update_activity(%Activity{} = activity, %{thread: %Thread{} = thread} = attrs) do
+    activity
+    |> Activity.changeset(Map.put(attrs, :thread_id, thread.id))
+    |> Repo.update()
+  end
 
-  ## Examples
-
-      iex> update_activity(activity, %{field: new_value})
-      {:ok, %Activity{}}
-
-      iex> update_activity(activity, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
   def update_activity(%Activity{} = activity, attrs) do
+    IO.puts("\n🔥 this should not show attrs")
+    IO.inspect(attrs)
+
     activity
     |> Activity.changeset(attrs)
     |> Repo.update()
@@ -422,10 +392,10 @@ defmodule Flambe.Traces do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_thread(trace_id, attrs \\ %{}) do
+  def create_thread(trace, attrs \\ %{}) do
     %Thread{}
     |> Thread.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:trace, Flambe.Traces.get_trace!(trace_id))
+    |> Ecto.Changeset.put_assoc(:trace, trace)
     |> Repo.insert()
   end
 
@@ -475,4 +445,15 @@ defmodule Flambe.Traces do
   def change_thread(%Thread{} = thread) do
     Thread.changeset(thread, %{})
   end
+
+  def list_thread_activities(%Thread{} = thread) do
+    query =
+      from(
+        a in Activity,
+        where: a.thread_id == ^thread.id
+      )
+
+    Repo.all(query)
+  end
+
 end

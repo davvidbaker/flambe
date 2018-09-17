@@ -29,19 +29,21 @@ import Settings from '../components/Settings';
 import LimboContainer from '../components/LimboContainer';
 import {
   collapseAllThreads,
+  createMantra,
+  createToast,
   deleteCurrentTrace,
   deleteTrace,
   expandAllThreads,
   fetchTrace,
   fetchUser,
+  hideAdvancedSearch,
   keyDown,
   keyUp,
   runCommand,
   selectTrace,
   showActivityDetails,
+  showAdvancedSearch,
   showSettings,
-  createMantra,
-  createToast,
   toggleSetting,
 } from '../actions';
 import COMMANDS, {
@@ -144,6 +146,24 @@ injectGlobal`
     
 `;
 
+const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }) =>
+  isSplit ? (
+    <SplitPane
+      split="vertical"
+      minSize={100}
+      defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
+      onChange={size => localStorage.setItem('splitPos', size)}
+      primary="second"
+    >
+      <SidePanel closePanel={hideSidePanel}>
+        <AdvancedSearch threads={threads} />
+      </SidePanel>
+      {children}
+    </SplitPane>
+  ) : (
+    <div>{children}</div>
+  );
+
 class App extends React.Component<
   {
     keyDown: () => mixed,
@@ -159,7 +179,7 @@ class App extends React.Component<
 > {
   state = {
     // modalIsOpen,
-    searchPanelVisible: false,
+    searchBarVisible: false,
     commanderVisible: false,
     additionalCommands: [],
   };
@@ -183,6 +203,7 @@ class App extends React.Component<
   componentWillMount() {}
 
   componentDidMount() {
+    console.log(`🔥  trace did mount`);
     console.log(`🔥this.props.match`, this.props.match);
 
     // impure!
@@ -224,13 +245,13 @@ class App extends React.Component<
   };
 
   showSearchPanel = () => {
-    this.setState({ searchPanelVisible: true });
+    this.setState({ searchBarVisible: true });
     this.searchRef.focus();
     this.searchRef.setSelectionRange(0, this.searchRef.value.length);
   };
 
   hideSearchPanel = () => {
-    this.setState({ searchPanelVisible: false });
+    this.setState({ searchBarVisible: false });
   };
 
   hideCommander = () => {
@@ -288,7 +309,11 @@ class App extends React.Component<
               case 'f':
                 if (!this.props.aModalIsOpen) {
                   e.preventDefault();
-                  this.showSearchPanel();
+                  if (e.shiftKey) {
+                    this.props.showAdvancedSearch();
+                  } else {
+                    this.showSearchPanel();
+                  }
                 }
                 break;
 
@@ -330,6 +355,7 @@ class App extends React.Component<
         'keyup',
         e => {
           if (
+            /* ⚠️ maybe don't want this.props.operand here */
             this.props.operand &&
             e.target.nodeName !== 'INPUT' &&
             e.target.nodeName !== 'TEXTAREA'
@@ -387,6 +413,7 @@ class App extends React.Component<
         },
       ],
     ];
+
     return (
       <WithEventListeners eventListeners={eventListeners} node={document}>
         {() => (
@@ -412,17 +439,11 @@ class App extends React.Component<
                 createMantra={name => this.props.createMantra(name)}
               />
               <main style={{ position: 'relative', height: '100%' }}>
-                <SplitPane
-                  split="vertical"
-                  minSize={0}
-                  defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
-                  onChange={size => localStorage.setItem('splitPos', size)}
+                <MaybeSplitPane
+                  isSplit={this.props.advancedSearchVisible}
+                  hideSidePanel={this.props.hideAdvancedSearch}
+                  threads={this.props.threads}
                 >
-                  {true && (
-                    <SidePanel>
-                      <AdvancedSearch threads={this.props.threads} />
-                    </SidePanel>
-                  )}
                   <div style={{ height: '100%' }}>
                     <SplitPane
                       split="horizontal"
@@ -456,14 +477,14 @@ class App extends React.Component<
                       <LimboContainer submitCommand={this.submitCommand} />
                     </SplitPane>
                   </div>
-                </SplitPane>
+                </MaybeSplitPane>
                 <div
                   style={{
                     bottom: 0,
                     width: '100%',
                     position: 'absolute',
                     zIndex: 1,
-                    visibility: this.state.searchPanelVisible
+                    visibility: this.state.searchBarVisible
                       ? 'visible'
                       : 'hidden',
                   }}
@@ -509,6 +530,7 @@ export default compose(
         state.todosVisible ||
         state.settingsVisible,
       activities: getTimeline(state).activities,
+      advancedSearchVisible: state.advancedSearchVisible,
       blocks: getTimeline(state).blocks,
       categories: getUser(state).categories,
       threadLevels: getTimeline(state).threadLevels,
@@ -532,11 +554,13 @@ export default compose(
       expandAllThreads: id => dispatch(expandAllThreads(id)),
       fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
       fetchUser: user_id => dispatch(fetchUser(user_id)),
+      hideAdvancedSearch: () => dispatch(hideAdvancedSearch()),
       keyDown: key => dispatch(keyDown(key)),
       keyUp: key => dispatch(keyUp(key)),
       runCommand: (operand, command) => dispatch(runCommand(operand, command)),
       selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       showActivityDetails: () => dispatch(showActivityDetails()),
+      showAdvancedSearch: () => dispatch(showAdvancedSearch()),
       showSettings: () => dispatch(showSettings()),
       toggleActivityMute: () => dispatch(toggleSetting('activityMute')),
     }),

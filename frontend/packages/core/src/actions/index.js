@@ -42,6 +42,9 @@ export const COMMAND_RUN = 'COMMAND_RUN';
 
 export const EVENT_UPDATE = 'EVENT_UPDATE';
 
+export const LOG_IN = 'LOG_IN';
+export const LOG_OUT = 'LOG_OUT';
+
 export const MANTRA_CREATE = 'MANTRA_CREATE';
 
 export const SEARCH = 'SEARCH';
@@ -50,6 +53,9 @@ export const SEARCH_MATCH_INCREMENT = 'SEARCH_MATCH_INCREMENT';
 export const SEARCH_BLOCK_INCREMENT = 'SEARCH_BLOCK_INCREMENT';
 export const SEARCH_MATCH_INCREMENT_RESULT = 'SEARCH_MATCH_INCREMENT_RESULT';
 export const SEARCH_BLOCK_INCREMENT_RESULT = 'SEARCH_BLOCK_INCREMENT_RESULT';
+
+export const ADVANCED_SEARCH_SHOW = 'ADVANCED_SEARCH_SHOW';
+export const ADVANCED_SEARCH_HIDE = 'ADVANCED_SEARCH_HIDE';
 
 export const SETTING_TOGGLE = 'SETTING_TOGGLE';
 
@@ -538,6 +544,17 @@ export function filterTrace(shouldInclude: boolean, thread_id: number) {
   };
 }
 
+export function showAdvancedSearch() {
+  return {
+    type: ADVANCED_SEARCH_SHOW
+  }
+}
+
+export function hideAdvancedSearch() {
+  return {
+    type: ADVANCED_SEARCH_HIDE
+  }
+}
 /**
  *
  *

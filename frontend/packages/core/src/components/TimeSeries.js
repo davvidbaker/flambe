@@ -41,17 +41,18 @@ class TimeSeries extends Component {
   };
 
   shouldComponentUpdate(nextProps, nextState) {
-    if (
-      nextProps.tabs.length !== this.props.tabs.length ||
-      nextProps.rightBoundaryTime !== this.props.rightBoundaryTime
-    ) {
-      return true;
-    }
-    if (JSON.stringify(nextState) !== JSON.stringify(this.state)) {
-      return true;
-    }
-
     return false;
+    // if (
+    //   nextProps.tabs.length !== this.props.tabs.length ||
+    //   nextProps.rightBoundaryTime !== this.props.rightBoundaryTime
+    // ) {
+    //   return true;
+    // }
+    // if (JSON.stringify(nextState) !== JSON.stringify(this.state)) {
+    //   return true;
+    // }
+
+    // return false;
   }
 
   chartHeight = () => this.state.canvasHeight - TimeSeries.chartPadding.y * 2;
@@ -101,7 +102,7 @@ class TimeSeries extends Component {
     }
   };
   render() {
-    requestIdleCallback(() => requestAnimationFrame(this.draw.bind(this)));
+    // requestIdleCallback(() => requestAnimationFrame(this.draw.bind(this)));
 
     return (
       <>

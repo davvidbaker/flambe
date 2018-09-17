@@ -10,7 +10,7 @@ import Register from './Register';
 import Trace from './Trace';
 import UserProfile from './UserProfile';
 /* ⚠️  */
-const Routes = ({ loggedIn, username }) => (
+const Routes = ({ loggedIn, username }) => console.log(`🔥  loggedIn`, loggedIn) || (
   <>
     <Switch>
       <Route
@@ -46,7 +46,7 @@ const Routes = ({ loggedIn, username }) => (
 export default withRouter(
   connect(state => ({
     /* ⚠️ need to make this a thing */
-    loggedIn: true, //state.loggedIn,
+    loggedIn: state.loggedIn,
     username: getUser(state).username,
   }))(Routes),
 );

@@ -160,12 +160,12 @@ class FlameChart extends Component<Props, State> {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    if (
-      JSON.stringify(nextState) !== JSON.stringify(this.state) ||
-      JSON.stringify(nextState) !== JSON.stringify(this.props)
-    ) {
-      return true;
-    }
+    // if (
+    //   JSON.stringify(nextState) !== JSON.stringify(this.state) ||
+    //   JSON.stringify(nextState) !== JSON.stringify(this.props)
+    // ) {
+    //   return true;
+    // }
     return false;
   }
 
@@ -385,7 +385,7 @@ class FlameChart extends Component<Props, State> {
         0,
         this.state.canvasWidth,
       );
-      requestAnimationFrame(this.draw.bind(this));
+      // requestAnimationFrame(this.draw.bind(this));
     }
 
     this.lastTouch = { x: touch.screenX, y: touch.screenY };
@@ -497,7 +497,7 @@ class FlameChart extends Component<Props, State> {
     }
   };
 
-  onWheel = handleWheel3.bind(this);
+  // onWheel = handleWheel3.bind(this);
 
   // (e: SyntheticWheelEvent<HTMLCanvasElement>) => {
   //   e.preventDefault();
@@ -815,8 +815,6 @@ class FlameChart extends Component<Props, State> {
   }
 
   draw() {
-    console.time('flamechart draw');
-
     if (this.canvas) {
       this.ctx.save();
 
@@ -882,7 +880,6 @@ class FlameChart extends Component<Props, State> {
       this.ctx.scale(0.5, 0.5);
       this.ctx.restore();
     }
-    console.timeEnd('flamechart draw');
   }
 
   drawDraggingThreads() {
