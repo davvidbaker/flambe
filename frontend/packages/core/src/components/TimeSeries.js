@@ -44,7 +44,7 @@ class TimeSeries extends Component {
     return false;
     // if (
     //   nextProps.tabs.length !== this.props.tabs.length ||
-    //   nextProps.rightBoundaryTime !== this.props.rightBoundaryTime
+    //   nextProps.rightBoundaryTime !== this.rightBoundaryTime
     // ) {
     //   return true;
     // }
@@ -112,7 +112,7 @@ class TimeSeries extends Component {
             onResize={contentRect => {
               /* 🤔 I feel like this shouldn't be necessary, but otherwise I get stuck in a render loop.bind.. */
               if (
-                contentRect.bounds.width !== this.state.canvasWidth ||
+                contentRect.bounds.width !== this.width ||
                 contentRect.bounds.height !== this.state.canvasHeight
               ) {
                 this.setCanvasSize(contentRect.bounds);
@@ -132,7 +132,7 @@ class TimeSeries extends Component {
                 height={
                   this.state.canvasHeight * window.devicePixelRatio || 300
                 }
-                width={this.state.canvasWidth * window.devicePixelRatio || 450}
+                width={this.width * window.devicePixelRatio || 450}
                 /* ⚠️ this hs got to be an antipattern to put this in render, right? */
                 onMouseMove={this.onMouseMove}
                 onMouseEnter={this.onMouseEnter}
@@ -154,7 +154,12 @@ class TimeSeries extends Component {
     );
   }
 
-  draw() {
+  draw(leftBoundaryTime, rightBoundaryTime, width) {
+    /* ⚠️ IDK if this is a bad idea, but this is the only place I will ever set these values */
+    this.leftBoundaryTime = leftBoundaryTime;
+    this.rightBoundaryTime = rightBoundaryTime;
+    this.width = width;
+
     if (this.canvas) {
       this.ctx.save();
 
@@ -163,14 +168,14 @@ class TimeSeries extends Component {
       // clear the canvas
       this.ctx.fillStyle = '#ffffff';
       this.ctx.globalAlpha = 1;
-      this.ctx.fillRect(0, 0, this.state.canvasWidth, this.state.canvasHeight);
+      this.ctx.fillRect(0, 0, this.width, this.state.canvasHeight);
       // this.ctx.globalAlpha = 1;
 
       drawFutureWindow(
         this.ctx,
-        this.props.leftBoundaryTime,
-        this.props.rightBoundaryTime,
-        this.state.canvasWidth,
+        leftBoundaryTime,
+        rightBoundaryTime,
+        width,
         this.state.canvasHeight,
       );
       /* ⚠️ big perf hit happening here, mostly from tabs and search terms when there are a lot. I need to filter them so there's less shown on the screen at a single time */
@@ -199,7 +204,7 @@ class TimeSeries extends Component {
       );
 
       // don't draw if bar is left or right of view
-      if (blockX > this.state.canvasWidth || blockX + blockWidth <= 0) {
+      if (blockX > this.width || blockX + blockWidth <= 0) {
         return;
       }
 
@@ -244,7 +249,7 @@ class TimeSeries extends Component {
     this.ctx.fillStyle = tabColor;
     this.ctx.beginPath();
     const firstTab = findLast(
-      ({ timestamp }) => timestamp < this.props.leftBoundaryTime,
+      ({ timestamp }) => timestamp < this.leftBoundaryTime,
     )(this.props.tabs) || { count: 0 };
 
     this.ctx.moveTo(0, this.countToY(firstTab.count, maxTabs));
@@ -277,7 +282,7 @@ class TimeSeries extends Component {
     this.ctx.fillStyle = windowColor;
     this.ctx.beginPath();
     const firstWindow = findLast(
-      ({ timestamp }) => timestamp < this.props.leftBoundaryTime,
+      ({ timestamp }) => timestamp < this.leftBoundaryTime,
     )(this.props.tabs) || { window_count: 0 };
 
     this.ctx.moveTo(0, this.countToY(firstWindow.window_count, maxWindows));
@@ -310,18 +315,18 @@ class TimeSeries extends Component {
   pixelsToTime(x) {
     return pixelsToTime(
       x,
-      this.props.leftBoundaryTime,
-      this.props.rightBoundaryTime,
-      this.state.canvasWidth,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.width,
     );
   }
 
   timeToPixels(timestamp) {
     return timeToPixels(
       timestamp,
-      this.props.leftBoundaryTime,
-      this.props.rightBoundaryTime,
-      this.state.canvasWidth,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.width,
     );
   }
 
@@ -332,9 +337,9 @@ class TimeSeries extends Component {
       level,
       blockHeight,
       offsetFromTop,
-      this.props.leftBoundaryTime,
-      this.props.rightBoundaryTime,
-      this.state.canvasWidth,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.width,
     );
   }
 
@@ -361,7 +366,7 @@ class TimeSeries extends Component {
       }
 
       // don't draw bar if whole thing is this.right of view
-      if (blockX > this.state.canvasWidth) {
+      if (blockX > this.width) {
         return;
       }
 
