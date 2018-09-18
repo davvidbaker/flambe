@@ -39,7 +39,7 @@ const ProgressBar = styled.div`
   /* position: absolute; */
   left: 0;
   bottom: 0;
-  animation: slide 5s linear;
+  animation: slide 10s linear;
   background: linear-gradient(to left, #40e0d0, #ff8c00, #ff0080, transparent);
 
   animation-play-state: ${props => (props.playing ? 'running' : 'paused')};

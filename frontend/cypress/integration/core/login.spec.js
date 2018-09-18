@@ -1,15 +1,13 @@
 describe('Login', () => {
   it('Login as a seed user works', () => {
-    cy.visit('https://cors.stagingpatagonia.elasticsuite.com:3000/');
+    cy.visit('https://localhost:8081');
 
-    cy.get('#elasticScramble_splash_login_username', {timeout: 10000})
-      .type('lyle.rep')
-      .should('have.value', 'lyle.rep');
+    cy.location().should(loc => {
+      expect(loc.pathname).to.eq('/login');
+    });
 
-    cy.get('#elasticScramble_splash_login_password').type('psweetelastic');
+    cy.get('form').find('input[type="text"]').type('seed_user');
+    cy.get('form').find('input[type="password"]').type('password{enter}');
 
-    cy.get('.submit > .dijit > .dijitButtonNode').click();
-
-    cy.contains('Start Working', { timeout: 20000 }).should('be.visible');
   });
 });

@@ -33,10 +33,16 @@ defmodule SteadyWeb.Router do
   end
 
   scope "/auth", SteadyWeb do
-    pipe_through([:browser])
+    pipe_through([:api])
+    # ⚠️ this might be unsafe?
+    # actually I don't even need this if I i'm using the api pipeline, right?
+    # 🤔 is it ok to use the api pipeline for all these auth endpoints?
+    get("/get-csrf-token", AuthController, :get_csrf)
+
     get("/:provider", AuthController, :request)
     get("/:provider/callback", AuthController, :callback)
     post("/:provider/callback", AuthController, :callback)
+    post("/identity/callback", AuthController, :identity_callback)
     delete("/logout", AuthController, :delete)
   end
 

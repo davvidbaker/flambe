@@ -2,7 +2,7 @@ defmodule Flambe.TracesTest do
   use Flambe.DataCase
 
   alias Flambe.{Traces, TestHelper}
-  alias Flambe.Traces.Trace
+  alias Flambe.Traces.{Trace, Thread, Event, Activity}
 
   describe "traces" do
     @valid_attrs %{name: "some trace name"}
@@ -10,23 +10,33 @@ defmodule Flambe.TracesTest do
     @invalid_attrs %{name: nil}
 
     setup do
-      {:ok, user: user_fixture, another_user: user_fixture(%{username: "another_user"})}
+      {:ok, user: user_fixture(), another_user: user_fixture(%{username: "another_user"})}
     end
 
-    test "with valid data inserts trace", %{user: user, another_user: another_user} do
+    test "create_trace/1 with valid data inserts trace with a single thread", %{
+      user: user,
+      another_user: another_user
+    } do
       assert {:ok, %Trace{id: id} = trace} = Traces.create_trace(user, @valid_attrs)
 
-      IO.puts("\n🔥 user")
-      IO.inspect(user)
-
-      IO.puts("\n🔥 another_user")
-      IO.inspect(another_user)
       assert trace.name == "some trace name"
       assert [%Trace{id: ^id}] = Traces.list_traces()
 
       assert [%Trace{id: ^id}] = Traces.list_user_traces(user)
-
       assert [] = Traces.list_user_traces(another_user)
+
+      # ⚠️ I also want to be asserting a thread has been made named Main, I think
+      assert [%Thread{name: "Main"}] = Traces.list_trace_threads(trace)
+    end
+
+    test "create_trace/1 with invalid data does not insert trace", %{
+      user: user,
+      another_user: another_user
+    } do
+      assert {:error, changeset} = Traces.create_trace(user, @invalid_attrs)
+
+      assert %{name: ["can't be blank"]} = errors_on(changeset)
+      assert Traces.list_traces() == []
     end
 
     # test "list_traces/0 returns all traces" do
@@ -76,7 +86,97 @@ defmodule Flambe.TracesTest do
     # end
   end
 
-  # describe "events" do
+  describe "events" do
+    @valid_attrs %{phase: "B", message: "some message", timestamp_integer: 1_536_987_887_186}
+    @invalid_attrs %{message: "some message"}
+
+    setup do
+      {:ok, trace: trace_fixture()}
+    end
+
+    test "create_event/3 cannot be created without an associated activity", %{
+      trace: trace
+    } do
+      assert_raise(FunctionClauseError, fn -> Traces.create_event(trace, nil, @valid_attrs) end)
+    end
+  end
+
+  describe "activities" do
+    @valid_activity_attrs %{name: "some activity", description: "some text", weight: 2}
+    @invalid_activity_attrs %{name: nil}
+    @valid_event_attrs %{
+      phase: "B",
+      message: "some message",
+      timestamp_integer: 1_536_987_887_186
+    }
+    @invalid_event_attrs %{message: "some message"}
+
+    setup do
+      trace = trace_fixture()
+      [main_thread] = Traces.list_trace_threads(trace)
+      {:ok, trace: trace, main_thread: main_thread}
+    end
+
+    test "create_activity/3 with valid data inserts activity and associated event", %{
+      trace: trace,
+      main_thread: main_thread
+    } do
+      assert {:ok, %Activity{} = activity, %Event{id: event_id} = event} =
+               Traces.create_activity(main_thread, @valid_activity_attrs, @valid_event_attrs)
+
+      assert activity.name == "some activity"
+      assert activity.description == "some text"
+      assert activity.weight == 2
+
+      assert event.phase == "B"
+      assert event.timestamp == Ecto.DateTime.cast!(~N[2018-09-15 05:04:47.186000])
+      assert event.message == "some message"
+
+      assert [%Event{id: ^event_id}] = Traces.list_trace_events(trace)
+    end
+
+    test "create_activity/3 with invalid activity data does not insert trace", %{
+      trace: trace,
+      main_thread: main_thread
+    } do
+      assert {:error, changeset} =
+               Traces.create_activity(main_thread, @invalid_activity_attrs, @valid_event_attrs)
+
+      assert %{name: ["can't be blank"]} = errors_on(changeset)
+      assert [] = Traces.list_trace_events(trace)
+    end
+
+    test "create_activity/3 with invalid event data does not insert trace", %{
+      trace: trace,
+      main_thread: main_thread
+    } do
+      assert {:error, changeset} =
+               Traces.create_activity(main_thread, @valid_activity_attrs, @invalid_event_attrs)
+
+      assert %{phase: ["can't be blank"], timestamp_integer: ["can't be blank"]} =
+               errors_on(changeset)
+    end
+
+    test "update_activity/2 can change the activity's thread", %{
+      trace: trace,
+      main_thread: main_thread
+    } do
+      assert {:ok, %Thread{id: another_thread_id} = another_thread} =
+               Traces.create_thread(trace, %{name: "another thread"})
+
+      assert {:ok, %Activity{id: id} = activity, %Event{} = event} =
+               Traces.create_activity(main_thread, @valid_activity_attrs, @valid_event_attrs)
+
+      assert {:ok, %Activity{id: ^id} = updated_activity} =
+               Traces.update_activity(activity, %{thread: another_thread})
+
+      assert updated_activity.thread_id == another_thread_id
+
+      assert [] = Traces.list_thread_activities(main_thread)
+      assert [%Activity{id: ^id}] = Traces.list_thread_activities(another_thread)
+    end
+  end
+
   #   alias Flambe.Traces.Event
 
   #   @valid_attrs %{

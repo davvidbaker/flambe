@@ -48,7 +48,9 @@ store.subscribe(() => {
   const state = store.getState();
   saveState({
     activityDetailModalVisible: state.activityDetailModalVisible,
+    advancedSearchVisible: state.advancedSearchVisible,
     categoryManagerVisible: state.categoryManagerVisible,
+    loggedIn: state.loggedIn,
     operand: state.operand,
     search: state.search,
     settings: state.settings,

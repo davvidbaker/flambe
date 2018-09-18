@@ -21,5 +21,6 @@ defmodule Flambe.Traces.Trace do
     |> cast(attrs, [:name])
     |> validate_required([:name])
     |> unique_constraint(:name)
+    |> assoc_constraint(:user)
   end
 end
