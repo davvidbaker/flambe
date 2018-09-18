@@ -89,15 +89,17 @@ class Timeline extends React.Component<Props, State> {
       lbt: localStorage.getItem('lbt'),
       rbt: localStorage.getItem('rbt'),
     };
-    const lbt = savedTimes.lbt && Number.parseFloat(savedTimes.lbt);
-    const rbt = savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
+    const leftBoundaryTime =
+      savedTimes.lbt && Number.parseFloat(savedTimes.lbt);
+    const rightBoundaryTime =
+      savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
+    const dividersData = this.calculateGridOffsets();
 
-    if (lbt && rbt) {
-      this.state.leftBoundaryTime = lbt;
-      this.state.rightBoundaryTime = rbt;
-    }
-
-    this.state.dividersData = this.calculateGridOffsets();
+    this.setTimelineState({
+      ...(leftBoundaryTime ? { leftBoundaryTime } : {}),
+      ...(rightBoundaryTime ? { rightBoundaryTime } : {}),
+      dividersData,
+    });
 
     props.addCommand({
       action: command => {
@@ -122,15 +124,25 @@ class Timeline extends React.Component<Props, State> {
     });
   }
 
+  componentDidMount() {
+    requestAnimationFrame(this.drawChildren.bind(this));
+  }
+
   componentWillReceiveProps(nextProps) {
+    /* ⚠️ I need to figure out a better way to trigger a draw when an external event has changed boundary time... 
+    
+    Maybe I don't let that happen exactly and instead expose Timeline ref to the higher ups.
+    */
     if (
-      nextProps.leftBoundaryTime !== this.props.leftBoundaryTime ||
-      nextProps.rightBoundaryTime !== this.props.rightBoundaryTime
+      nextProps.leftBoundaryTime !== this.leftBoundaryTime ||
+      nextProps.rightBoundaryTime !== this.rightBoundaryTime
     ) {
-      this.setState({
+      console.log(`🔥  nextProps`, nextProps);
+      this.setTimelineState({
         leftBoundaryTime: nextProps.leftBoundaryTime,
         rightBoundaryTime: nextProps.rightBoundaryTime,
       });
+      // requestAnimationFrame(this.drawChildren.bind(this));
     }
   }
 
@@ -138,8 +150,8 @@ class Timeline extends React.Component<Props, State> {
     e.preventDefault();
     const zoomCenterTime = pixelsToTime(
       e.nativeEvent.offsetX,
-      this.state.leftBoundaryTime,
-      this.state.rightBoundaryTime,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
       this.state.width,
     );
 
@@ -151,7 +163,8 @@ class Timeline extends React.Component<Props, State> {
       requestAnimationFrame(this.drawChildren.bind(this));
     } else if (e.getModifierState('Shift')) {
       if (typeof e.deltaY === 'number') {
-        this.setState({ scrollTop: this.state.scrollTop + Number(e.deltaY) });
+        /* ⚠️ probably should move this to timelinestate */
+        // this.setState({ scrollTop: this.state.scrollTop + Number(e.deltaY) });
       }
     } else {
       this.zoom(
@@ -165,8 +178,17 @@ class Timeline extends React.Component<Props, State> {
   };
 
   drawChildren = () => {
-    this.timeSeries.current.draw();
-    this.flameChart.current.draw();
+
+    this.timeSeries.current.draw(
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.state.width,
+    );
+    this.flameChart.current.draw(
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.state.width,
+    );
   };
 
   /* 💁 mostly borrowed from chrome devtools-frontend ❤️ */
@@ -244,48 +266,48 @@ class Timeline extends React.Component<Props, State> {
     switch (timePeriod) {
       // shows about the last 10 minutes
       case 'now':
-        this.setState({
+        this.setTimelineState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 10 * MINUTE,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'hour':
-        this.setState({
+        this.setTimelineState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 60 * MINUTE,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
       case 'day':
-        this.setState({
+        this.setTimelineState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 1 * DAY,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'week':
-        this.setState({
+        this.setTimelineState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 1 * WEEK,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'month':
-        this.setState({
+        this.setTimelineState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 1 * MONTH,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'year':
-        this.setState({
+        this.setTimelineState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: Date.now() - 12 * MONTH,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
         break;
       case 'all':
-        this.setState({
+        this.setTimelineState({
           dividersData: this.calculateGridOffsets(),
           leftBoundaryTime: this.props.minTIme,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
@@ -302,21 +324,18 @@ class Timeline extends React.Component<Props, State> {
       dy,
       offsetX,
       zoomCenterTime,
-      this.state.leftBoundaryTime,
-      this.state.rightBoundaryTime,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
       canvasWidth,
       Date.now(),
       this.props.minTime,
     );
 
-    this.setState(
-      {
-        dividersData,
-        leftBoundaryTime,
-        rightBoundaryTime,
-      },
-      this.setLocalStorage,
-    );
+    this.setTimelineState({
+      leftBoundaryTime,
+      rightBoundaryTime,
+      dividersData,
+    });
   };
 
   pan = (dx, dy, canvasWidth) => {
@@ -324,25 +343,28 @@ class Timeline extends React.Component<Props, State> {
     const { leftBoundaryTime, rightBoundaryTime, topOffset } = pan(
       dx,
       this.props.shiftModifier && dy,
-      this.state.leftBoundaryTime,
-      this.state.rightBoundaryTime,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
       canvasWidth,
-      this.state.topOffset,
+      this.topOffset,
       Date.now(),
       this.props.minTime,
     );
 
-    this.setState(
-      {
-        leftBoundaryTime,
-        rightBoundaryTime,
-        topOffset,
-        dividersData,
-      },
-      this.setLocalStorage,
-    );
+    this.setTimelineState({
+      leftBoundaryTime,
+      rightBoundaryTime,
+      dividersData,
+      topOffset,
+    });
+  };
 
-    return { topOffset };
+  // avoiding react state for some stuff
+  setTimelineState = state => {
+    Object.entries(state).forEach(([key, val]) => {
+      this[key] = val;
+    });
+    // requestIdleCallback(this.setLocalStorage.bind(this));
   };
 
   showThreadDetail = (id: number) => {
@@ -364,13 +386,13 @@ class Timeline extends React.Component<Props, State> {
    */
   setLocalStorage = throttle(() => {
     if (
-      typeof this.state.leftBoundaryTime === 'number' &&
-      this.state.leftBoundaryTime !== NaN &&
-      typeof this.state.rightBoundaryTime === 'number' &&
-      this.state.rightBoundaryTime !== NaN
+      typeof this.leftBoundaryTime === 'number' &&
+      this.leftBoundaryTime !== NaN &&
+      typeof this.rightBoundaryTime === 'number' &&
+      this.rightBoundaryTime !== NaN
     ) {
-      localStorage.setItem('lbt', this.state.leftBoundaryTime);
-      localStorage.setItem('rbt', this.state.rightBoundaryTime);
+      localStorage.setItem('lbt', this.leftBoundaryTime);
+      localStorage.setItem('rbt', this.rightBoundaryTime);
     }
   }, 1000);
 
@@ -392,6 +414,7 @@ class Timeline extends React.Component<Props, State> {
     // load in the sense of bearing load
     threads = loadSuspendedActivityCount(props.activities, threads);
 
+    console.log('render called');
     return (
       <WithEventListeners
         node={document}
@@ -494,10 +517,10 @@ class Timeline extends React.Component<Props, State> {
                     <TimeSeries
                       ref={this.timeSeries}
                       height={this.state.timeSeriesHeight}
-                      leftBoundaryTime={leftBoundaryTime}
+                      // leftBoundaryTime={leftBoundaryTime}
                       mantras={props.mantras}
                       pan={this.pan}
-                      rightBoundaryTime={rightBoundaryTime}
+                      // rightBoundaryTime={rightBoundaryTime}
                       searchTerms={props.searchTerms}
                       tabs={filter(
                         ({ timestamp }) =>
@@ -517,18 +540,18 @@ class Timeline extends React.Component<Props, State> {
                       activities={props.activities}
                       activityMute={props.settings.activityMute}
                       activityMuteOpactiy={props.settings.activityMuteOpacity}
-                      dividersData={this.state.dividersData}
+                      dividersData={this.dividersData}
                       uniformBlockHeight={props.settings.uniformBlockHeight}
                       attentionShifts={props.attentionShifts}
                       blocks={props.blocks}
                       categories={props.categories}
                       currentAttention={last(props.attentionShifts).thread_id}
-                      leftBoundaryTime={leftBoundaryTime}
+                      // leftBoundaryTime={leftBoundaryTime}
                       maxTime={props.maxTime}
                       minTime={props.minTime}
                       modifiers={props.modifiers}
                       pan={this.pan}
-                      rightBoundaryTime={rightBoundaryTime}
+                      // rightBoundaryTime={rightBoundaryTime}
                       showAttentionFlows={props.settings.attentionFlows}
                       showThreadDetail={this.showThreadDetail}
                       showSuspendResumeFlows={props.settings.suspendResumeFlows}
