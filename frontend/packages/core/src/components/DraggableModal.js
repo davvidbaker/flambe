@@ -55,19 +55,19 @@ const DraggableModal = ({
       isOpen={isOpen}
       style={styleOverrides}
     >
-      <Draggable
+      {/* <Draggable
         handle=".handle"
         defaultPosition={defaultPosition}
         onStop={onDragStop}
         bounds="body"
-      >
+      > */}
         <ActualContent>
           <>
             <div className="handle" />
             {children}
           </>
         </ActualContent>
-      </Draggable>
+      {/* </Draggable> */}
     </Modal>
   );
 };

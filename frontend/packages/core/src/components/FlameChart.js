@@ -257,7 +257,7 @@ class FlameChart extends Component<Props, State> {
 
     /** 💁 this is the header (hitLevel === -1) */
     if (hitLevel === -1) {
-      if (mouseX > this.state.canvasWidth - 30) {
+      if (mouseX > this.width - 30) {
         return { type: 'thread_ellipsis', value: hitThread_id };
       }
       return { type: 'thread_header', value: hitThread_id };
@@ -271,7 +271,7 @@ class FlameChart extends Component<Props, State> {
 
     const hitBlock = Object.entries(hitBlocks)[0];
 
-    if (mouseX > 10 && mouseX < this.state.canvasWidth - 10) {
+    if (mouseX > 10 && mouseX < this.width - 10) {
       const startX = this.timeToPixels(hitBlock[1].startTime);
       const endX =
         hitBlock[1].endTime && this.timeToPixels(hitBlock[1].endTime);
@@ -383,7 +383,7 @@ class FlameChart extends Component<Props, State> {
       this.props.pan(
         this.lastTouch.x - touch.screenX,
         0,
-        this.state.canvasWidth,
+        this.width,
       );
       // requestAnimationFrame(this.draw.bind(this));
     }
@@ -396,6 +396,7 @@ class FlameChart extends Component<Props, State> {
   };
 
   onMouseMove = e => {
+    return false;
     this.setState({
       cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
     });
@@ -506,7 +507,7 @@ class FlameChart extends Component<Props, State> {
   //   // pan around if holding shift or scroll was mostly vertical
   //   if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
   //     // props.pan just does left right panning of the timeline
-  //     this.props.pan(e.deltaX, 0, this.state.canvasWidth);
+  //     this.props.pan(e.deltaX, 0, this.width);
 
   //     requestAnimationFrame(this.draw.bind(this));
   //   } else if (e.getModifierState('Shift')) {
@@ -518,7 +519,7 @@ class FlameChart extends Component<Props, State> {
   //       e.deltaY,
   //       e.nativeEvent.offsetX,
   //       zoomCenterTime,
-  //       this.state.canvasWidth,
+  //       this.width,
   //     );
   //     requestAnimationFrame(this.draw.bind(this));
   //   }
@@ -668,9 +669,9 @@ class FlameChart extends Component<Props, State> {
 
     /* ⚠️ this is definitely not what I want to be doing */
     // debounce(() =>
-      // requestIdleCallback(() => {
-        requestAnimationFrame(this.draw.bind(this));
-      // }),
+    // requestIdleCallback(() => {
+    // requestAnimationFrame(this.draw.bind(this));
+    // }),
     // );
 
     // flow-ignore
@@ -687,7 +688,7 @@ class FlameChart extends Component<Props, State> {
           onResize={contentRect => {
             /* 🤔 I feel like this shouldn't be necessary, but otherwise I get stuck in a render loop.bind.. */
             if (
-              contentRect.bounds.width !== this.state.canvasWidth ||
+              contentRect.bounds.width !== this.width ||
               contentRect.bounds.height !== this.state.canvasHeight
             ) {
               this.setCanvasSize(contentRect.bounds);
@@ -706,15 +707,13 @@ class FlameChart extends Component<Props, State> {
               onMouseMove={this.onMouseMove}
               onMouseDown={this.onMouseDown}
               onMouseUp={this.onMouseUp}
-              onTouchMove={this.onTouchMove}
-              onTouchStart={this.onTouchStart}
               onWheel={this.onWheel}
               style={{
                 width: '100%',
                 height: '100%',
               }}
               height={this.state.canvasHeight * window.devicePixelRatio || 300}
-              width={this.state.canvasWidth * window.devicePixelRatio || 450}
+              width={this.width * window.devicePixelRatio || 450}
             />
           )}
         </Measure>
@@ -755,7 +754,7 @@ class FlameChart extends Component<Props, State> {
     return this.ctx.getImageData(
       0,
       this.state.offsets[id] * window.devicePixelRatio,
-      this.state.canvasWidth * window.devicePixelRatio,
+      this.width * window.devicePixelRatio,
       /* ⚠️ wrong */
       ((this.state.offsets[id + 1] || this.state.canvasHeight) - y) *
         window.devicePixelRatio,
@@ -802,7 +801,7 @@ class FlameChart extends Component<Props, State> {
     return this.ctx.getImageData(
       0,
       0,
-      this.state.canvasWidth * window.devicePixelRatio,
+      this.width * window.devicePixelRatio,
       this.state.canvasHeight * window.devicePixelRatio,
     );
   }
@@ -811,10 +810,16 @@ class FlameChart extends Component<Props, State> {
     // clear the canvas
     this.ctx.fillStyle = colors.background;
     // this.ctx.globalAlpha = 0.5;
-    this.ctx.fillRect(0, 0, this.state.canvasWidth, this.state.canvasHeight);
+    this.ctx.fillRect(0, 0, this.width, this.state.canvasHeight);
   }
 
-  draw() {
+  draw(leftBoundaryTime, rightBoundaryTime, width) {
+    if (window.stop_time === true) debugger
+    /* ⚠️ IDK if this is a bad idea, but this is the only place I will ever set these values */
+    this.leftBoundaryTime = leftBoundaryTime;
+    this.rightBoundaryTime = rightBoundaryTime;
+    this.width = width;
+
     if (this.canvas) {
       this.ctx.save();
 
@@ -828,7 +833,7 @@ class FlameChart extends Component<Props, State> {
           this.ctx.fillRect(
             0,
             0,
-            this.state.canvasWidth,
+            this.width,
             this.state.canvasHeight,
           );
         }
@@ -895,7 +900,7 @@ class FlameChart extends Component<Props, State> {
     this.ctx.fillRect(
       0,
       y,
-      this.state.canvasWidth * window.devicePixelRatio,
+      this.width * window.devicePixelRatio,
       this.state.offsets[this.state.draggingThread + 1] - y,
     );
     this.ctx.putImageData(
@@ -916,7 +921,7 @@ class FlameChart extends Component<Props, State> {
       this.drawBlock(
         {
           startTime: Date.now(),
-          endTime: this.props.rightBoundaryTime,
+          endTime: this.rightBoundaryTime,
           level: i,
         },
         activity,
@@ -927,9 +932,9 @@ class FlameChart extends Component<Props, State> {
   drawFutureWindow() {
     return drawFutureWindow(
       this.ctx,
-      this.props.leftBoundaryTime,
-      this.props.rightBoundaryTime,
-      this.state.canvasWidth,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.width,
       this.state.canvasHeight,
     );
   }
@@ -950,8 +955,8 @@ class FlameChart extends Component<Props, State> {
   isVisible(block) {
     return isVisible(
       block,
-      this.props.leftBoundaryTime,
-      this.props.rightBoundaryTime,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
     );
   }
 
@@ -1061,9 +1066,9 @@ class FlameChart extends Component<Props, State> {
       level,
       blockHeight,
       offsetFromTop,
-      this.props.leftBoundaryTime,
-      this.props.rightBoundaryTime,
-      this.state.canvasWidth,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.width,
     );
   }
 
@@ -1088,7 +1093,7 @@ class FlameChart extends Component<Props, State> {
     }
 
     // don't draw bar if whole thing is this.right of view
-    if (blockX > this.state.canvasWidth) {
+    if (blockX > this.width) {
       return;
     }
 
@@ -1301,7 +1306,7 @@ class FlameChart extends Component<Props, State> {
         ctx.fillStyle = '#ff0000';
         ctx.beginPath();
         ctx.arc(
-          this.state.canvasWidth - 7.5,
+          this.width - 7.5,
           this.state.offsets[thread_id] + 10,
           2,
           0,
@@ -1314,7 +1319,7 @@ class FlameChart extends Component<Props, State> {
       if (thread.suspendedActivityCount) {
         ctx.fillText(
           ` (${thread.suspendedActivityCount})`,
-          this.state.canvasWidth - 60,
+          this.width - 60,
           this.state.offsets[thread_id] + FlameChart.textPadding.y,
         );
       }
@@ -1325,7 +1330,7 @@ class FlameChart extends Component<Props, State> {
       for (let i = 0; i < 3; i++) {
         ctx.beginPath();
         ctx.arc(
-          this.state.canvasWidth - 30 + 6 * i,
+          this.width - 30 + 6 * i,
           this.state.offsets[thread_id] + 10,
           2,
           0,
@@ -1346,7 +1351,7 @@ class FlameChart extends Component<Props, State> {
       const x2 =
         ind < this.props.attentionShifts.length - 1
           ? this.timeToPixels(this.props.attentionShifts[ind + 1].timestamp)
-          : this.timeToPixels(this.props.rightBoundaryTime);
+          : this.timeToPixels(this.rightBoundaryTime);
 
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -1477,7 +1482,7 @@ class FlameChart extends Component<Props, State> {
 
   hLine(ctx, y) {
     ctx.moveTo(0, y);
-    ctx.lineTo(this.state.canvasWidth * window.devicePixelRatio, y);
+    ctx.lineTo(this.width * window.devicePixelRatio, y);
   }
 
   vLine(ctx, x, length = this.state.canvasHeight) {
@@ -1490,18 +1495,18 @@ class FlameChart extends Component<Props, State> {
   timeToPixels(timestamp) {
     return timeToPixels(
       timestamp,
-      this.props.leftBoundaryTime,
-      this.props.rightBoundaryTime,
-      this.state.canvasWidth,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.width,
     );
   }
 
   pixelsToTime(x) {
     return pixelsToTime(
       x,
-      this.props.leftBoundaryTime,
-      this.props.rightBoundaryTime,
-      this.state.canvasWidth,
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.width,
     );
   }
 }
