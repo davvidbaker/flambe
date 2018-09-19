@@ -23,6 +23,8 @@ import ThreadDetail from './ThreadDetail';
 import ActivityDetailModal from './ActivityDetailModal';
 import TimeSeries from './TimeSeries';
 import FlameChart from './FlameChart';
+import Tooltip from './Tooltip';
+import FocusActivity from './FocusActivity';
 
 import { SECOND, MINUTE, HOUR, DAY, WEEK, MONTH } from '../utilities/time';
 import {
@@ -67,9 +69,6 @@ type State = {
 
 class Timeline extends React.Component<Props, State> {
   state = {
-    leftBoundaryTime: Date.now() - WEEK,
-    rightBoundaryTime: Date.now(),
-    topOffset: 0,
     dividersData: {
       offsets: [],
     },
@@ -84,6 +83,7 @@ class Timeline extends React.Component<Props, State> {
 
     this.flameChart = React.createRef();
     this.timeSeries = React.createRef();
+    this.tooltip = React.createRef();
 
     const savedTimes = {
       lbt: localStorage.getItem('lbt'),
@@ -134,15 +134,18 @@ class Timeline extends React.Component<Props, State> {
     Maybe I don't let that happen exactly and instead expose Timeline ref to the higher ups.
     */
     if (
-      nextProps.leftBoundaryTime !== this.leftBoundaryTime ||
-      nextProps.rightBoundaryTime !== this.rightBoundaryTime
+      nextProps.leftBoundaryTimeOverride !==
+        this.lastLeftBoundaryTimeOverride ||
+      nextProps.rightBoundaryTimeOverride !== this.lastRightBoundaryTimeOverride
     ) {
-      console.log(`🔥  nextProps`, nextProps);
+      this.lastLeftBoundaryTimeOverride = nextProps.leftBoundaryTimeOverride;
+      this.lastRightBoundaryTimeOverride = nextProps.rightBoundaryTimeOverride;
+
       this.setTimelineState({
-        leftBoundaryTime: nextProps.leftBoundaryTime,
-        rightBoundaryTime: nextProps.rightBoundaryTime,
+        leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
+        rightBoundaryTime: nextProps.rightBoundaryTimeOverride,
       });
-      // requestAnimationFrame(this.drawChildren.bind(this));
+      requestAnimationFrame(this.drawChildren.bind(this));
     }
   }
 
@@ -178,7 +181,6 @@ class Timeline extends React.Component<Props, State> {
   };
 
   drawChildren = () => {
-
     this.timeSeries.current.draw(
       this.leftBoundaryTime,
       this.rightBoundaryTime,
@@ -188,16 +190,18 @@ class Timeline extends React.Component<Props, State> {
       this.leftBoundaryTime,
       this.rightBoundaryTime,
       this.state.width,
+      this.dividersData,
     );
   };
 
   /* 💁 mostly borrowed from chrome devtools-frontend ❤️ */
   calculateGridOffsets() {
-    const clientWidth = this.t ? this.t.clientWidth : window.innerWidth;
+    const clientWidth = this.state.width;
     //
     const zeroTime = 0;
 
-    const { leftBoundaryTime, rightBoundaryTime } = this.state;
+    const leftBoundaryTime = this.leftBoundaryTime;
+    const rightBoundaryTime = this.rightBoundaryTime;
 
     const boundarySpan = rightBoundaryTime - leftBoundaryTime;
 
@@ -252,13 +256,14 @@ class Timeline extends React.Component<Props, State> {
   }
 
   timeToPixels(timestamp) {
-    const { leftBoundaryTime, rightBoundaryTime } = this.state;
+    const leftBoundaryTime = this.leftBoundaryTime;
+    const rightBoundaryTime = this.rightBoundaryTime;
 
     return timeToPixels(
       timestamp,
       leftBoundaryTime,
       rightBoundaryTime,
-      this.t ? this.t.clientWidth : window.innerWidth,
+      this.state.width,
     );
   }
 
@@ -377,7 +382,6 @@ class Timeline extends React.Component<Props, State> {
 
   handlePaneChange = (size: number) => {
     this.setState({ timeSeriesHeight: `${size}px` });
-    console.log(`🔥size`, size);
   };
 
   /**
@@ -402,8 +406,8 @@ class Timeline extends React.Component<Props, State> {
       props.focusedBlockActivity_id &&
       props.activities[props.focusedBlockActivity_id];
 
-    const rightBoundaryTime = this.state.rightBoundaryTime || props.maxTime;
-    const leftBoundaryTime = this.state.leftBoundaryTime || props.minTime;
+    const rightBoundaryTime = this.rightBoundaryTime || props.maxTime;
+    const leftBoundaryTime = this.leftBoundaryTime || props.minTime;
 
     let threads = Array.isArray(props.threads)
       ? {}
@@ -415,6 +419,42 @@ class Timeline extends React.Component<Props, State> {
     threads = loadSuspendedActivityCount(props.activities, threads);
 
     console.log('render called');
+
+    const focusedBlock =
+      this.flameChart &&
+      this.flameChart.current &&
+      props.blocks &&
+      this.flameChart.current.getBlockDetails(
+        props.activities && props.focusedBlockIndex,
+      );
+
+    const hoveredBlock =
+      this.flameChart &&
+      this.flameChart.current &&
+      props.blocks &&
+      this.flameChart.current.getBlockDetails(
+        props.activities && props.hoveredBlockIndex,
+      );
+
+    const hoveredActivity =
+      props.blocks && hoveredBlock
+        ? props.activities[props.blocks[props.hoveredBlockIndex].activity_id]
+        : null;
+
+    let tx, ty;
+    if (
+      this.flameChart &&
+      this.flameChart.current &&
+      this.tooltip &&
+      this.tooltip.current
+    ) {
+      const { x, y } = this.flameChart.current.calcTooltipOffset(
+        this.tooltip.current,
+      );
+      tx = x;
+      ty = y + this.state.timeSeriesHeight;
+    }
+
     return (
       <WithEventListeners
         node={document}
@@ -540,7 +580,6 @@ class Timeline extends React.Component<Props, State> {
                       activities={props.activities}
                       activityMute={props.settings.activityMute}
                       activityMuteOpactiy={props.settings.activityMuteOpacity}
-                      dividersData={this.dividersData}
                       uniformBlockHeight={props.settings.uniformBlockHeight}
                       attentionShifts={props.attentionShifts}
                       blocks={props.blocks}
@@ -576,7 +615,7 @@ class Timeline extends React.Component<Props, State> {
                       hoveredBlockIndex={props.hoveredBlockIndex}
                       threads={threads}
                       toggleThread={props.toggleThread}
-                      topOffset={this.state.topOffset || 0}
+                      topOffset={this.topOffset || 0}
                       updateEvent={props.updateEvent}
                       zoom={this.zoom}
                     />
@@ -584,6 +623,39 @@ class Timeline extends React.Component<Props, State> {
                   {/* </WithDropTarget> */}
 
                   {/* ⚠️ Moved these up? */}
+                  {/* Probably want to lift FocusActivty and HoverActivity up so updating it doesn't cause entire re-render... */}
+                  {this.flameChart &&
+                    this.flameChart.current && [
+                      focusedBlock && (
+                        <FocusActivity
+                          key="focused"
+                          visible={props.focusedBlockIndex !== null}
+                          x={focusedBlock.blockX}
+                          y={focusedBlock.blockY + this.state.timeSeriesHeight}
+                          width={focusedBlock.blockWidth || 400}
+                          height={this.flameChart.current.blockHeight}
+                        />
+                      ),
+
+                      <Tooltip
+                        ending={hoveredBlock ? hoveredBlock.ending : null}
+                        endMessage={
+                          hoveredBlock ? hoveredBlock.endMessage : null
+                        }
+                        key="tooltip"
+                        name={hoveredActivity ? hoveredActivity.name : null}
+                        startMessage={
+                          hoveredBlock ? hoveredBlock.startmessage : null
+                        }
+                        otherMessages={
+                          hoveredBlock ? hoveredBlock.otherMessages : null
+                        }
+                        ref={this.tooltip}
+                        tooltipRef={this.tooltip}
+                        left={`${tx}px`}
+                        top={`${ty}px`}
+                      />,
+                    ]}
                   <ThreadDetail
                     closeThreadDetail={this.closeThreadDetail}
                     id={this.state.threadModal_id}
