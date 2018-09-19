@@ -137,7 +137,6 @@ class TimeSeries extends Component {
                 onMouseMove={this.onMouseMove}
                 onMouseEnter={this.onMouseEnter}
                 onMouseLeave={this.onMouseLeave}
-                onWheel={this.onWheel}
               />
             )}
           </Measure>
@@ -187,8 +186,6 @@ class TimeSeries extends Component {
       this.ctx.restore();
     }
   }
-
-  onWheel = handleWheel3.bind(this);
 
   drawMantras() {
     this.ctx.globalAlpha = 1;

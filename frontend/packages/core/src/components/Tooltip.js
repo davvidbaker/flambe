@@ -25,7 +25,7 @@ const Tooltip = ({
   top,
   startMessage,
   endMessage,
-  otherMessages
+  otherMessages,
 }) => (
   <Div
     innerRef={tooltipRef}

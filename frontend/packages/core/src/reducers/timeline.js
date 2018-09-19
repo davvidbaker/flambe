@@ -6,6 +6,7 @@ import {
   remove,
   filter,
   omitBy,
+  memoize,
 } from 'lodash/fp';
 
 import {
@@ -45,6 +46,7 @@ export const getTimeline = state => state.timeline;
 export const getFilterExcludes = state => state.timeline.trace.filterExcludes;
 
 export const getTimelineWithFiltersApplied = state => {
+  console.log(`🔥  getTimelineWithFiltersApplied`, state);
   const filterExcludes = getFilterExcludes(state);
   const timeline = getTimeline(state);
 
