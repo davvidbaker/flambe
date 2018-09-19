@@ -17,31 +17,33 @@ import {
 } from '../actions';
 
 export default connect(
-  state => ({
-    activities: getTimelineWithFiltersApplied(state).activities,
-    blocks: getTimelineWithFiltersApplied(state).blocks,
-    categories: getUser(state).categories,
-    focusedBlockActivity_id: getTimelineWithFiltersApplied(state)
-      .focusedBlockActivity_id,
-    focusedBlockIndex: getTimelineWithFiltersApplied(state).focusedBlockIndex,
-    hoveredBlockIndex: getTimelineWithFiltersApplied(state).hoveredBlockIndex,
-    mantras: getUser(state).mantras,
-    minTime: getTimelineWithFiltersApplied(state).minTime,
-    maxTime: getTimelineWithFiltersApplied(state).maxTime,
-    modifiers: state.modifiers,
-    threadLevels: getTimelineWithFiltersApplied(state).threadLevels,
-    threads: getTimelineWithFiltersApplied(state).threads,
-    lastCategory_id: getTimelineWithFiltersApplied(state).lastCategory_id,
-    lastThread_id: getTimelineWithFiltersApplied(state).lastThread_id,
-    attentionShifts: getUser(state).attentionShifts,
-    searchTerms: getUser(state).searchTerms,
-    settings: state.settings,
-    tabs: getUser(state).tabs,
+  state => {
+    const timeline = getTimelineWithFiltersApplied(state);
+    return {
+      activities: timeline.activities,
+      blocks: timeline.blocks,
+      categories: getUser(state).categories,
+      focusedBlockActivity_id: timeline.focusedBlockActivity_id,
+      focusedBlockIndex: timeline.focusedBlockIndex,
+      hoveredBlockIndex: timeline.hoveredBlockIndex,
+      mantras: getUser(state).mantras,
+      minTime: timeline.minTime,
+      maxTime: timeline.maxTime,
+      modifiers: state.modifiers,
+      threadLevels: timeline.threadLevels,
+      threads: timeline.threads,
+      lastCategory_id: timeline.lastCategory_id,
+      lastThread_id: timeline.lastThread_id,
+      attentionShifts: getUser(state).attentionShifts,
+      searchTerms: getUser(state).searchTerms,
+      settings: state.settings,
+      tabs: getUser(state).tabs,
 
-    // these are only used for overrides.
-    leftBoundaryTime: getTimeline(state).leftBoundaryTime,
-    rightBoundaryTime: getTimeline(state).rightBoundaryTime,
-  }),
+      // these are only used for overrides.
+      leftBoundaryTimeOverride: getTimeline(state).leftBoundaryTime,
+      rightBoundaryTimeOverride: getTimeline(state).rightBoundaryTime,
+    };
+  },
   dispatch => ({
     createThread: (name, rank) => dispatch(createThread(name, rank)),
     toggleThread: (id, isCollapsed = false) =>
