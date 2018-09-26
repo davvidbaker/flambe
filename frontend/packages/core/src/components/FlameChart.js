@@ -31,6 +31,7 @@ import {
   pixelsToTime,
   sortThreadsByRank,
   timeToPixels,
+  visibleThreadLevels,
 } from '../utilities/timelineChart';
 import { getShamefulColor } from '../utilities/timeline';
 import containsGithubLink from '../utilities/containsGithubLink';
@@ -136,8 +137,6 @@ class FlameChart extends Component<Props, State> {
   constructor(props) {
     super(props);
 
-    this.offsets = this.setOffsets(props.threads, props.threadLevels);
-
     this.threadStatuses = {};
     Object.keys(props.threads).forEach(({ id }) => {
       id = Number(id);
@@ -166,23 +165,6 @@ class FlameChart extends Component<Props, State> {
     //   return true;
     // }
     return false;
-  }
-
-  componentWillReceiveProps(nextProps) {
-    // ⚠️ probably bad for perf
-    if (
-      !deepArrayIsEqual(
-        Object.entries(this.props.threads),
-        Object.entries(nextProps.threads),
-      ) ||
-      !isEqual(this.props.threadLevels, nextProps.threadLevels)
-    ) {
-      const offsets = this.setOffsets(
-        nextProps.threads,
-        nextProps.threadLevels,
-      );
-      this.setFlamechartState({ offsets });
-    }
   }
 
   // avoiding react state for some stuff
@@ -602,8 +584,7 @@ class FlameChart extends Component<Props, State> {
 
   render() {
     // debugger;
-    this.maxThreadLevels =
-      this.props.threadLevels |> map(({ max }) => max) |> maxx;
+    this.maxThreadLevels = this.threadLevels |> map(({ max }) => max) |> maxx;
 
     /* ⚠️ this is definitely not what I want to be doing */
     // debounce(() =>
@@ -728,6 +709,22 @@ class FlameChart extends Component<Props, State> {
     this.width = width;
     this.dividersData = dividersData;
 
+    const threadLevels =
+      this.props.activities && this.props.reactiveThreadHeight
+        ? visibleThreadLevels(
+            this.props.blocks,
+            this.props.activities,
+            this.leftBoundaryTime,
+            this.rightBoundaryTime,
+            this.props.threads,
+          )
+        : this.props.threadLevels;
+
+    if (JSON.stringify(threadLevels !== this.threadLevels)) {
+      this.threadLevels = threadLevels;
+      this.offsets = this.setOffsets(this.props.threads, this.threadLevels);
+    }
+    
     if (this.canvas) {
       this.ctx.save();
 
@@ -1031,7 +1028,7 @@ class FlameChart extends Component<Props, State> {
       this.blockHeight /
       (this.props.uniformBlockHeight
         ? this.maxThreadLevels
-        : this.props.threadLevels[activity.thread_id].max);
+        : this.threadLevels[activity.thread_id].max);
     this.ctx.fillRect(
       blockX,
       collapsed ? blockY + block.level * adjustedBlockHeight : blockY,

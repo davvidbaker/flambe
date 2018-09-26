@@ -13,6 +13,8 @@ import {
   ACTIVITY_DETAILS_SHOW,
 } from '../actions';
 import { getUser } from '../reducers/user';
+import { getTimeline } from '../reducers/timeline';
+import { blocksForActivity } from '../utilities/timeline';
 // types
 import type { Activity } from '../types/Activity';
 import type { Category as CategoryType } from '../types/Category';
@@ -81,8 +83,9 @@ class ActivityDetail extends React.Component<Props> {
 
   render() {
     const {
-      activity,
-      activityBlocks,
+      activities,
+      activity_id,
+      blocks,
       updateActivity,
       endActivity,
       deleteActivity,
@@ -90,6 +93,13 @@ class ActivityDetail extends React.Component<Props> {
       categories,
       submitCommand,
     } = this.props;
+
+    const activity = activity_id && {
+      ...activities[activity_id],
+      id: activity_id,
+    };
+
+    const activityBlocks = blocksForActivity(activity_id, blocks);
 
     return this.state.caughtError ? (
       <div>{this.state.caughtError}</div>
@@ -208,6 +218,7 @@ export default // flow-ignore
 connect(
   state => ({
     categories: getUser(state).categories,
+    activity_id: getTimeline(state).focusedBlockActivity_id,
   }),
   dispatch => ({
     createCategory: ({ activity_id, name, color_background }) =>

@@ -36,6 +36,7 @@ import {
   TIMELINE_SET,
   TODO_BEGIN,
   TRACE_SELECT,
+  TRACE_FETCH,
   TRACE_FILTER,
 } from '../actions';
 import { zoom, pan, processTrace } from '../utilities';
@@ -46,7 +47,6 @@ export const getTimeline = state => state.timeline;
 export const getFilterExcludes = state => state.timeline.trace.filterExcludes;
 
 export const getTimelineWithFiltersApplied = state => {
-  console.log(`🔥  getTimelineWithFiltersApplied`, state);
   const filterExcludes = getFilterExcludes(state);
   const timeline = getTimeline(state);
 
@@ -127,6 +127,9 @@ function createBlock(
 
 function timeline(state = initialState, action) {
   switch (action.type) {
+    case `${TRACE_FETCH}_SUCCEEDED`:
+      return { ...state, trace: { ...state.trace, ...action.data } };
+
     case TIMELINE_ZOOM:
       const { leftBoundaryTime, rightBoundaryTime } = zoom(
         action.deltaY,
