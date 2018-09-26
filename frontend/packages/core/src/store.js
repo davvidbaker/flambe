@@ -3,6 +3,7 @@ import 'regenerator-runtime/runtime';
 import createSagaMiddleware from 'redux-saga';
 import { routerReducer, routerMiddleware } from 'react-router-redux';
 import createHistory from 'history/createBrowserHistory';
+import { throttle } from 'lodash/fp';
 
 import * as reducers from './reducers';
 import { getTimeline } from './reducers/timeline';
@@ -14,7 +15,7 @@ import sagas from './sagas';
 const composeEnhancers =
   (window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ &&
     window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
-      actionsBlacklist: ['BLOCK_HOVER']
+      actionsBlacklist: ['BLOCK_HOVER'],
     })) ||
   compose;
 
@@ -31,20 +32,20 @@ const persistedState = loadState();
 
 const rootReducer = combineReducers({
   ...reducers,
-  router: routerReducer
+  router: routerReducer,
 });
 const store = createStore(
   rootReducer,
   persistedState,
   composeEnhancers(
     applyMiddleware(sagaMiddleware),
-    applyMiddleware(rMiddleware)
-  )
+    applyMiddleware(rMiddleware),
+  ),
 );
 
 sagaMiddleware.run(sagas);
 
-store.subscribe(() => {
+const stateSaver = () => {
   const state = store.getState();
   saveState({
     activityDetailModalVisible: state.activityDetailModalVisible,
@@ -55,11 +56,14 @@ store.subscribe(() => {
     search: state.search,
     settings: state.settings,
     settingsVisible: state.settingsVisible,
+    // This kind of state should not be saved to local storage. Should probably instead be a cached response?
     timeline: getTimeline(state),
     user: getUser(state),
     view: state.view,
-    viewThread: state.viewThread
+    viewThread: state.viewThread,
   });
-});
+};
+
+store.subscribe(throttle(1000, () => requestIdleCallback(stateSaver)));
 
 export default store;
