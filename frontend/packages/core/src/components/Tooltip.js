@@ -91,7 +91,9 @@ const Tooltip = ({
         }
         return (
           <Div
-            ref={node => (refs.tooltip = node)}
+            ref={node => {
+              refs.tooltip = node;
+            }}
             innerRef={refs.tooltip}
             style={left && top && name ? { left, top } : { top: 0, opacity: 0 }}
           >

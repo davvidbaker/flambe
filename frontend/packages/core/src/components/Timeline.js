@@ -397,9 +397,7 @@ class Timeline extends React.Component<Props, State> {
   };
 
   handlePaneChange = (size: number) => {
-    console.log(`🔥  size`, size);
-    if (this.state.timeSeriesHeight !== `${size}px`)
-      this.setState({ timeSeriesHeight: `${size}px` });
+    this.setState({ timeSeriesHeight: size });
   };
 
   /**
@@ -534,7 +532,7 @@ class Timeline extends React.Component<Props, State> {
                   >
                     <TimeSeries
                       ref={this.timeSeries}
-                      height={this.state.timeSeriesHeight}
+                      height={`${this.state.timeSeriesHeight}px`}
                       // leftBoundaryTime={leftBoundaryTime}
                       mantras={props.mantras}
                       pan={this.pan}
