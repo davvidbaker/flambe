@@ -310,7 +310,7 @@ function* fetchUser({ type, id }) {
 
 function* fetchTrace({ trace }) {
   yield fetchResource(TRACE_FETCH, {
-    resource: { path: 'traces', id: trace.id },
+    resource: { path: 'traces', id: typeof trace === 'string' ? trace : trace.id },
   });
 }
 

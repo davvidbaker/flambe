@@ -54,6 +54,9 @@ function* handleSearch({ searchTerm, options }) {
       }
     };
 
+    console.log(`🔥  matches.length`, matches.length);
+    console.log(`🔥  blocksForMatch`, blocksForMatch);
+
     yield put({ type: SEARCH_RESULT, matches, blocksForMatch });
   } else {
     yield put({ type: SEARCH_RESULT, matches, blocksForMatch: [] });
@@ -101,6 +104,8 @@ function* focusSearchResult() {
     state => state.search,
   );
 
+  console.log(`🔥  matches`, matches, matchIndex, blockIndex, blocksForMatch);
+
   if (matches.length > 0) {
     const match = matches[matchIndex];
     const activity_id = match && Number(match[0]);
@@ -112,6 +117,8 @@ function* focusSearchResult() {
     console.log(`🔥  index`, index);
 
     const activity = match[1];
+
+    console.log(`🔥  focusing block`);
 
     yield put(
       focusBlock({

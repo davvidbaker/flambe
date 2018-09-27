@@ -151,7 +151,7 @@ const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }) =>
     <SplitPane
       split="vertical"
       minSize={100}
-      defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
+      defaultSize={parseInt(localStorage.getItem('splitPos'), 10) || 100}
       onChange={size => localStorage.setItem('splitPos', size)}
       primary="second"
     >
@@ -187,14 +187,15 @@ class App extends React.Component<
   constructor(props) {
     super(props);
 
+    const trace_id = props.match.params.trace_id;
+
     /** ⚠️ come back */
-    this.props.fetchUser(this.props.user.id);
-    if (!this.props.user) {
-    } else if (this.props.trace) {
-      this.props.fetchTrace(this.props.trace);
+    this.props.fetchUser(props.user.id);
+    if (!props.user) {
+    } else if (trace_id) {
+      props.fetchTrace(trace_id);
     }
   }
-
   componentDidCatch(e, info) {
     console.log('component did catch', e);
     createToast(`${(e, info)}. Top level error.`, 'error');
@@ -203,9 +204,6 @@ class App extends React.Component<
   componentWillMount() {}
 
   componentDidMount() {
-    console.log(`🔥  trace did mount`);
-    console.log(`🔥this.props.match`, this.props.match);
-
     // impure!
     const createKeyEvent = (DOMEvent: string, propFn: () => mixed) => {
       document.addEventListener(DOMEvent, e => {
@@ -235,7 +233,6 @@ class App extends React.Component<
   };
 
   submitCommand = command => {
-    console.log(`🔥submitCommand`, command);
     this.hideCommander();
     this.props.runCommand(this.props.operand, command);
   };
@@ -259,9 +256,6 @@ class App extends React.Component<
   };
 
   enterCommand = cmd => {
-    console.log(`🔥cmd in trace`, cmd);
-
-    console.log(`🔥this.commander`, this.commander);
     this.commander.enterCommand(cmd);
   };
 
@@ -363,6 +357,7 @@ class App extends React.Component<
             switch (this.props.operand.type) {
               case 'activity':
                 if (e.code === 'Space') {
+                  console.log(`🔥  space`, this.props);
                   this.props.showActivityDetails();
                 } else {
                   switch (e.key) {
@@ -447,10 +442,9 @@ class App extends React.Component<
                   <div style={{ height: '100%' }}>
                     <SplitPane
                       split="horizontal"
-                      defaultSize={parseInt(
-                        localStorage.getItem('splitPosHo'),
-                        10,
-                      )}
+                      defaultSize={
+                        parseInt(localStorage.getItem('splitPosHo'), 10) || 100
+                      }
                       onChange={size =>
                         localStorage.setItem('splitPosHo', size)
                       }
@@ -474,7 +468,8 @@ class App extends React.Component<
                           }
                         }}
                       </div>
-                      <LimboContainer submitCommand={this.submitCommand} />
+                      <div>delete this div</div>
+                      {/* <LimboContainer submitCommand={this.submitCommand} /> */}
                     </SplitPane>
                   </div>
                 </MaybeSplitPane>
@@ -538,7 +533,7 @@ export default compose(
       operand: state.operand,
       settings: state.settings,
       todosVisible: state.todosVisible,
-      trace: getTimeline(state).trace,
+      // trace: getTimeline(state).trace,
       user: getUser(state),
       userTraces: getUser(state).traces,
       view: state.view,

@@ -93,14 +93,16 @@ function advancedSearchVisible(state = false, action) {
 }
 
 function loggedIn(state = false, action) {
-  switch (action.type) {
-    case LOG_IN:
-      return true;
-    case LOG_OUT:
-      return false;
-    default:
-      return state;
-  }
+  return true;
+  /* ⚠️ uncomment me */
+  // switch (action.type) {
+  //   case LOG_IN:
+  //     return true;
+  //   case LOG_OUT:
+  //     return false;
+  //   default:
+  //     return state;
+  // }
 }
 
 export {

@@ -105,42 +105,38 @@ class TimeSeries extends Component {
     // requestIdleCallback(() => requestAnimationFrame(this.draw.bind(this)));
 
     return (
-      <>
-        <div style={{ width: '100%' }}>
-          <Measure
-            bounds
-            onResize={contentRect => {
-              /* 🤔 I feel like this shouldn't be necessary, but otherwise I get stuck in a render loop.bind.. */
-              if (
-                contentRect.bounds.width !== this.width ||
-                contentRect.bounds.height !== this.state.canvasHeight
-              ) {
-                this.setCanvasSize(contentRect.bounds);
-              }
-            }}
-          >
-            {({ measureRef }) => (
-              <canvas
-                ref={canvas => {
-                  measureRef(canvas);
-                  this.canvas = canvas;
-                }}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                }}
-                height={
-                  this.state.canvasHeight * window.devicePixelRatio || 300
-                }
-                width={this.width * window.devicePixelRatio || 450}
-                /* ⚠️ this hs got to be an antipattern to put this in render, right? */
-                onMouseMove={this.onMouseMove}
-                onMouseEnter={this.onMouseEnter}
-                onMouseLeave={this.onMouseLeave}
-              />
-            )}
-          </Measure>
-        </div>
+      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <Measure
+          bounds
+          onResize={contentRect => {
+            /* 🤔 I feel like this shouldn't be necessary, but otherwise I get stuck in a render loop.bind.. */
+            if (
+              contentRect.bounds.width !== this.width ||
+              contentRect.bounds.height !== this.state.canvasHeight
+            ) {
+              this.setCanvasSize(contentRect.bounds);
+            }
+          }}
+        >
+          {({ measureRef }) => (
+            <canvas
+              ref={canvas => {
+                measureRef(canvas);
+                this.canvas = canvas;
+              }}
+              style={{
+                width: '100%',
+                height: '100%',
+              }}
+              height={this.state.canvasHeight * window.devicePixelRatio || 300}
+              width={this.width * window.devicePixelRatio || 450}
+              /* ⚠️ this hs got to be an antipattern to put this in render, right? */
+              onMouseMove={this.onMouseMove}
+              onMouseEnter={this.onMouseEnter}
+              onMouseLeave={this.onMouseLeave}
+            />
+          )}
+        </Measure>
         <CountsBar hidden={!this.state.mouseIsOver}>
           <div style={{ color: windowColor }}>
             windows: {this.state.hoverWindowCount}
@@ -149,7 +145,7 @@ class TimeSeries extends Component {
             tabs: {this.state.hoverTabCount}
           </div>
         </CountsBar>
-      </>
+      </div>
     );
   }
 

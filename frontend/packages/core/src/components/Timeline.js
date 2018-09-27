@@ -8,7 +8,6 @@ import Measure from 'react-measure';
 import WithDropTarget from '../containers/WithDropTarget';
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import {
-  visibleThreadLevels,
   rankThreadsByAttention,
   timeToPixels,
   pixelsToTime,
@@ -24,7 +23,7 @@ import ActivityDetailModal from './ActivityDetailModal';
 import TimeSeries from './TimeSeries';
 import FlameChart from './FlameChart';
 import Tooltip from './Tooltip';
-import FocusActivity from './FocusActivity';
+import FocusedBlock from './FocusedBlock';
 
 import { SECOND, MINUTE, HOUR, DAY, WEEK, MONTH } from '../utilities/time';
 import {
@@ -84,6 +83,7 @@ class Timeline extends React.Component<Props, State> {
     this.flameChart = React.createRef();
     this.timeSeries = React.createRef();
     this.tooltip = React.createRef();
+    this.focusedBlock = React.createRef();
 
     const savedTimes = {
       lbt: localStorage.getItem('lbt'),
@@ -129,24 +129,34 @@ class Timeline extends React.Component<Props, State> {
   }
 
   componentWillReceiveProps(nextProps) {
+    // console.log(`🔥  nextProps, this.props`, nextProps, this.props);
+    // for (let a in nextProps) {
+    //   console.log(
+    //     `🔥 ${a} `,
+    //     JSON.stringify(nextProps[a]) === JSON.stringify(this.props[a]),
+    //   );
+    // }
     /* ⚠️ I need to figure out a better way to trigger a draw when an external event has changed boundary time... 
     
     Maybe I don't let that happen exactly and instead expose Timeline ref to the higher ups.
     */
-    if (
-      nextProps.leftBoundaryTimeOverride !==
-        this.lastLeftBoundaryTimeOverride ||
-      nextProps.rightBoundaryTimeOverride !== this.lastRightBoundaryTimeOverride
-    ) {
-      this.lastLeftBoundaryTimeOverride = nextProps.leftBoundaryTimeOverride;
-      this.lastRightBoundaryTimeOverride = nextProps.rightBoundaryTimeOverride;
-
-      this.setTimelineState({
-        leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
-        rightBoundaryTime: nextProps.rightBoundaryTimeOverride,
-      });
-      requestAnimationFrame(this.drawChildren.bind(this));
-    }
+    // if (
+    //   nextProps.leftBoundaryTimeOverride !==
+    //     this.lastLeftBoundaryTimeOverride ||
+    //   nextProps.rightBoundaryTimeOverride !== this.lastRightBoundaryTimeOverride
+    // ) {
+    //   console.log(
+    //     `🔥  nextProps.rightBoundaryTimeOverride`,
+    //     nextProps.rightBoundaryTimeOverride,
+    //   );
+    //   this.lastLeftBoundaryTimeOverride = nextProps.leftBoundaryTimeOverride;
+    //   this.lastRightBoundaryTimeOverride = nextProps.rightBoundaryTimeOverride;
+    //   this.setTimelineState({
+    //     leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
+    //     rightBoundaryTime: nextProps.rightBoundaryTimeOverride,
+    //   });
+    //   requestAnimationFrame(this.drawChildren.bind(this));
+    // }nnn
   }
 
   handleWheel = e => {
@@ -192,6 +202,11 @@ class Timeline extends React.Component<Props, State> {
       this.state.width,
       this.dividersData,
     );
+
+    /* 💁 🤷‍♂️  */
+    this.focusedBlock &&
+      this.focusedBlock.current &&
+      this.focusedBlock.current.forceUpdate();
   };
 
   /* 💁 mostly borrowed from chrome devtools-frontend ❤️ */
@@ -320,6 +335,7 @@ class Timeline extends React.Component<Props, State> {
       default:
         break;
     }
+    requestAnimationFrame(this.drawChildren.bind(this));
   }
 
   zoom = (dy, offsetX, zoomCenterTime, canvasWidth) => {
@@ -369,7 +385,7 @@ class Timeline extends React.Component<Props, State> {
     Object.entries(state).forEach(([key, val]) => {
       this[key] = val;
     });
-    // requestIdleCallback(this.setLocalStorage.bind(this));
+    requestIdleCallback(this.setLocalStorage.bind(this));
   };
 
   showThreadDetail = (id: number) => {
@@ -381,7 +397,9 @@ class Timeline extends React.Component<Props, State> {
   };
 
   handlePaneChange = (size: number) => {
-    this.setState({ timeSeriesHeight: `${size}px` });
+    console.log(`🔥  size`, size);
+    if (this.state.timeSeriesHeight !== `${size}px`)
+      this.setState({ timeSeriesHeight: `${size}px` });
   };
 
   /**
@@ -402,9 +420,6 @@ class Timeline extends React.Component<Props, State> {
 
   render() {
     const props = this.props;
-    const focusedActivity =
-      props.focusedBlockActivity_id &&
-      props.activities[props.focusedBlockActivity_id];
 
     const rightBoundaryTime = this.rightBoundaryTime || props.maxTime;
     const leftBoundaryTime = this.leftBoundaryTime || props.minTime;
@@ -417,43 +432,6 @@ class Timeline extends React.Component<Props, State> {
 
     // load in the sense of bearing load
     threads = loadSuspendedActivityCount(props.activities, threads);
-
-    console.log('render called');
-
-    const focusedBlock =
-      this.flameChart &&
-      this.flameChart.current &&
-      props.blocks &&
-      this.flameChart.current.getBlockDetails(
-        props.activities && props.focusedBlockIndex,
-      );
-
-    const hoveredBlock =
-      this.flameChart &&
-      this.flameChart.current &&
-      props.blocks &&
-      this.flameChart.current.getBlockDetails(
-        props.activities && props.hoveredBlockIndex,
-      );
-
-    const hoveredActivity =
-      props.blocks && hoveredBlock
-        ? props.activities[props.blocks[props.hoveredBlockIndex].activity_id]
-        : null;
-
-    let tx, ty;
-    if (
-      this.flameChart &&
-      this.flameChart.current &&
-      this.tooltip &&
-      this.tooltip.current
-    ) {
-      const { x, y } = this.flameChart.current.calcTooltipOffset(
-        this.tooltip.current,
-      );
-      tx = x;
-      ty = y + this.state.timeSeriesHeight;
-    }
 
     return (
       <WithEventListeners
@@ -590,6 +568,7 @@ class Timeline extends React.Component<Props, State> {
                       minTime={props.minTime}
                       modifiers={props.modifiers}
                       pan={this.pan}
+                      reactiveThreadHeight={props.settings.reactiveThreadHeight}
                       // rightBoundaryTime={rightBoundaryTime}
                       showAttentionFlows={props.settings.attentionFlows}
                       showThreadDetail={this.showThreadDetail}
@@ -597,18 +576,7 @@ class Timeline extends React.Component<Props, State> {
                       showSuspendResumeFlowsOnlyForFocusedActivity={
                         props.settings.suspendResumeFlowsOnlyForFocusedActivity
                       }
-                      // threadLevels={props.threadLevels}
-                      threadLevels={
-                        props.activities && props.settings.reactiveThreadHeight
-                          ? visibleThreadLevels(
-                              props.blocks,
-                              props.activities,
-                              leftBoundaryTime,
-                              rightBoundaryTime,
-                              props.threads,
-                            )
-                          : props.threadLevels
-                      }
+                      threadLevels={props.threadLevels}
                       hoverBlock={props.hoverBlock}
                       focusBlock={props.focusBlock}
                       focusedBlockIndex={props.focusedBlockIndex}
@@ -626,34 +594,16 @@ class Timeline extends React.Component<Props, State> {
                   {/* Probably want to lift FocusActivty and HoverActivity up so updating it doesn't cause entire re-render... */}
                   {this.flameChart &&
                     this.flameChart.current && [
-                      focusedBlock && (
-                        <FocusActivity
-                          key="focused"
-                          visible={props.focusedBlockIndex !== null}
-                          x={focusedBlock.blockX}
-                          y={focusedBlock.blockY + this.state.timeSeriesHeight}
-                          width={focusedBlock.blockWidth || 400}
-                          height={this.flameChart.current.blockHeight}
-                        />
-                      ),
-
+                      <FocusedBlock
+                        ref={this.focusedBlock}
+                        yOffset={this.state.timeSeriesHeight}
+                        flameChartRef={this.flameChart}
+                      />,
                       <Tooltip
-                        ending={hoveredBlock ? hoveredBlock.ending : null}
-                        endMessage={
-                          hoveredBlock ? hoveredBlock.endMessage : null
-                        }
-                        key="tooltip"
-                        name={hoveredActivity ? hoveredActivity.name : null}
-                        startMessage={
-                          hoveredBlock ? hoveredBlock.startmessage : null
-                        }
-                        otherMessages={
-                          hoveredBlock ? hoveredBlock.otherMessages : null
-                        }
-                        ref={this.tooltip}
-                        tooltipRef={this.tooltip}
-                        left={`${tx}px`}
-                        top={`${ty}px`}
+                        flameChartRef={this.flameChart}
+                        yOffset={this.state.timeSeriesHeight}
+                        activities={props.activities}
+                        blocks={props.blocks}
                       />,
                     ]}
                   <ThreadDetail
@@ -665,19 +615,11 @@ class Timeline extends React.Component<Props, State> {
                     }
                     activities={props.activities}
                   />
-                  {props.focusedBlockActivity_id && (
-                    <ActivityDetailModal
-                      activity={{
-                        id: props.focusedBlockActivity_id,
-                        ...focusedActivity,
-                      }}
-                      activityBlocks={blocksForActivity(
-                        props.focusedBlockActivity_id,
-                        props.blocks,
-                      )}
-                      submitCommand={props.submitCommand}
-                    />
-                  )}
+                  <ActivityDetailModal
+                    blocks={props.blocks}
+                    activities={props.activities}
+                    submitCommand={props.submitCommand}
+                  />
                 </div>
               )}
             </Measure>
