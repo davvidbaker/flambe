@@ -39,6 +39,7 @@ class FocusedBlock extends React.Component {
         {hoveredBlock &&
           hoveredBlock.blockWidth > 0 && (
             <HoverBlock
+              key="hover"
               style={{
                 left: `${hoveredBlock.blockX}px`,
                 top: `${hoveredBlock.blockY + yOffset}px`,
@@ -50,6 +51,7 @@ class FocusedBlock extends React.Component {
         {focusedBlock &&
           focusedBlock.blockWidth > 0 && (
             <FocusBlock
+              key="focus"
               style={{
                 left: `${focusedBlock.blockX}px`,
                 top: `${focusedBlock.blockY + yOffset}px`,

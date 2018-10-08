@@ -158,12 +158,6 @@ class FlameChart extends Component<Props, State> {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    // if (
-    //   JSON.stringify(nextState) !== JSON.stringify(this.state) ||
-    //   JSON.stringify(nextState) !== JSON.stringify(this.props)
-    // ) {
-    //   return true;
-    // }
     return false;
   }
 

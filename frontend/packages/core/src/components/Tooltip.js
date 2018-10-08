@@ -91,7 +91,7 @@ const Tooltip = ({
         }
         return (
           <Div
-            ref={node => {
+            innerRef={node => {
               refs.tooltip = node;
             }}
             innerRef={refs.tooltip}
