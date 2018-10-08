@@ -5,6 +5,7 @@ import { compose } from 'redux';
 import SplitPane from 'react-split-pane';
 import last from 'lodash/fp/last';
 import { Switch, Route, Redirect, withRouter } from 'react-router';
+// import Subdivide from 'subdivide';
 
 // flow-ignore
 import { DragDropContext, DragDropManager } from 'react-dnd';
@@ -27,6 +28,7 @@ import WithEventListeners from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
 import LimboContainer from '../components/LimboContainer';
+import PanePicker from '../components/PanePicker';
 import {
   collapseAllThreads,
   createMantra,
@@ -57,6 +59,8 @@ import type { Trace } from '../types/Trace';
 import type { Todo } from '../types/Todo';
 
 Modal.setAppElement('#app-root');
+
+import '../styles/reach-overrides.css';
 
 /* ⚠️ this should all be moved */
 // eslint-disable-next-line babel/no-unused-expressions
@@ -142,6 +146,13 @@ injectGlobal`
 
   .ReactModalPortal > div {
     z-index: 1000;
+  }
+
+   [data-reach-alert-dialog-label] {
+    color: #4095bf;
+    font-size: 150%;
+    margin-bottom: 10px;
+    text-align: center;
   }
     
 `;
@@ -468,8 +479,7 @@ class App extends React.Component<
                           }
                         }}
                       </div>
-                      <div>delete this div</div>
-                      {/* <LimboContainer submitCommand={this.submitCommand} /> */}
+                      <LimboContainer submitCommand={this.submitCommand} />
                     </SplitPane>
                   </div>
                 </MaybeSplitPane>

@@ -48,7 +48,7 @@ class ThreadDetail extends Component<Props> {
           {this.props.name}
         </InputFromButton>
         <DeleteButton
-          contentLabel="Delete Thread?"
+          dialogLabel="Delete Thread?"
           message="All activities will be removed from the thread and lost forever. There is no undo."
           onConfirm={this.delete}
         />

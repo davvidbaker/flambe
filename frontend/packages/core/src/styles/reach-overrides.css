@@ -1,0 +1,12 @@
+[data-reach-dialog-overlay] {
+  z-index: 1000;
+}
+
+[data-reach-alert-dialog-label] {
+  font-weight: bold;
+  font-size: 150%;
+  line-height: 150%;
+  margin-bottom: 10px;
+  text-align: center;
+  border-bottom: 1px solid #d6dadc;
+}
