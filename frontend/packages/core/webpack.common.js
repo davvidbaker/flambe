@@ -17,11 +17,11 @@ module.exports = {
       'redux',
       'redux-saga',
       'styled-components',
-      'tinycolor2'
+      'tinycolor2',
       // including lodash here was bringing in the entire lodash library... not sure why 🤔
       // 'lodash'
     ],
-    app: ['react-hot-loader/patch', './src/index.js']
+    app: ['react-hot-loader/patch', './src/index.js'],
   },
 
   module: {
@@ -29,16 +29,20 @@ module.exports = {
       {
         test: /\.jsx?$/,
         exclude: /node_modules/,
-        use: { loader: 'babel-loader', options: { extends: '../../.babelrc' } }
+        use: { loader: 'babel-loader', options: { extends: '../../.babelrc' } },
       },
       {
         test: /\.(jpe?g|png|gif|svg)$/i,
         loaders: [
           'file-loader?hash=sha512&digest=hex&name=[hash].[ext]',
-          'image-webpack-loader?bypassOnDebug&optimizationLevel=7&interlaced=false'
-        ]
-      }
-    ]
+          'image-webpack-loader?bypassOnDebug&optimizationLevel=7&interlaced=false',
+        ],
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader'],
+      },
+    ],
   },
   // When importing a module whose path matches one of the following, just
   // assume a corresponding global variable exists and use that instead.
@@ -48,7 +52,7 @@ module.exports = {
   resolve: {
     modules: ['node_modules'],
     extensions: ['.js', '.jsx'],
-    mainFiles: ['index']
+    mainFiles: ['index'],
   },
 
   plugins: [
@@ -62,5 +66,5 @@ module.exports = {
     //   // (with more entries, this ensures that no other module
     //   //  goes into the vendor chunk)
     // }),
-  ]
+  ],
 };

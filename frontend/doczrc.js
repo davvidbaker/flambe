@@ -131,8 +131,12 @@ export default {
   src: './',
   themeConfig,
   wrapper: 'packages/core/docz/wrapper.js',
-  modifyBundlerConfig: config =>
-    console.log(`🔥 config`, config) || {
+  modifyBundlerConfig: config => {
+    config.module.rules.push({
+      test: /\.css$/,
+      use: ['style-loader', 'css-loader'],
+    });
+    return {
       ...config,
       plugins: [
         ...config.plugins,
@@ -142,5 +146,6 @@ export default {
           NODE_ENV: "'development'",
         }),
       ],
-    },
+    };
+  },
 };

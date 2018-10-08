@@ -191,17 +191,19 @@ class Timeline extends React.Component<Props, State> {
   };
 
   drawChildren = () => {
-    this.timeSeries.current.draw(
-      this.leftBoundaryTime,
-      this.rightBoundaryTime,
-      this.state.width,
-    );
-    this.flameChart.current.draw(
-      this.leftBoundaryTime,
-      this.rightBoundaryTime,
-      this.state.width,
-      this.dividersData,
-    );
+    this.timeSeries.current &&
+      this.timeSeries.current.draw(
+        this.leftBoundaryTime,
+        this.rightBoundaryTime,
+        this.state.width,
+      );
+    this.flameChart.current &&
+      this.flameChart.current.draw(
+        this.leftBoundaryTime,
+        this.rightBoundaryTime,
+        this.state.width,
+        this.dividersData,
+      );
 
     /* 💁 🤷‍♂️  */
     this.focusedBlock &&
@@ -431,6 +433,10 @@ class Timeline extends React.Component<Props, State> {
     // load in the sense of bearing load
     threads = loadSuspendedActivityCount(props.activities, threads);
 
+    this.drawChildren();
+
+    console.log(`🔥  timeline rendering`);
+
     return (
       <WithEventListeners
         node={document}
@@ -593,11 +599,13 @@ class Timeline extends React.Component<Props, State> {
                   {this.flameChart &&
                     this.flameChart.current && [
                       <FocusedBlock
+                        key="focus"
                         ref={this.focusedBlock}
                         yOffset={this.state.timeSeriesHeight}
                         flameChartRef={this.flameChart}
                       />,
                       <Tooltip
+                        key="tooltip"
                         flameChartRef={this.flameChart}
                         yOffset={this.state.timeSeriesHeight}
                         activities={props.activities}

@@ -4,6 +4,15 @@ import React, { Component } from 'react';
 import styled from 'styled-components';
 import Modal from 'react-modal';
 import tinycolor from 'tinycolor2';
+import {
+  AlertDialog,
+  AlertDialogLabel,
+  AlertDialogDescription,
+  AlertDialogOverlay,
+  AlertDialogContent,
+} from '@reach/alert-dialog';
+
+import '@reach/dialog/styles.css';
 
 import { colors } from '../styles';
 import Button from './Button';
@@ -24,101 +33,102 @@ const ModalContent = styled.div`
     padding: 0 1em;
     text-align: center;
   }
-
-  .modal-body {
-    padding: 0 0.5em 0.5em;
-
-    p {
-    }
-  }
 `;
 
 type Props = {
   onConfirm: () => mixed,
-  contentLabel: string,
-  message: string
+  dialogLabel: string,
+  message: string,
 };
 
 type State = {
-  modalIsOpen: boolean
+  showingDialog: boolean,
 };
 
 class DeleteButton extends Component<Props, State> {
   state = {
-    modalIsOpen: false
+    showingDialog: false,
   };
 
-  openModal = () => {
-    this.setState({ modalIsOpen: true });
+  constructor() {
+    super();
+    this.cancelRef = React.createRef();
+  }
+
+  openDialog = () => {
+    this.setState({ showingDialog: true });
+    console.log(`🔥  this.cancelRef.current`, this.cancelRef);
   };
 
-  closeModal = () => {
-    this.setState({ modalIsOpen: false });
-  };
-
-  focusConfirmButton = () => {
-    this.confirmButton.focus();
+  closeDialog = () => {
+    this.setState({ showingDialog: false });
   };
 
   render() {
-    return [
-      <button key="button" onClick={this.openModal}>
-        Delete
-      </button>,
-      <Modal
-        key="modal"
-        isOpen={this.state.modalIsOpen}
-        contentLabel={this.props.contentLabel}
-        onRequestClose={this.closeModal}
-        onAfterOpen={this.focusConfirmButton}
-        style={{
-          content: {
-            right: 'unset',
-            bottom: 'unset',
-            padding: 0,
-            width: '300px'
-          }
-        }}
-      >
-        <ModalContent>
-          <h2>{this.props.contentLabel}</h2>
-          <div className="modal-body">
-            <p>{this.props.message}</p>
-            <Button
-              additionalStyles={`
+    return (
+      <>
+        <button key="button" onClick={this.openDialog}>
+          Delete
+        </button>
+        {this.state.showingDialog && (
+          <AlertDialog leastDestructiveRef={this.cancelRef}>
+            <AlertDialogLabel>
+              {this.props.dialogLabel} Please Confirm!
+            </AlertDialogLabel>
+
+            <AlertDialogDescription>
+              {this.props.message}
+            </AlertDialogDescription>
+            <div className="modal-body">
+              <Button
+                additionalStyles={`
               background: ${colors.red};
               width: 100%;
               line-height: 2rem;
               font-size: unset;
               font-weight: bold;
               color: white;
+              margin: 10px 0;
 
               &:hover {
                 background: ${tinycolor(colors.red)
-    .darken(5)
-    .toString()}
+                  .darken(5)
+                  .toString()}
               }
 
               &:active {
                 background: ${tinycolor(colors.red)
-    .darken(10)
-    .toString()}
+                  .darken(10)
+                  .toString()}
               }
               `}
-              innerRef={btn => {
-                this.confirmButton = btn;
-              }}
-              onClick={() => {
-                this.props.onConfirm();
-                this.closeModal();
-              }}
-            >
-              Delete
-            </Button>
-          </div>
-        </ModalContent>
-      </Modal>
-    ];
+                innerRef={btn => {
+                  this.confirmButton = btn;
+                }}
+                onClick={() => {
+                  this.props.onConfirm();
+                  this.closeDialog();
+                }}
+              >
+                Delete
+              </Button>
+              <div style={{ textAlign: 'center' }}>
+                <Button
+                  looksLikeButton
+                  innerRef={this.cancelRef}
+                  onClick={this.closeDialog}
+                  //   additionalStyles={`
+                  // background: white;
+                  // `}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </AlertDialog>
+        )}
+      </>
+    );
   }
 }
 
