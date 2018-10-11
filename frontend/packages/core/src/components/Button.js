@@ -18,6 +18,7 @@ const commonStyles = `
 
   &:focus {
     border: 1px solid ${colors.flames.main};
+    box-shadow: 0 0 20px ${colors.flames.main};
   }
 `;
 

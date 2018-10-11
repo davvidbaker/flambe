@@ -191,6 +191,7 @@ class Timeline extends React.Component<Props, State> {
   };
 
   drawChildren = () => {
+    console.log('•🍉 draw children called')
     this.timeSeries.current &&
       this.timeSeries.current.draw(
         this.leftBoundaryTime,

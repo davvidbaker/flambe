@@ -547,7 +547,7 @@ function timeline(state = initialState, action) {
     case THREAD_DELETE:
       const activs = {};
       Object.entries(state.activities).forEach(([key, val]) => {
-        if (val.thread.id !== action.id) {
+        if (val.thread_id !== action.id) {
           activs[key] = val;
         }
       });
