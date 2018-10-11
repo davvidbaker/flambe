@@ -362,6 +362,14 @@ class FlameChart extends Component<Props, State> {
     });
 
     if (this.resizing) {
+      requestAnimationFrame(() =>
+        this.draw(
+          this.leftBoundaryTime,
+          this.rightBoundaryTime,
+          this.width,
+          this.dividersData,
+        ),
+      );
     } else {
       const hit = this.hitTest(e);
       if (hit) {
@@ -616,7 +624,6 @@ class FlameChart extends Component<Props, State> {
               }}
               onClick={this.onClick}
               onContextMenu={this.onContextMenu}
-              onDrag={this.onDrag}
               onMouseMove={this.onMouseMove}
               onMouseDown={this.onMouseDown}
               onMouseUp={this.onMouseUp}
@@ -718,7 +725,7 @@ class FlameChart extends Component<Props, State> {
       this.threadLevels = threadLevels;
       this.offsets = this.setOffsets(this.props.threads, this.threadLevels);
     }
-    
+
     if (this.canvas) {
       this.ctx.save();
 
