@@ -240,18 +240,23 @@ class Limbo extends Component {
 
     var path = d3.geoPath().projection(projection);
 
-    const hexagon = svg.selectAll('.hexagon').selectAll('path');
-    hexagon
-      .data(topology.objects.hexagons.geometries)
-      .attr(
-        'fill',
-        d =>
-          this.sinks.find(
-            ({ id }) =>
-              console.log(`🔥 id, d.hitSink`, id, d.hitSink) ||
-              id === d.hitSink,
-          ).color_background,
-      );
+    const hexagon = svg
+      .selectAll('.hexagon')
+      .selectAll('path')
+      .data(topology.objects.hexagons.geometries);
+
+    hexagon.attr(
+      'fill',
+      d =>
+        this.sinks.find(
+          ({ id }) =>
+            console.log(`🔥 id, d.hitSink`, id, d.hitSink) || id === d.hitSink,
+        ).color_background,
+    );
+
+    hexagon.on('click', d => {
+      console.log(d);
+    });
 
     const sink = svg.selectAll('circle').data(sinks);
     sink.transition().attr('r', d => d[this.state.forceCarrier]);
@@ -362,7 +367,11 @@ class Limbo extends Component {
       .on('mouseenter', mouseenter)
       .on('mouseleave', mouseleave)
       // .on('mousemove', mousemove)
-      .on('mouseup', mouseup);
+      .on('mouseup', mouseup)
+      .on('click', d => {
+        console.log(`🔥  d`, d);
+        this.props.setSelectedActivity(Number(d.hitSink));
+      });
 
     svg
       .append('path')

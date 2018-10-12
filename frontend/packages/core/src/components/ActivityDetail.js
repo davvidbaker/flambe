@@ -15,6 +15,7 @@ import {
 import { getUser } from '../reducers/user';
 import { getTimeline } from '../reducers/timeline';
 import { blocksForActivity } from '../utilities/timeline';
+import containsGithubLink from '../utilities/containsGithubLink';
 // types
 import type { Activity } from '../types/Activity';
 import type { Category as CategoryType } from '../types/Category';
@@ -26,9 +27,17 @@ import AddCategory from './AddCategory';
 import DeleteButton from './DeleteButton';
 import Grid from './Grid';
 import Button, { InputFromButton } from './Button';
+import GithubMark from '../images/GitHub-Mark.svg';
 
 const P = styled.p`
   margin: 0;
+`;
+
+const GithubAnchor = styled.a`
+  opacity: 0.5;
+  &:hover {
+    opacity: 1;
+  }
 `;
 
 const Actions = styled.div`
@@ -100,12 +109,22 @@ class ActivityDetail extends React.Component<Props> {
     };
 
     const activityBlocks = blocksForActivity(activity_id, blocks);
+    const githubLink = containsGithubLink(activity.name || '');
 
     return this.state.caughtError ? (
       <div>{this.state.caughtError}</div>
     ) : (
       <>
-        {/* // flow-ignore */}
+        {githubLink && (
+          <GithubAnchor
+            target="_blnk"
+            href={`https://github.com/elasticsuite/${githubLink[2]}/issues/${
+              githubLink[3]
+            }`}
+          >
+            <img height="16px" src={GithubMark} alt="Open in Github" />
+          </GithubAnchor>
+        )}
         <InputFromButton
           placeholderIsDefaultValue
           submit={(value: string) => {

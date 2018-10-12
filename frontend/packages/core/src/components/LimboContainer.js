@@ -51,6 +51,7 @@ class LimboContainer extends Component {
   setSelectedActivity = selectedActivity_id => {
     this.setState({ selectedActivity_id });
 
+    console.log(`🔥  this.props`, this.props, selectedActivity_id);
     const blocks = blocksForActivityWithIndices(
       selectedActivity_id,
       this.props.filteredBlocks,
@@ -83,6 +84,8 @@ class LimboContainer extends Component {
       submitCommand,
       allBlocks,
     } = this.props;
+
+    console.log(`🔥  allBlocks`, allBlocks);
     const weightlessActivities =
       activities
       |> Object.entries
@@ -104,6 +107,7 @@ class LimboContainer extends Component {
             activities={weightedActivities}
             events={events}
             categories={this.props.categories}
+            setSelectedActivity={this.setSelectedActivity}
           />
         </div>
         {/* <ScrollView>
@@ -120,7 +124,6 @@ class LimboContainer extends Component {
             activities={weightlessActivities}
             selectedActivity_id={this.state.selectedActivity_id}
             updateActivity={updateActivity}
-            // setSelectedActivity={() => {}}
             setSelectedActivity={this.setSelectedActivity}
           />
         </ScrollView>
@@ -131,11 +134,9 @@ class LimboContainer extends Component {
                 id: this.state.selectedActivity_id,
                 ...activities[this.state.selectedActivity_id],
               }}
-              activityBlocks={blocksForActivity(
-                this.state.selectedActivity_id,
-                allBlocks,
-              )}
+              blocks={allBlocks}
               submitCommand={submitCommand}
+              activities={activities}
             />
           </ScrollView>
         )}
