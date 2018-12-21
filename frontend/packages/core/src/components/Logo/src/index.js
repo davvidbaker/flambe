@@ -18,7 +18,7 @@ const H1 = styled.h1`
     position: absolute;
     right: 0;
     transform-origin: top right;
-    transform: translate(31%, 23%) scale(0.5) rotate(30deg);
+    transform: translate(23%, 23%) scale(0.5) rotate(30deg);
     z-index: -2;
   ${props =>
     (!props.isAnimated

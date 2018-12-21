@@ -139,6 +139,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
     const activity = activities[event.activity.id];
 
     activity.events = pushToMaybeNullArray(activity.events, event.id);
+    activity.description = activity.description || event.activity.description;
 
     activity.categories = pushToMaybeNullArray(
       activity.categories,
@@ -211,6 +212,7 @@ function processTrace(trace: TraceEvent[], threads: Thread[]) {
           activity_id: event.activity.id,
           beginning: event.phase,
           events: [event.id],
+          startMessage: event.message,
         });
         threadLevel.current++;
         threadLevel.max = Math.max(threadLevel.current, threadLevel.max);

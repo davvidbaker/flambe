@@ -4,6 +4,7 @@ import throttle from 'lodash/throttle';
 import filter from 'lodash/fp/filter';
 import last from 'lodash/last';
 import Measure from 'react-measure';
+import swyzzle from 'swyzzle';
 
 import WithDropTarget from '../containers/WithDropTarget';
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
@@ -23,6 +24,7 @@ import ActivityDetailModal from './ActivityDetailModal';
 import TimeSeries from './TimeSeries';
 import FlameChart from './FlameChart';
 import Tooltip from './Tooltip';
+import PieChart from './PieChart';
 import FocusedBlock from './FocusedBlock';
 
 import { SECOND, MINUTE, HOUR, DAY, WEEK, MONTH } from '../utilities/time';
@@ -64,6 +66,46 @@ type State = {
   timeSeriesHeight: number,
   zoomChord: string,
   zoomChordMultiplier: number,
+};
+
+/* ⚠️ don't forget you were going to escape the boundaries of the original image and melt elsewhere */
+
+const Swyzzler = ({ canvas }) => {
+  const [timeout_id, setTimeout_id] = React.useState(null);
+
+  // setTimeout_id(
+  //   setTimeout(() => {
+  //     const cleanup = swyzzle(canvas, '#chart-wrapper');
+  //   }, 1000 * 10),
+  // );
+
+  // console.log(`🔥  timeout`, timeout_id);
+
+  // const reset = () => clearTimeout(timeout_id);
+
+  React.useEffect(() => {
+    // let cleanupSwyzzle = () => {};
+    // const handleBlur = () => {
+    //   cleanupSwyzzle = swyzzle(canvas, '#chart-wrapper');
+    //   console.log('swyzz init');
+    // };
+
+    // window.addEventListener('blur', handleBlur);
+
+    // window.addEventListener('focus', () => {
+    //   console.log('window focused');
+    //   cleanupSwyzzle();
+    //   cleanupSwyzzle = () => {};
+    // });
+
+    // return () => {
+    //   cleanupSwyzzle();
+    //   window.removeEventListener('blur', handleBlur);
+    // };
+  });
+
+  return null;
+  // return 'asdf';
 };
 
 class Timeline extends React.Component<Props, State> {
@@ -191,7 +233,6 @@ class Timeline extends React.Component<Props, State> {
   };
 
   drawChildren = () => {
-    console.log('•🍉 draw children called')
     this.timeSeries.current &&
       this.timeSeries.current.draw(
         this.leftBoundaryTime,
@@ -436,8 +477,6 @@ class Timeline extends React.Component<Props, State> {
 
     this.drawChildren();
 
-    console.log(`🔥  timeline rendering`);
-
     return (
       <WithEventListeners
         node={document}
@@ -537,6 +576,7 @@ class Timeline extends React.Component<Props, State> {
                     size={100}
                     onChange={this.handlePaneChange}
                   >
+                    {/* <PieChart /> */}
                     <TimeSeries
                       ref={this.timeSeries}
                       height={`${this.state.timeSeriesHeight}px`}
@@ -552,7 +592,6 @@ class Timeline extends React.Component<Props, State> {
                       )(props.tabs)}
                       zoom={this.zoom}
                     />
-                    {/* <div>doh</div> */}
                     {/* <WithDropTarget
                 targetName="flame-chart"
                 threads={props.threads}
@@ -637,6 +676,11 @@ class Timeline extends React.Component<Props, State> {
                 ago
               </div>
             )}
+            {this.flameChart &&
+              this.flameChart.current && (
+                <Swyzzler canvas={this.flameChart.current.canvas} />
+              )}
+            }
           </>
         )}
       </WithEventListeners>

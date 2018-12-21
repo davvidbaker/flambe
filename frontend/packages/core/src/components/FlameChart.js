@@ -1,7 +1,18 @@
 // @flow
-import React, { Component } from 'react';
+import React, { Component, useEffect } from 'react';
 import emojiRegex from 'emoji-regex';
-import { connect } from 'react-redux';
+import styled from 'styled-components';
+
+const Wrapper = styled.div`
+  height: 100%;
+  position: absolute;
+  width: 100%;
+
+  canvas:last-of-type {
+    position: absolute;
+  }
+`;
+
 /* 💁     👇 intentionally "maxx"  */
 import {
   map,
@@ -573,7 +584,7 @@ class FlameChart extends Component<Props, State> {
       );
     } else if (this.draggingThread) {
       // this.props.updateThreadRank()
-    }
+    } else
 
     this.setFlamechartState({
       mousedown: false,
@@ -581,6 +592,7 @@ class FlameChart extends Component<Props, State> {
       draggingThread: null,
       resizing: false,
       resizingBlock: null,
+      measuring: false,
     });
   };
 
@@ -597,13 +609,7 @@ class FlameChart extends Component<Props, State> {
 
     // flow-ignore
     return (
-      <div
-        style={{
-          height: '100%',
-          position: 'absolute',
-          width: '100%',
-        }}
-      >
+      <Wrapper id="chart-wrapper">
         <Measure
           bounds
           onResize={contentRect => {
@@ -637,7 +643,7 @@ class FlameChart extends Component<Props, State> {
             />
           )}
         </Measure>
-      </div>
+      </Wrapper>
     );
   }
 
