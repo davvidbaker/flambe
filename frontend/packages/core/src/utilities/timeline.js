@@ -11,7 +11,10 @@ import {
 
 /* ⚠️ should probably generalize this into smoething like filterObjectsByIdList  or by keyArray. There might even by a lodash method to do exactly this thing I'm doing.
 */
-export const getFilteredThreads = (filterExcludes: number, threads: Threads) =>
+export const getFilteredThreads = (
+  filterExcludes: number[] = [],
+  threads: Threads,
+) =>
   threads
   |> Object.entries
   |> (filterExcludes.length > 0

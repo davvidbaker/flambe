@@ -85,7 +85,6 @@ class LimboContainer extends Component {
       allBlocks,
     } = this.props;
 
-    console.log(`🔥  allBlocks`, allBlocks);
     const weightlessActivities =
       activities
       |> Object.entries

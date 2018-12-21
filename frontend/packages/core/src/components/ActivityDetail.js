@@ -108,9 +108,12 @@ class ActivityDetail extends React.Component<Props> {
       id: activity_id,
     };
 
+    if (!activity) return <div>no activity</div>;
+
     const activityBlocks = blocksForActivity(activity_id, blocks);
     const githubLink = containsGithubLink(activity.name || '');
 
+    console.log(`🔥  activity`, activity);
     return this.state.caughtError ? (
       <div>{this.state.caughtError}</div>
     ) : (
@@ -186,6 +189,21 @@ class ActivityDetail extends React.Component<Props> {
               categories={categories}
             />
           </ul>
+        </div>
+        <div>
+          Description:
+          <InputFromButton
+            placeholderIsDefaultValue
+            submit={(value: string) => {
+              updateActivity(activity.id, {
+                description: value,
+                thread_id: activity.thread_id,
+              });
+            }}
+          >
+            {activity.description ||
+              'Add notes in here (you can type in `whoa`'}
+          </InputFromButton>
         </div>
         <ActivityEventFlow activityBlocks={activityBlocks} />
         <Actions>
