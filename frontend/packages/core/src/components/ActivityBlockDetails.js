@@ -74,6 +74,10 @@ const Div = styled.div`
   .S {
     background: #6746a3;
   }
+
+  .X {
+    background: #2d2d2d;
+  }
 `;
 
 const EventType = styled.div`

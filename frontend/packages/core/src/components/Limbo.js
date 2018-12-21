@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import styled from 'styled-components';
 import * as d3 from 'd3';
 import * as topojson from 'topojson';
-import last from 'lodash/fp/last';
+import { last } from 'lodash/fp';
 
 import {
   hexTopology,
@@ -23,7 +23,9 @@ const Tooltip = styled.div`
   padding: 10px;
 `;
 
-const Controls = styled.div``;
+const Controls = styled.div`
+  background: var(--tint, 'white');
+`;
 
 const Wrapper = styled.div`
   svg {
@@ -254,10 +256,6 @@ class Limbo extends Component {
         ).color_background,
     );
 
-    hexagon.on('click', d => {
-      console.log(d);
-    });
-
     const sink = svg.selectAll('circle').data(sinks);
     sink.transition().attr('r', d => d[this.state.forceCarrier]);
 
@@ -455,6 +453,13 @@ class Limbo extends Component {
     const that = this;
     function mouseenter(d) {
       const { x, y } = this.getBoundingClientRect();
+
+      const color = (that.sinks.find(({ id }) => id === d.hitSink) || {})
+        .color_background;
+
+      if (color) {
+        document.body.style.setProperty('--tint', color);
+      }
 
       if (d.hitSink)
         that.setState(

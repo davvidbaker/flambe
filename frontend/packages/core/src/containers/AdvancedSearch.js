@@ -1,12 +1,14 @@
+import groupBy from 'lodash/fp/groupBy';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
-import groupBy from 'lodash/fp/groupBy';
-
-import { search, setThreadIncludeList, setThreadExcludeList } from '../actions';
+import { search, setThreadExcludeList, setThreadIncludeList } from '../actions';
+import SearchInput from '../components/SearchInput';
 import Toggle from '../components/Toggle';
 import Unbutton from '../components/Unbutton';
-import SearchInput from '../components/SearchInput';
+import { getUser } from '../reducers/user';
+
+import * as Activity from '../modules/activity';
 
 /* ⚠️ maybea bad idea */
 const FullWidthUnbutton = styled(Unbutton)`
@@ -87,17 +89,30 @@ const ThreadResult = ({ name, matches }) => {
 const Div = styled.div`
   padding-left: 30px;
 
+  background-color: ${({ backgroundColor }) => backgroundColor};
+  
+
   &:hover {
     background: var(--secondary-panel-background-hover);
   }
 `;
 
-const SearchResult = ({ match }) => {
+const SearchResult = connect(state => ({
+  categories: getUser(state).categories,
+}))(({ categories, match }) => {
   const activity_id = match[0];
   const activity = match[1];
 
-  return <Div>{activity.name}</Div>;
-};
+  console.log(`🔥  activity`, activity);
+
+  return (
+    <Div
+      backgroundColor={Activity.categoryColor(categories, activity).background}
+    >
+      {activity.name}
+    </Div>
+  );
+});
 
 const Wrapper = styled.div`
   height: 100%;
@@ -145,13 +160,11 @@ class AdvancedSearch extends Component {
   };
 
   excludeThreads = value => {
-    console.log(`🔥  value`, value);
     const threadsToExclude = matchThreadsFromInput(value, this.props.threads);
     this.props.setThreadExcludeList(threadsToExclude, value);
   };
 
   includeThreads = value => {
-    console.log(`🔥  value`, value);
     const threadsToInclude = matchThreadsFromInput(value, this.props.threads);
     this.props.setThreadIncludeList(threadsToInclude, value);
   };

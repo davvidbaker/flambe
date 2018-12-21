@@ -47,7 +47,7 @@ export const getTimeline = state => state.timeline;
 export const getFilterExcludes = state => state.timeline.trace.filterExcludes;
 
 export const getTimelineWithFiltersApplied = state => {
-  const filterExcludes = getFilterExcludes(state);
+  const filterExcludes = getFilterExcludes(state) || [];
   const timeline = getTimeline(state);
 
   const activities = omitBy(a => filterExcludes.includes(a.thread_id))(
