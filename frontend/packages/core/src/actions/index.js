@@ -14,7 +14,8 @@ export const KEY_DOWN = 'KEY_DOWN';
 export const KEY_UP = 'KEY_UP';
 export const FETCH_RESOURCE = 'FETCH_RESOURCE';
 
-export const ACTIVITY_CREATE = 'ACTIVITY_CREATE';
+export const ACTIVITY_CREATE_B = 'ACTIVITY_CREATE_B';
+export const ACTIVITY_CREATE_Q = 'ACTIVITY_CREATE_Q';
 export const ACTIVITY_DELETE = 'ACTIVITY_DELETE';
 export const ACTIVITY_END = 'ACTIVITY_END'; // 👈 legacy
 export const ACTIVITY_REJECT = 'ACTIVITY_REJECT';
@@ -259,7 +260,7 @@ export function deleteThread(id: number) {
   };
 }
 
-export function createActivity({
+export function createActivityB({
   name,
   timestamp,
   description,
@@ -275,7 +276,7 @@ export function createActivity({
   phase: string,
 }) {
   return {
-    type: ACTIVITY_CREATE,
+    type: ACTIVITY_CREATE_B,
     name,
     timestamp,
     description,
@@ -284,6 +285,34 @@ export function createActivity({
     phase,
   };
 }
+
+
+export function createActivityQ({
+  name,
+  timestamp,
+  description,
+  thread_id /* message */,
+  category_id,
+  phase,
+}: {
+  name: string,
+  timestamp: number,
+  description: string,
+  thread_id: number /* message */,
+  category_id: ?number,
+  phase: string,
+}) {
+  return {
+    type: ACTIVITY_CREATE_B,
+    name,
+    timestamp,
+    description,
+    thread_id,
+    category_id,
+    phase,
+  };
+}
+
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
 export function endActivity({

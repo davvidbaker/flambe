@@ -27,8 +27,6 @@ function* handleSearch({ searchTerm, options }) {
   const { threadIncludeList, threadExcludeList } = advancedOptions;
 
   const { activities, blocks } = timeline;
-  console.log(`🔥  threadIncludeList`, threadIncludeList);
-  console.log(`🔥  threadExcludeList`, threadExcludeList);
 
   const matches =
     activities
@@ -53,9 +51,6 @@ function* handleSearch({ searchTerm, options }) {
         [];
       }
     };
-
-    console.log(`🔥  matches.length`, matches.length);
-    console.log(`🔥  blocksForMatch`, blocksForMatch);
 
     yield put({ type: SEARCH_RESULT, matches, blocksForMatch });
   } else {
@@ -104,8 +99,6 @@ function* focusSearchResult() {
     state => state.search,
   );
 
-  console.log(`🔥  matches`, matches, matchIndex, blockIndex, blocksForMatch);
-
   if (matches.length > 0) {
     const match = matches[matchIndex];
     const activity_id = match && Number(match[0]);
@@ -114,11 +107,7 @@ function* focusSearchResult() {
     if (!blocksForMatch[blockIndex]) return;
     const index = Number(blocksForMatch[blockIndex][0]);
 
-    console.log(`🔥  index`, index);
-
     const activity = match[1];
-
-    console.log(`🔥  focusing block`);
 
     yield put(
       focusBlock({
@@ -137,15 +126,12 @@ function* focusSearchResult() {
     if (startTime > rbt || endTime < lbt) {
       yield put(setTimeline(startTime, endTime));
     }
-
-    // yield put(setTimeline())
   }
 }
 
 function* handleFilter() {
   const { searchStack, options } = yield select(state => state.search);
-  /* ⚠️ options */
-  console.log(`🔥  searchStack`, searchStack);
+  /* ⚠️ TODO options */
   yield put(search(searchStack[0], options));
 }
 

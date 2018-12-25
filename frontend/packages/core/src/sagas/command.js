@@ -1,5 +1,6 @@
 import {
-  ACTIVITY_CREATE,
+  ACTIVITY_CREATE_B,
+  ACTIVITY_CREATE_Q,
   ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_REJECT,
@@ -19,7 +20,8 @@ import {
   VIEW_CHANGE,
   changeView,
   collapseAllThreads,
-  createActivity,
+  createActivityB,
+  createActivityQ,
   createThread,
   deleteActivity,
   expandAllThreads,
@@ -41,6 +43,8 @@ import { put, takeEvery, select } from 'redux-saga/effects';
 function* handleCommand({ operand, command }) {
   let timeline = yield select(getTimeline);
 
+  console.log(`🔥  command`, command);
+
   if (typeof command.action === 'function') {
     /* 💁 This may look funny, but is correct, because the command has been loaded up with arguments now */
     command.action(command);
@@ -50,14 +54,28 @@ function* handleCommand({ operand, command }) {
     const thread_id = command.thread_id || operand.thread_id;
 
     switch (command.action) {
-      case ACTIVITY_CREATE:
+      case ACTIVITY_CREATE_B:
         yield put(
-          createActivity({
+          createActivityB({
             name: command.name,
             timestamp: Date.now(),
             description: '',
             thread_id,
-            phase: command.copy.includes('question') ? 'Q' : 'B',
+            phase: 'B',
+            category_id: command.category_id,
+          }),
+        );
+        yield put(shiftAttention(thread_id, Date.now()));
+        break;
+
+      case ACTIVITY_CREATE_Q:
+        yield put(
+          createActivityQ({
+            name: command.name,
+            timestamp: Date.now(),
+            description: '',
+            thread_id,
+            phase: 'Q',
             category_id: command.category_id,
           }),
         );

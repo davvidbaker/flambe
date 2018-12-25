@@ -4,6 +4,8 @@ import { Provider } from 'react-redux';
 /* ⚠️ 🤔 do i need connected router? or could i just use react-router-dom */
 import { ConnectedRouter } from 'react-router-redux';
 
+console.log(`🔥  ReactDOM`, ReactDOM);
+
 import 'regenerator-runtime/runtime';
 // import { AppContainer } from 'react-hot-loader';
 

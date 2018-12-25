@@ -597,6 +597,8 @@ class FlameChart extends Component<Props, State> {
   };
 
   render() {
+    console.log('trying to render fc')
+    
     // debugger;
     this.maxThreadLevels = this.threadLevels |> map(({ max }) => max) |> maxx;
 

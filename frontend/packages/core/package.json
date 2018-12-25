@@ -29,7 +29,7 @@
     "match-sorter": "^2.0.2",
     "phoenix": "^1.3.0",
     "react-color": "^2.13.5",
-    "react-commander": "^0.0.2",
+    "react-commander": "^0.1.4",
     "react-contexify": "^3.0.0",
     "react-dnd": "^2.5.1",
     "react-dnd-html5-backend": "^2.5.1",
@@ -42,6 +42,7 @@
     "react-router-redux": "next",
     "react-split-pane": "^0.1.84",
     "recompose": "^0.25.0",
+    "polished": "^2.3.1",
     "styled-components": "^4.1.3",
     "subdivide": "0.5.0",
     "redux": "4.0.0",
@@ -54,8 +55,8 @@
     "@reach/component-component": "^0.1.1",
     "@reach/alert-dialog": "^0.1.0",
     "@reach/dialog": "^0.1.2",
-    "react": "16.7.0-alpha.0",
-    "react-dom": "16.7.0-alpha.0"
+    "react": "^16.7.0-alpha.2",
+    "react-dom": "^16.7.0-alpha.2"
   },
   "peerDependencies": {},
   "jest": {

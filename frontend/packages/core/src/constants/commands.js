@@ -1,11 +1,11 @@
 // @flow
 import sortBy from 'lodash/fp/sortBy';
 import map from 'lodash/fp/map';
-import pipe from 'lodash/fp/pipe';
 import tinycolor from 'tinycolor2';
 
 import {
-  ACTIVITY_CREATE,
+  ACTIVITY_CREATE_B,
+  ACTIVITY_CREATE_Q,
   ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_SUSPEND,
@@ -90,7 +90,7 @@ const activityLabel = {
 
 const COMMANDS = [
   {
-    action: ACTIVITY_CREATE,
+    action: ACTIVITY_CREATE_B,
     copy: 'start a new task/activity...',
     parameters: [
       {
@@ -102,7 +102,7 @@ const COMMANDS = [
     ],
   },
   {
-    action: ACTIVITY_CREATE,
+    action: ACTIVITY_CREATE_Q,
     copy: 'ask a question...',
     parameters: [
       {
