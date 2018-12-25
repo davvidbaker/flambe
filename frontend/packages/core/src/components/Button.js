@@ -121,7 +121,7 @@ export class InputFromButton extends Component<
       >
         {({ measureRef }) => (
           <Button
-            innerRef={b => {
+            ref={b => {
               measureRef(b);
               this.button = b;
             }}
@@ -146,7 +146,7 @@ export class InputFromButton extends Component<
             ? this.props.placeholder || this.props.children
             : undefined
         }
-        innerRef={input => {
+        ref={input => {
           this.transformedInput = input;
         }}
       />

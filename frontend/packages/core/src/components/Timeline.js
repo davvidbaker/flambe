@@ -4,8 +4,8 @@ import throttle from 'lodash/throttle';
 import filter from 'lodash/fp/filter';
 import last from 'lodash/last';
 import Measure from 'react-measure';
-import swyzzle from 'swyzzle';
 
+import Swyzzler from './Swyzzler';
 import WithDropTarget from '../containers/WithDropTarget';
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import {
@@ -66,46 +66,6 @@ type State = {
   timeSeriesHeight: number,
   zoomChord: string,
   zoomChordMultiplier: number,
-};
-
-/* ⚠️ don't forget you were going to escape the boundaries of the original image and melt elsewhere */
-
-const Swyzzler = ({ canvas }) => {
-  const [timeout_id, setTimeout_id] = React.useState(null);
-
-  // setTimeout_id(
-  //   setTimeout(() => {
-  //     const cleanup = swyzzle(canvas, '#chart-wrapper');
-  //   }, 1000 * 10),
-  // );
-
-  // console.log(`🔥  timeout`, timeout_id);
-
-  // const reset = () => clearTimeout(timeout_id);
-
-  React.useEffect(() => {
-    // let cleanupSwyzzle = () => {};
-    // const handleBlur = () => {
-    //   cleanupSwyzzle = swyzzle(canvas, '#chart-wrapper');
-    //   console.log('swyzz init');
-    // };
-
-    // window.addEventListener('blur', handleBlur);
-
-    // window.addEventListener('focus', () => {
-    //   console.log('window focused');
-    //   cleanupSwyzzle();
-    //   cleanupSwyzzle = () => {};
-    // });
-
-    // return () => {
-    //   cleanupSwyzzle();
-    //   window.removeEventListener('blur', handleBlur);
-    // };
-  });
-
-  return null;
-  // return 'asdf';
 };
 
 class Timeline extends React.Component<Props, State> {
@@ -198,7 +158,7 @@ class Timeline extends React.Component<Props, State> {
     //     rightBoundaryTime: nextProps.rightBoundaryTimeOverride,
     //   });
     //   requestAnimationFrame(this.drawChildren.bind(this));
-    // }nnn
+    // }
   }
 
   handleWheel = e => {
@@ -248,6 +208,8 @@ class Timeline extends React.Component<Props, State> {
       );
 
     /* 💁 🤷‍♂️  */
+    /* ⚠️ this causes an error/warning but seems to still work */
+
     this.focusedBlock &&
       this.focusedBlock.current &&
       this.focusedBlock.current.forceUpdate();
@@ -461,6 +423,8 @@ class Timeline extends React.Component<Props, State> {
   }, 1000);
 
   render() {
+    console.log('trying to render timeline');
+
     const props = this.props;
 
     const rightBoundaryTime = this.rightBoundaryTime || props.maxTime;

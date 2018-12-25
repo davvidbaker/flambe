@@ -89,7 +89,7 @@ class NumberInput extends Component<Props, State> {
       <Input
         contentEditable
         type="number"
-        innerRef={i => {
+        ref={i => {
           this.input = i;
         }}
         placeholder={this.state.html.length === 0 ? placeholder : undefined}

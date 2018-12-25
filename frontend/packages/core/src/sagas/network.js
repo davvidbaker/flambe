@@ -5,7 +5,8 @@ import {
   createToast,
   processTimelineTrace,
   updateActivity as updateActivityAction,
-  ACTIVITY_CREATE,
+  ACTIVITY_CREATE_B,
+  ACTIVITY_CREATE_Q,
   ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_RESUME,
@@ -408,7 +409,8 @@ function* resurrectActivity({ type, id, timestamp, message }) {
 // // // // // // // // // // // // // // // // // // // // // // // //
 
 function* networkSaga() {
-  yield takeEvery(ACTIVITY_CREATE, createActivity);
+  yield takeEvery(ACTIVITY_CREATE_B, createActivity);
+  yield takeEvery(ACTIVITY_CREATE_Q, createActivity);
   yield takeEvery(ACTIVITY_DELETE, deleteActivity);
   yield takeEvery(ACTIVITY_END, endActivity);
   yield takeEvery(ACTIVITY_RESUME, resumeActivity);

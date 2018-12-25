@@ -10,7 +10,8 @@ import {
 } from 'lodash/fp';
 
 import {
-  ACTIVITY_CREATE,
+  ACTIVITY_CREATE_B,
+  ACTIVITY_CREATE_Q,
   ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_RESUME,
@@ -248,7 +249,9 @@ function timeline(state = initialState, action) {
 
     // 😃 optimism!
     case TODO_BEGIN:
-    case ACTIVITY_CREATE:
+
+    case ACTIVITY_CREATE_B:
+    case ACTIVITY_CREATE_Q:
       return {
         ...state,
         lastThread_id: action.thread_id,
@@ -272,7 +275,8 @@ function timeline(state = initialState, action) {
       };
 
     case `${TODO_BEGIN}_SUCCEEDED`:
-    case `${ACTIVITY_CREATE}_SUCCEEDED`:
+    case `${ACTIVITY_CREATE_B}_SUCCEEDED`:
+    case `${ACTIVITY_CREATE_Q}_SUCCEEDED`:
       console.log(`action.data`, action.data);
       return {
         ...state,
