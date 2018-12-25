@@ -102,7 +102,7 @@ class DeleteButton extends Component<Props, State> {
                   .toString()}
               }
               `}
-                innerRef={btn => {
+                ref={btn => {
                   this.confirmButton = btn;
                 }}
                 onClick={() => {
@@ -115,7 +115,7 @@ class DeleteButton extends Component<Props, State> {
               <div style={{ textAlign: 'center' }}>
                 <Button
                   looksLikeButton
-                  innerRef={this.cancelRef}
+                  ref={this.cancelRef}
                   onClick={this.closeDialog}
                   //   additionalStyles={`
                   // background: white;

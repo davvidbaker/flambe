@@ -2,7 +2,13 @@ import groupBy from 'lodash/fp/groupBy';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
-import { search, setThreadExcludeList, setThreadIncludeList } from '../actions';
+import {
+  search,
+  setThreadExcludeList,
+  setThreadIncludeList,
+  focusBlock,
+  setTimeline,
+} from '../actions';
 import SearchInput from '../components/SearchInput';
 import Toggle from '../components/Toggle';
 import Unbutton from '../components/Unbutton';
@@ -22,8 +28,9 @@ const FullWidthUnbutton = styled(Unbutton)`
 `;
 
 const UL = styled.ul`
-  padding: 0;
+  padding-left: 30px;
 
+  list-style: none;
   li {
     padding: 3px 0;
   }
@@ -64,6 +71,7 @@ const Expander = styled.div`
 `;
 
 const ThreadResult = ({ name, matches }) => {
+  console.log(`🔥  name, matches`, name, matches);
   return (
     <Toggle>
       {({ on, toggle }) => (
@@ -87,30 +95,82 @@ const ThreadResult = ({ name, matches }) => {
 };
 
 const Div = styled.div`
-  padding-left: 30px;
+  padding-left: 10px;
+  position: relative;
+  display: inline-block;
 
-  background-color: ${({ backgroundColor }) => backgroundColor};
-  
+  &::before {
+    content: '';
+    width: 2px;
+    height: 100%;
+    position: absolute;
+    margin-left: -10px;
+    background-color: ${({ categoryColor }) => categoryColor};
+  }
 
   &:hover {
     background: var(--secondary-panel-background-hover);
   }
 `;
 
-const SearchResult = connect(state => ({
-  categories: getUser(state).categories,
-}))(({ categories, match }) => {
+const SearchResult = connect(
+  state => ({
+    categories: getUser(state).categories,
+  }),
+  dispatch => ({
+    setTimeline: (startTime, endTime) =>
+      dispatch(setTimeline(startTime, endTime)),
+    focusActivity: (activity_id, activity) =>
+      dispatch(
+        focusBlock({
+          index: 0,
+          activity_id,
+          activityStatus: activity.status,
+          thread_id: activity.thread_id,
+        }),
+      ),
+  }),
+)(({ categories, match, focusActivity }) => {
   const activity_id = match[0];
   const activity = match[1];
 
-  console.log(`🔥  activity`, activity);
-
+  const { background, text } = Activity.categoryColor(categories, activity);
   return (
-    <Div
-      backgroundColor={Activity.categoryColor(categories, activity).background}
+    <div
+      css={`
+        display: flex;
+        align-items: center;
+      `}
     >
-      {activity.name}
-    </Div>
+      <div
+        css={`
+          display: inline-block;
+          margin-right: 5px;
+        `}
+      >
+        {Activity.statusEmoji(activity)}
+      </div>
+      <Div
+        categoryColor={background}
+        onClick={() => {
+          /* ⚠️ quick and dirty code ahead */
+          focusActivity(activity_id, activity);
+
+          const lbt = Number.parseFloat(localStorage.getItem('lbt'));
+          const rbt = Number.parseFloat(localStorage.getItem('rbt'));
+
+          const startTime = activity.startTime;
+          const endTime = activity.endTime || rbt;
+
+          if (startTime > rbt || endTime < lbt) {
+            console.log('setting timeline')
+            setTimeline(startTime, endTime);
+          }
+        }}
+      >
+        {activity.name}
+      </Div>
+    </div>
   );
 });
 

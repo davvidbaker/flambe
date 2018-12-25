@@ -10,7 +10,6 @@ import { Switch, Route, Redirect, withRouter } from 'react-router';
 // flow-ignore
 import { DragDropContext, DragDropManager } from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
-import { injectGlobal } from 'styled-components';
 import Commander from 'react-commander';
 import Modal from 'react-modal';
 
@@ -23,7 +22,6 @@ import AdvancedSearch from '../containers/AdvancedSearch';
 import Header from '../components/Header';
 import SidePanel from '../components/SidePanel';
 import SearchBar from '../containers/SearchBar';
-import { colors } from '../styles';
 import WithEventListeners from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
@@ -61,101 +59,7 @@ import type { Todo } from '../types/Todo';
 Modal.setAppElement('#app-root');
 
 import '../styles/reach-overrides.css';
-
-/* ⚠️ this should all be moved */
-// eslint-disable-next-line babel/no-unused-expressions
-injectGlobal`
-  html {
-    box-sizing: border-box;
-    font-family: sans-serif;
-    overflow: hidden;
-
-  }
-
-  *::before, *::after {
-    box-sizing: border-box;
-  }
-
-  * {
-    box-sizing: inherit;
-  }
-
-  body {
-    position: relative;
-    height: 100vh;
-    font-size: 12px;
-  }
-
-  :root {
-    --secondary-panel-background: #F3F3F3;
-    --secondary-panel-background-hover: #ddd;
-    --secondary-panel-color: #5A5A5A;
-  }
-
-  #app-root { 
-    transition: transform 0.15s;
-    background: ${colors.background};
-    height: 100%;
-    max-height:100vh;
-  }
-
-   .Resizer {
-        background: #000;
-        opacity: .2;
-        z-index: 1;
-        box-sizing: border-box;
-        background-clip: padding-box;
-    }
-
-     .Resizer:hover {
-        transition: all 2s ease;
-    }
-
-     .Resizer.horizontal {
-        height: 11px;
-        margin: -5px 0;
-        border-top: 5px solid rgba(255, 255, 255, 0);
-        border-bottom: 5px solid rgba(255, 255, 255, 0);
-        cursor: row-resize;
-        width: 100%;
-    }
-
-    .Resizer.horizontal:hover {
-        border-top: 5px solid rgba(0, 0, 0, 0.5);
-        border-bottom: 5px solid rgba(0, 0, 0, 0.5);
-    }
-
-    .Resizer.vertical {
-        width: 11px;
-        margin: 0 -5px;
-        border-left: 5px solid rgba(255, 255, 255, 0);
-        border-right: 5px solid rgba(255, 255, 255, 0);
-        cursor: col-resize;
-    }
-
-    .Resizer.vertical:hover {
-        border-left: 5px solid rgba(0, 0, 0, 0.5);
-        border-right: 5px solid rgba(0, 0, 0, 0.5);
-    }
-    .Resizer.disabled {
-      cursor: not-allowed;
-    }
-    .Resizer.disabled:hover {
-      border-color: transparent;
-    }
-
-  .ReactModalPortal > div {
-    z-index: 1000;
-  }
-
-   [data-reach-alert-dialog-label] {
-    color: #4095bf;
-    font-size: 150%;
-    margin-bottom: 10px;
-    text-align: center;
-  }
-    
-`;
+console.log(`🔥  React.version`, React.version);
 
 const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }) =>
   isSplit ? (
@@ -193,6 +97,8 @@ class App extends React.Component<
     searchBarVisible: false,
     commanderVisible: false,
     additionalCommands: [],
+    // for commander
+    field: undefined,
   };
 
   constructor(props) {
@@ -263,11 +169,21 @@ class App extends React.Component<
   };
 
   hideCommander = () => {
-    this.setState({ commanderVisible: false });
+    this.setState({ commanderVisible: false, field: undefined });
   };
 
-  enterCommand = cmd => {
-    this.commander.enterCommand(cmd);
+  setCommanderCommand = command => {
+    this.setState(
+      {
+        field: {
+          command,
+          parameters: {},
+        },
+      },
+      state => {
+        this.showCommander();
+      },
+    );
   };
 
   renderTimeline = route => {
@@ -386,8 +302,7 @@ class App extends React.Component<
                           this.props.threadLevels,
                         )
                       ) {
-                        this.showCommander();
-                        this.enterCommand(
+                        this.setCommanderCommand(
                           this.getCommands(this.props.operand).find(
                             cmd => cmd.shortcut === e.key.toUpperCase(),
                           ),
@@ -400,8 +315,7 @@ class App extends React.Component<
                         this.props.activities[this.props.operand.activity_id]
                           .status === 'active'
                       ) {
-                        this.showCommander();
-                        this.enterCommand(
+                        this.setCommanderCommand(
                           ACTIVITY_COMMANDS.find(
                             ({ shortcut }) => shortcut === 'S',
                           ),
@@ -506,7 +420,7 @@ class App extends React.Component<
               <CategoryManager categories={this.props.categories} />
               <Settings />
               <Commander
-                withBuildup
+                field={this.state.field}
                 isOpen={this.state.commanderVisible}
                 commands={this.getCommands(this.props.operand)}
                 onSubmit={this.submitCommand}
