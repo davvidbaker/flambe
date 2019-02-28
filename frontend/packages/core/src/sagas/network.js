@@ -1,5 +1,7 @@
 import { push } from 'react-router-redux';
 import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
+// I shouldn't need to do this all over the place like I am 🤷‍♂️
+import regeneratorRuntime from "regenerator-runtime";
 
 import {
   createToast,
