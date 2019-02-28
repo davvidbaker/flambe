@@ -1,7 +1,6 @@
-import React from 'react';
+import * as React from 'react';
 import styled from 'styled-components';
 import { connect } from 'react-redux';
-import Component from '@reach/component-component';
 
 import ActivityBlockDetails from './ActivityBlockDetails';
 import { getTimeline } from '../reducers/timeline';
@@ -28,13 +27,6 @@ const getTooltipPosition = (tooltipRef, flameChartRef, topOffset) => {
 };
 
 const Tooltip = ({
-  // tooltipRef,
-  // name,
-  // left,
-  // top,
-  // startMessage,
-  // endMessage,
-  // otherMessages,
   activities,
   blocks,
   flameChartRef,
@@ -71,43 +63,28 @@ const Tooltip = ({
   // left={`${tx}px`}
   // top={`${ty}px`
 
+  const tooltipRef = React.useRef(null);
+
+  let left, top;
+  if (tooltipRef.current && flameChartRef && flameChartRef.current) {
+    const { x, y } = getTooltipPosition(tooltipRef, flameChartRef, yOffset);
+    left = `${x}px`;
+    top = `${y}px`;
+  }
+
   return (
-    <Component refs={{ tooltip: null }}>
-      {({ refs }) => {
-        let left, top;
-        if (
-          refs.tooltip &&
-          refs.tooltip.current &&
-          flameChartRef &&
-          flameChartRef.current
-        ) {
-          const { x, y } = getTooltipPosition(
-            refs.tooltip,
-            flameChartRef,
-            yOffset,
-          );
-          left = `${x}px`;
-          top = `${y}px`;
-        }
-        return (
-          <Div
-            ref={node => {
-              refs.tooltip = node;
-            }}
-            ref={refs.tooltip}
-            style={left && top && name ? { left, top } : { top: 0, opacity: 0 }}
-          >
-            <div>{name}</div>
-            <ActivityBlockDetails
-              key={startMessage || endMessage}
-              startMessage={startMessage}
-              endMessage={endMessage}
-              ending={ending}
-            />
-          </Div>
-        );
-      }}
-    </Component>
+    <Div
+      ref={tooltipRef}
+      style={left && top && name ? { left, top } : { top: 0, opacity: 0 }}
+    >
+      <div>{name}</div>
+      <ActivityBlockDetails
+        key={startMessage || endMessage}
+        startMessage={startMessage}
+        endMessage={endMessage}
+        ending={ending}
+      />
+    </Div>
   );
 };
 export default connect(state => {

@@ -65,7 +65,12 @@ class FocusedBlock extends React.Component {
   }
 }
 
-export default connect(state => ({
-  focusedBlockIndex: getTimeline(state).focusedBlockIndex,
-  hoveredBlockIndex: getTimeline(state).hoveredBlockIndex,
-}))(FocusedBlock);
+export default connect(
+  state => ({
+    focusedBlockIndex: getTimeline(state).focusedBlockIndex,
+    hoveredBlockIndex: getTimeline(state).hoveredBlockIndex,
+  }),
+  null,
+  null,
+  { forwardRef: true },
+)(FocusedBlock);
