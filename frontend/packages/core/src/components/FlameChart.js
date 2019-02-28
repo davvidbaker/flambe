@@ -224,6 +224,7 @@ class FlameChart extends Component<Props, State> {
       event.nativeEvent.offsetY,
     );
     const hitThread_id =
+      this.threadsSortedByRank &&
       this.threadsSortedByRank[hitThreadPosition] &&
       this.threadsSortedByRank[hitThreadPosition][0];
 

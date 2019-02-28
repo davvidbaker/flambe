@@ -36,6 +36,8 @@ import {
   suspendActivity,
   toggleTodos,
 } from '../actions';
+// I shouldn't need to do this all over the place like I am 🤷‍♂️
+import regeneratorRuntime from "regenerator-runtime";
 import { getTimeline } from '../reducers/timeline';
 
 import { put, takeEvery, select } from 'redux-saga/effects';

@@ -1,5 +1,5 @@
 // @flow
-import React from 'react';
+import * as React from 'react';
 import { connect } from 'react-redux';
 import { compose } from 'redux';
 import SplitPane from 'react-split-pane';
@@ -10,7 +10,11 @@ import { Switch, Route, Redirect, withRouter } from 'react-router';
 // flow-ignore
 import { DragDropContext, DragDropManager } from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
-import Commander from 'react-commander';
+/* ⚠️ I was struggling to import commander without getting errors about hooks being used outside function component
+      so I copied the code in here because I was frustrated
+*/
+// import Commander from 'react-commander';
+import Commander from '../components/Commander/this_is_a_hack';
 import Modal from 'react-modal';
 
 import Dashboard from '../containers/Dashboard';
@@ -427,9 +431,6 @@ class App extends React.Component<
                 onSubmit={this.submitCommand}
                 hideCommander={this.hideCommander}
                 getItems={this.getItems}
-                ref={c => {
-                  this.commander = c;
-                }}
               />
             </div>
           </>

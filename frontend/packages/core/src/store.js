@@ -1,5 +1,4 @@
 import { createStore, applyMiddleware, compose, combineReducers } from 'redux';
-import 'regenerator-runtime/runtime';
 import createSagaMiddleware from 'redux-saga';
 import { routerReducer, routerMiddleware } from 'react-router-redux';
 import createHistory from 'history/createBrowserHistory';
