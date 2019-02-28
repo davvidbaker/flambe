@@ -51,8 +51,6 @@ export const blocksForActivityWithIndices = (
   activity_id: number,
   blocks: Block[],
 ): { [index: number]: Block } => {
-  console.log(`🔥  blocks`, blocks);
-  console.log(`🔥  activity_id`, activity_id);
   return (
     blocks
     |> Object.entries

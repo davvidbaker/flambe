@@ -33,7 +33,7 @@ export default connect(
       lastThread_id: timeline.lastThread_id,
       attentionShifts: getUser(state).attentionShifts,
       searchTerms: getUser(state).searchTerms,
-      settings: state.settings,
+      attentionDrivenThreadOrder: state.settings.attentionDrivenThreadOrder,
       tabs: getUser(state).tabs,
 
       // these are only used for overrides.

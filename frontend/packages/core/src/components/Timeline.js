@@ -131,38 +131,23 @@ class Timeline extends React.Component<Props, State> {
   }
 
   componentWillReceiveProps(nextProps) {
-    // console.log(`🔥  nextProps, this.props`, nextProps, this.props);
-    // for (let a in nextProps) {
-    //   console.log(
-    //     `🔥 ${a} `,
-    //     JSON.stringify(nextProps[a]) === JSON.stringify(this.props[a]),
-    //   );
-    // }
-    /* ⚠️ I need to figure out a better way to trigger a draw when an external event has changed boundary time... 
-    
-    Maybe I don't let that happen exactly and instead expose Timeline ref to the higher ups.
-    */
-    // if (
-    //   nextProps.leftBoundaryTimeOverride !==
-    //     this.lastLeftBoundaryTimeOverride ||
-    //   nextProps.rightBoundaryTimeOverride !== this.lastRightBoundaryTimeOverride
-    // ) {
-    //   console.log(
-    //     `🔥  nextProps.rightBoundaryTimeOverride`,
-    //     nextProps.rightBoundaryTimeOverride,
-    //   );
-    //   this.lastLeftBoundaryTimeOverride = nextProps.leftBoundaryTimeOverride;
-    //   this.lastRightBoundaryTimeOverride = nextProps.rightBoundaryTimeOverride;
-    //   this.setTimelineState({
-    //     leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
-    //     rightBoundaryTime: nextProps.rightBoundaryTimeOverride,
-    //   });
-    //   requestAnimationFrame(this.drawChildren.bind(this));
-    // }
+    if (
+      nextProps.leftBoundaryTimeOverride !==
+        this.props.leftBoundaryTimeOverride ||
+      nextProps.rightBoundaryTimeOverride !==
+        this.props.rightBoundaryTimeOverride
+    ) {
+      this.setTimelineState({
+        leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
+        rightBoundaryTime: nextProps.rightBoundaryTimeOverride,
+      });
+    }
   }
 
   handleWheel = e => {
-    e.preventDefault();
+    // preventDefault basically broken as this is a passive event listener, and there is currently no way to make it active in react
+    // https://github.com/facebook/react/issues/6436
+    // e.preventDefault();
     const zoomCenterTime = pixelsToTime(
       e.nativeEvent.offsetX,
       this.leftBoundaryTime,
@@ -199,6 +184,7 @@ class Timeline extends React.Component<Props, State> {
         this.rightBoundaryTime,
         this.state.width,
       );
+
     this.flameChart.current &&
       this.flameChart.current.draw(
         this.leftBoundaryTime,
@@ -206,9 +192,6 @@ class Timeline extends React.Component<Props, State> {
         this.state.width,
         this.dividersData,
       );
-
-    /* 💁 🤷‍♂️  */
-    /* ⚠️ this causes an error/warning but seems to still work */
 
     this.focusedBlock &&
       this.focusedBlock.current &&
@@ -432,7 +415,7 @@ class Timeline extends React.Component<Props, State> {
 
     let threads = Array.isArray(props.threads)
       ? {}
-      : props.settings.attentionDrivenThreadOrder
+      : props.attentionDrivenThreadOrder
         ? rankThreadsByAttention(props.attentionShifts, props.threads)
         : props.threads;
 
@@ -564,9 +547,6 @@ class Timeline extends React.Component<Props, State> {
                     <FlameChart
                       ref={this.flameChart}
                       activities={props.activities}
-                      activityMute={props.settings.activityMute}
-                      activityMuteOpactiy={props.settings.activityMuteOpacity}
-                      uniformBlockHeight={props.settings.uniformBlockHeight}
                       attentionShifts={props.attentionShifts}
                       blocks={props.blocks}
                       categories={props.categories}
@@ -576,14 +556,8 @@ class Timeline extends React.Component<Props, State> {
                       minTime={props.minTime}
                       modifiers={props.modifiers}
                       pan={this.pan}
-                      reactiveThreadHeight={props.settings.reactiveThreadHeight}
                       // rightBoundaryTime={rightBoundaryTime}
-                      showAttentionFlows={props.settings.attentionFlows}
                       showThreadDetail={this.showThreadDetail}
-                      showSuspendResumeFlows={props.settings.suspendResumeFlows}
-                      showSuspendResumeFlowsOnlyForFocusedActivity={
-                        props.settings.suspendResumeFlowsOnlyForFocusedActivity
-                      }
                       threadLevels={props.threadLevels}
                       hoverBlock={props.hoverBlock}
                       focusBlock={props.focusBlock}

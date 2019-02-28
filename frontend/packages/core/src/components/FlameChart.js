@@ -1,5 +1,6 @@
 // @flow
 import React, { Component, useEffect } from 'react';
+import { connect } from 'react-redux';
 import emojiRegex from 'emoji-regex';
 import styled from 'styled-components';
 
@@ -574,6 +575,7 @@ class FlameChart extends Component<Props, State> {
   };
 
   onMouseUp = () => {
+    console.log(`🔥  this.resizing`, this.resizing);
     if (this.resizing) {
       /* ⚠️ should do like an adjust activity thing that updates redux blocks */
       this.props.updateEvent(
@@ -584,8 +586,7 @@ class FlameChart extends Component<Props, State> {
       );
     } else if (this.draggingThread) {
       // this.props.updateThreadRank()
-    } else
-
+    }
     this.setFlamechartState({
       mousedown: false,
       mousedownX: null,
@@ -597,8 +598,8 @@ class FlameChart extends Component<Props, State> {
   };
 
   render() {
-    console.log('trying to render fc')
-    
+    console.log('trying to render fc');
+
     // debugger;
     this.maxThreadLevels = this.threadLevels |> map(({ max }) => max) |> maxx;
 
@@ -1404,24 +1405,18 @@ class FlameChart extends Component<Props, State> {
   }
 }
 
-// This state is kinda minor. Should refactor it up.
-export default FlameChart;
-// flow-ignore
-// connect(
-//   state => ({
-//     focusedBlockIndex: getTimeline(state).focusedBlockIndex,
-//     hoveredBlockIndex: getTimeline(state).hoveredBlockIndex
-//   }),
-//   dispatch => ({
-//     focusBlock: ({
-//       index, activity_id, activityStatus, thread_id
-//     }) =>
-//       dispatch(focusBlock({
-//         index,
-//         activity_id,
-//         activityStatus,
-//         thread_id
-//       })),
-//     hoverBlock: index => dispatch(hoverBlock(index))
-//   })
-// )(FlameChart);
+export default connect(
+  state => ({
+    activityMute: state.settings.activityMute,
+    activityMuteOpactiy: state.settings.activityMuteOpactiy,
+    uniformBlockHeight: state.settings.uniformBlockHeight,
+    reactiveThreadHeight: state.settings.reactiveThreadHeight,
+    showAttentionFlows: state.settings.showAttentionFlows,
+    showSuspendResumeFlows: state.settings.showSuspendResumeFlows,
+    showSuspendResumeFlowsOnlyForFocusedActivity:
+      state.settings.showSuspendResumeFlowsOnlyForFocusedActivity,
+  }),
+  null,
+  null,
+  { forwardRef: true },
+)(FlameChart);

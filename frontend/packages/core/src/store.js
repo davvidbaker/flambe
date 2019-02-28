@@ -16,6 +16,20 @@ const composeEnhancers =
   (window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ &&
     window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
       actionsBlacklist: ['BLOCK_HOVER', 'KEY_DOWN', 'KEY_UP'],
+      stateSanitizer: state => ({
+        ...state,
+        user: {
+          ...state.user,
+          tabs: '<<LOTS OF TABS>>',
+          searchTerms: '<<LOTS OF SEARCH TERMS>>',
+          attentionShifts: '<<LOTS OF ATTENTION SHIFTS>>',
+        },
+        timeline: {
+          ...state.timeline,
+          events: '<<LOTS OF EVENTS>>',
+          blocks: '<<LOTS OF BLOCKS>>',
+        },
+      }),
     })) ||
   compose;
 
