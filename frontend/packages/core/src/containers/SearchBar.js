@@ -92,7 +92,7 @@ class SearchBar extends Component<Props> {
           <InputContainer>
             <SearchInput
               onSubmit={this.search}
-              ref={inputRef}
+              inputRef={inputRef}
               searchStack={searchStack}
             />
             <SearchResultCount>

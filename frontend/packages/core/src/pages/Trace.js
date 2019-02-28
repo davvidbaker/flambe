@@ -160,6 +160,7 @@ class App extends React.Component<
 
   showSearchPanel = () => {
     this.setState({ searchBarVisible: true });
+
     this.searchRef.focus();
     this.searchRef.setSelectionRange(0, this.searchRef.value.length);
   };

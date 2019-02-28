@@ -119,6 +119,7 @@ const SearchResult = connect(
   }),
   dispatch => ({
     setTimeline: (startTime, endTime) =>
+      console.log(`🔥  startTime`, startTime) ||
       dispatch(setTimeline(startTime, endTime)),
     focusActivity: (activity_id, activity) =>
       dispatch(
@@ -130,7 +131,7 @@ const SearchResult = connect(
         }),
       ),
   }),
-)(({ categories, match, focusActivity }) => {
+)(({ categories, match, focusActivity, setTimeline }) => {
   const activity_id = match[0];
   const activity = match[1];
 
@@ -156,6 +157,7 @@ const SearchResult = connect(
           /* ⚠️ quick and dirty code ahead */
           focusActivity(activity_id, activity);
 
+          // ⚠️ bad use of local storage, plus I think it isn't the up to date value
           const lbt = Number.parseFloat(localStorage.getItem('lbt'));
           const rbt = Number.parseFloat(localStorage.getItem('rbt'));
 
@@ -163,7 +165,8 @@ const SearchResult = connect(
           const endTime = activity.endTime || rbt;
 
           if (startTime > rbt || endTime < lbt) {
-            console.log('setting timeline')
+            console.log('setting timeline');
+
             setTimeline(startTime, endTime);
           }
         }}

@@ -97,7 +97,7 @@ class SearchInput extends React.Component<Props, State> {
         value={this.state.value}
         placeholder={this.props.placeholder}
         type="text"
-        ref={this.props.innerRef}
+        ref={this.props.inputRef}
       />
     );
   }

@@ -18,7 +18,6 @@ function endedWithResolution(activity) {
 }
 
 export function statusEmoji(activity) {
-  console.log(`🔥  activity`, activity);
   switch (activity.status) {
     case 'active':
       return '🔥';
@@ -27,6 +26,7 @@ export function statusEmoji(activity) {
       return endedWithResolution(activity) ? '✅' : '❌';
 
     // suspended IS limbo, right? so upside down makes sense?
+    case 'parent_suspended':
     case 'suspended':
       return '🙃';
 

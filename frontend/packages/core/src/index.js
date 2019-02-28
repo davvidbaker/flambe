@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
 /* ⚠️ 🤔 do i need connected router? or could i just use react-router-dom */
-import { ConnectedRouter } from 'react-router-redux';
+import { Router } from 'react-router-dom';
 
 console.log(`🔥  ReactDOM`, ReactDOM);
 
@@ -15,9 +15,9 @@ import store, { history } from './store';
 
 ReactDOM.render(
   <Provider store={store}>
-    <ConnectedRouter history={history}>
+    <Router history={history}>
       <App />
-    </ConnectedRouter>
+    </Router>
   </Provider>,
   document.getElementById('app-root')
 );
