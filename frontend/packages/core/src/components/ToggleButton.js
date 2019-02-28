@@ -3,7 +3,6 @@
 import React, { Component } from 'react';
 
 import Button from './Button';
-import { PropsTable } from 'docz';
 
 type State = {
   toggledOn: boolean,

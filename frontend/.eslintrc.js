@@ -11,24 +11,24 @@ module.exports = {
     browser: true,
     commonjs: true,
     es6: true,
-    'cypress/globals': true
+    'cypress/globals': true,
   },
   parser: 'babel-eslint',
   extends: 'airbnb',
   parserOptions: {
     ecmaFeatures: {
-      experimentalObjectRestSpread: true
+      experimentalObjectRestSpread: true,
     },
     // ecmaVersion: 6,
-    sourceType: 'module'
+    sourceType: 'module',
   },
-  plugins: ['babel', 'import', 'react', 'jsx-a11y', 'cypress'],
+  plugins: ['babel', 'import', 'react', 'jsx-a11y', 'cypress', 'react-hooks'],
   globals: {
     NODE_ENV: true,
     SERVER: true,
     describe: true,
     it: true,
-    expect: true
+    expect: true,
   },
   rules: {
     'arrow-parens': 'off',
@@ -48,8 +48,8 @@ module.exports = {
       'error',
       2,
       {
-        SwitchCase: 1
-      }
+        SwitchCase: 1,
+      },
     ],
     quotes: 'off',
     'babel/no-unused-expressions': 'error',
@@ -62,8 +62,8 @@ module.exports = {
       'error',
       {
         groups: ['builtin', 'external', 'parent', 'sibling', 'index'],
-        'newlines-between': 'always'
-      }
+        'newlines-between': 'always',
+      },
     ],
     'jsx-a11y/accessible-emoji': 'off',
     'jsx-a11y/href-no-hash': 'off',
@@ -73,12 +73,13 @@ module.exports = {
     'react/no-multi-comp': 'off',
     'react/prop-types': 'off',
     'react/sort-comp': 'off',
+    'react-hooks/rules-of-hooks': 'error',
   },
   settings: {
     'import/resolver': {
       webpack: {
-        config: './webpack.common.js'
-      }
-    }
-  }
+        config: './webpack.common.js',
+      },
+    },
+  },
 };

@@ -23,7 +23,7 @@ npm install
 npm start
 ```
 
-_When struggling to upgrade a package, this tends to work:_
+_When struggling to upgrade a package, this tends to work (after updating version number in `package.json`):_
 
 ```
 lerna clean --yes && npm i && lerna bootstrap --hoist && npm start
