@@ -36,8 +36,6 @@ import {
   suspendActivity,
   toggleTodos,
 } from '../actions';
-// I shouldn't need to do this all over the place like I am 🤷‍♂️
-import regeneratorRuntime from "regenerator-runtime";
 import { getTimeline } from '../reducers/timeline';
 
 import { put, takeEvery, select } from 'redux-saga/effects';
@@ -45,7 +43,10 @@ import { put, takeEvery, select } from 'redux-saga/effects';
 function* handleCommand({ operand, command }) {
   let timeline = yield select(getTimeline);
 
-  console.log(`🔥  command`, command);
+  console.log(
+    `🍏  THE PROBLEM IS WE ARE NEVER GETTING HERE! TRY ADDING BABEL-polyfill maybe command being handled`,
+    command,
+  );
 
   if (typeof command.action === 'function') {
     /* 💁 This may look funny, but is correct, because the command has been loaded up with arguments now */

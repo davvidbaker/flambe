@@ -1,7 +1,5 @@
 import { pipe, filter, map, identity, mapKeys } from 'lodash/fp';
 import { call, put, takeLatest, select } from 'redux-saga/effects';
-// I shouldn't need to do this all over the place like I am 🤷‍♂️
-import regeneratorRuntime from "regenerator-runtime";
 
 import { getTimeline } from '../reducers/timeline';
 import { blocksForActivityWithIndices } from '../utilities/timeline';

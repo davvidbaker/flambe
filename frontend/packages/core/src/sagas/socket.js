@@ -1,8 +1,6 @@
 import { Socket } from 'phoenix';
 import { put, takeEvery, select, take } from 'redux-saga/effects';
 import { eventChannel as sagaEventChannel } from 'redux-saga';
-// I shouldn't need to do this all over the place like I am 🤷‍♂️
-import regeneratorRuntime from "regenerator-runtime";
 
 import { getUser } from '../reducers/user';
 

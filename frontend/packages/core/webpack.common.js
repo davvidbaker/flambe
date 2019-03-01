@@ -21,7 +21,7 @@ module.exports = {
       // including lodash here was bringing in the entire lodash library... not sure why 🤔
       // 'lodash'
     ],
-    app: ['react-hot-loader/patch', './src/index.js'],
+    app: ['@babel/polyfill', 'react-hot-loader/patch', './src/index.js'],
   },
 
   module: {

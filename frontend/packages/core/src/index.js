@@ -6,10 +6,6 @@ import { Router } from 'react-router-dom';
 
 console.log(`🔥  ReactDOM`, ReactDOM);
 
-import 'regenerator-runtime/runtime';
-// import { AppContainer } from 'react-hot-loader';
-
-
 import App from './pages';
 import store, { history } from './store';
 
