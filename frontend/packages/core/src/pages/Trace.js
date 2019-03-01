@@ -155,6 +155,7 @@ class App extends React.Component<
 
   submitCommand = command => {
     this.hideCommander();
+    console.log(`🔥  command`, command);
     this.props.runCommand(this.props.operand, command);
   };
 
