@@ -1,7 +1,5 @@
 import { push } from 'react-router-redux';
 import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
-// I shouldn't need to do this all over the place like I am 🤷‍♂️
-import regeneratorRuntime from "regenerator-runtime";
 
 import {
   createToast,
@@ -306,6 +304,7 @@ function* createTrace({ type, name }) {
 }
 
 function* fetchUser({ type, id }) {
+  console.log(`🐬 fetching user`, );
   yield fetchResource(type, {
     resource: { path: 'users', id },
   });
@@ -444,6 +443,7 @@ function* networkSaga() {
   yield takeEvery(THREAD_DELETE, deleteThread);
   yield takeEvery(THREAD_UPDATE, updateThread);
 
+  console.log(`🐬  should fetch user`)
   yield takeLatest(USER_FETCH, fetchUser);
 
   // yield takeEvery('FETCH_RESOURCE', fetchResource);
