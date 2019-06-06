@@ -43,11 +43,6 @@ import { put, takeEvery, select } from 'redux-saga/effects';
 function* handleCommand({ operand, command }) {
   let timeline = yield select(getTimeline);
 
-  console.log(
-    `🍏  THE PROBLEM IS WE ARE NEVER GETTING HERE! TRY ADDING BABEL-polyfill maybe command being handled`,
-    command,
-  );
-
   if (typeof command.action === 'function') {
     /* 💁 This may look funny, but is correct, because the command has been loaded up with arguments now */
     command.action(command);

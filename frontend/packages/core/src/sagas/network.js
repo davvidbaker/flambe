@@ -304,7 +304,6 @@ function* createTrace({ type, name }) {
 }
 
 function* fetchUser({ type, id }) {
-  console.log(`🐬 fetching user`, );
   yield fetchResource(type, {
     resource: { path: 'users', id },
   });
@@ -443,7 +442,6 @@ function* networkSaga() {
   yield takeEvery(THREAD_DELETE, deleteThread);
   yield takeEvery(THREAD_UPDATE, updateThread);
 
-  console.log(`🐬  should fetch user`)
   yield takeLatest(USER_FETCH, fetchUser);
 
   // yield takeEvery('FETCH_RESOURCE', fetchResource);

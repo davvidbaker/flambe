@@ -1,7 +1,7 @@
 import * as React from 'react';
 import SplitPane from 'react-split-pane';
 import throttle from 'lodash/throttle';
-import filter from 'lodash/fp/filter';
+import { filter, reduce } from 'lodash/fp';
 import last from 'lodash/last';
 import Measure from 'react-measure';
 
@@ -67,6 +67,12 @@ type State = {
   zoomChord: string,
   zoomChordMultiplier: number,
 };
+
+/* ⚠️ this is naive, but might be good enough */
+const threadsCollapsedChecksum = threads =>
+  threads
+  |> Object.values
+  |> reduce((acc, { collapsed }) => acc + (collapsed ? 1 : 0), 0);
 
 class Timeline extends React.Component<Props, State> {
   state = {
@@ -141,6 +147,13 @@ class Timeline extends React.Component<Props, State> {
         leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
         rightBoundaryTime: nextProps.rightBoundaryTimeOverride,
       });
+    }
+
+    if (
+      threadsCollapsedChecksum(nextProps.threads) !==
+      threadsCollapsedChecksum(this.props.threads)
+    ) {
+      requestAnimationFrame(this.drawChildren.bind(this));
     }
   }
 
@@ -416,8 +429,8 @@ class Timeline extends React.Component<Props, State> {
     let threads = Array.isArray(props.threads)
       ? {}
       : props.attentionDrivenThreadOrder
-        ? rankThreadsByAttention(props.attentionShifts, props.threads)
-        : props.threads;
+      ? rankThreadsByAttention(props.attentionShifts, props.threads)
+      : props.threads;
 
     // load in the sense of bearing load
     threads = loadSuspendedActivityCount(props.activities, threads);
@@ -614,10 +627,9 @@ class Timeline extends React.Component<Props, State> {
                 ago
               </div>
             )}
-            {this.flameChart &&
-              this.flameChart.current && (
-                <Swyzzler canvas={this.flameChart.current.canvas} />
-              )}
+            {this.flameChart && this.flameChart.current && (
+              <Swyzzler canvas={this.flameChart.current.canvas} />
+            )}
             }
           </>
         )}
