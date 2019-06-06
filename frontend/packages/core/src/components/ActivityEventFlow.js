@@ -17,7 +17,7 @@ const ActivityEventFlow = ({ activityBlocks }) => (
           endTime,
         }) => (
           <ActivityBlockDetails
-            key={startMessage || endMessage || startTime}
+            key={startTime || endTime}
             beginning={beginning}
             startMessage={startMessage}
             endMessage={endMessage}

@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 
 import ToggleButton from './ToggleButton';
-import FilterTrace from './FilterTrace';
+import TraceThreadFilter from './TraceThreadFilter';
 import Unbutton from './Unbutton';
 import Toggle from './Toggle';
 import { InputFromButton } from './Button';
@@ -73,8 +73,16 @@ const Header = ({
             <img height="24px" src={filterIcon} alt="filter" />
           </Unbutton>
           {on && (
-            <div style={{ position: 'absolute', zIndex: 100 }}>
-              <FilterTrace />
+            <div
+              style={{
+                width: '200px',
+                position: 'absolute',
+                top: 0,
+                left: '125%',
+                zIndex: 100,
+              }}
+            >
+              <TraceThreadFilter />
             </div>
           )}
         </div>

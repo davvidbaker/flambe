@@ -70,14 +70,14 @@ type Props = {
 const ActivityDetail = props => {
   const addNewCategory = (name, hexString) => {
     props.createCategory({
-      activity_id: props.activity.id,
+      activity_id: props.activity_id,
       name,
       color_background: hexString,
     });
   };
 
   const addExistingCategory = (category_id: string) => {
-    props.updateActivity(props.activity.id, {
+    props.updateActivity(props.activity_id, {
       category_ids: [category_id],
     });
   };

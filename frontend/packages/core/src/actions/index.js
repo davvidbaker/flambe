@@ -287,7 +287,6 @@ export function createActivityB({
   };
 }
 
-
 export function createActivityQ({
   name,
   timestamp,
@@ -313,7 +312,6 @@ export function createActivityQ({
     phase,
   };
 }
-
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
 export function endActivity({
@@ -566,24 +564,23 @@ export function setThreadExcludeList(thread_ids: number[], inputValue: string) {
   };
 }
 
-export function filterTrace(shouldInclude: boolean, thread_id: number) {
+export function filterTrace(selectedThreads) {
   return {
     type: TRACE_FILTER,
-    shouldInclude,
-    thread_id,
+    selectedThreads,
   };
 }
 
 export function showAdvancedSearch() {
   return {
-    type: ADVANCED_SEARCH_SHOW
-  }
+    type: ADVANCED_SEARCH_SHOW,
+  };
 }
 
 export function hideAdvancedSearch() {
   return {
-    type: ADVANCED_SEARCH_HIDE
-  }
+    type: ADVANCED_SEARCH_HIDE,
+  };
 }
 /**
  *

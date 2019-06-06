@@ -1,8 +1,8 @@
-import React, { Component } from 'react';
+import * as React from 'react';
 import styled from 'styled-components';
 import * as d3 from 'd3';
 import * as topojson from 'topojson';
-import { last } from 'lodash/fp';
+import { last, size } from 'lodash/fp';
 
 import {
   hexTopology,
@@ -14,8 +14,6 @@ import {
 } from './Limbo-helpers';
 import { SECOND, MINUTE, HOUR, DAY, WEEK, MONTH } from '../utilities/time';
 import { colors } from '../styles';
-
-const drawTrajectories = false;
 
 const Tooltip = styled.div`
   color: white;
@@ -123,118 +121,84 @@ type Props = {
   events: Events,
 };
 
-class Limbo extends Component {
-  constructor(props) {
-    super(props);
-    this.svgRef = React.createRef();
+const initialState = {
+  width: 1000,
+  height: 200,
+
+  hexagonRadius: 20,
+
+  forceCarrier: 'weight',
+  sinks: [],
+  trajectoriesAreVisible: false,
+};
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case 'activities_initialize':
+      return { ...state, sinks: action.payload };
+    case 'force_carrier_change':
+      return { ...state, forceCarrier: action.payload };
+    case 'hit_sink':
+      return { ...state, ...action.payload };
+    case 'set_trajectory_visibility':
+      return { ...state, trajectoriesAreVisible: action.payload };
+
+    default:
+      return state;
   }
+};
 
-  state = {
-    tooltipCopy: '',
-    tooltipX: 0,
-    tooltipY: 0,
-
-    width: 1000,
-    height: 200,
-
-    hexagonRadius: 20,
-
-    forceCarrier: 'weight',
-  };
-
-  componentDidMount() {
+const layOutSinks = (activities, events, categories) =>
+  activities.map(([id, a]) => {
     // *randomly* lay out the sinks
+    const {
+      daysSinceLastSuspension,
+      daysSinceBeginning,
+      churn,
+    } = calculateTheseThings(a, events);
 
-    const activities = Object.entries(this.props.activities);
+    const { x, y } = randomXYinUnitCircle();
 
-    this.sinks = activities.map(([id, a]) => {
-      const {
-        daysSinceLastSuspension,
-        daysSinceBeginning,
-        churn,
-      } = calculateTheseThings(a, this.props.events);
+    const category = categories.find(({ id }) => a.categories[0] === id);
 
-      const { x, y } = randomXYinUnitCircle();
+    return {
+      x: x * 1000,
+      y: y * 200,
+      weight: Math.abs(a.weight),
+      daysSinceLastSuspension,
+      daysSinceBeginning,
+      churn,
+      id,
+      color_text: category ? category.color_text : 'black',
+      color_background: category
+        ? category.color_background
+        : colors.flames.main,
+    };
+  });
 
-      const category = this.props.categories.find(
-        ({ id }) => a.categories[0] === id,
-      );
+const Limbo = props => {
+  const svgRef = React.useRef(null);
 
-      return {
-        x: x * 1000,
-        y: y * 200,
-        weight: Math.abs(a.weight),
-        daysSinceLastSuspension,
-        daysSinceBeginning,
-        churn,
-        id,
-        color_text: category ? category.color_text : 'black',
-        color_background: category
-          ? category.color_background
-          : colors.flames.main,
-      };
-    });
+  const [state, dispatch] = React.useReducer(reducer, initialState);
 
-    this.svg = d3.select('#limboSvg');
-    this.draw();
-  }
+  /* ⚠️ update currently unused */
+  /* const update = () => {
+    const svg = svgRef && svgRef.current;
+    if (!svg) return;
 
-  handleForceCarrierChange = e => {
-    this.setState({ forceCarrier: e.target.value }, this.update);
-  };
+    const width = state.width;
+    const height = state.height;
 
-  render() {
-    return (
-      <Wrapper>
-        <Controls>
-          <label htmlFor="forceCarrier">forceCarrier</label>
-          <select name="forceCarrier" onChange={this.handleForceCarrierChange}>
-            <option value="weight">weight</option>
-            <option value="churn">churn</option>
-            <option value="daysSinceLastSuspension">
-              days since last suspension
-            </option>
-            <option value="daysSinceBeginning">days since beginning</option>
-          </select>
-        </Controls>
-        <svg
-          id="limboSvg"
-          width={this.state.width}
-          height={this.state.height}
-          ref={this.svgRef}
-        />
-        {/* <Tooltip
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            transform: `translateX(${this.state.tooltipX}px) translateY(${
-              this.state.tooltipY
-            }px)`,
-          }}
-        >
-          {this.state.tooltipCopy}
-        </Tooltip> */}
-      </Wrapper>
-    );
-  }
-
-  update = () => {
-    console.time('update');
-    const width = this.state.width;
-    const height = this.state.height;
-
-    const sinks = this.sinks;
-    const svg = this.svg;
+    const sinks = state.sinks;
 
     // create a hexagon grid
-    const radius = this.state.hexagonRadius;
+    const radius = state.hexagonRadius;
 
     var topology = hexTopology(
       radius,
       width,
       height,
-      this.state.forceCarrier,
+      state.forceCarrier,
       this.sinks,
     );
 
@@ -249,24 +213,17 @@ class Limbo extends Component {
 
     hexagon.attr(
       'fill',
-      d =>
-        this.sinks.find(
-          ({ id }) =>
-            console.log(`🔥 id, d.hitSink`, id, d.hitSink) || id === d.hitSink,
-        ).color_background,
+      d => this.sinks.find(({ id }) => id === d.hitSink).color_background,
     );
 
     const sink = svg.selectAll('circle').data(sinks);
-    sink.transition().attr('r', d => d[this.state.forceCarrier]);
+    sink.transition().attr('r', d => d[state.forceCarrier]);
 
     svg
       .selectAll('text')
       .data(sinks)
       .text(
-        d =>
-          `${this.props.activities[d.id].name},\n ${
-            d[this.state.forceCarrier]
-          }`,
+        d => `${this.props.activities[d.id].name},\n ${d[state.forceCarrier]}`,
       );
 
     var lineFunction = d3
@@ -279,65 +236,34 @@ class Limbo extends Component {
       });
 
     if (drawTrajectories) {
-      /* ⚠️ this is bad d3 code 🤣 */
+      // ⚠️ this is bad d3 code 🤣
       topology.trajectories.forEach(traj => {
         svg.selectAll('.traj').attr('d', lineFunction(traj));
       });
     }
+  }; */
 
-    console.timeEnd('update');
-    console.log(
-      'document.querySelectorAll.length',
-      document.querySelectorAll('*').length,
-    );
-    console.log(
-      `🔥  document.querySelectorAll('text').length`,
-      document.querySelectorAll('text').length,
-    );
-    console.log(
-      `🔥  document.querySelectorAll('.hexagon').length`,
-      document.querySelectorAll('.hexagon').length,
-    );
-    console.log(
-      `🔥  document.querySelectorAll('.traj').length`,
-      document.querySelectorAll('.traj').length,
-    );
-    console.log(
-      `🔥  document.querySelectorAll('circle').length`,
-      document.querySelectorAll('circle').length,
-    );
-    console.log(
-      `🔥  document.querySelectorAll('g').length`,
-      document.querySelectorAll('g').length,
-    );
-    console.log(
-      `🔥  document.querySelectorAll('path').length`,
-      document.querySelectorAll('path').length,
-    );
-  };
+  const draw = () => {
+    const svg = d3.select(svgRef.current);
+    if (!svg) return;
 
-  draw = () => {
-    console.time('draw');
-    const width = this.state.width;
-    const height = this.state.height;
+    const width = state.width;
+    const height = state.height;
 
-    const sinks = this.sinks;
-    const svg = this.svg;
+    const sinks = state.sinks;
 
     // create a hexagon grid
-    const radius = this.state.hexagonRadius;
+    const radius = state.hexagonRadius;
 
     var topology = hexTopology(
       radius,
       width,
       height,
-      this.state.forceCarrier,
-      this.sinks,
+      state.forceCarrier,
+      state.sinks,
     );
 
     var projection = hexProjection(radius);
-
-    console.log(`🔥  projection`, projection);
 
     var path = d3.geoPath().projection(projection);
 
@@ -358,8 +284,8 @@ class Limbo extends Component {
         'fill',
         // ⚠️ null coalesce probably
         d =>
-          this.sinks.find(({ id }) => id === d.hitSink)
-            ? this.sinks.find(({ id }) => id === d.hitSink).color_background
+          state.sinks.find(({ id }) => id === d.hitSink)
+            ? state.sinks.find(({ id }) => id === d.hitSink).color_background
             : colors.flames.main,
       )
       .on('mouseenter', mouseenter)
@@ -367,8 +293,7 @@ class Limbo extends Component {
       // .on('mousemove', mousemove)
       .on('mouseup', mouseup)
       .on('click', d => {
-        console.log(`🔥  d`, d);
-        this.props.setSelectedActivity(Number(d.hitSink));
+        props.setSelectedActivity(Number(d.hitSink));
       });
 
     svg
@@ -386,12 +311,12 @@ class Limbo extends Component {
 
     svg
       .selectAll('circle')
-      .data(sinks)
+      .data(state.sinks)
       .enter()
       .append('circle')
       .attr('cx', ({ x }) => x)
       .attr('cy', ({ y }) => y)
-      .attr('r', d => d[this.state.forceCarrier])
+      .attr('r', d => d[state.forceCarrier])
       .attr(
         'fill', // ⚠️ null coalesce probably
         d => d.color_background || colors.flames.main,
@@ -399,17 +324,12 @@ class Limbo extends Component {
 
     svg
       .selectAll('text')
-      .data(sinks)
+      .data(state.sinks)
       .enter()
       .append('text')
       .attr('x', ({ x }) => x)
       .attr('y', ({ y }) => y)
-      .text(
-        d =>
-          `${this.props.activities[d.id].name},\n ${
-            d[this.state.forceCarrier]
-          }`,
-      )
+      .text(d => `${props.activities[d.id].name},\n ${d[state.forceCarrier]}`)
       .attr('fill', d => d.color_text || 'black');
 
     var lineFunction = d3
@@ -422,7 +342,7 @@ class Limbo extends Component {
       });
 
     // const drawTrajectories = true;
-    if (drawTrajectories) {
+    if (state.trajectoriesAreVisible) {
       /* ⚠️ this is bad d3 code 🤣 */
       topology.trajectories.forEach(traj => {
         svg
@@ -434,46 +354,26 @@ class Limbo extends Component {
       });
     }
 
-    console.timeEnd('draw');
-    console.log(
-      'document.querySelectorAll.length',
-      document.querySelectorAll('*').length,
-    );
-
-    function mousedown(d) {
-      // mousing = d.fill ? -1 : +1;
-      // mousemove.apply(this, arguments);
-    }
-
     const dot = svg
       .append('circle')
       .attr('r', 5)
       .attr('class', 'dot');
 
-    const that = this;
+    function mousedown(d) {
+      // mousing = d.fill ? -1 : +1;
+      // mousemove.apply(this, arguments);
+    }
     function mouseenter(d) {
       const { x, y } = this.getBoundingClientRect();
 
-      const color = (that.sinks.find(({ id }) => id === d.hitSink) || {})
+      const color = (state.sinks.find(({ id }) => id === d.hitSink) || {})
         .color_background;
 
       if (color) {
         document.body.style.setProperty('--tint', color);
       }
 
-      if (d.hitSink)
-        that.setState(
-          state =>
-            state.tooltipCopy !== that.props.activities[d.hitSink].name
-              ? {
-                  tooltipX: x,
-                  tooltipY: y,
-                  tooltipCopy: that.props.activities[d.hitSink].name,
-                }
-              : state,
-        );
-
-      if (drawTrajectories && d && d.trajectory_id) {
+      if (state.trajectoriesAreVisible && d && d.trajectory_id) {
         const trajectory_path = d3.select(`#${d.trajectory_id}`);
         trajectory_path.style('opacity', 1);
 
@@ -491,7 +391,7 @@ class Limbo extends Component {
     }
 
     function mouseleave(d) {
-      if (drawTrajectories && d && d.trajectory_id) {
+      if (state.trajectoriesAreVisible && d && d.trajectory_id) {
         d3.select(`#${d.trajectory_id}`).style('opacity', 0);
       }
     }
@@ -509,6 +409,7 @@ class Limbo extends Component {
     }
 
     function redraw(border) {
+      console.log(`🔥  redrwaing border`);
       border.attr(
         'd',
         path(
@@ -518,8 +419,60 @@ class Limbo extends Component {
         ),
       );
     }
-
-    const forceCarrier = this.state.forceCarrier;
   };
-}
+
+  React.useEffect(() => {
+    const activities = Object.entries(props.activities);
+    dispatch({
+      type: 'activities_initialize',
+      payload: layOutSinks(activities, props.events, props.categories),
+    });
+    /* ⚠️ kinda naive */
+  }, [size(props.activities)]);
+
+  React.useEffect(() => {
+    draw();
+    /* ⚠️ kinda naive */
+  }, [state.sinks.reduce((acc, { x }) => x + acc, 0)]);
+
+  return (
+    <Wrapper>
+      <Controls>
+        <label htmlFor="forceCarrier">Force Carrier</label>
+        <select
+          name="forceCarrier"
+          onChange={e =>
+            dispatch({ type: 'force_carrier_change', payload: e.target.value })
+          }
+        >
+          <option value="weight">weight</option>
+          <option value="churn">churn</option>
+          <option value="daysSinceLastSuspension">
+            days since last suspension
+          </option>
+          <option value="daysSinceBeginning">days since beginning</option>
+        </select>
+        <label htmlFor="trajectoriesAreVisible">Trajectory Visibility</label>
+        <input
+          type="checkbox"
+          onChange={e =>
+            console.log(e.target.checked) ||
+            dispatch({
+              type: 'set_trajectory_visibility',
+              payload: e.target.checked,
+            })
+          }
+          checked={state.trajectoriesAreVisible}
+        />
+      </Controls>
+      <svg
+        id="limboSvg"
+        width={state.width}
+        height={state.height}
+        ref={svgRef}
+      />
+    </Wrapper>
+  );
+};
+
 export default Limbo;

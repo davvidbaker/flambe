@@ -211,7 +211,7 @@ class FlameChart extends Component<Props, State> {
     this.setState({
       canvasHeight: height,
     });
-    if (this.canvas) {
+    if (this.canvas && this.ctx) {
       this.minTextWidth =
         FlameChart.textPadding.x + this.ctx.measureText('\u2026').textWidth;
     }
@@ -265,6 +265,8 @@ class FlameChart extends Component<Props, State> {
 
     const hitBlock = Object.entries(hitBlocks)[0];
 
+    console.log(`🔥  hitBlock`, hitBlock);
+    
     if (mouseX > 10 && mouseX < this.width - 10) {
       const startX = this.timeToPixels(hitBlock[1].startTime);
       const endX =

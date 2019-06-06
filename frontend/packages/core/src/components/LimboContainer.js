@@ -1,13 +1,14 @@
 // @flow
-import React, { Component } from 'react';
+import * as React from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
+import { fromPairs, map, filter, last, size } from 'lodash/fp';
 
-import { fromPairs, map, filter, last } from 'lodash/fp';
-
+import { useLocalStorage } from '../custom-hooks';
 import WeightlessActivities from './WeightlessActivities';
 import ActivityDetail from './ActivityDetail';
 import Limbo from './Limbo';
+import ThreadFilter from './ThreadFilter';
 import {
   getTimeline,
   getTimelineWithFiltersApplied,
@@ -43,95 +44,95 @@ const ScrollView = styled.div`
   /* height: 100%; */
 `;
 
-class LimboContainer extends Component {
-  state = {
-    selectedActivity_id: null,
+const LimboContainer = props => {
+  const {
+    allSuspendedActivities,
+    updateActivity,
+    events,
+    submitCommand,
+    allBlocks,
+    allThreads,
+  } = props;
+
+  const [selectedActivity_id, setSelectedActivity_id] = React.useState(null);
+  const initialThreads = () => {
+    try {
+      return JSON.parse(window.localStorage.getItem('limbo-threads')) || [];
+    } catch {
+      return [];
+    }
   };
+  const [includedThreads, setIncludedThreads] = React.useState(initialThreads);
 
-  setSelectedActivity = selectedActivity_id => {
-    this.setState({ selectedActivity_id });
-
-    console.log(`🔥  this.props`, this.props, selectedActivity_id);
-    const blocks = blocksForActivityWithIndices(
-      selectedActivity_id,
-      this.props.filteredBlocks,
+  React.useEffect(() => {
+    window.localStorage.setItem(
+      'limbo-threads',
+      JSON.stringify(includedThreads),
     );
+  }, [includedThreads]);
+
+  const activities =
+    allSuspendedActivities
+    |> filter(([_id, a]) =>
+      includedThreads.map(({ value }) => Number(value)).includes(a.thread_id),
+    )
+    |> fromPairs;
+
+  const setSelectedActivity = id => {
+    setSelectedActivity_id(id);
+
+    const blocks = blocksForActivityWithIndices(id, props.filteredBlocks);
 
     const [block_id, block] = last(blocks);
-    const activity = this.props.activities[selectedActivity_id];
+    console.log(`🔥  activities`, activities);
+    const activity = activities[id];
 
-    console.log(`🔥  blocks`, blocks);
-
-    console.log(
-      `🔥  blocks.map(([k, v]) => this.props.activities[v.activity_id])`,
-      blocks.map(([k, v]) => this.props.activities[v.activity_id]),
-    );
-
-    console.log(`🔥  activity`, activity);
-    this.props.focusBlock(
-      block_id,
-      selectedActivity_id,
-      activity.status,
-      activity.thread_id,
-    );
+    props.focusBlock(block_id, id, activity.status, activity.thread_id);
   };
 
-  render() {
-    const {
-      activities,
-      updateActivity,
-      events,
-      submitCommand,
-      allBlocks,
-    } = this.props;
+  const weightlessActivities =
+    activities
+    |> Object.entries
+    |> filter(
+      ([_id, a]) => a.weight === null || typeof a.weight === 'undefined',
+    )
+    |> fromPairs;
 
-    const weightlessActivities =
-      activities
-      |> Object.entries
-      |> filter(
-        ([_id, a]) => a.weight === null || typeof a.weight === 'undefined',
-      )
-      |> fromPairs;
+  const weightedActivities =
+    activities |> Object.entries |> filter(([_id, a]) => a.weight) |> fromPairs;
 
-    const weightedActivities =
-      activities
-      |> Object.entries
-      |> filter(([_id, a]) => a.weight)
-      |> fromPairs;
-
-    return (
+  return (
+    <>
+      <ThreadFilter
+        allThreads={allThreads}
+        includedThreads={includedThreads}
+        onChange={setIncludedThreads}
+      />
       <Wrapper>
         <div style={{ position: 'relative' }}>
           <Limbo
             activities={weightedActivities}
             events={events}
-            categories={this.props.categories}
-            setSelectedActivity={this.setSelectedActivity}
+            categories={props.categories}
+            setSelectedActivity={setSelectedActivity}
           />
         </div>
-        {/* <ScrollView>
-          <ul>
-            {map(a => (
-              <li>
-                {a.name} {a.weight}
-              </li>
-            ))(weightedActivities)}
-          </ul>
-        </ScrollView> */}
-        <ScrollView>
-          <WeightlessActivities
-            activities={weightlessActivities}
-            selectedActivity_id={this.state.selectedActivity_id}
-            updateActivity={updateActivity}
-            setSelectedActivity={this.setSelectedActivity}
-          />
-        </ScrollView>
-        {this.state.selectedActivity_id && (
+        {size(weightlessActivities) > 0 && (
+          <ScrollView>
+            <WeightlessActivities
+              activities={weightlessActivities}
+              selectedActivity_id={selectedActivity_id}
+              updateActivity={updateActivity}
+              setSelectedActivity={setSelectedActivity}
+            />
+          </ScrollView>
+        )}
+        {selectedActivity_id && (
           <ScrollView>
             <ActivityDetail
               activity={{
-                id: this.state.selectedActivity_id,
-                ...activities[this.state.selectedActivity_id],
+                id: selectedActivity_id,
+                ...activities[selectedActivity_id],
               }}
               blocks={allBlocks}
               submitCommand={submitCommand}
@@ -140,21 +141,20 @@ class LimboContainer extends Component {
           </ScrollView>
         )}
       </Wrapper>
-    );
-  }
-}
+    </>
+  );
+};
 
 export default connect(
   state => ({
-    activities:
+    allSuspendedActivities:
       getTimeline(state).activities
       |> Object.entries
-      |> filter(([_id, a]) => a.status === 'suspended')
-      |> filter(([_id, a]) => a.thread_id === 2)
-      |> fromPairs,
+      |> filter(([_id, a]) => a.status === 'suspended'),
     events: getTimeline(state).events,
     categories: getUser(state).categories,
     allBlocks: getTimeline(state).blocks,
+    allThreads: getTimeline(state).threads,
     filteredBlocks: getTimelineWithFiltersApplied(state).blocks,
   }),
   dispatch => ({
