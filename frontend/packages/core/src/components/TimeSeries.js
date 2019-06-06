@@ -68,7 +68,7 @@ class TimeSeries extends Component {
       canvasWidth: width,
       canvasHeight: height,
     });
-    if (this.canvas) {
+    if (this.canvas && this.ctx) {
       this.ctx.font = '11px sans-serif';
       this.minTextWidth =
         TimeSeries.textPadding.x + this.ctx.measureText('\u2026').textWidth;
