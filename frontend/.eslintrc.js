@@ -33,7 +33,7 @@ module.exports = {
   rules: {
     'arrow-parens': 'off',
     camelcase: 'off',
-    'comma-dangle': 'on',
+    'comma-dangle': 2,
     'max-len': 'off',
     'one-var': 'off',
     'no-bitwise': 'off',
@@ -65,6 +65,7 @@ module.exports = {
         'newlines-between': 'always',
       },
     ],
+    'jsx-a11y/label-has-associated-control': 'off',
     'jsx-a11y/accessible-emoji': 'off',
     'jsx-a11y/href-no-hash': 'off',
     'jsx-a11y/label-has-for': 'off',

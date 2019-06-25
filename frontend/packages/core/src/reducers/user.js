@@ -77,34 +77,29 @@ function user(
     case `${CATEGORY_CREATE}_SUCCEEDED`:
       return {
         ...state,
-        categories: state.categories.map(
-          cat =>
-            cat.id === 'optimisticCategory'
-              ? { ...cat, id: action.data.id }
-              : cat,
-        ),
+        categories: state.categories.map(cat => (cat.id === 'optimisticCategory'
+          ? { ...cat, id: action.data.id }
+          : cat)),
       };
-    /** ⚠️ TODO handle category failure (AND OTHER TYPES TOO!) */
+      /** ⚠️ TODO handle category failure (AND OTHER TYPES TOO!) */
 
     case CATEGORY_UPDATE:
       return {
         ...state,
-        categories: state.categories.map(
-          cat => (cat.id === action.id ? { ...cat, ...action.updates } : cat),
-        ),
+        categories: state.categories.map(cat => (cat.id === action.id ? { ...cat, ...action.updates } : cat)),
       };
     /* ⚠️ this is optimistic, need to handle failure */
     case ATTENTION_SHIFT:
       return action.thread_id === last(state.attentionShifts.thread_id)
         ? state
         : {
-            ...state,
-            attentionShifts: [
-              ...state.attentionShifts,
-              { timestamp: action.timestamp, thread_id: action.thread_id },
-            ],
-          };
-    // 😃 optimism!
+          ...state,
+          attentionShifts: [
+            ...state.attentionShifts,
+            { timestamp: action.timestamp, thread_id: action.thread_id },
+          ],
+        };
+      // 😃 optimism!
 
     case TODO_CREATE:
       return {
@@ -122,12 +117,7 @@ function user(
     case `${TODO_CREATE}_SUCCEEDED`:
       return {
         ...state,
-        todos: state.todos.map(
-          todo =>
-            todo.id === 'optimisticTodo'
-              ? { ...todo, id: action.data.id }
-              : todo,
-        ),
+        todos: state.todos.map(todo => (todo.id === 'optimisticTodo' ? { ...todo, id: action.data.id } : todo)),
       };
 
     case TODO_BEGIN:
@@ -154,14 +144,11 @@ function user(
     case `${TRACE_CREATE}_SUCCEEDED`:
       return {
         ...state,
-        traces: state.traces.map(
-          trace =>
-            trace.name === action.data.name
-              ? { ...trace, id: action.data.id }
-              : trace,
-        ),
+        traces: state.traces.map(trace => (trace.name === action.data.name
+          ? { ...trace, id: action.data.id }
+          : trace)),
       };
-    /** ⚠️ TODO handle TRACE_CREATE_FAILED */
+      /** ⚠️ TODO handle TRACE_CREATE_FAILED */
 
     case `${USER_FETCH}_SUCCEEDED`:
       return {
