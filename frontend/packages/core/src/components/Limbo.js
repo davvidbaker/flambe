@@ -3,6 +3,12 @@ import styled from 'styled-components';
 import * as d3 from 'd3';
 import * as topojson from 'topojson';
 import { last, size } from 'lodash/fp';
+import { shade } from 'polished';
+
+import {
+  SECOND, MINUTE, HOUR, DAY, WEEK, MONTH,
+} from '../utilities/time';
+import { colors } from '../styles';
 
 import {
   hexTopology,
@@ -12,8 +18,6 @@ import {
   translateAlong,
   transition,
 } from './Limbo-helpers';
-import { SECOND, MINUTE, HOUR, DAY, WEEK, MONTH } from '../utilities/time';
-import { colors } from '../styles';
 
 const Tooltip = styled.div`
   color: white;
@@ -123,7 +127,7 @@ type Props = {
 
 const initialState = {
   width: 1000,
-  height: 200,
+  height: 400,
 
   hexagonRadius: 20,
 
@@ -148,33 +152,32 @@ const reducer = (state, action) => {
   }
 };
 
-const layOutSinks = (activities, events, categories) =>
-  activities.map(([id, a]) => {
-    // *randomly* lay out the sinks
-    const {
-      daysSinceLastSuspension,
-      daysSinceBeginning,
-      churn,
-    } = calculateTheseThings(a, events);
+const layOutSinks = (activities, events, categories) => activities.map(([id, a]) => {
+  // *randomly* lay out the sinks
+  const {
+    daysSinceLastSuspension,
+    daysSinceBeginning,
+    churn,
+  } = calculateTheseThings(a, events);
 
-    const { x, y } = randomXYinUnitCircle();
+  const { x, y } = randomXYinUnitCircle();
 
-    const category = categories.find(({ id }) => a.categories[0] === id);
+  const category = categories.find(({ id }) => a.categories[0] === id);
 
-    return {
-      x: x * 1000,
-      y: y * 200,
-      weight: Math.abs(a.weight),
-      daysSinceLastSuspension,
-      daysSinceBeginning,
-      churn,
-      id,
-      color_text: category ? category.color_text : 'black',
-      color_background: category
-        ? category.color_background
-        : colors.flames.main,
-    };
-  });
+  return {
+    x: x * 1000,
+    y: y * 200,
+    weight: Math.abs(a.weight),
+    daysSinceLastSuspension,
+    daysSinceBeginning,
+    churn,
+    id,
+    color_text: category ? category.color_text : 'black',
+    color_background: category
+      ? shade(Math.random() * 0.3, category.color_background)
+      : colors.flames.main,
+  };
+});
 
 const Limbo = props => {
   const svgRef = React.useRef(null);
@@ -247,15 +250,15 @@ const Limbo = props => {
     const svg = d3.select(svgRef.current);
     if (!svg) return;
 
-    const width = state.width;
-    const height = state.height;
+    const { width } = state;
+    const { height } = state;
 
-    const sinks = state.sinks;
+    const { sinks } = state;
 
     // create a hexagon grid
     const radius = state.hexagonRadius;
 
-    var topology = hexTopology(
+    const topology = hexTopology(
       radius,
       width,
       height,
@@ -263,9 +266,9 @@ const Limbo = props => {
       state.sinks,
     );
 
-    var projection = hexProjection(radius);
+    const projection = hexProjection(radius);
 
-    var path = d3.geoPath().projection(projection);
+    const path = d3.geoPath().projection(projection);
 
     svg
       .append('g')
@@ -274,19 +277,16 @@ const Limbo = props => {
       .data(topology.objects.hexagons.geometries)
       .enter()
       .append('path')
-      .attr('d', function(d) {
-        return path(topojson.feature(topology, d));
-      })
+      .attr('d', d => path(topojson.feature(topology, d)))
       // .attr('class', function(d) {
       // return `${d.fill ? 'fill ' : ''}${d.hitSink ? d.hitSink : ''}`;
       // })
       .attr(
         'fill',
         // ⚠️ null coalesce probably
-        d =>
-          state.sinks.find(({ id }) => id === d.hitSink)
-            ? state.sinks.find(({ id }) => id === d.hitSink).color_background
-            : colors.flames.main,
+        d => (state.sinks.find(({ id }) => id === d.hitSink)
+          ? state.sinks.find(({ id }) => id === d.hitSink).color_background
+          : colors.flames.main),
       )
       .on('mouseenter', mouseenter)
       .on('mouseleave', mouseleave)
@@ -307,7 +307,7 @@ const Limbo = props => {
     //   .attr('class', 'border')
     //   .call(redraw);
 
-    var mousing = 0;
+    let mousing = 0;
 
     svg
       .selectAll('circle')
@@ -332,14 +332,10 @@ const Limbo = props => {
       .text(d => `${props.activities[d.id].name},\n ${d[state.forceCarrier]}`)
       .attr('fill', d => d.color_text || 'black');
 
-    var lineFunction = d3
+    const lineFunction = d3
       .line()
-      .x(function(d) {
-        return d.x;
-      })
-      .y(function(d) {
-        return d.y;
-      });
+      .x(d => d.x)
+      .y(d => d.y);
 
     // const drawTrajectories = true;
     if (state.trajectoriesAreVisible) {
@@ -384,7 +380,7 @@ const Limbo = props => {
         dot.attr('fill', _d => `hsl(${d.hitSink || 0}, 70%, 80%)`);
 
         // ball animated along the trajectory path
-        const ease = d3['easeCircleInOut'] || d3.easeLinearIn;
+        const ease = d3.easeCircleInOut || d3.easeLinearIn;
 
         transition(dot, trajectory_path);
       }
@@ -413,9 +409,11 @@ const Limbo = props => {
       border.attr(
         'd',
         path(
-          topojson.mesh(topology, topology.objects.hexagons, function(a, b) {
-            return a.fill ^ b.fill;
-          }),
+          topojson.mesh(
+            topology,
+            topology.objects.hexagons,
+            (a, b) => a.fill ^ b.fill,
+          ),
         ),
       );
     }
@@ -441,8 +439,7 @@ const Limbo = props => {
         <label htmlFor="forceCarrier">Force Carrier</label>
         <select
           name="forceCarrier"
-          onChange={e =>
-            dispatch({ type: 'force_carrier_change', payload: e.target.value })
+          onChange={e => dispatch({ type: 'force_carrier_change', payload: e.target.value })
           }
         >
           <option value="weight">weight</option>
@@ -455,9 +452,8 @@ const Limbo = props => {
         <label htmlFor="trajectoriesAreVisible">Trajectory Visibility</label>
         <input
           type="checkbox"
-          onChange={e =>
-            console.log(e.target.checked) ||
-            dispatch({
+          onChange={e => console.log(e.target.checked)
+            || dispatch({
               type: 'set_trajectory_visibility',
               payload: e.target.checked,
             })

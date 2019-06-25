@@ -43,19 +43,19 @@ export default connect(
   },
   dispatch => ({
     createThread: (name, rank) => dispatch(createThread(name, rank)),
-    toggleThread: (id, isCollapsed = false) =>
-      dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
+    toggleThread: (id, isCollapsed = false) => dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
     updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
     updateEvent: (id, updates) => dispatch(updateEvent(id, updates)),
-    focusBlock: ({ index, activity_id, activityStatus, thread_id }) =>
-      dispatch(
-        focusBlock({
-          index,
-          activity_id,
-          activityStatus,
-          thread_id,
-        }),
-      ),
+    focusBlock: ({
+      index, activity_id, activityStatus, thread_id,
+    }) => dispatch(
+      focusBlock({
+        index,
+        activity_id,
+        activityStatus,
+        thread_id,
+      }),
+    ),
     hoverBlock: index => dispatch(hoverBlock(index)),
   }),
 )(Timeline);
