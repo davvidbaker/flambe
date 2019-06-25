@@ -5,7 +5,6 @@ import { filter, reduce } from 'lodash/fp';
 import last from 'lodash/last';
 import Measure from 'react-measure';
 
-import Swyzzler from './Swyzzler';
 import WithDropTarget from '../containers/WithDropTarget';
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import {
@@ -17,7 +16,15 @@ import { layout } from '../styles';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
 import type { Activity } from '../types/Activity';
+import {
+  SECOND, MINUTE, HOUR, DAY, WEEK, MONTH,
+} from '../utilities/time';
+import {
+  loadSuspendedActivityCount,
+  blocksForActivity,
+} from '../utilities/timeline';
 
+import Swyzzler from './Swyzzler';
 import WithEventListeners from './WithEventListeners';
 import ThreadDetail from './ThreadDetail';
 import ActivityDetailModal from './ActivityDetailModal';
@@ -27,11 +34,6 @@ import Tooltip from './Tooltip';
 import PieChart from './PieChart';
 import FocusedBlock from './FocusedBlock';
 
-import { SECOND, MINUTE, HOUR, DAY, WEEK, MONTH } from '../utilities/time';
-import {
-  loadSuspendedActivityCount,
-  blocksForActivity,
-} from '../utilities/timeline';
 
 const MIN_GRID_SLICE_PX = 60;
 
@@ -69,8 +71,7 @@ type State = {
 };
 
 /* ⚠️ this is naive, but might be good enough */
-const threadsCollapsedChecksum = threads =>
-  threads
+const threadsCollapsedChecksum = threads => threads
   |> Object.values
   |> reduce((acc, { collapsed }) => acc + (collapsed ? 1 : 0), 0);
 
@@ -97,10 +98,8 @@ class Timeline extends React.Component<Props, State> {
       lbt: localStorage.getItem('lbt'),
       rbt: localStorage.getItem('rbt'),
     };
-    const leftBoundaryTime =
-      savedTimes.lbt && Number.parseFloat(savedTimes.lbt);
-    const rightBoundaryTime =
-      savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
+    const leftBoundaryTime = savedTimes.lbt && Number.parseFloat(savedTimes.lbt);
+    const rightBoundaryTime = savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
     const dividersData = this.calculateGridOffsets();
 
     this.setTimelineState({
@@ -138,10 +137,10 @@ class Timeline extends React.Component<Props, State> {
 
   componentWillReceiveProps(nextProps) {
     if (
-      nextProps.leftBoundaryTimeOverride !==
-        this.props.leftBoundaryTimeOverride ||
-      nextProps.rightBoundaryTimeOverride !==
-        this.props.rightBoundaryTimeOverride
+      nextProps.leftBoundaryTimeOverride
+        !== this.props.leftBoundaryTimeOverride
+      || nextProps.rightBoundaryTimeOverride
+        !== this.props.rightBoundaryTimeOverride
     ) {
       this.setTimelineState({
         leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
@@ -150,8 +149,8 @@ class Timeline extends React.Component<Props, State> {
     }
 
     if (
-      threadsCollapsedChecksum(nextProps.threads) !==
-      threadsCollapsedChecksum(this.props.threads)
+      threadsCollapsedChecksum(nextProps.threads)
+      !== threadsCollapsedChecksum(this.props.threads)
     ) {
       requestAnimationFrame(this.drawChildren.bind(this));
     }
@@ -191,24 +190,24 @@ class Timeline extends React.Component<Props, State> {
   };
 
   drawChildren = () => {
-    this.timeSeries.current &&
-      this.timeSeries.current.draw(
+    this.timeSeries.current
+      && this.timeSeries.current.draw(
         this.leftBoundaryTime,
         this.rightBoundaryTime,
         this.state.width,
       );
 
-    this.flameChart.current &&
-      this.flameChart.current.draw(
+    this.flameChart.current
+      && this.flameChart.current.draw(
         this.leftBoundaryTime,
         this.rightBoundaryTime,
         this.state.width,
         this.dividersData,
       );
 
-    this.focusedBlock &&
-      this.focusedBlock.current &&
-      this.focusedBlock.current.forceUpdate();
+    this.focusedBlock
+      && this.focusedBlock.current
+      && this.focusedBlock.current.forceUpdate();
   };
 
   /* 💁 mostly borrowed from chrome devtools-frontend ❤️ */
@@ -217,8 +216,8 @@ class Timeline extends React.Component<Props, State> {
     //
     const zeroTime = 0;
 
-    const leftBoundaryTime = this.leftBoundaryTime;
-    const rightBoundaryTime = this.rightBoundaryTime;
+    const { leftBoundaryTime } = this;
+    const { rightBoundaryTime } = this;
 
     const boundarySpan = rightBoundaryTime - leftBoundaryTime;
 
@@ -241,9 +240,8 @@ class Timeline extends React.Component<Props, State> {
       gridSliceTime /= 2;
     }
 
-    const firstDividerTime =
-      Math.ceil((leftBoundaryTime - zeroTime) / gridSliceTime) * gridSliceTime +
-      zeroTime;
+    const firstDividerTime = Math.ceil((leftBoundaryTime - zeroTime) / gridSliceTime) * gridSliceTime
+      + zeroTime;
     let lastDividerTime = rightBoundaryTime;
     // Add some extra space past the right boundary as the rightmost divider label text
     // may be partially shown rather than just pop up when a new rightmost divider gets into the view.
@@ -273,8 +271,8 @@ class Timeline extends React.Component<Props, State> {
   }
 
   timeToPixels(timestamp) {
-    const leftBoundaryTime = this.leftBoundaryTime;
-    const rightBoundaryTime = this.rightBoundaryTime;
+    const { leftBoundaryTime } = this;
+    const { rightBoundaryTime } = this;
 
     return timeToPixels(
       timestamp,
@@ -408,10 +406,10 @@ class Timeline extends React.Component<Props, State> {
    */
   setLocalStorage = throttle(() => {
     if (
-      typeof this.leftBoundaryTime === 'number' &&
-      this.leftBoundaryTime !== NaN &&
-      typeof this.rightBoundaryTime === 'number' &&
-      this.rightBoundaryTime !== NaN
+      typeof this.leftBoundaryTime === 'number'
+      && this.leftBoundaryTime !== NaN
+      && typeof this.rightBoundaryTime === 'number'
+      && this.rightBoundaryTime !== NaN
     ) {
       localStorage.setItem('lbt', this.leftBoundaryTime);
       localStorage.setItem('rbt', this.rightBoundaryTime);
@@ -421,7 +419,7 @@ class Timeline extends React.Component<Props, State> {
   render() {
     console.log('trying to render timeline');
 
-    const props = this.props;
+    const { props } = this;
 
     const rightBoundaryTime = this.rightBoundaryTime || props.maxTime;
     const leftBoundaryTime = this.leftBoundaryTime || props.minTime;
@@ -429,8 +427,8 @@ class Timeline extends React.Component<Props, State> {
     let threads = Array.isArray(props.threads)
       ? {}
       : props.attentionDrivenThreadOrder
-      ? rankThreadsByAttention(props.attentionShifts, props.threads)
-      : props.threads;
+        ? rankThreadsByAttention(props.attentionShifts, props.threads)
+        : props.threads;
 
     // load in the sense of bearing load
     threads = loadSuspendedActivityCount(props.activities, threads);
@@ -512,8 +510,8 @@ class Timeline extends React.Component<Props, State> {
               onResize={contentRect => {
                 /* 🤔 I feel like this shouldn't be necessary, but otherwise I get stuck in a render loop.bind.. */
                 if (
-                  contentRect.bounds.width !== this.state.width ||
-                  contentRect.bounds.height !== this.state.height
+                  contentRect.bounds.width !== this.state.width
+                  || contentRect.bounds.height !== this.state.height
                 ) {
                   this.setState({
                     width: contentRect.bounds.width,
@@ -546,9 +544,8 @@ class Timeline extends React.Component<Props, State> {
                       // rightBoundaryTime={rightBoundaryTime}
                       searchTerms={props.searchTerms}
                       tabs={filter(
-                        ({ timestamp }) =>
-                          timestamp > leftBoundaryTime &&
-                          timestamp < rightBoundaryTime,
+                        ({ timestamp }) => timestamp > leftBoundaryTime
+                          && timestamp < rightBoundaryTime,
                       )(props.tabs)}
                       zoom={this.zoom}
                     />
@@ -587,28 +584,28 @@ class Timeline extends React.Component<Props, State> {
 
                   {/* ⚠️ Moved these up? */}
                   {/* Probably want to lift FocusActivty and HoverActivity up so updating it doesn't cause entire re-render... */}
-                  {this.flameChart &&
-                    this.flameChart.current && [
+                  {this.flameChart
+                    && this.flameChart.current && [
                       <FocusedBlock
-                        key="focus"
-                        ref={this.focusedBlock}
-                        yOffset={this.state.timeSeriesHeight}
-                        flameChartRef={this.flameChart}
-                      />,
+                      key="focus"
+                      ref={this.focusedBlock}
+                      yOffset={this.state.timeSeriesHeight}
+                      flameChartRef={this.flameChart}
+                    />,
                       <Tooltip
-                        key="tooltip"
-                        flameChartRef={this.flameChart}
-                        yOffset={this.state.timeSeriesHeight}
-                        activities={props.activities}
-                        blocks={props.blocks}
-                      />,
-                    ]}
+                      key="tooltip"
+                      flameChartRef={this.flameChart}
+                      yOffset={this.state.timeSeriesHeight}
+                      activities={props.activities}
+                      blocks={props.blocks}
+                    />,
+                  ]}
                   <ThreadDetail
                     closeThreadDetail={this.closeThreadDetail}
                     id={this.state.threadModal_id}
                     name={
-                      this.state.threadModal_id &&
-                      props.threads[this.state.threadModal_id].name
+                      this.state.threadModal_id
+                      && props.threads[this.state.threadModal_id].name
                     }
                     activities={props.activities}
                   />
@@ -622,8 +619,13 @@ class Timeline extends React.Component<Props, State> {
             </Measure>
             {this.state.composingZoomChord && (
               <div style={{ position: 'fixed', bottom: 0, left: 0 }}>
-                Zoom to... (Waiting for second key of chord){' '}
-                {this.state.zoomChord} {this.state.zoomChordMultiplier} hours
+                Zoom to... (Waiting for second key of chord)
+                {' '}
+                {this.state.zoomChord}
+                {' '}
+                {this.state.zoomChordMultiplier}
+                {' '}
+hours
                 ago
               </div>
             )}

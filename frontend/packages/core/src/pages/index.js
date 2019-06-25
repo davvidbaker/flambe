@@ -1,6 +1,8 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import { Switch, Route, Redirect, withRouter } from 'react-router';
+import {
+  Switch, Route, Redirect, withRouter,
+} from 'react-router';
 import { createGlobalStyle } from 'styled-components';
 
 import Toaster from '../containers/Toaster';
@@ -105,9 +107,8 @@ const GlobalStyle = createGlobalStyle`
     
 `;
 
-const Routes = ({ loggedIn, username = 'david' }) =>
-  console.log(`🔥  loggedIn`, loggedIn) ||
-  console.log(`🔥 username`, username) || (
+const Routes = ({ loggedIn, username = 'david' }) => console.log(`🔥  loggedIn`, loggedIn)
+  || console.log(`🔥 username`, username) || (
     <>
       <GlobalStyle />
       <Switch>
@@ -140,7 +141,7 @@ const Routes = ({ loggedIn, username = 'david' }) =>
       </Switch>
       <Toaster />
     </>
-  );
+);
 
 // the reason we need withRouter has to do with context, see more:
 // https://stackoverflow.com/questions/42875949/react-router-v4-redirect-not-working?rq=1
