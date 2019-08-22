@@ -175,7 +175,7 @@ const layOutSinks = (activities, events, categories) => activities.map(([id, a])
     color_text: category ? category.color_text : 'black',
     color_background: category
       ? shade(Math.random() * 0.3, category.color_background)
-      : colors.flames.main,
+      : 'white',
   };
 });
 
