@@ -1,4 +1,4 @@
-defmodule SteadyWeb.ChannelCase do
+defmodule FlambeWeb.ChannelCase do
   @moduledoc """
   This module defines the test case to be used by
   channel tests.
@@ -21,7 +21,7 @@ defmodule SteadyWeb.ChannelCase do
       use Phoenix.ChannelTest
 
       # The default endpoint for testing
-      @endpoint SteadyWeb.Endpoint
+      @endpoint FlambeWeb.Endpoint
     end
   end
 

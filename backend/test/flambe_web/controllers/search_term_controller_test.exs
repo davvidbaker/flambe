@@ -1,5 +1,5 @@
-defmodule SteadyWeb.SearchTermControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.SearchTermControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.Accounts
   alias Flambe.Accounts.SearchTerm

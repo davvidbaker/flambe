@@ -1,6 +1,6 @@
-defmodule SteadyWeb.EventView do
-  use SteadyWeb, :view
-  alias SteadyWeb.EventView
+defmodule FlambeWeb.EventView do
+  use FlambeWeb, :view
+  alias FlambeWeb.EventView
 
   # def render("index.json", %{traces: traces}) do
   #   %{data: render_many(traces, EventView, "trace.json")}

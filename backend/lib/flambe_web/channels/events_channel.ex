@@ -1,4 +1,4 @@
-defmodule SteadyWeb.EventChannel do
+defmodule FlambeWeb.EventChannel do
   use Phoenix.Channel
 
   # ⚠️ this is probably not secure

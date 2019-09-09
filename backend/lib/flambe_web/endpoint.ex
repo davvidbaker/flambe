@@ -1,7 +1,7 @@
-defmodule SteadyWeb.Endpoint do
+defmodule FlambeWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :flambe
 
-  socket("/socket", SteadyWeb.UserSocket)
+  socket("/socket", FlambeWeb.UserSocket)
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -42,7 +42,7 @@ defmodule SteadyWeb.Endpoint do
   plug(
     Plug.Session,
     store: :cookie,
-    key: "_steady_key",
+    key: "_flambe_key",
     signing_salt: "IFiVAZWC"
   )
 
@@ -52,7 +52,7 @@ defmodule SteadyWeb.Endpoint do
     headers: ["Cache", "Content-Type", "x-csrf-token"]
   )
 
-  plug(SteadyWeb.Router)
+  plug(FlambeWeb.Router)
 
   @doc """
   Callback invoked for dynamically configuring the endpoint.

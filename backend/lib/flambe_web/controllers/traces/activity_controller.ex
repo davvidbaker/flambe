@@ -1,10 +1,10 @@
-defmodule SteadyWeb.ActivityController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.ActivityController do
+  use FlambeWeb, :controller
 
   alias Flambe.{Traces, Accounts}
   alias Flambe.Traces.{Activity, Event, Thread, Trace}
 
-  action_fallback(SteadyWeb.FallbackController)
+  action_fallback(FlambeWeb.FallbackController)
 
   def create(conn, %{
         "thread_id" => thread_id,

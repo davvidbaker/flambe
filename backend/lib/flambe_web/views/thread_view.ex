@@ -1,6 +1,6 @@
-defmodule SteadyWeb.ThreadView do
-  use SteadyWeb, :view
-  alias SteadyWeb.ThreadView
+defmodule FlambeWeb.ThreadView do
+  use FlambeWeb, :view
+  alias FlambeWeb.ThreadView
 
   def render("index.json", %{threads: threads}) do
     %{data: render_many(threads, ThreadView, "thread.json")}

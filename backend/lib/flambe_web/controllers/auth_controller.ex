@@ -1,5 +1,5 @@
-defmodule SteadyWeb.AuthController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.AuthController do
+  use FlambeWeb, :controller
   plug(Ueberauth)
 
   alias Ueberauth.Strategy.Helpers

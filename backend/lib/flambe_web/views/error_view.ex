@@ -1,5 +1,5 @@
-defmodule SteadyWeb.ErrorView do
-  use SteadyWeb, :view
+defmodule FlambeWeb.ErrorView do
+  use FlambeWeb, :view
 
   def render("404.html", _assigns) do
     "Page not found"

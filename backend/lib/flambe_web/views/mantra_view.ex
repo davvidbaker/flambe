@@ -1,6 +1,6 @@
-defmodule SteadyWeb.MantraView do
-  use SteadyWeb, :view
-  alias SteadyWeb.MantraView
+defmodule FlambeWeb.MantraView do
+  use FlambeWeb, :view
+  alias FlambeWeb.MantraView
 
   def render("index.json", %{mantras: mantras}) do
     %{data: render_many(mantras, MantraView, "mantra.json")}

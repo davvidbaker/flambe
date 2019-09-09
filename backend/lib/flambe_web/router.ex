@@ -1,5 +1,5 @@
-defmodule SteadyWeb.Router do
-  use SteadyWeb, :router
+defmodule FlambeWeb.Router do
+  use FlambeWeb, :router
   require Ueberauth
 
   pipeline :browser do
@@ -19,20 +19,20 @@ defmodule SteadyWeb.Router do
     plug(Flambe.AuthPipeline)
   end
 
-  scope "/", SteadyWeb do
+  scope "/", FlambeWeb do
     # Use the default browser stack
     pipe_through([:browser, :authenticate_user])
 
     get("/", PageController, :index)
   end
 
-  scope "/", SteadyWeb do
+  scope "/", FlambeWeb do
     pipe_through(:api)
 
     resources("/sessions", SessionController, only: [:create, :delete], singleton: true)
   end
 
-  scope "/auth", SteadyWeb do
+  scope "/auth", FlambeWeb do
     pipe_through([:api])
     # ⚠️ this might be unsafe?
     # actually I don't even need this if I i'm using the api pipeline, right?
@@ -47,7 +47,7 @@ defmodule SteadyWeb.Router do
   end
 
   # Other scopes may use custom stacks.
-  scope "/api", SteadyWeb do
+  scope "/api", FlambeWeb do
     # ⚠️ add authentication in eventually..., :authenticate_user]
     pipe_through([:api, :authenticate_user])
 

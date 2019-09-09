@@ -1,3 +1,3 @@
-defmodule SteadyWeb.PageView do
-  use SteadyWeb, :view
+defmodule FlambeWeb.PageView do
+  use FlambeWeb, :view
 end

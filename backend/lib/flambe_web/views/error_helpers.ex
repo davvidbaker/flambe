@@ -1,4 +1,4 @@
-defmodule SteadyWeb.ErrorHelpers do
+defmodule FlambeWeb.ErrorHelpers do
   @moduledoc """
   Conveniences for translating and building error messages.
   """
@@ -32,9 +32,9 @@ defmodule SteadyWeb.ErrorHelpers do
     #     dgettext "errors", "is invalid"
     #
     if count = opts[:count] do
-      Gettext.dngettext(SteadyWeb.Gettext, "errors", msg, msg, count, opts)
+      Gettext.dngettext(FlambeWeb.Gettext, "errors", msg, msg, count, opts)
     else
-      Gettext.dgettext(SteadyWeb.Gettext, "errors", msg, opts)
+      Gettext.dgettext(FlambeWeb.Gettext, "errors", msg, opts)
     end
   end
 end

@@ -1,5 +1,5 @@
-defmodule SteadyWeb.MantraControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.MantraControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.Accounts
   alias Flambe.Accounts.Mantra

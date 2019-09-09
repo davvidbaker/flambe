@@ -6,7 +6,7 @@ use Mix.Config
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we use it
 # with brunch.io to recompile .js and .css sources.
-config :flambe, SteadyWeb.Endpoint,
+config :flambe, FlambeWeb.Endpoint,
   http: [
     port: 4000,
     protocol_options: [
@@ -40,13 +40,13 @@ config :flambe, SteadyWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :flambe, SteadyWeb.Endpoint,
+config :flambe, FlambeWeb.Endpoint,
   live_reload: [
     patterns: [
       ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
       ~r{priv/gettext/.*(po)$},
-      ~r{lib/steady_web/views/.*(ex)$},
-      ~r{lib/steady_web/templates/.*(eex)$}
+      ~r{lib/flambe_web/views/.*(ex)$},
+      ~r{lib/flambe_web/templates/.*(eex)$}
     ]
   ]
 
@@ -59,18 +59,13 @@ config :logger, :console, format: "[$level] $message\n"
 # in production as building large stacktraces may be expensive.
 config :phoenix, :stacktrace_depth, 20
 
-# Configure your database
-config :flambe, Flambe.Repo,
-  adapter: Ecto.Adapters.Postgres,
-  username: "postgres",
-  password: "postgres",
-  # ⚠️ i itntionally still flambe because thatii's the name of the db on my system
-  database: "flambe_dev",
-  hostname: "localhost",
-  pool_size: 10
-
-config :flambe, Flambe.Guardian,
-  issuer: "flambe",
-  secret_key: "8K68whWQOJn1kvRuJ3NmgkK36GDF4Q6/Z5UMtzCK+c/Tw4BO6fU/1IH/JiMyu+C6"
+# # Configure your database
+# config :flambe, Flambe.Repo,
+#   adapter: Ecto.Adapters.Postgres,
+#   username: "postgres",
+#   password: "postgres",
+#   database: "flambe_dev",
+#   hostname: "localhost",
+#   pool_size: 10
 
 import_config "dev.secret.exs"

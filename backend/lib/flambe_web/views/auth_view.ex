@@ -1,3 +1,3 @@
-defmodule SteadyWeb.AuthView do
-  use SteadyWeb, :view
+defmodule FlambeWeb.AuthView do
+  use FlambeWeb, :view
 end

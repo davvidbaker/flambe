@@ -1,5 +1,5 @@
-defmodule SteadyWeb.TraceControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.TraceControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.{Traces, TestHelper}
   alias Flambe.Traces.Trace

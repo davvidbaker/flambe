@@ -1,10 +1,10 @@
-defmodule SteadyWeb.UserSocket do
+defmodule FlambeWeb.UserSocket do
   use Phoenix.Socket
 
   alias Flambe.Accounts
 
   ## Channels
-  channel("events:*", SteadyWeb.EventChannel)
+  channel("events:*", FlambeWeb.EventChannel)
 
   ## Transports
   transport(:websocket, Phoenix.Transports.WebSocket)
@@ -35,7 +35,7 @@ defmodule SteadyWeb.UserSocket do
   # Would allow you to broadcast a "disconnect" event and terminate
   # all active sockets and channels for a given user:
   #
-  #     SteadyWeb.Endpoint.broadcast("user_socket:#{user.id}", "disconnect", %{})
+  #     FlambeWeb.Endpoint.broadcast("user_socket:#{user.id}", "disconnect", %{})
   #
   # Returning `nil` makes this socket anonymous.
   def id(_socket), do: nil

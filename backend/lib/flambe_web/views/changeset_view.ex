@@ -1,11 +1,11 @@
-defmodule SteadyWeb.ChangesetView do
-  use SteadyWeb, :view
+defmodule FlambeWeb.ChangesetView do
+  use FlambeWeb, :view
 
   @doc """
   Traverses and translates changeset errors.
 
   See `Ecto.Changeset.traverse_errors/2` and
-  `SteadyWeb.ErrorHelpers.translate_error/1` for more details.
+  `FlambeWeb.ErrorHelpers.translate_error/1` for more details.
   """
   def translate_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, &translate_error/1)
