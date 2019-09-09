@@ -1,5 +1,5 @@
-defmodule SteadyWeb.TodoControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.TodoControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.Accounts
   alias Flambe.Accounts.Todo

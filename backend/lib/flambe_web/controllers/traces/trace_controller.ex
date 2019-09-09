@@ -1,10 +1,10 @@
-defmodule SteadyWeb.TraceController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.TraceController do
+  use FlambeWeb, :controller
 
   alias Flambe.Traces
   alias Flambe.Traces.{Trace, Thread}
 
-  action_fallback(SteadyWeb.FallbackController)
+  action_fallback(FlambeWeb.FallbackController)
 
   def index(conn, _params) do
     traces = Traces.list_traces()

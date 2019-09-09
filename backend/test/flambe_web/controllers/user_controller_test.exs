@@ -1,5 +1,5 @@
-defmodule SteadyWeb.UserControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.UserControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.Accounts
   alias Flambe.Accounts.User

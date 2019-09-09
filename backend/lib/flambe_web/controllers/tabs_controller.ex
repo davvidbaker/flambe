@@ -1,10 +1,10 @@
-defmodule SteadyWeb.TabsController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.TabsController do
+  use FlambeWeb, :controller
 
   alias Flambe.Accounts
   alias Flambe.Accounts.Tabs
 
-  action_fallback(SteadyWeb.FallbackController)
+  action_fallback(FlambeWeb.FallbackController)
 
   def index(conn, _params) do
     tabs = Accounts.list_tabs()
@@ -13,7 +13,7 @@ defmodule SteadyWeb.TabsController do
 
   def create(conn, %{"user_id" => user_id, "tabs" => tabs_params}) do
     with {:ok, %Tabs{} = tabs} <- Accounts.create_tabs(user_id, tabs_params) do
-      SteadyWeb.Endpoint.broadcast!("events:" <> Integer.to_string(user_id), "tabs", %{
+      FlambeWeb.Endpoint.broadcast!("events:" <> Integer.to_string(user_id), "tabs", %{
         tabs_count: tabs.count,
         window_count: tabs.window_count,
         timestamp: tabs.timestamp_integer

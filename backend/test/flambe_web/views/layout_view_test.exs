@@ -1,3 +1,3 @@
-defmodule SteadyWeb.LayoutViewTest do
-  use SteadyWeb.ConnCase, async: true
+defmodule FlambeWeb.LayoutViewTest do
+  use FlambeWeb.ConnCase, async: true
 end

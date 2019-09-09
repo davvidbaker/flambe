@@ -9,10 +9,10 @@ use Mix.Config
 config :flambe, ecto_repos: [Flambe.Repo]
 
 # Configures the endpoint
-config :flambe, SteadyWeb.Endpoint,
+config :flambe, FlambeWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "blTEMHWIkbiAPhmJWziLsANDEZMRLYl0OCK3BBydt1IVNRR3pk9qo7GojiF6zbbq",
-  render_errors: [view: SteadyWeb.ErrorView, accepts: ~w(html json)],
+  render_errors: [view: FlambeWeb.ErrorView, accepts: ~w(html json)],
   pubsub: [name: Flambe.PubSub, adapter: Phoenix.PubSub.PG2]
 
 # Configures Elixir's Logger

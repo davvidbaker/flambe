@@ -1,10 +1,10 @@
-defmodule SteadyWeb.AttentionController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.AttentionController do
+  use FlambeWeb, :controller
 
   alias Flambe.Accounts
   alias Flambe.Accounts.Attention
 
-  action_fallback(SteadyWeb.FallbackController)
+  action_fallback(FlambeWeb.FallbackController)
 
   def index(conn, _params) do
     # ⚠️ next Accounts.list_attentions() is not a function

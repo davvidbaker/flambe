@@ -1,10 +1,10 @@
-defmodule SteadyWeb.EventController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.EventController do
+  use FlambeWeb, :controller
 
   alias Flambe.Traces
   alias Flambe.Traces.{Event, Trace}
 
-  action_fallback(SteadyWeb.FallbackController)
+  action_fallback(FlambeWeb.FallbackController)
 
   def create(conn, %{
         "trace_id" => trace_id,

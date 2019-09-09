@@ -1,6 +1,6 @@
-defmodule SteadyWeb.TraceView do
-  use SteadyWeb, :view
-  alias SteadyWeb.TraceView
+defmodule FlambeWeb.TraceView do
+  use FlambeWeb, :view
+  alias FlambeWeb.TraceView
 
   def render("index.json", %{traces: traces}) do
     %{data: render_many(traces, TraceView, "trace.json")}

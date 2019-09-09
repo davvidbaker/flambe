@@ -1,3 +1,3 @@
-defmodule SteadyWeb.SessionView do
-  use SteadyWeb, :view
+defmodule FlambeWeb.SessionView do
+  use FlambeWeb, :view
 end

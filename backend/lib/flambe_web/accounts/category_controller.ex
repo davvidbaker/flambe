@@ -1,10 +1,10 @@
-defmodule SteadyWeb.CategoryController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.CategoryController do
+  use FlambeWeb, :controller
 
   alias Flambe.Accounts
   alias Flambe.Accounts.Category
 
-  action_fallback(SteadyWeb.FallbackController)
+  action_fallback(FlambeWeb.FallbackController)
 
   def index(conn, _params) do
     categories = Accounts.list_categories()

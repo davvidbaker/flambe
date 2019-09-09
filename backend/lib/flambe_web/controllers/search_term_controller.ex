@@ -1,10 +1,10 @@
-defmodule SteadyWeb.SearchTermController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.SearchTermController do
+  use FlambeWeb, :controller
 
   alias Flambe.Accounts
   alias Flambe.Accounts.SearchTerm
 
-  action_fallback(SteadyWeb.FallbackController)
+  action_fallback(FlambeWeb.FallbackController)
 
   def index(conn, _params) do
     search_term = Accounts.list_search_terms()
@@ -14,7 +14,7 @@ defmodule SteadyWeb.SearchTermController do
   def create(conn, %{"user_id" => user_id, "search_term" => search_term_params}) do
     with {:ok, %SearchTerm{} = search_term} <-
            Accounts.create_search_term(user_id, search_term_params) do
-      SteadyWeb.Endpoint.broadcast!("events:" <> Integer.to_string(user_id), "search_terms", %{
+      FlambeWeb.Endpoint.broadcast!("events:" <> Integer.to_string(user_id), "search_terms", %{
         term: search_term.term,
         timestamp: search_term.timestamp_integer
       })

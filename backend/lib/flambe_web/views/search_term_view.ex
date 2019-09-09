@@ -1,6 +1,6 @@
-defmodule SteadyWeb.SearchTermView do
-  use SteadyWeb, :view
-  alias SteadyWeb.SearchTermView
+defmodule FlambeWeb.SearchTermView do
+  use FlambeWeb, :view
+  alias FlambeWeb.SearchTermView
 
   def render("index.json", %{search_term: search_term}) do
     %{data: render_many(search_term, SearchTermView, "search_term.json")}

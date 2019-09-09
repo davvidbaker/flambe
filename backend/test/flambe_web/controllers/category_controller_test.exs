@@ -1,5 +1,5 @@
-defmodule SteadyWeb.CategoryControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.CategoryControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.Accounts
   alias Flambe.Accounts.Category

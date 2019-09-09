@@ -1,6 +1,6 @@
-defmodule SteadyWeb.TodoView do
-  use SteadyWeb, :view
-  alias SteadyWeb.TodoView
+defmodule FlambeWeb.TodoView do
+  use FlambeWeb, :view
+  alias FlambeWeb.TodoView
 
   def render("index.json", %{todos: todos}) do
     %{data: render_many(todos, TodoView, "todo.json")}
