@@ -1,6 +1,6 @@
-defmodule SteadyWeb.AttentionView do
-  use SteadyWeb, :view
-  alias SteadyWeb.AttentionView
+defmodule FlambeWeb.AttentionView do
+  use FlambeWeb, :view
+  alias FlambeWeb.AttentionView
 
   def render("index.json", %{attentions: attentions}) do
     %{data: render_many(attentions, AttentionView, "attention.json")}

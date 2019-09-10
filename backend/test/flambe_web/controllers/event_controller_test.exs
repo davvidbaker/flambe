@@ -1,7 +1,7 @@
 # 💁 Right now you can only create events. They can't be changed.
 
-defmodule SteadyWeb.EventControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.EventControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.Traces
   alias Flambe.Traces.{Activity, Trace}

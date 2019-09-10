@@ -1,6 +1,6 @@
-defmodule SteadyWeb.CategoryView do
-  use SteadyWeb, :view
-  alias SteadyWeb.CategoryView
+defmodule FlambeWeb.CategoryView do
+  use FlambeWeb, :view
+  alias FlambeWeb.CategoryView
 
   def render("index.json", %{categories: categories}) do
     %{data: render_many(categories, CategoryView, "category.json")}

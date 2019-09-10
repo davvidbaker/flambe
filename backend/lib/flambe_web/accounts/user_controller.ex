@@ -1,10 +1,10 @@
-defmodule SteadyWeb.UserController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.UserController do
+  use FlambeWeb, :controller
 
   alias Flambe.{Accounts, Traces}
   alias Flambe.Accounts.User
 
-  action_fallback(SteadyWeb.FallbackController)
+  action_fallback(FlambeWeb.FallbackController)
 
   def index(conn, _params) do
     users = Accounts.list_users()

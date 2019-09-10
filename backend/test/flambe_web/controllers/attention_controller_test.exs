@@ -1,5 +1,5 @@
-defmodule SteadyWeb.AttentionControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.AttentionControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.Accounts
   alias Flambe.Accounts.Attention

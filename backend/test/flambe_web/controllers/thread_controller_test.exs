@@ -1,5 +1,5 @@
-defmodule SteadyWeb.ThreadControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.ThreadControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.Traces
   alias Flambe.Traces.{Thread, Trace}

@@ -1,5 +1,5 @@
-defmodule SteadyWeb.SessionController do
-  use SteadyWeb, :controller
+defmodule FlambeWeb.SessionController do
+  use FlambeWeb, :controller
 
   alias Flambe.Accounts
 

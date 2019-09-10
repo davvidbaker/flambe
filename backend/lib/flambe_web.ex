@@ -1,12 +1,12 @@
-defmodule SteadyWeb do
+defmodule FlambeWeb do
   @moduledoc """
   The entrypoint for defining your web interface, such
   as controllers, views, channels and so on.
 
   This can be used in your application as:
 
-      use SteadyWeb, :controller
-      use SteadyWeb, :view
+      use FlambeWeb, :controller
+      use FlambeWeb, :view
 
   The definitions below will be executed for every view,
   controller, etc, so keep them short and clean, focused
@@ -19,18 +19,18 @@ defmodule SteadyWeb do
 
   def controller do
     quote do
-      use Phoenix.Controller, namespace: SteadyWeb
+      use Phoenix.Controller, namespace: FlambeWeb
       import Plug.Conn
-      import SteadyWeb.Router.Helpers
-      import SteadyWeb.Gettext
+      import FlambeWeb.Router.Helpers
+      import FlambeWeb.Gettext
     end
   end
 
   def view do
     quote do
       use Phoenix.View,
-        root: "lib/steady_web/templates",
-        namespace: SteadyWeb
+        root: "lib/flambe_web/templates",
+        namespace: FlambeWeb
 
       # Import convenience functions from controllers
       import Phoenix.Controller, only: [get_flash: 2, view_module: 1]
@@ -38,9 +38,9 @@ defmodule SteadyWeb do
       # Use all HTML functionality (forms, tags, etc)
       use Phoenix.HTML
 
-      import SteadyWeb.Router.Helpers
-      import SteadyWeb.ErrorHelpers
-      import SteadyWeb.Gettext
+      import FlambeWeb.Router.Helpers
+      import FlambeWeb.ErrorHelpers
+      import FlambeWeb.Gettext
     end
   end
 
@@ -55,7 +55,7 @@ defmodule SteadyWeb do
   def channel do
     quote do
       use Phoenix.Channel
-      import SteadyWeb.Gettext
+      import FlambeWeb.Gettext
     end
   end
 

@@ -1,6 +1,6 @@
-defmodule SteadyWeb.UserView do
-  use SteadyWeb, :view
-  alias SteadyWeb.UserView
+defmodule FlambeWeb.UserView do
+  use FlambeWeb, :view
+  alias FlambeWeb.UserView
 
   def render("index.json", %{users: users}) do
     %{data: render_many(users, UserView, "user.json")}

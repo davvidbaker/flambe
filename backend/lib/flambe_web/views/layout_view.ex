@@ -1,3 +1,3 @@
-defmodule SteadyWeb.LayoutView do
-  use SteadyWeb, :view
+defmodule FlambeWeb.LayoutView do
+  use FlambeWeb, :view
 end

@@ -1,5 +1,5 @@
-defmodule SteadyWeb.ActivityControllerTest do
-  use SteadyWeb.ConnCase
+defmodule FlambeWeb.ActivityControllerTest do
+  use FlambeWeb.ConnCase
 
   alias Flambe.Traces
   alias Flambe.Traces.Activity
