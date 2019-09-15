@@ -15,11 +15,11 @@ use Mix.Config
 # which you typically run after static files are built.
 config :flambe, FlambeWeb.Endpoint,
   load_from_system_env: true,
-  url: [host: "flambe-postgres-1.cer3mpahz070.us-west-2.rds.amazonaws.com", port: 80],
+  url: [host: "ec2-54-81-246-103.compute-1.amazonaws.com", port: 80],
   cache_static_manifest: "priv/static/cache_manifest.json"
 
 # ⚠️ or something like this
-config :flambe, frontend_url: "https://shteady.now.sh"
+config :flambe, frontend_url: "https://flambe.now.sh"
 
 # Do not print debug messages in production
 config :logger, level: :info
