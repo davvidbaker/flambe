@@ -25,7 +25,7 @@ config :flambe, FlambeWeb.Endpoint,
       max_request_line_length: 8096
     ]
   ],
-  # url: [port: 443],
+  url: [host: "https://flambe-server.com", port: 443],
   force_ssl: [hsts: true],
   https: [
     #    :inet6,
