@@ -45,6 +45,8 @@ defmodule FlambeWeb.Endpoint do
     key: "_flambe_key",
     signing_salt: "IFiVAZWC"
   )
+  require IEx
+  IEx.pry
   plug Flambe.Plug.ConnInterceptor
 
 
