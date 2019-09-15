@@ -64,5 +64,9 @@
     "modulePaths": [
       "src"
     ]
+  },
+  "devDependencies": {
+    "webpack-cli": "^3.3.8",
+    "webpack": "^4.29.6"
   }
 }
