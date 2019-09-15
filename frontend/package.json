@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "build:prod": "(cd packages/core && npm run build)",
+    "deploy:prod": "(cd packages/core/dist && now)",
     "build:babel:cjs": "lerna exec --scope @flambe/logo -- babel src -d dist/cjs --config-file ../../../../../.babelrc",
     "analyze": "webpack-bundle-analyzer stats.json",
     "start": "(cd packages/core && npm start)",

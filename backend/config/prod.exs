@@ -21,7 +21,13 @@ config :flambe, FlambeWeb.Endpoint,
     :inet6,
     port: 443,
     certfile: "/etc/letsencrypt/live/flambe-server.com/fullchain.pem",
-    keyfile: "/etc/letsencrypt/live/flambe-server.com/privkey.pem"
+    keyfile: "/etc/letsencrypt/live/flambe-server.com/privkey.pem",
+    protocol_options: [
+      max_header_name_length: 64,
+      max_header_value_length: 4096,
+      max_headers: 100,
+      max_request_line_length: 8096
+    ]
   ]
 
 # ⚠️ or something like this
