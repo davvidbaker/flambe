@@ -45,12 +45,15 @@ defmodule FlambeWeb.Endpoint do
     key: "_flambe_key",
     signing_salt: "IFiVAZWC"
   )
+  plug Flambe.Plug.ConnInterceptor
+
 
   plug(
     CORSPlug,
     origin: [Application.get_env(:flambe, :frontend_url)],
     headers: ["Cache", "Content-Type", "x-csrf-token"]
   )
+
 
   plug(FlambeWeb.Router)
 
