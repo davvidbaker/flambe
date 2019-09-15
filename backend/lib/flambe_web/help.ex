@@ -5,6 +5,7 @@ defmodule Flambe.Plug.ConnInterceptor do
 
   def call(conn, _default) do
     require IEx
+    IEx.pry
     IO.inspect(conn, label: "conn")
     conn
   end
