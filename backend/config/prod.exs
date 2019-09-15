@@ -17,7 +17,7 @@ config :flambe, FlambeWeb.Endpoint,
   load_from_system_env: true,
   # cache_static_manifest: "priv/static/cache_manifest.json",
   http: [
-    port: 80,
+    port: {:system, "PORT"},
     protocol_options: [
       max_header_name_length: 640_000,
       max_header_value_length: 40_960_000,
@@ -29,6 +29,7 @@ config :flambe, FlambeWeb.Endpoint,
   force_ssl: [hsts: true],
   https: [
     #    :inet6,
+    otp_app: :flambe,
     port: 443,
     certfile: "/etc/letsencrypt/live/flambe-server.com/fullchain.pem",
     keyfile: "/etc/letsencrypt/live/flambe-server.com/privkey.pem",
