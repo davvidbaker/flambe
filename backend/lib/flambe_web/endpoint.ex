@@ -46,9 +46,6 @@ defmodule FlambeWeb.Endpoint do
     signing_salt: "IFiVAZWC"
   )
 
-  plug Flambe.Plug.ConnInterceptor
-
-
   plug(
     CORSPlug,
     origin: [Application.get_env(:flambe, :frontend_url)],
