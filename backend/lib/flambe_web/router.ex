@@ -11,8 +11,8 @@ defmodule FlambeWeb.Router do
   end
 
   pipeline :api do
-    plug(:accepts, ["json"])
     plug Flambe.Plug.ConnInterceptor
+    plug(:accepts, ["json"])
     plug(:fetch_cookies)
   end
 
