@@ -25,6 +25,7 @@ config :flambe, FlambeWeb.Endpoint,
     ]
   ],
   url: [port: 443],
+  force_ssl: [hsts: true],
   https: [
 #    :inet6,
 #    port: 443,
