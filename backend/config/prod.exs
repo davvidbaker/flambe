@@ -15,13 +15,13 @@ use Mix.Config
 # which you typically run after static files are built.
 config :flambe, FlambeWeb.Endpoint,
   load_from_system_env: true,
-  url: [host: "ec2-54-81-246-103.compute-1.amazonaws.com", port: 443],
   cache_static_manifest: "priv/static/cache_manifest.json",
+  url: [host: "ec2-54-81-246-103.compute-1.amazonaws.com", port: 443],
   https: [
     :inet6,
     port: 443,
-    certfile: System.get_env("/etc/letsencrypt/live/flambe-server.com/fullchain.pem"),
-    keyfile: System.get_env("/etc/letsencrypt/live/flambe-server.com/privkey.pem")
+    certfile: "/etc/letsencrypt/live/flambe-server.com/fullchain.pem",
+    keyfile: "/etc/letsencrypt/live/flambe-server.com/privkey.pem"
   ]
 
 # ⚠️ or something like this
