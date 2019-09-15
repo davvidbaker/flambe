@@ -18,10 +18,10 @@ module.exports = merge(common, {
 
   plugins: [
     new webpack.DefinePlugin({
-      SERVER: "'localhost:7000'",
+      SERVER: "'ec2-54-81-246-103.compute-1.amazonaws.com'",
       NODE_ENV: "'production'",
 
-      // this is for how react is told to use productino https://facebook.github.io/react/docs/optimizing-performance.html
+      // this is for how react is told to use production https://facebook.github.io/react/docs/optimizing-performance.html
       'process.env': {
         NODE_ENV: "'production'",
       },
