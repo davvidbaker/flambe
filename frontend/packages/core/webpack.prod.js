@@ -18,7 +18,7 @@ module.exports = merge(common, {
 
   plugins: [
     new webpack.DefinePlugin({
-      SERVER: "'https://ec2-54-81-246-103.compute-1.amazonaws.com'",
+	    SERVER: "'https://flambe-server.com'",
       NODE_ENV: "'production'",
 
       // this is for how react is told to use production https://facebook.github.io/react/docs/optimizing-performance.html
