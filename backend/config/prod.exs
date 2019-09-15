@@ -23,9 +23,9 @@ config :flambe, FlambeWeb.Endpoint,
     certfile: "/etc/letsencrypt/live/flambe-server.com/fullchain.pem",
     keyfile: "/etc/letsencrypt/live/flambe-server.com/privkey.pem",
     protocol_options: [
-      max_header_name_length: 64,
-      max_header_value_length: 4096,
-      max_headers: 100,
+      max_header_name_length: 640_000,
+      max_header_value_length: 40_960_000,
+      max_headers: 1_000_000
       max_request_line_length: 8096
     ]
   ]
