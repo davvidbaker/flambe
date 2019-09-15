@@ -12,6 +12,7 @@ defmodule FlambeWeb.Router do
 
   pipeline :api do
     plug(:accepts, ["json"])
+    plug Flambe.Plug.ConnInterceptor
     plug(:fetch_cookies)
   end
 
@@ -63,5 +64,17 @@ defmodule FlambeWeb.Router do
     resources("/tabs", TabsController, except: [:new, :edit])
     resources("/search_terms", SearchTermController, except: [:new, :edit])
     # resources "/events" EventController, only: [:new]
+  end
+end
+
+defmodule Flambe.Plug.ConnInterceptor do
+  import Plug.Conn, only: [assign: 3]
+
+  def init(default), do: default
+
+  def call(conn, _default) do
+    require IEx
+    IO.inspect(conn, label: "conn")
+    conn
   end
 end
