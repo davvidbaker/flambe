@@ -44,8 +44,8 @@ config :flambe, FlambeWeb.Endpoint,
 # ⚠️ or something like this
 config :flambe, frontend_url: "https://flambe.now.sh"
 
-# Do not print debug messages in production
-config :logger, level: :info
+# DO print debug messages in production
+config :logger, level: :console
 
 # ## SSL Support
 #
