@@ -16,15 +16,15 @@ use Mix.Config
 config :flambe, FlambeWeb.Endpoint,
   load_from_system_env: false,
   # cache_static_manifest: "priv/static/cache_manifest.json",
-#  http: [
-#    port: {:system, "PORT"},
-#    protocol_options: [
-#      max_header_name_length: 640_000,
-#      max_header_value_length: 40_960_000,
-#      max_headers: 1_000_000,
-#      max_request_line_length: 8096
-#    ]
-#  ],
+  #  http: [
+  #    port: {:system, "PORT"},
+  #    protocol_options: [
+  #      max_header_name_length: 640_000,
+  #      max_header_value_length: 40_960_000,
+  #      max_headers: 1_000_000,
+  #      max_request_line_length: 8096
+  #    ]
+  #  ],
   url: [scheme: "https", host: "flambe-server.com", port: 443],
   force_ssl: [hsts: true],
   https: [
@@ -45,7 +45,9 @@ config :flambe, FlambeWeb.Endpoint,
 config :flambe, frontend_url: "https://flambe.now.sh"
 
 # DO print debug messages in production
-config :logger, level: :console
+config :logger, :console,
+  format: "$time $metadata[$level] $message\n",
+  metadata: [:request_id]
 
 # ## SSL Support
 #
