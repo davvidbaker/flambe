@@ -71,7 +71,7 @@ const stateSaver = () => {
     settings: state.settings,
     settingsVisible: state.settingsVisible,
     // This kind of state should not be saved to local storage. Should probably instead be a cached response?
-    timeline: getTimeline(state),
+    // timeline: getTimeline(state),
     user: getUser(state),
     view: state.view,
     viewThread: state.viewThread,
