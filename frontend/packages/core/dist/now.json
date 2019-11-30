@@ -1,4 +1,5 @@
 {
   "routes": [{ "src": "/.*(?<!js)$", "dest": "/" }],
-  "public": true
+  "public": true,
+  "alias": "flambe"
 }
