@@ -78,7 +78,7 @@
     "webpack-cli": "^3.2.3",
     "webpack-dev-server": "^3.2.1",
     "webpack-merge": "^4.2.1",
-    "ws": "^6.1.4"
+    "ws": "^7.4.6"
   },
   "jest": {
     "modulePaths": [
