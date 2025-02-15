@@ -1,91 +1,29 @@
 {
-  "name": "flambe",
+  "name": "frontend",
   "private": true,
   "version": "0.0.0",
-  "description": "",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "build:prod": "(cd packages/core && npm run build)",
-    "deploy:prod": "(cd packages/core/dist && now --prod)",
-    "build:babel:cjs": "lerna exec --scope @flambe/logo -- babel src -d dist/cjs --config-file ../../../../../.babelrc",
-    "analyze": "webpack-bundle-analyzer stats.json",
-    "start": "(cd packages/core && npm start)",
-    "start:docz__old": "(cd packages/docz && npm start)",
-    "start:docz": "docz dev",
-    "build:docz": "docz build",
-    "test": "lerna run test",
-    "flow": "flow",
-    "lib": "lerna run lib",
-    "bootstrap": "lerna bootstrap",
-    "cypress:open": "cypress open"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/davvidbaker/flame-chart.git"
-  },
-  "author": "",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/davvidbaker/flame-chart/issues"
-  },
-  "homepage": "https://github.com/davvidbaker/flame-chart#readme",
-  "devDependencies": {
-    "@babel/core": "^7.3.4",
-    "@babel/plugin-proposal-class-properties": "^7.3.4",
-    "@babel/plugin-proposal-do-expressions": "^7.2.0",
-    "@babel/plugin-proposal-object-rest-spread": "^7.3.4",
-    "@babel/plugin-proposal-optional-chaining": "^7.2.0",
-    "@babel/plugin-proposal-pipeline-operator": "^7.3.2",
-    "@babel/plugin-syntax-dynamic-import": "^7.2.0",
-    "@babel/plugin-transform-react-jsx": "^7.3.0",
-    "@babel/plugin-transform-regenerator": "^7.3.4",
-    "@babel/polyfill": "^7.2.5",
-    "@babel/preset-env": "^7.3.4",
-    "@babel/preset-es2015": "^7.0.0-beta.53",
-    "@babel/preset-flow": "^7.0.0",
-    "@babel/preset-react": "^7.0.0",
-    "@babel/preset-stage-2": "^7.0.0",
-    "babel-core": "^7.0.0-beta.51",
-    "babel-eslint": "^10.0.1",
-    "babel-jest": "^24.1.0",
-    "babel-loader": "^8.0.5",
-    "babel-plugin-lodash": "^3.3.4",
-    "babel-plugin-styled-components": "^1.10.0",
-    "chalk": "^2.4.2",
-    "chokidar": "^2.1.2",
-    "cross-env": "^5.2.0",
-    "css-loader": "^2.1.0",
-    "cypress": "^3.1.5",
-    "docz": "^1.2.0",
-    "docz-theme-default": "^1.2.0",
-    "eslint": "^5.14.1",
-    "eslint-config-airbnb": "^17.1.0",
-    "eslint-plugin-babel": "^5.1.0",
-    "eslint-plugin-cypress": "^2.0.1",
-    "eslint-plugin-import": "^2.11.0",
-    "eslint-plugin-jsx-a11y": "^6.0.2",
-    "eslint-plugin-react": "^7.12.4",
-    "eslint-plugin-react-hooks": "^1.3.0",
-    "flow-bin": "^0.53.1",
-    "html-webpack-plugin": "^3.2.0",
-    "image-webpack-loader": "^4.3.1",
-    "jest": "^22.4.3",
-    "nodemon": "^1.11.0",
-    "prop-types": "^15.5.10",
-    "uglifyjs-webpack-plugin": "^1.2.6",
-    "webpack": "^4.29.6",
-    "webpack-bundle-analyzer": "^3.0.4",
-    "webpack-cli": "^3.2.3",
-    "webpack-dev-server": "^3.2.1",
-    "webpack-merge": "^4.2.1",
-    "ws": "^6.1.4"
-  },
-  "jest": {
-    "modulePaths": [
-      "packages/*/src"
-    ]
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "lerna": "^3.8.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.19.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.18",
+    "globals": "^15.14.0",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.22.0",
+    "vite": "^6.1.0"
   }
 }

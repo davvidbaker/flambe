@@ -1,19 +1,23 @@
 defmodule Flambe.Application do
-  use Application
-
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
-  def start(_type, _args) do
-    import Supervisor.Spec
+  @moduledoc false
 
-    # Define workers and child supervisors to be supervised
+  use Application
+
+  @impl true
+  def start(_type, _args) do
     children = [
-      # Start the Ecto repository
-      supervisor(Flambe.Repo, []),
-      # Start the endpoint when the application starts
-      supervisor(FlambeWeb.Endpoint, [])
-      # Start your own worker by calling: Flambe.Worker.start_link(arg1, arg2, arg3)
-      # worker(Flambe.Worker, [arg1, arg2, arg3]),
+      FlambeWeb.Telemetry,
+      Flambe.Repo,
+      {DNSCluster, query: Application.get_env(:flambe, :dns_cluster_query) || :ignore},
+      {Phoenix.PubSub, name: Flambe.PubSub},
+      # Start the Finch HTTP client for sending emails
+      {Finch, name: Flambe.Finch},
+      # Start a worker by calling: Flambe.Worker.start_link(arg)
+      # {Flambe.Worker, arg},
+      # Start to serve requests, typically the last entry
+      FlambeWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -24,6 +28,7 @@ defmodule Flambe.Application do
 
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.
+  @impl true
   def config_change(changed, _new, removed) do
     FlambeWeb.Endpoint.config_change(changed, removed)
     :ok

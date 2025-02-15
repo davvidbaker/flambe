@@ -1,122 +1,50 @@
-# flame-chart🔥🔥🔥 web component
+# React + TypeScript + Vite
 
-```
-npm start
-```
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
----
+Currently, two official plugins are available:
 
-# Flame Chart - for keeping track of where I am and making sure I come back up for air(✍️)
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-- easy color changing UI
-- easy editing, drag and drop? - add child
-- off-topic-initializers(?) (like the flow events in Chrome DevTools)
-- details (optional)
-- multiple threads and flow events/initializers between threads
+## Expanding the ESLint configuration
 
----
+If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
 
-## Local Development
+- Configure the top-level `parserOptions` property like this:
 
-```
-npm install
-npm start
-```
-
-_When struggling to upgrade a package, this tends to work (after updating version number in `package.json`):_
-
-```
-lerna clean --yes && npm i && lerna bootstrap --hoist && npm start
+```js
+export default tseslint.config({
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
 ```
 
-## Left out for now
+- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
+- Optionally add `...tseslint.configs.stylisticTypeChecked`
+- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
 
-- async (see line 217 of TracingModel.js)
+```js
+// eslint.config.js
+import react from 'eslint-plugin-react'
 
-Trace Event possible phase values from ChromeDevTools
-
+export default tseslint.config({
+  // Set the react version
+  settings: { react: { version: '18.3' } },
+  plugins: {
+    // Add the react plugin
+    react,
+  },
+  rules: {
+    // other rules...
+    // Enable its recommended rules
+    ...react.configs.recommended.rules,
+    ...react.configs['jsx-runtime'].rules,
+  },
+})
 ```
- SDK.TracingModel.Phase = {
-   Begin: 'B',
-   End: 'E',
-   Complete: 'X',
-   Instant: 'I',
-   AsyncBegin: 'S',
-   AsyncStepInto: 'T',
-   AsyncStepPast: 'p',
-   AsyncEnd: 'F',
-   NestableAsyncBegin: 'b',
-   NestableAsyncEnd: 'e',
-   NestableAsyncInstant: 'n',
-   FlowBegin: 's',
-   FlowStep: 't',
-   FlowEnd: 'f',
-   Metadata: 'M',
-   Counter: 'C',
-   Sample: 'P',
-   CreateObject: 'N',
-   SnapshotObject: 'O',
-   DeleteObject: 'D'
- };
-```
-
----
-
-## Why not just fork Chrome DevTools?
-
-Several reasons:
-
-- thought I could learn more starting more from scratch
-- DevTools Frontend is a complicated beast, with much more functionality than I need. It's also _a lot_ to take in.
-- I like using Redux to manage state. **DevTools is super OG fresh**. It has like no dependencies.
-
----
-
-## Events
-
-**Each event only points to a single activity.**
-
-Events that start a new activity:
-
-- `B`: Begin
-  - begin a task
-- `Q`: question
-  - ask a question
-
-Events that end an activity:
-
-- `E`: End
-  - end an activity
-- `V`: Resolve
-  - successfully complete an activity
-- `J`: Reject
-  - abandon an activity
-
-Other
-
-- `S`: Suspend
-  - suspend work on an activity
-- `R`: Resume
-  - resume work on an activity
-- `X`: Resurrect
-  - resurrect an activity and begin working on it again
-
-### Not implemented
-
-- `S`: Spark/Conception
-  - When an activity is thought up (sparked).
-  - 1 activity per event (I think this makes most sense).
-- `Z`: Sleep
-- `W`: Wake
-
----
-
-## Dependent shoutouts
-
-_add links later_
-
-- React DnD
-- React Color
-- Styled Components
-- Redux
-- Downshift

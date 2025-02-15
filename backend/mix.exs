@@ -1,13 +1,12 @@
-defmodule Flambe.Mixfile do
+defmodule Flambe.MixProject do
   use Mix.Project
 
   def project do
     [
       app: :flambe,
-      version: "0.0.1",
-      elixir: "~> 1.4",
+      version: "0.1.0",
+      elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:phoenix, :gettext] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps()
@@ -20,13 +19,7 @@ defmodule Flambe.Mixfile do
   def application do
     [
       mod: {Flambe.Application, []},
-      extra_applications: [
-        :logger,
-        :runtime_tools,
-        :ueberauth,
-        :ueberauth_github,
-        :ueberauth_identity
-      ]
+      extra_applications: [:logger, :runtime_tools]
     ]
   end
 
@@ -39,37 +32,54 @@ defmodule Flambe.Mixfile do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:cors_plug, "~> 1.5"},
-      {:cowboy, "~> 1.0"},
-      {:ex_doc, "~> 0.13"},
-      {:gettext, "~> 0.11"},
-      {:guardian, "~> 1.1"},
-      {:phoenix, "~> 1.3.4"},
-      {:phoenix_pubsub, "~> 1.0"},
-      {:phoenix_ecto, "~> 3.2"},
-      {:phoenix_html, "~> 2.10"},
-      {:phoenix_live_reload, "~> 1.0", only: :dev},
+      {:phoenix, "~> 1.7.19"},
+      {:phoenix_ecto, "~> 4.5"},
+      {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
-      {:ueberauth, "~> 0.4"},
-      {:ueberauth_github, "~> 0.6"},
-      {:ueberauth_identity, "~> 0.2"},
-      {:comeonin, "~> 4.1"},
-      {:pbkdf2_elixir, "~> 0.12"},
-      {:bcrypt_elixir, "~> 1.0"}
+      {:phoenix_html, "~> 4.1"},
+      {:phoenix_live_reload, "~> 1.2", only: :dev},
+      {:phoenix_live_view, "~> 1.0.0"},
+      {:floki, ">= 0.30.0", only: :test},
+      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
+      {:heroicons,
+       github: "tailwindlabs/heroicons",
+       tag: "v2.1.1",
+       sparse: "optimized",
+       app: false,
+       compile: false,
+       depth: 1},
+      {:swoosh, "~> 1.5"},
+      {:finch, "~> 0.13"},
+      {:telemetry_metrics, "~> 1.0"},
+      {:telemetry_poller, "~> 1.0"},
+      {:gettext, "~> 0.26"},
+      {:jason, "~> 1.2"},
+      {:dns_cluster, "~> 0.1.1"},
+      {:bandit, "~> 1.5"}
     ]
   end
 
   # Aliases are shortcuts or tasks specific to the current project.
-  # For example, to create, migrate and run the seeds file at once:
+  # For example, to install project dependencies and perform other setup tasks, run:
   #
-  #     $ mix ecto.setup
+  #     $ mix setup
   #
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
+      setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate", "test"]
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
+      "assets.build": ["tailwind flambe", "esbuild flambe"],
+      "assets.deploy": [
+        "tailwind flambe --minify",
+        "esbuild flambe --minify",
+        "phx.digest"
+      ]
     ]
   end
 end

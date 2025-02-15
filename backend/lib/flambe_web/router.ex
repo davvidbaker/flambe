@@ -1,67 +1,44 @@
 defmodule FlambeWeb.Router do
   use FlambeWeb, :router
-  require Ueberauth
 
   pipeline :browser do
-    plug(Ueberauth)
-    plug(:accepts, ["html"])
-    plug(:fetch_session)
-    plug(:fetch_flash)
-    plug(:protect_from_forgery)
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {FlambeWeb.Layouts, :root}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
   end
 
   pipeline :api do
-    plug(:accepts, ["json"])
-    plug(:fetch_cookies)
-  end
-
-  pipeline :authenticate_user do
-    plug(Flambe.AuthPipeline)
+    plug :accepts, ["json"]
   end
 
   scope "/", FlambeWeb do
-    # Use the default browser stack
-    pipe_through([:browser, :authenticate_user])
+    pipe_through :browser
 
-    get("/", PageController, :index)
-  end
-
-  scope "/", FlambeWeb do
-    pipe_through(:api)
-
-    resources("/sessions", SessionController, only: [:create, :delete], singleton: true)
-  end
-
-  scope "/auth", FlambeWeb do
-    pipe_through([:api])
-    # ⚠️ this might be unsafe?
-    # actually I don't even need this if I i'm using the api pipeline, right?
-    # 🤔 is it ok to use the api pipeline for all these auth endpoints?
-    get("/get-csrf-token", AuthController, :get_csrf)
-
-    get("/:provider", AuthController, :request)
-    get("/:provider/callback", AuthController, :callback)
-    post("/:provider/callback", AuthController, :callback)
-    post("/identity/callback", AuthController, :identity_callback)
-    delete("/logout", AuthController, :delete)
+    get "/", PageController, :home
   end
 
   # Other scopes may use custom stacks.
-  scope "/api", FlambeWeb do
-    # ⚠️ add authentication in eventually..., :authenticate_user]
-    pipe_through([:api, :authenticate_user])
+  # scope "/api", FlambeWeb do
+  #   pipe_through :api
+  # end
 
-    resources("/users", UserController, except: [:new, :edit])
-    resources("/traces", TraceController, except: [:new, :edit])
-    resources("/events", EventController, only: [:create, :update])
-    resources("/activities", ActivityController, only: [:create, :show, :delete, :update])
-    resources("/categories", CategoryController, except: [:new, :edit])
-    resources("/threads", ThreadController, except: [:new, :edit])
-    resources("/todos", TodoController, except: [:new, :edit])
-    resources("/mantras", MantraController, except: [:new, :edit])
-    resources("/attentions", AttentionController, except: [:new, :edit])
-    resources("/tabs", TabsController, except: [:new, :edit])
-    resources("/search_terms", SearchTermController, except: [:new, :edit])
-    # resources "/events" EventController, only: [:new]
+  # Enable LiveDashboard and Swoosh mailbox preview in development
+  if Application.compile_env(:flambe, :dev_routes) do
+    # If you want to use the LiveDashboard in production, you should put
+    # it behind authentication and allow only admins to access it.
+    # If your application does not have an admins-only section yet,
+    # you can use Plug.BasicAuth to set up some basic authentication
+    # as long as you are also using SSL (which you should anyway).
+    import Phoenix.LiveDashboard.Router
+
+    scope "/dev" do
+      pipe_through :browser
+
+      live_dashboard "/dashboard", metrics: FlambeWeb.Telemetry
+      forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
   end
 end
