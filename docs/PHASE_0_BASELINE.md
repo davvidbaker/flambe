@@ -27,8 +27,9 @@ It currently verifies:
   frontend; and
 - deleting a thread also deletes its attention records.
 
-The local browser smoke flow uses a deterministic development/test account and
-requires a running frontend and backend:
+The local browser smoke flow uses a deterministic development/test account.
+It can run against the Vite dev server or, after building the frontend, the
+Phoenix-served production bundle:
 
 ```sh
 cd backend
@@ -36,6 +37,10 @@ mix flambe.seed_e2e
 
 cd frontend
 env -u ELECTRON_RUN_AS_NODE npm run cypress:smoke
+
+# after `npm run build` and starting Phoenix
+CYPRESS_baseUrl=http://localhost:4000 \
+  env -u ELECTRON_RUN_AS_NODE npm run cypress:smoke
 ```
 
 It verifies login, visible flame-chart canvas, and persisted thread-collapse
@@ -57,9 +62,9 @@ starting point.
 | `frontend: jest packages/core/src/utilities/zoom.test.js --runInBand` | Fails before tests run | The legacy `babel-jest` integration crashes on current Node (`Cannot read properties of undefined (reading 'cwd')`). |
 | Browser smoke test | Passing locally | `npm run cypress:smoke` validates local login, trace load, flame-chart visibility, and persisted collapse state when credentials are supplied. |
 
-The checked-in GitHub Actions workflow runs the focused backend and browser
-smoke checks against disposable PostgreSQL service databases. It does not run
-the failing legacy suite as a required check.
+The checked-in GitHub Actions workflow runs the focused backend checks and the
+Phoenix-served Vite browser smoke check against disposable PostgreSQL service
+databases. It does not run the failing legacy suite as a required check.
 
 Do not hide these failures by removing tests or by making CI ignore them. Phase 0
 continues with small, working regression tests while the obsolete suites are

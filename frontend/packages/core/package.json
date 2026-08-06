@@ -4,15 +4,7 @@
   "main": "lib/index.js",
   "license": "MIT",
   "private": true,
-  "scripts": {
-    "build": "webpack --config webpack.prod.js",
-    "build:lib": "webpack --config webpack.lib.js",
-    "start": "NODE_OPTIONS=--openssl-legacy-provider webpack-dev-server --config webpack.dev.js",
-    "stats": "webpack --config webpack.prod.js --profile --json > stats.json",
-    "test": "jest",
-    "clean": "rm -rf lib && mkdir lib",
-    "lib": "npm run clean && npm run build:lib"
-  },
+  "scripts": {},
   "dependencies": {
     "@babel/polyfill": "^7.0.0-beta.46",
     "@flambe/logo": "0.1.12",
@@ -40,7 +32,6 @@
     "react-dnd-html5-backend": "^7.0.2",
     "react-dom": "^16.8.3",
     "react-draggable": "^3.2.0",
-    "react-hot-loader": "^4.7.1",
     "react-measure": "^2.2.4",
     "react-modal": "^3.8.1",
     "react-redux": "^6.0.1",
@@ -63,10 +54,5 @@
     "modulePaths": [
       "src"
     ]
-  },
-  "devDependencies": {
-    "style-loader": "^0.21.0",
-    "webpack": "^4.29.6",
-    "webpack-cli": "^3.2.3"
   }
 }
