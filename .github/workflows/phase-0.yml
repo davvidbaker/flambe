@@ -1,0 +1,94 @@
+name: Phase 0 baseline
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend-core:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: flambe_test
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18.3'
+          otp-version: '27.3'
+      - name: Install backend dependencies
+        working-directory: backend
+        run: mix deps.get
+      - name: Run focused backend baseline checks
+        working-directory: backend
+        run: |
+          MIX_ENV=test mix ecto.create
+          MIX_ENV=test mix ecto.migrate
+          MIX_ENV=test mix test test/flambe/core_flow_test.exs test/flambe_web/views/api_contract_test.exs
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: flambe_ci
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.20.3'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18.3'
+          otp-version: '27.3'
+      - name: Install backend dependencies and seed CI data
+        working-directory: backend
+        run: |
+          mix deps.get
+          MIX_ENV=ci mix ecto.create
+          MIX_ENV=ci mix ecto.migrate
+          MIX_ENV=ci mix flambe.seed_e2e
+      - name: Start Phoenix
+        working-directory: backend
+        run: MIX_ENV=ci mix phx.server > /tmp/flambe-phoenix.log 2>&1 &
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --legacy-peer-deps
+      - name: Start frontend
+        working-directory: frontend
+        run: npm run start > /tmp/flambe-frontend.log 2>&1 &
+      - name: Run browser smoke test
+        working-directory: frontend
+        run: |
+          until curl --fail --silent http://localhost:8081/login; do sleep 1; done
+          until curl --globoff --fail --silent http://[::1]:4000/auth/get-csrf-token; do sleep 1; done
+          npm run cypress:smoke
+      - name: Upload server logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-0-server-logs
+          path: |
+            /tmp/flambe-phoenix.log
+            /tmp/flambe-frontend.log

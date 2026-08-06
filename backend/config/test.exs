@@ -9,6 +9,13 @@ config :flambe, FlambeWeb.Endpoint,
 # for faster testing do less hashing
 config :pbkdf2_elixir, :rounds, 1
 
+# Test-only signing key. This lets focused authentication checks exercise the
+# same token flow used by the frontend without depending on the ignored
+# development secret file.
+config :flambe, Flambe.Guardian,
+  issuer: "flambe-test",
+  secret_key: "e2be5f3708585d171c3174734341bf7c0a849e9a62fa4c08803d3dd7ca5e8d5c"
+
 # Print only warnings and errors during test
 config :logger, level: :warn
 

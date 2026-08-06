@@ -32,3 +32,8 @@ default `Main` trace. The API runs at http://localhost:4000.
 
 GitHub sign-in remains optional; configure `GITHUB_CLIENT_ID` and
 `GITHUB_CLIENT_SECRET` in the shell that starts Phoenix to enable it.
+
+## Local data safety
+
+See [the local database workflow](docs/LOCAL_DATABASE.md) before backing up,
+restoring, or resetting a database.
