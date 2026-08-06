@@ -29,3 +29,10 @@ erl_crash.dump
 
 **/.elixir_ls/**
 .DS_Store
+
+# Local/generated artifacts from the legacy app and development tooling.
+/backend/priv/static/assets/
+/backend/vendor/
+/frontend/_old-frontend/
+/frontend/dist/
+/frontend/storybook-static/
