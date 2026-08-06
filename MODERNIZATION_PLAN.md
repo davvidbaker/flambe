@@ -33,6 +33,9 @@ Phoenix 1.8 requires Erlang/OTP 25 or newer. Current Vite requires Node
 
 ## Phase 0 — Establish a safe baseline
 
+Current baseline status is tracked in
+[docs/PHASE_0_BASELINE.md](docs/PHASE_0_BASELINE.md).
+
 1. Commit the project-resurrection work separately from modernization work.
 2. Create and document a repeatable PostgreSQL backup/restore procedure.
 3. Add smoke tests covering:
