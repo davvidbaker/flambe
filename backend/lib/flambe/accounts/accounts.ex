@@ -316,12 +316,11 @@ defmodule Flambe.Accounts do
 
   def authenticate_by_email_password(email, given_pass) do
     user = get_user_by_email(email)
-
-    # ⚠️ hacky. Should probably be using a `with` block...
-    [%{password_hash: password_hash}] = (user && user.credentials) || [%{password_hash: nil}]
+    credential = user && Enum.find(user.credentials, &(&1.email == email))
+    password_hash = credential && credential.password_hash
 
     cond do
-      user && Comeonin.Pbkdf2.checkpw(given_pass, password_hash) ->
+      user && is_binary(password_hash) && Comeonin.Bcrypt.checkpw(given_pass, password_hash) ->
         {:ok, user}
 
       user ->

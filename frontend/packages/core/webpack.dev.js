@@ -13,7 +13,7 @@ module.exports = merge(common, {
     port: 8081,
     hot: true,
     historyApiFallback: true,
-    https: true,
+    https: false,
   },
 
   devtool: 'inline-cheap-source-map',

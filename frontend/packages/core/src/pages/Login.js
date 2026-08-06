@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 
 import Logo from '@flambe/logo';
@@ -39,7 +39,34 @@ const Padded = styled.div`
   padding: 30px;
   /* background: ; */
 `;
-const Login = () => (
+const Login = () => {
+  const [error, setError] = useState(null);
+
+  const submit = async event => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    const response = await fetch(`${SERVER}/auth/identity/callback`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: form.get('email'),
+        password: form.get('password'),
+      }),
+    });
+
+    if (!response.ok) {
+      setError('That email and password do not match.');
+      return;
+    }
+
+    const { data } = await response.json();
+    const existing = JSON.parse(localStorage.getItem('state') || '{}');
+    localStorage.setItem('state', JSON.stringify({ ...existing, user: { ...existing.user, ...data }, loggedIn: true }));
+    window.location.assign(data.trace_id ? `/${data.username}/traces/${data.trace_id}` : `/${data.username}`);
+  };
+
+  return (
   <CenterFlex>
     <div className="inner">
       <Padded>
@@ -47,34 +74,18 @@ const Login = () => (
       </Padded>
       <h1>Log in!</h1>
       <Form
-        onSubmit={e => {
-          e.preventDefault();
-          console.log(`🔥 e`, e) || console.log(`🔥 e.target`, e.target);
-
-          // fetch(`${SERVER}/auth/get-csrf-token`)
-          //   .then(res => console.log(`🔥 res`, res) || res.text())
-          //   .then(token => {
-          //     console.log(`🔥  token`, token);
-          fetch(`${SERVER}/auth/identity/callback`, {
-            /* ⚠️ PROBABLY NOT WHAT I WANT TO SEND */
-            body: e.target.value,
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              'x-csrf-token': token,
-            },
-          });
-          //     });
-        }}
+        onSubmit={submit}
       >
         <div>
-          <label htmlFor="login-username">Username or Email</label>
-          <input type="text" name="username" id="login-username" required />
+          <label htmlFor="login-email">Email</label>
+          <input type="email" name="email" id="login-email" required />
           <label htmlFor="login-password">Password</label>
           <input type="password" required name="password" id="login-password" />
         </div>
         <button type="submit">Log In</button>
       </Form>
+      {error && <p>{error}</p>}
+      <p><a href="/register">Create an account</a></p>
       <a
         // onClick={() =>
         //   window.open(
@@ -89,5 +100,6 @@ const Login = () => (
       </a>
     </div>
   </CenterFlex>
-);
+  );
+};
 export default Login;

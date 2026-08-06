@@ -11,6 +11,6 @@ defmodule FlambeWeb.ThreadView do
   end
 
   def render("thread.json", %{thread: thread}) do
-    %{id: thread.id, name: thread.name}
+    %{id: thread.id, name: thread.name, rank: thread.rank}
   end
 end

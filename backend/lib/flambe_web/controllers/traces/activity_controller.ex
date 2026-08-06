@@ -65,7 +65,7 @@ defmodule FlambeWeb.ActivityController do
     IO.puts("\nactivity_params")
     IO.inspect(activity_params)
 
-    with {:ok, %Activity{}} <- Traces.update_activity(activity, activity_params) do
+    with {:ok, %Activity{} = activity} <- Traces.update_activity(activity, activity_params) do
       render(conn, "show.json", activity: activity)
     end
   end

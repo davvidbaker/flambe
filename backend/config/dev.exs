@@ -50,7 +50,7 @@ config :flambe, FlambeWeb.Endpoint,
     ]
   ]
 
-config :flambe, frontend_url: "https://localhost:8081"
+config :flambe, frontend_url: "http://localhost:8081"
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"

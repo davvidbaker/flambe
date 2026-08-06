@@ -12,6 +12,7 @@ defmodule FlambeWeb.Router do
 
   pipeline :api do
     plug(:accepts, ["json"])
+    plug(:fetch_session)
     plug(:fetch_cookies)
   end
 
@@ -39,14 +40,20 @@ defmodule FlambeWeb.Router do
     # 🤔 is it ok to use the api pipeline for all these auth endpoints?
     get("/get-csrf-token", AuthController, :get_csrf)
 
+    post("/identity/callback", AuthController, :identity_callback)
     get("/:provider", AuthController, :request)
     get("/:provider/callback", AuthController, :callback)
     post("/:provider/callback", AuthController, :callback)
-    post("/identity/callback", AuthController, :identity_callback)
     delete("/logout", AuthController, :delete)
   end
 
   # Other scopes may use custom stacks.
+  scope "/api", FlambeWeb do
+    pipe_through(:api)
+
+    post("/register", UserController, :register)
+  end
+
   scope "/api", FlambeWeb do
     # ⚠️ add authentication in eventually..., :authenticate_user]
     pipe_through([:api, :authenticate_user])

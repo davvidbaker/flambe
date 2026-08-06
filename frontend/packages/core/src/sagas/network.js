@@ -31,6 +31,7 @@ import {
 } from '../actions';
 import { getUser } from '../reducers/user';
 import { getTimeline } from '../reducers/timeline';
+import { getCollapsedThreadState } from '../utilities/threadCollapseState';
 
 async function hitNetwork({ resource, params = {} }) {
   console.log(`params`, params);
@@ -337,6 +338,7 @@ function isCollapsed(persistedThreads, thread) {
 function* processFetchedTrace({ data }) {
   const timeline = yield select(getTimeline);
   const persistedThreads = timeline.threads;
+  const persistedCollapseState = getCollapsedThreadState(data.id);
 
   yield put(
     processTimelineTrace(
@@ -346,7 +348,8 @@ function* processFetchedTrace({ data }) {
       })),
       data.threads.map(thread => ({
         ...thread,
-        collapsed: isCollapsed(persistedThreads, thread),
+        collapsed: isCollapsed(persistedThreads, thread)
+          || persistedCollapseState[thread.id] === true,
       })),
     ),
   );

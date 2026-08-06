@@ -29,7 +29,6 @@ import SearchBar from '../containers/SearchBar';
 import WithEventListeners from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
-import LimboContainer from '../components/LimboContainer';
 import PanePicker from '../components/PanePicker';
 import {
   collapseAllThreads,
@@ -80,7 +79,7 @@ const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }) =>
       {children}
     </SplitPane>
   ) : (
-    <div>{children}</div>
+    <div style={{ height: '100%' }}>{children}</div>
   );
 
 class App extends React.Component<
@@ -370,37 +369,22 @@ class App extends React.Component<
                   hideSidePanel={this.props.hideAdvancedSearch}
                   threads={this.props.threads}
                 >
-                  <div style={{ height: '100%' }}>
-                    <SplitPane
-                      split="horizontal"
-                      defaultSize={
-                        parseInt(localStorage.getItem('splitPosHo'), 10) || 100
+                  <div style={{ height: '100%', width: '100%' }}>
+                    {do {
+                      if (this.props.view === 'multithread') {
+                        this.renderTimeline();
+                      } else if (this.props.view === 'singlethread') {
+                        <Route
+                          path={`${this.props.location.pathname}/threads/${
+                            this.props.viewThread
+                          }`}
+                        >
+                          <SingleThreadView
+                            thread={this.props.threads[this.props.viewThread]}
+                          />
+                        </Route>;
                       }
-                      onChange={size =>
-                        localStorage.setItem('splitPosHo', size)
-                      }
-                    >
-                      <div style={{ width: '100%' }}>
-                        {do {
-                          if (this.props.view === 'multithread') {
-                            this.renderTimeline();
-                          } else if (this.props.view === 'singlethread') {
-                            <Route
-                              path={`${this.props.location.pathname}/threads/${
-                                this.props.viewThread
-                              }`}
-                            >
-                              <SingleThreadView
-                                thread={
-                                  this.props.threads[this.props.viewThread]
-                                }
-                              />
-                            </Route>;
-                          }
-                        }}
-                      </div>
-                      <LimboContainer submitCommand={this.submitCommand} />
-                    </SplitPane>
+                    }}
                   </div>
                 </MaybeSplitPane>
                 <div

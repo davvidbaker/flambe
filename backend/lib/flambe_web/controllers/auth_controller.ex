@@ -40,21 +40,21 @@ defmodule FlambeWeb.AuthController do
     |> redirect_to_frontend_path
   end
 
-  def identity_callback(%{assigns: %{ueberauth_auth: auth}} = conn, params) do
-    IO.puts("\n🔥 auth.credentials")
-    IO.inspect(auth.credentials)
-    IO.puts("\n🔥 auth")
-    IO.inspect(auth)
-
-    case Accounts.authenticate_by_email_password(auth.credentials) do
+  def identity_callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
+    case Accounts.authenticate_by_email_password(auth.uid, auth.credentials.other.password) do
       {:ok, user} ->
-        jwt = Accounts.create_user_access_token(user)
+        trace = user |> Flambe.Traces.list_user_traces() |> List.first()
 
         conn
-        # |> put_resp_cookie("refresh", jwt)
+        # VerifyCookie exchanges the long-lived cookie for an access token on
+        # each API request, so this must remain Guardian's default refresh type.
         |> Flambe.Guardian.Plug.remember_me(user)
-        |> IO.inspect()
-        |> redirect_to_frontend_path(user.username)
+        |> json(%{data: %{id: user.id, username: user.username, trace_id: trace && trace.id}})
+
+      {:error, _reason} ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(%{error: "INVALID_CREDENTIALS"})
     end
   end
 
