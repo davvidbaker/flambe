@@ -21,13 +21,6 @@ defmodule FlambeWeb.Router do
   end
 
   scope "/", FlambeWeb do
-    # Use the default browser stack
-    pipe_through([:browser, :authenticate_user])
-
-    get("/", PageController, :index)
-  end
-
-  scope "/", FlambeWeb do
     pipe_through(:api)
 
     resources("/sessions", SessionController, only: [:create, :delete], singleton: true)
@@ -70,5 +63,13 @@ defmodule FlambeWeb.Router do
     resources("/tabs", TabsController, except: [:new, :edit])
     resources("/search_terms", SearchTermController, except: [:new, :edit])
     # resources "/events" EventController, only: [:new]
+  end
+
+  # Keep this last so it only handles browser routes. API, authentication, and
+  # Channel endpoints retain their existing route contracts.
+  scope "/", FlambeWeb do
+    pipe_through(:browser)
+
+    get("/*path", SpaController, :index)
   end
 end

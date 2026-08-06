@@ -222,15 +222,17 @@ class FlameChart extends Component<Props, State> {
 
   hitTest = event => {
     const mouseX = event.nativeEvent.offsetX;
+    const mouseY = event.nativeEvent.offsetY;
     const ts = this.pixelsToTime(mouseX);
-    const hitThreadPosition = this.pixelsToThreadPosition(
-      event.nativeEvent.offsetY,
-    );
-    const hitThread_id = this.threadsSortedByRank
-      && this.threadsSortedByRank[hitThreadPosition]
-      && this.threadsSortedByRank[hitThreadPosition][0];
+    const hitThread_id = this.pixelsToThreadId(mouseY);
+    const hitThreadOffset = hitThread_id === null
+      ? null
+      : this.offsets[hitThread_id];
+    const hitThreadHeader = hitThreadOffset !== null
+      && mouseY >= hitThreadOffset
+      && mouseY < hitThreadOffset + FlameChart.threadHeaderHeight;
 
-    const hitLevel = this.pixelsToLevel(event.nativeEvent.offsetY);
+    const hitLevel = this.pixelsToLevel(mouseY);
 
     const filterByTime = pickBy(
       block => ts > block.startTime
@@ -249,9 +251,13 @@ class FlameChart extends Component<Props, State> {
       filterByThread,
     )(this.props.blocks);
 
-    /** 💁 this is the header (hitLevel === -1) */
-    if (hitLevel === -1) {
-      if (mouseX > this.width - 30) {
+    if (hitThreadHeader) {
+      // The rendered dots are centered at width - 30, -24, and -18 with a
+      // two-pixel radius. Keep the click target around that group instead of
+      // treating the whole right side of the header as the ellipsis.
+      const ellipsisLeft = this.width - 34;
+      const ellipsisRight = this.width - 14;
+      if (mouseX >= ellipsisLeft && mouseX <= ellipsisRight) {
         return { type: 'thread_ellipsis', value: hitThread_id };
       }
       return { type: 'thread_header', value: hitThread_id };
@@ -328,10 +334,13 @@ class FlameChart extends Component<Props, State> {
           this.props.showThreadDetail(hit.value);
           break;
         case 'thread_header':
-          this.props.toggleThread(
-            hit.value,
-            this.props.threads[hit.value].collapsed,
-          );
+          // The canvas can briefly represent a previous set of threads while
+          // Redux applies a trace update. Ignore that stale hit rather than
+          // dereferencing a missing thread and crashing the app.
+          const thread = this.props.threads[hit.value];
+          if (thread) {
+            this.props.toggleThread(hit.value, thread.collapsed);
+          }
           break;
           /** 💁 hit.value is array like [key, val] */
 
@@ -725,10 +734,11 @@ class FlameChart extends Component<Props, State> {
       )
       : this.props.threadLevels;
 
-    if (JSON.stringify(threadLevels !== this.threadLevels)) {
-      this.threadLevels = threadLevels;
-      this.offsets = this.setOffsets(this.props.threads, this.threadLevels);
-    }
+    // Collapsing a thread changes every following header's position without
+    // changing `threadLevels`. Recompute offsets for each draw so hit testing
+    // always uses the same geometry that was painted to the canvas.
+    this.threadLevels = threadLevels;
+    this.offsets = this.setOffsets(this.props.threads, this.threadLevels);
 
     if (this.canvas) {
       this.ctx.save();
@@ -1123,15 +1133,21 @@ class FlameChart extends Component<Props, State> {
     return collapsed || false;
   }
 
-  pixelsToThreadPosition(y: number): number {
-    const reverseOffsets = this.offsets |> sortBy(identity) |> reverse;
+  pixelsToThreadId(y: number): ?number {
+    const sortedThreads = this.threadsSortedByRank || [];
 
-    let i = 0;
-    while (y < reverseOffsets[i]) {
-      i++;
+    for (let index = 0; index < sortedThreads.length; index++) {
+      const [thread_id] = sortedThreads[index];
+      const nextThread = sortedThreads[index + 1];
+      const top = this.offsets[thread_id];
+      const bottom = nextThread
+        ? this.offsets[nextThread[0]]
+        : this.state.canvasHeight;
+
+      if (y >= top && y < bottom) return Number(thread_id);
     }
-    const thread_id = reverse(Object.keys(this.props.threads))[i];
-    return Number(thread_id) - 1 || 0;
+
+    return null;
   }
 
   pixelsToLevel(y: number): number {
