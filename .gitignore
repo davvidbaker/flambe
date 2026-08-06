@@ -36,3 +36,5 @@ erl_crash.dump
 /frontend/_old-frontend/
 /frontend/dist/
 /frontend/storybook-static/
+/frontend/cypress/screenshots/
+/frontend/cypress/videos/

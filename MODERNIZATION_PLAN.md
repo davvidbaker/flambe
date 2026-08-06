@@ -52,6 +52,19 @@ the core user-flow tests.
 
 ## Phase 1 — Replace Webpack with Vite, preserving behavior
 
+**Status: complete locally.** Vite is the only frontend build path and is
+covered by the browser smoke test. CI runs the same production flow on Node 22.
+
+- [x] Model the maintained React app as an npm workspace; the unrelated Gatsby
+  homepage package remains archived outside the active workspace.
+- [x] Standardize the app and CI on Node 22 LTS.
+- [x] Add a Vite dev server, Flow/pipeline-compatible Babel transform, API
+  proxy, and production asset manifest.
+- [x] Verify the Vite server with the login, trace-rendering, and persisted
+  thread-collapse smoke flow.
+- [x] Switch Phoenix to serve the Vite production build.
+- [x] Replace React Hot Loader and remove the Webpack/Lerna path.
+
 1. Flatten the frontend into one maintained app package; remove the Lerna
    dependency only after its packages are accounted for.
 2. Upgrade the frontend runtime to Node 22 LTS.
@@ -63,8 +76,8 @@ the core user-flow tests.
 6. Configure Vite's development proxy for `/api`, `/auth`, and `/socket`.
 7. Configure production output to `backend/priv/static/assets`, with hashed
    assets and a generated manifest.
-8. Keep the existing Webpack build available until Vite passes every smoke test,
-   then delete Webpack configs and the OpenSSL legacy workaround.
+8. Remove the superseded Webpack configs and OpenSSL legacy workaround after
+   Vite passes every smoke test.
 
 **Exit criterion:** `npm run dev`, `npm run build`, and a Phoenix-served
 production build work without Webpack or `NODE_OPTIONS=--openssl-legacy-provider`.

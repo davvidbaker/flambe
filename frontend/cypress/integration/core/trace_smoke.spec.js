@@ -5,7 +5,7 @@ describe('Restored trace smoke flow', () => {
   const password = Cypress.env('password') || 'e2e-password';
 
   it('logs in, renders a trace, and keeps a thread collapse after refresh', () => {
-    cy.intercept('GET', 'http://localhost:4000/api/traces/*').as('loadTrace');
+    cy.intercept('GET', '**/api/traces/*').as('loadTrace');
     cy.visit('/login');
     cy.get('#login-email').type(email);
     cy.get('#login-password').type(password);
@@ -16,35 +16,35 @@ describe('Restored trace smoke flow', () => {
 
     cy.location('pathname').then(pathname => {
       const traceId = pathname.split('/').pop();
-      let threadId;
 
       cy.wait('@loadTrace').then(({ response }) => {
-        [threadId] = response.body.data.threads.map(thread => String(thread.id));
+        const [firstThread] = [...response.body.data.threads]
+          .sort((left, right) => left.rank - right.rank);
+        const threadId = String(firstThread.id);
         expect(threadId).to.exist;
-      });
 
-      cy.window().then(window => {
-        const allTraceState = JSON.parse(
-          window.localStorage.getItem(collapseStorageKey) || '{}',
-        );
-        window.localStorage.setItem(
-          collapseStorageKey,
-          JSON.stringify({
-            ...allTraceState,
-            [traceId]: { [threadId]: true },
-          }),
-        );
-      });
+        // The first ranked thread is drawn at the canvas top; x=100 avoids
+        // the detail-menu ellipsis on the right side of its header.
+        cy.get('#chart-wrapper canvas').click(100, 10);
 
-      cy.reload();
-      cy.get('#chart-wrapper canvas').should('be.visible');
+        cy.window().should(window => {
+          const allTraceState = JSON.parse(
+            window.localStorage.getItem(collapseStorageKey) || '{}',
+          );
 
-      cy.window().should(window => {
-        const allTraceState = JSON.parse(
-          window.localStorage.getItem(collapseStorageKey) || '{}',
-        );
+          expect(allTraceState[traceId]).to.have.property(threadId, true);
+        });
 
-        expect(allTraceState[traceId]).to.have.property(threadId, true);
+        cy.reload();
+        cy.get('#chart-wrapper canvas').should('be.visible');
+
+        cy.window().should(window => {
+          const allTraceState = JSON.parse(
+            window.localStorage.getItem(collapseStorageKey) || '{}',
+          );
+
+          expect(allTraceState[traceId]).to.have.property(threadId, true);
+        });
       });
     });
   });
