@@ -39,6 +39,7 @@ defmodule FlambeWeb.UserView do
     %{
       id: user.id,
       name: user.name,
+      username: user.username,
       # email: user.credential.email,
       traces: traces,
       categories: categories,

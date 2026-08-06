@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 
 import Button from '../components/Button';
@@ -29,26 +29,60 @@ const Padded = styled.div`
   padding: 30px;
   /* background: ; */
 `;
-const Register = () => (
+const Form = styled.form`
+  text-align: left;
+  label,
+  input { display: block; width: 100%; }
+`;
+
+const Register = () => {
+  const [error, setError] = useState(null);
+
+  const submit = async event => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    const response = await fetch(`${SERVER}/api/register`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        user: {
+          name: form.get('name'),
+          username: form.get('username'),
+          credentials: [{ email: form.get('email'), password: form.get('password') }],
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      setError('Could not create that account. Try a different username or email.');
+      return;
+    }
+
+    window.location.assign('/login');
+  };
+
+  return (
   <CenterFlex>
     <div className="inner">
       <Padded>
         <Logo size={90} className="padded" />
       </Padded>
-      <h1>Log in please</h1>
-      <a
-        // onClick={() =>
-        //   window.open(
-        //     `${SERVER}/auth/github`,
-        //     'foo',
-        //     'width=200, height=300, top=0'
-        //   )
-        // }
-        href={`${SERVER}/auth/github`}
-      >
-        Log in with Github
-      </a>
+      <h1>Create your account</h1>
+      <Form onSubmit={submit}>
+        <label htmlFor="register-name">Name</label>
+        <input id="register-name" name="name" required />
+        <label htmlFor="register-username">Username</label>
+        <input id="register-username" name="username" required maxLength="20" />
+        <label htmlFor="register-email">Email</label>
+        <input id="register-email" name="email" type="email" required />
+        <label htmlFor="register-password">Password</label>
+        <input id="register-password" name="password" type="password" required minLength="6" />
+        <button type="submit">Create account</button>
+      </Form>
+      {error && <p>{error}</p>}
+      <p><a href="/login">Back to login</a></p>
     </div>
   </CenterFlex>
-);
+  );
+};
 export default Register;

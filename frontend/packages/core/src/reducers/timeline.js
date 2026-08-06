@@ -585,14 +585,26 @@ function timeline(state = initialState, action) {
       };
 
     case `${THREAD_CREATE}_SUCCEEDED`:
+      const optimisticThread = state.threads.optimisticThread;
+      const newThread = action.data;
+
+      // Do not leave the timeline with an invalid optimistic entry if the
+      // server response is unexpectedly incomplete.
+      if (!optimisticThread || !newThread || !newThread.id) return state;
+
       return {
         ...state,
-        threads: mapKeys((value, key) =>
-          key === 'optimisticThread' ? action.data.id : key,
-        )(state.threads),
-        threadLevels: mapKeys((_val, key) =>
-          key === 'optimisticThread' ? action.data.id : key,
-        )(state.threadLevels),
+        threads: {
+          ...omit(['optimisticThread'])(state.threads),
+          [newThread.id]: {
+            ...optimisticThread,
+            ...newThread,
+          },
+        },
+        threadLevels: {
+          ...omit(['optimisticThread'])(state.threadLevels),
+          [newThread.id]: state.threadLevels.optimisticThread,
+        },
       };
     /** ⚠️ need to handle failures */
     case THREAD_DELETE:

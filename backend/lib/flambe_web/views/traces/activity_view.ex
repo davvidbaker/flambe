@@ -16,9 +16,7 @@ defmodule FlambeWeb.ActivityView do
   end
 
   def render("show.json", %{activity: activity}) do
-    %{
-      activity: render_one(activity, ActivityView, "activity.json")
-    }
+    %{data: render_one(activity, ActivityView, "activity.json")}
   end
 
   def render("activity.json", %{activity: activity}) do

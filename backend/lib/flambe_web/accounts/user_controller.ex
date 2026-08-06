@@ -20,6 +20,13 @@ defmodule FlambeWeb.UserController do
     end
   end
 
+  def register(conn, %{"user" => user_params}) do
+    with {:ok, %User{} = user} <- Accounts.register_user(user_params),
+         {:ok, _trace} <- Traces.create_trace(user, %{name: "Main"}) do
+      render(conn, "show.json", user: user, mantras: [])
+    end
+  end
+
   def show(conn, %{"id" => id}) do
     user = Accounts.get_user!(id)
     mantras = Accounts.list_user_mantras(id)

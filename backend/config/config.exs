@@ -13,7 +13,7 @@ config :flambe, FlambeWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "blTEMHWIkbiAPhmJWziLsANDEZMRLYl0OCK3BBydt1IVNRR3pk9qo7GojiF6zbbq",
   render_errors: [view: FlambeWeb.ErrorView, accepts: ~w(html json)],
-  pubsub: [name: Flambe.PubSub, adapter: Phoenix.PubSub.PG2]
+  pubsub: [name: Flambe.PubSub, adapter: Flambe.PubSub.Local]
 
 # Configures Elixir's Logger
 config :logger, :console,
