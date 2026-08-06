@@ -630,7 +630,11 @@ class Timeline extends React.Component<Props, State> {
                       attentionShifts={props.attentionShifts}
                       blocks={props.blocks}
                       categories={props.categories}
-                      currentAttention={last(props.attentionShifts).thread_id}
+                      currentAttention={
+                        (props.attentionShifts || []).length > 0
+                          ? last(props.attentionShifts).thread_id
+                          : null
+                      }
                       // leftBoundaryTime={leftBoundaryTime}
                       maxTime={props.maxTime}
                       minTime={props.minTime}

@@ -1,0 +1,19 @@
+{
+  "data": {
+    "events": [],
+    "id": "<integer>",
+    "name": "Contract trace",
+    "threads": [
+      {
+        "id": "<integer>",
+        "name": "Main",
+        "rank": 0
+      },
+      {
+        "id": "<integer>",
+        "name": "Regression thread",
+        "rank": 1
+      }
+    ]
+  }
+}

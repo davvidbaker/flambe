@@ -9,6 +9,7 @@ use Mix.Config
 config :flambe, FlambeWeb.Endpoint,
   http: [
     port: 4000,
+    ip: {0, 0, 0, 0, 0, 0, 0, 1},
     protocol_options: [
       max_header_name_length: 640_000,
       max_header_value_length: 40_960_000,
