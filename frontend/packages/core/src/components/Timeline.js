@@ -15,6 +15,7 @@ import {
 import { layout } from '../styles';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
+import { persistCollapsedThreadState } from '../utilities/threadCollapseState';
 import type { Activity } from '../types/Activity';
 import {
   SECOND, MINUTE, HOUR, DAY, WEEK, MONTH,
@@ -36,6 +37,7 @@ import FocusedBlock from './FocusedBlock';
 
 
 const MIN_GRID_SLICE_PX = 60;
+const isValidTime = value => Number.isFinite(value) && value > 0;
 
 // minTime is smallest timestamp in the entire timeline
 // maxTime is largest timestamp in the entire timeline
@@ -148,12 +150,40 @@ class Timeline extends React.Component<Props, State> {
       });
     }
 
+    const hasExplicitRange = isValidTime(nextProps.leftBoundaryTimeOverride)
+      && isValidTime(nextProps.rightBoundaryTimeOverride);
+    const hasSavedRange = isValidTime(this.leftBoundaryTime)
+      && isValidTime(this.rightBoundaryTime);
+    const traceHasTimeRange = isValidTime(nextProps.minTime)
+      && isValidTime(nextProps.maxTime);
+    const savedRangeOverlapsTrace = hasSavedRange
+      && this.rightBoundaryTime >= nextProps.minTime
+      && this.leftBoundaryTime <= nextProps.maxTime;
+
+    // A trace can be restored or replaced with data from a different period.
+    // In that case, a persisted viewport would otherwise leave every block
+    // off-screen. Initialize from the trace the first time, or reset only when
+    // the saved range no longer overlaps it.
+    if (
+      !hasExplicitRange
+      && traceHasTimeRange
+      && (!hasSavedRange || !savedRangeOverlapsTrace)
+    ) {
+      this.setTimelineState({
+        leftBoundaryTime: nextProps.minTime,
+        rightBoundaryTime: Math.max(nextProps.maxTime, Date.now())
+          + MAX_TIME_INTO_FUTURE,
+      });
+    }
+
     if (
       threadsCollapsedChecksum(nextProps.threads)
       !== threadsCollapsedChecksum(this.props.threads)
     ) {
       requestAnimationFrame(this.drawChildren.bind(this));
     }
+
+    persistCollapsedThreadState(nextProps.trace_id, nextProps.threads);
   }
 
   handleWheel = e => {
@@ -190,19 +220,32 @@ class Timeline extends React.Component<Props, State> {
   };
 
   drawChildren = () => {
+    const { leftBoundaryTime, rightBoundaryTime } = this.getVisibleTimeRange();
+    if (!isValidTime(leftBoundaryTime) || !isValidTime(rightBoundaryTime)) return;
+
+    if (!isValidTime(this.leftBoundaryTime) || !isValidTime(this.rightBoundaryTime)) {
+      this.setTimelineState({ leftBoundaryTime, rightBoundaryTime });
+    }
+
+    const dividersData = this.calculateGridOffsets(
+      leftBoundaryTime,
+      rightBoundaryTime,
+    );
+    this.dividersData = dividersData;
+
     this.timeSeries.current
       && this.timeSeries.current.draw(
-        this.leftBoundaryTime,
-        this.rightBoundaryTime,
+        leftBoundaryTime,
+        rightBoundaryTime,
         this.state.width,
       );
 
     this.flameChart.current
       && this.flameChart.current.draw(
-        this.leftBoundaryTime,
-        this.rightBoundaryTime,
+        leftBoundaryTime,
+        rightBoundaryTime,
         this.state.width,
-        this.dividersData,
+        dividersData,
       );
 
     this.focusedBlock
@@ -211,13 +254,41 @@ class Timeline extends React.Component<Props, State> {
   };
 
   /* 💁 mostly borrowed from chrome devtools-frontend ❤️ */
-  calculateGridOffsets() {
-    const clientWidth = this.state.width;
-    //
-    const zeroTime = 0;
+  getVisibleTimeRange = (props = this.props) => {
+    const savedRangeIsValid = isValidTime(this.leftBoundaryTime)
+      && isValidTime(this.rightBoundaryTime);
+    const traceRangeIsValid = isValidTime(props.minTime)
+      && isValidTime(props.maxTime);
+    const savedRangeOverlapsTrace = !traceRangeIsValid
+      || (this.rightBoundaryTime >= props.minTime
+        && this.leftBoundaryTime <= props.maxTime);
 
-    const { leftBoundaryTime } = this;
-    const { rightBoundaryTime } = this;
+    if (savedRangeIsValid && savedRangeOverlapsTrace) {
+      return {
+        leftBoundaryTime: this.leftBoundaryTime,
+        rightBoundaryTime: this.rightBoundaryTime,
+      };
+    }
+
+    if (traceRangeIsValid) {
+      return {
+        leftBoundaryTime: props.minTime,
+        rightBoundaryTime: Math.max(props.maxTime, Date.now())
+          + MAX_TIME_INTO_FUTURE,
+      };
+    }
+
+    return { leftBoundaryTime: null, rightBoundaryTime: null };
+  };
+
+  calculateGridOffsets(leftBoundaryTime, rightBoundaryTime) {
+    const clientWidth = this.state.width;
+    if (!isValidTime(leftBoundaryTime) || !isValidTime(rightBoundaryTime)
+      || !Number.isFinite(clientWidth) || clientWidth <= 0) {
+      return { offsets: [], precision: 0 };
+    }
+
+    const zeroTime = 0;
 
     const boundarySpan = rightBoundaryTime - leftBoundaryTime;
 
@@ -271,8 +342,7 @@ class Timeline extends React.Component<Props, State> {
   }
 
   timeToPixels(timestamp) {
-    const { leftBoundaryTime } = this;
-    const { rightBoundaryTime } = this;
+    const { leftBoundaryTime, rightBoundaryTime } = this.getVisibleTimeRange();
 
     return timeToPixels(
       timestamp,

@@ -430,7 +430,16 @@ defmodule Flambe.Traces do
 
   """
   def delete_thread(%Thread{} = thread) do
-    Repo.delete(thread)
+    Repo.transaction(fn ->
+      # Activities are already configured to cascade with their thread, but
+      # historical attention records reference the thread directly. Remove
+      # those records first so deleting a thread cannot leave a broken foreign
+      # key behind.
+      from(attention in Flambe.Accounts.Attention, where: attention.thread_id == ^thread.id)
+      |> Repo.delete_all()
+
+      Repo.delete!(thread)
+    end)
   end
 
   @doc """

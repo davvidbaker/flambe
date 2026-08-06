@@ -2,7 +2,7 @@ defmodule FlambeWeb.TraceController do
   use FlambeWeb, :controller
 
   alias Flambe.Traces
-  alias Flambe.Traces.{Trace, Thread}
+  alias Flambe.Traces.Trace
 
   action_fallback(FlambeWeb.FallbackController)
 
@@ -15,8 +15,7 @@ defmodule FlambeWeb.TraceController do
   def create(conn, %{"user_id" => user_id, "trace" => trace_params}) do
     # ⚠️ this is bad. Should rely on the connection or token, not explicitly using id: 6 🤦‍
     with {:ok, %Trace{} = trace} <-
-           Traces.create_trace(Flambe.Accounts.get_user!(user_id), trace_params),
-         {:ok, %Thread{} = thread} <- Traces.create_thread(trace.id, %{name: "Main"}) do
+           Traces.create_trace(Flambe.Accounts.get_user!(user_id), trace_params) do
       # with {:ok, %Trace{} = trace} <- Traces.create_trace(conn.assigns.current_user, trace_params) do
       conn
       |> put_status(:created)

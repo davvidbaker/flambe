@@ -33,10 +33,9 @@ module.exports = {
       },
       {
         test: /\.(jpe?g|png|gif|svg)$/i,
-        loaders: [
-          'file-loader?hash=sha512&digest=hex&name=[hash].[ext]',
-          'image-webpack-loader?bypassOnDebug&optimizationLevel=7&interlaced=false',
-        ],
+        // image-webpack-loader shells out to image binaries that no longer run
+        // reliably on current Node/macOS. Development only needs to emit the asset.
+        loaders: ['file-loader?hash=sha512&digest=hex&name=[hash].[ext]'],
       },
       {
         test: /\.css$/,
