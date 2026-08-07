@@ -10,13 +10,12 @@ module.exports = defineConfig(({ mode }) => {
   return {
     plugins: [
       react({
-        jsxRuntime: 'classic',
         babel: {
           babelrc: false,
           configFile: false,
           presets: [
             ['@babel/preset-env', { modules: false }],
-            '@babel/preset-react',
+            ['@babel/preset-react', { runtime: 'automatic' }],
             '@babel/preset-flow',
           ],
           plugins: [
@@ -32,12 +31,6 @@ module.exports = defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: {
-        // The package advertises its uncompiled JSX source as `module`; the
-        // legacy compiled entry is the compatible bridge during Phase 1.
-        'react-commander': path.resolve(
-          __dirname,
-          'node_modules/react-commander/lib/index.js',
-        ),
         components: path.resolve(__dirname, 'packages/core/src/components'),
         containers: path.resolve(__dirname, 'packages/core/src/containers'),
         types: path.resolve(__dirname, 'packages/core/src/types'),
@@ -59,44 +52,30 @@ module.exports = defineConfig(({ mode }) => {
     // automatic discovery and explicitly pre-bundle the app's legacy imports.
     optimizeDeps: {
       include: [
-        '@flambe/logo',
-        'd3',
         'dayjs',
         'emoji-regex',
         'fuzzaldrin-plus',
-        'history',
         'humanize-duration',
         'phoenix',
         'polished',
         'prop-types',
         'react',
-        'react-color',
-        'react-commander',
-        'react-contexify',
         'react-dom',
-        'react-draggable',
-        'react-measure',
+        'react-dom/client',
         'react-redux',
+        // React Redux imports this CommonJS selector entry by subpath. Make
+        // Vite pre-bundle it so the named export is available in dev mode.
+        'use-sync-external-store/with-selector',
         'react-router',
         'react-router-dom',
-        'react-router-redux',
         'react-select',
-        'react-split-pane',
         'redux',
         'redux-saga',
         'redux-saga/effects',
-        'redux-thunk',
-        'regenerator-runtime',
         'styled-components',
-        'subdivide',
-        'swyzzle',
         'tinycolor2',
-        'topojson',
         'xstate',
-        'xstate/lib/interpreter',
         'react-modal',
-        'react-dnd',
-        'react-dnd-html5-backend',
         'downshift',
         'hoist-non-react-statics',
         'invariant',
@@ -125,7 +104,6 @@ module.exports = defineConfig(({ mode }) => {
         'lodash/throttle',
         'lodash/uniq',
         'react-is',
-        'recompose',
       ],
       noDiscovery: true,
     },

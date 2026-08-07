@@ -3,7 +3,7 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 
-import { createTodo, beginTodo } from 'actions';
+import { createTodo } from 'actions';
 import Panel from 'components/Panel';
 import { InputFromButton } from 'components/Button';
 import Todo from 'components/Todo';
@@ -22,7 +22,6 @@ class Todos extends Component {
             this.props.todos.map(todo => (
               <Todo
                 key={todo.name}
-                beginTodo={this.props.beginTodo}
                 todo={todo}
               />
             ))}
@@ -35,6 +34,4 @@ class Todos extends Component {
 export default connect(null, dispatch => ({
   createTodo: (name, description = '') =>
     dispatch(createTodo(name, description)),
-  beginTodo: ({ todo_id, thread_id, timestamp, name, description = '' }) =>
-    dispatch(beginTodo({ todo_id, thread_id, timestamp, name, description })),
 }))(Todos);

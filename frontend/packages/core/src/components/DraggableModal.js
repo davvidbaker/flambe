@@ -1,6 +1,5 @@
 import React from 'react';
 import Modal from 'react-modal';
-import Draggable from 'react-draggable';
 import styled from 'styled-components';
 
 const styleOverrides = {

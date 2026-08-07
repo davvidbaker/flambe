@@ -22,10 +22,10 @@ const Wrapper = styled.div`
 const Checkbox = styled.input``;
 
 const TraceThreadFilter = ({
-  threads,
+  threads = {},
   filterExcludes = [],
   filterTrace,
-  activities,
+  activities = {},
 }) => {
   const threadsWithSuspendedActivityCount = loadSuspendedActivityCount(
     activities,

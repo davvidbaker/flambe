@@ -1,9 +1,30 @@
-import React, { Component } from 'react';
-import { ChromePicker } from 'react-color';
+import React from 'react';
 
-// ⚠️ maybe one day let user choose which picker they use
-const ColorPicker = props => (
-    <ChromePicker {...props} />
+const DEFAULT_COLOR = '#ffffff';
+
+const normalizeColor = color => {
+  const value = typeof color === 'string' ? color : color && color.hex;
+
+  if (/^#[0-9a-f]{6}$/i.test(value || '')) {
+    return value;
+  }
+
+  if (/^#[0-9a-f]{3}$/i.test(value || '')) {
+    return `#${value.slice(1).split('').map(character => `${character}${character}`).join('')}`;
+  }
+
+  return DEFAULT_COLOR;
+};
+
+// Retain React Color's small `{ hex }` callback contract while using the
+// browser's accessible, dependency-free color picker.
+const ColorPicker = ({ color, onChangeComplete }) => (
+  <input
+    aria-label="Choose color"
+    type="color"
+    value={normalizeColor(color)}
+    onChange={event => onChangeComplete({ hex: event.target.value })}
+  />
 );
 
 export default ColorPicker;

@@ -5,7 +5,7 @@ import findLast from 'lodash/fp/findLast';
 import sampleSize from 'lodash/sampleSize';
 import range from 'lodash/range';
 import pullAt from 'lodash/pullAt';
-import Measure from 'react-measure';
+import Measure from './Measure';
 
 import {
   getBlockTransform,

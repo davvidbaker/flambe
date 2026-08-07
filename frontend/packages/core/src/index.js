@@ -1,16 +1,22 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
-import { Router } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 
 import App from './pages';
-import store, { history } from './store';
+import store from './store';
 
-ReactDOM.render(
+const rootElement = document.getElementById('app-root');
+
+if (!rootElement) {
+  throw new Error('Unable to find #app-root');
+}
+
+createRoot(rootElement).render(
   <Provider store={store}>
-    <Router history={history}>
+    <BrowserRouter>
       <App />
-    </Router>
+    </BrowserRouter>
   </Provider>,
   document.getElementById('app-root'),
 );

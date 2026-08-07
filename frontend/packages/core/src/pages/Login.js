@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 
-import Logo from '@flambe/logo';
+import Logo from '../components/Logo/src';
 
 import Button from '../components/Button';
 

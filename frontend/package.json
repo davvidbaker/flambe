@@ -12,6 +12,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "npm run cypress:smoke",
+    "test:unit": "jest --runInBand",
     "flow": "flow",
     "cypress:open": "cypress open",
     "cypress:smoke": "cypress run --browser electron --spec cypress/integration/core/trace_smoke.spec.js"
@@ -36,15 +37,15 @@
     "@babel/plugin-syntax-dynamic-import": "^7.2.0",
     "@babel/plugin-transform-react-jsx": "^7.3.0",
     "@babel/plugin-transform-regenerator": "^7.3.4",
-    "@babel/polyfill": "^7.2.5",
     "@babel/preset-env": "^7.3.4",
     "@babel/preset-es2015": "^7.0.0-beta.53",
     "@babel/preset-flow": "^7.0.0",
     "@babel/preset-react": "^7.0.0",
     "@babel/preset-stage-2": "^7.0.0",
+    "@vitejs/plugin-react": "4.3.4",
     "babel-core": "^7.0.0-beta.51",
     "babel-eslint": "^10.0.1",
-    "babel-jest": "^24.1.0",
+    "babel-jest": "^30.4.1",
     "babel-plugin-lodash": "^3.3.4",
     "babel-plugin-styled-components": "^1.10.0",
     "chalk": "^2.4.2",
@@ -60,17 +61,13 @@
     "eslint-plugin-react": "^7.12.4",
     "eslint-plugin-react-hooks": "^1.3.0",
     "flow-bin": "^0.53.1",
-    "jest": "^22.4.3",
+    "jest": "^30.4.2",
     "nodemon": "^1.11.0",
     "prop-types": "^15.5.10",
-    "ws": "^6.1.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "redux": "^5.0.1",
     "vite": "5.4.20",
-    "@vitejs/plugin-react": "4.3.4"
-  },
-  "jest": {
-    "modulePaths": [
-      "packages/*/src"
-    ]
-  },
-  "dependencies": {}
+    "ws": "^6.1.4"
+  }
 }

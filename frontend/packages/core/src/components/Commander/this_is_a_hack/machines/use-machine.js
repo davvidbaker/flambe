@@ -1,25 +1,34 @@
-/* eslint-disable no-unused-expressions, no-console */
-import { useState, useMemo, useEffect } from 'react';
-import { interpret } from 'xstate/lib/interpreter';
+/* eslint-disable no-console */
+import { useEffect, useRef, useState } from 'react';
+import { createActor } from 'xstate';
 
 function useMachine(machine, options = {}) {
-  const [current, setCurrent] = useState(machine.initialState);
-  const service = useMemo(
-    () =>
-      interpret(machine)
-        .onTransition(state => {
-          options.log && console.log('CONTEXT:', state.context);
-          options.log && console.log('STATE', state.value);
-          setCurrent(state);
-        })
-        .onEvent(e => options.log && console.log('EVENT:', e))
-        .start(),
-    [],
-  );
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  const actorRef = useRef(null);
+  if (!actorRef.current) {
+    actorRef.current = createActor(machine, { input: options.input });
+  }
+  const [current, setCurrent] = useState(actorRef.current.getSnapshot());
 
-  useEffect(() => () => service.stop(), []);
+  useEffect(() => {
+    const actor = actorRef.current;
+    const subscription = actor.subscribe(state => {
+      const currentOptions = optionsRef.current;
+      currentOptions.log && console.log('CONTEXT:', state.context);
+      currentOptions.log && console.log('STATE', state.value);
+      setCurrent(state);
+    });
+    actor.start();
+    setCurrent(actor.getSnapshot());
 
-  return [current, service.send];
+    return () => {
+      subscription.unsubscribe();
+      actor.stop();
+    };
+  }, []);
+
+  return [current, event => actorRef.current.send(event)];
 }
 
 export default useMachine;

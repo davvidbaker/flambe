@@ -1,11 +1,10 @@
 import * as React from 'react';
-import SplitPane from 'react-split-pane';
+import SplitPane from './SplitPane';
 import throttle from 'lodash/throttle';
 import { filter, reduce } from 'lodash/fp';
 import last from 'lodash/last';
-import Measure from 'react-measure';
+import Measure from './Measure';
 
-import WithDropTarget from '../containers/WithDropTarget';
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import {
   rankThreadsByAttention,
@@ -25,14 +24,12 @@ import {
   blocksForActivity,
 } from '../utilities/timeline';
 
-import Swyzzler from './Swyzzler';
 import WithEventListeners from './WithEventListeners';
 import ThreadDetail from './ThreadDetail';
 import ActivityDetailModal from './ActivityDetailModal';
 import TimeSeries from './TimeSeries';
 import FlameChart from './FlameChart';
 import Tooltip from './Tooltip';
-import PieChart from './PieChart';
 import FocusedBlock from './FocusedBlock';
 
 
@@ -601,10 +598,9 @@ class Timeline extends React.Component<Props, State> {
                 >
                   <SplitPane
                     split="horizontal"
-                    size={100}
+                    size={this.state.timeSeriesHeight}
                     onChange={this.handlePaneChange}
                   >
-                    {/* <PieChart /> */}
                     <TimeSeries
                       ref={this.timeSeries}
                       height={`${this.state.timeSeriesHeight}px`}
@@ -619,11 +615,6 @@ class Timeline extends React.Component<Props, State> {
                       )(props.tabs)}
                       zoom={this.zoom}
                     />
-                    {/* <WithDropTarget
-                targetName="flame-chart"
-                threads={props.threads}
-                trace_id={props.trace_id}
-              > */}
                     <FlameChart
                       ref={this.flameChart}
                       activities={props.activities}
@@ -654,7 +645,6 @@ class Timeline extends React.Component<Props, State> {
                       zoom={this.zoom}
                     />
                   </SplitPane>
-                  {/* </WithDropTarget> */}
 
                   {/* ⚠️ Moved these up? */}
                   {/* Probably want to lift FocusActivty and HoverActivity up so updating it doesn't cause entire re-render... */}
@@ -702,9 +692,6 @@ class Timeline extends React.Component<Props, State> {
 hours
                 ago
               </div>
-            )}
-            {this.flameChart && this.flameChart.current && (
-              <Swyzzler canvas={this.flameChart.current.canvas} />
             )}
             }
           </>

@@ -17,7 +17,7 @@ const format = th =>
   |> map(([id, thread]) => ({ value: id, label: thread.name }));
 
 const ThreadFilter = ({
-  allThreads,
+  allThreads = {},
   includedThreads,
   filterExcludes,
   onChange,
@@ -29,10 +29,11 @@ const ThreadFilter = ({
 
   return (
     <Select
+      aria-label="Filter threads"
       isMulti
       value={filteredThreads}
       options={threads}
-      onChange={onChange}
+      onChange={selectedThreads => onChange(selectedThreads || [])}
     />
   );
 };
