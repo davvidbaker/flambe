@@ -38,3 +38,5 @@ erl_crash.dump
 /frontend/storybook-static/
 /frontend/cypress/screenshots/
 /frontend/cypress/videos/
+/frontend/stats.json
+/frontend/packages/*/package-lock.json

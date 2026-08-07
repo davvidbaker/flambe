@@ -1,8 +1,6 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import {
-  Switch, Route, Redirect, withRouter,
-} from 'react-router';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { createGlobalStyle } from 'styled-components';
 
 import Toaster from '../containers/Toaster';
@@ -98,57 +96,29 @@ const GlobalStyle = createGlobalStyle`
     z-index: 1000;
   }
 
-   [data-reach-alert-dialog-label] {
-    color: #4095bf;
-    font-size: 150%;
-    margin-bottom: 10px;
-    text-align: center;
-  }
-    
 `;
 
-const Routes = ({ loggedIn, username = 'david' }) => console.log(`🔥  loggedIn`, loggedIn)
+const AppRoutes = ({ loggedIn, username = 'david' }) => console.log(`🔥  loggedIn`, loggedIn)
   || console.log(`🔥 username`, username) || (
     <>
       <GlobalStyle />
-      <Switch>
+      <Routes>
         <Route
-          exact
           path="/"
-          // /* ⚠️ fix traces/1 */
-          render={() => (
-            <Redirect to={loggedIn ? `/${username}/traces/1` : '/login'} />
-          )}
+          element={<Navigate replace to={loggedIn ? `/${username}/traces/1` : '/login'} />}
         />
-        <Route
-          exact
-          path="/login"
-          render={() => <Login />} /* component={Login} */
-        />
-        <Route exact path="/register" render={() => <Register />} />
-        <Route exact path="/:username" render={() => <UserProfile />} />
-        <Route exact path={`/${username}/traces/:trace_id`} component={Trace} />
-        {/* /* ⚠️ this might be wrong. Was done haphazardly
-         */}
-        <Route path={`/${username}/traces/:trace_id`} component={Trace} />
-        {/* <Route exact path="/dashboard" render={() => <Dashboard />} />
-      <Route exact path="/editor" render={() => <Editor />} /> */}
-        {/* <Route
-        exact
-        path={`${username}/traces`}
-        render={({ match }) => <Trace match={match} />}
-      /> */}
-      </Switch>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/:username" element={<UserProfile />} />
+        <Route path="/:username/traces/:trace_id/*" element={<Trace />} />
+        <Route path="/traces/:trace_id/*" element={<Trace />} />
+      </Routes>
       <Toaster />
     </>
 );
 
-// the reason we need withRouter has to do with context, see more:
-// https://stackoverflow.com/questions/42875949/react-router-v4-redirect-not-working?rq=1
-export default withRouter(
-  connect(state => ({
-    /* ⚠️ need to make this a thing */
-    loggedIn: state.loggedIn,
-    username: getUser(state).username,
-  }))(Routes),
-);
+export default connect(state => ({
+  /* ⚠️ need to make this a thing */
+  loggedIn: state.loggedIn,
+  username: getUser(state).username,
+}))(AppRoutes);

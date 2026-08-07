@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 
 import Button from '../components/Button';
-import Logo from '@flambe/logo';
+import Logo from '../components/Logo/src';
 
 const CenterFlex = styled.div`
   width: 100%;

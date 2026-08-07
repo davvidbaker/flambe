@@ -69,7 +69,11 @@ const Header = ({
     <Toggle>
       {({ on, toggle }) => (
         <div style={{ position: 'relative' }}>
-          <Unbutton onClick={toggle}>
+          <Unbutton
+            type="button"
+            aria-label="Toggle thread filter"
+            onClick={toggle}
+          >
             <img height="24px" src={filterIcon} alt="filter" />
           </Unbutton>
           {on && (

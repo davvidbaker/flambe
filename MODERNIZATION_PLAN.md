@@ -8,7 +8,7 @@ runtime infrastructure in independently releasable stages.
 
 ## Current constraints
 
-- The frontend is React 16 with Flow, Redux/Saga, React Router 4, and Webpack 4.
+- The frontend is React 19.2 with Flow, Redux/Saga, and React Router 7.
 - It uses Babel-only syntax, including Flow annotations and the pipeline
   operator, so a Vite move needs a temporary Babel compatibility layer.
 - The backend began as Phoenix 1.3 / Ecto 2-era code and has compatibility
@@ -83,6 +83,51 @@ covered by the browser smoke test. CI runs the same production flow on Node 22.
 production build work without Webpack or `NODE_OPTIONS=--openssl-legacy-provider`.
 
 ## Phase 2 — Modernize React incrementally
+
+**Status: in progress.** React 19.2, the automatic JSX runtime, and the
+`createRoot` API are now in place, with the browser smoke flow passing. React
+Router 7 is the current compatible router line. The remaining dependency
+upgrades stay separate milestones.
+
+- [x] Upgrade React and React DOM from 16.8 to 18.3 and adopt `createRoot`.
+- [x] Upgrade React and React DOM to 19.2, enable the automatic JSX runtime,
+  and remove the obsolete React-16-only logo package.
+- [x] Cover first-frame thread-header interaction and persisted collapse state
+  in the browser smoke test.
+- [x] Upgrade React Router to 7 and remove `react-router-redux`.
+- [x] Keep routing outside Redux, including the unauthorized-request redirect.
+- [x] Upgrade React Redux, Redux, and Redux-Saga for React 18 compatibility;
+  remove unused Redux Thunk middleware.
+- [x] Upgrade React Select to 5; make the thread filter safe while trace data
+  is loading and cover its open/search behavior in the browser smoke flow.
+- [x] Remove unused React Draggable code and its dependency.
+- [x] Upgrade Styled Components to 6 and verify the application in both Vite
+  development and Phoenix-served production modes.
+- [x] Remove inactive React DnD and Reach UI code, including its unsafe
+  hard-coded todo drop target; retain the underlying todo action for a future
+  intentional interaction design.
+- [x] Remove unused React Contexify and Recompose dependencies.
+- [x] Replace React Measure with a native ResizeObserver bridge while
+  preserving its render-prop timing for canvas sizing.
+- [x] Replace the React-16-only split-pane dependency with a native splitter;
+  cover timeline-divider dragging in the browser smoke flow.
+- [x] Remove unused Babel and generator polyfill packages now covered by
+  Vite's modern browser targets.
+- [x] Remove dormant editor, visual-effect, and demo-chart code along with
+  their unused React Commander and Swyzzle dependencies.
+- [x] Retire the unreachable experimental Limbo visualization and its unused
+  D3, topology, and search utility dependencies.
+- [x] Upgrade the active color utility, Polished, to the current v4 line.
+- [x] Upgrade Downshift from v3 to v9's `useCombobox` API; cover command
+  palette filtering in the browser smoke flow.
+- [x] Upgrade the command palette's XState machine from v4 to v5 actors and
+  explicit eventless transitions.
+- [x] Replace React Color with a native color-input adapter while retaining
+  the existing `{ hex }` callback contract.
+- [x] Update Emoji Regex to its current Unicode data release.
+- [x] Restore a Node-22-compatible unit-test command and add trace-processing
+  coverage for ordered and empty traces.
+- [ ] Upgrade remaining UI dependencies individually.
 
 1. Upgrade React and React DOM to a supported current release.
 2. Upgrade React Router and remove `react-router-redux`; let routing live in

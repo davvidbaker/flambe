@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import Measure from 'react-measure';
+import Measure from './Measure';
 
 import { colors } from '../styles';
 import { getBlockTransform } from '../utilities/waterfallChart';

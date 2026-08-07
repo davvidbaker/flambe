@@ -18,7 +18,7 @@ import {
   mapValues,
   isUndefined,
 } from 'lodash/fp';
-import Measure from 'react-measure';
+import Measure from './Measure';
 import { shade } from 'polished';
 
 import GithubMark from '../images/GitHub-Mark-32px.png';
@@ -223,6 +223,21 @@ class FlameChart extends Component<Props, State> {
   hitTest = event => {
     const mouseX = event.nativeEvent.offsetX;
     const mouseY = event.nativeEvent.offsetY;
+    // A user can click as soon as the trace request updates props, before the
+    // next animation-frame draw has rebuilt the canvas geometry. Recreate the
+    // header offsets here so the hit test always agrees with the current data.
+    const threadIds = Object.keys(this.props.threads || {});
+    const hasLevelForEveryThread = levels =>
+      Object.keys(levels || {}).length === threadIds.length;
+    const currentThreadLevels = hasLevelForEveryThread(this.threadLevels)
+      ? this.threadLevels
+      : hasLevelForEveryThread(this.props.threadLevels)
+        ? this.props.threadLevels
+        : threadIds.reduce(
+          (levels, threadId) => ({ ...levels, [threadId]: { max: 0 } }),
+          {},
+        );
+    this.offsets = this.setOffsets(this.props.threads, currentThreadLevels);
     const ts = this.pixelsToTime(mouseX);
     const hitThread_id = this.pixelsToThreadId(mouseY);
     const hitThreadOffset = hitThread_id === null
