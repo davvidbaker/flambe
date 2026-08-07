@@ -51,7 +51,7 @@
     "chalk": "^2.4.2",
     "chokidar": "^2.1.2",
     "cross-env": "^5.2.0",
-    "cypress": "^13.17.0",
+    "cypress": "^15.20.0",
     "eslint": "^5.14.1",
     "eslint-config-airbnb": "^17.1.0",
     "eslint-plugin-babel": "^5.1.0",
