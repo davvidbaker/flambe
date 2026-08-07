@@ -170,16 +170,16 @@ function Field({
   onFullyLoaded,
 }) {
   const [state, send] = useMachine(
-    fieldMachine.withConfig(
+    fieldMachine.provide(
       {
         actions: {
-          submitCommand: (ctx, _event) =>
-            onFullyLoaded({ action: ctx.command.action, ...ctx.parameters }),
+          submitCommand: ({ context }) =>
+            onFullyLoaded({ action: context.command.action, ...context.parameters }),
         },
       },
-      { ...field },
     ),
     {
+      input: field,
       /* 💁  set to true to help debugging */
       log: true,
     },

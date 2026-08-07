@@ -1,7 +1,7 @@
 // @flow
 
 import React, { Component } from 'react';
-import Measure from 'react-measure';
+import Measure from './Measure';
 import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 

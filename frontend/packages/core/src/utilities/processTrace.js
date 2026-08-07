@@ -70,7 +70,6 @@ function pushToMaybeNullArray(arr, ...items) {
 }
 
 function processTrace(trace: TraceEvent[], threads: Thread[]) {
-  console.log('trace', trace);
   const threadsObject = {};
   let threadLevels = {};
   let threadOpenActivities = {};

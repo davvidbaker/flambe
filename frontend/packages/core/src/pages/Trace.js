@@ -1,26 +1,18 @@
 // @flow
 import * as React from 'react';
 import { connect } from 'react-redux';
-import { compose } from 'redux';
-import SplitPane from 'react-split-pane';
+import SplitPane from '../components/SplitPane';
 import last from 'lodash/fp/last';
-import { Switch, Route, Redirect, withRouter } from 'react-router';
-// import Subdivide from 'subdivide';
-
-// flow-ignore
-import { DragDropContext, DragDropManager } from 'react-dnd';
-import HTML5Backend from 'react-dnd-html5-backend';
+import { useLocation, useParams } from 'react-router-dom';
 /* ⚠️ I was struggling to import commander without getting errors about hooks being used outside function component
       so I copied the code in here because I was frustrated
 */
-// import Commander from 'react-commander';
 import Commander from '../components/Commander/this_is_a_hack';
 import Modal from 'react-modal';
 
 import Dashboard from '../containers/Dashboard';
 import ConnectedTimeline from '../containers/ConnectedTimeline';
 import SingleThreadView from '../containers/SingleThreadView';
-import Editor from '../containers/Editor';
 import AdvancedSearch from '../containers/AdvancedSearch';
 // import Todos from './Todos';
 import Header from '../components/Header';
@@ -61,7 +53,6 @@ import type { Todo } from '../types/Todo';
 
 Modal.setAppElement('#app-root');
 
-import '../styles/reach-overrides.css';
 console.log(`🔥  React.version`, React.version);
 
 const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }) =>
@@ -107,7 +98,7 @@ class App extends React.Component<
   constructor(props) {
     super(props);
 
-    const trace_id = props.match.params.trace_id;
+    const trace_id = props.routeParams.trace_id;
 
     /** ⚠️ come back */
     this.props.fetchUser(props.user.id);
@@ -192,7 +183,7 @@ class App extends React.Component<
   };
 
   renderTimeline = route => {
-    const { trace_id } = this.props.match.params;
+    const { trace_id } = this.props.routeParams;
 
     return trace_id ? (
       <ConnectedTimeline
@@ -374,15 +365,13 @@ class App extends React.Component<
                       if (this.props.view === 'multithread') {
                         this.renderTimeline();
                       } else if (this.props.view === 'singlethread') {
-                        <Route
-                          path={`${this.props.location.pathname}/threads/${
-                            this.props.viewThread
-                          }`}
-                        >
+                        this.props.location.pathname.endsWith(
+                          `/threads/${this.props.viewThread}`,
+                        ) && (
                           <SingleThreadView
                             thread={this.props.threads[this.props.viewThread]}
                           />
-                        </Route>;
+                        );
                       }
                     }}
                   </div>
@@ -425,10 +414,8 @@ class App extends React.Component<
   }
 }
 
-export default compose(
-  DragDropContext(HTML5Backend),
-  // flow-ignore
-  connect(
+// flow-ignore
+const ConnectedTrace = connect(
     state => ({
       aModalIsOpen:
         state.settingsVisible ||
@@ -470,5 +457,11 @@ export default compose(
       showSettings: () => dispatch(showSettings()),
       toggleActivityMute: () => dispatch(toggleSetting('activityMute')),
     }),
-  ),
 )(App);
+
+export default function TraceRoute() {
+  const routeParams = useParams();
+  const location = useLocation();
+
+  return <ConnectedTrace routeParams={routeParams} location={location} />;
+}

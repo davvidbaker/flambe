@@ -1,4 +1,3 @@
-import { push } from 'react-router-redux';
 import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
 
 import {
@@ -32,6 +31,7 @@ import {
 import { getUser } from '../reducers/user';
 import { getTimeline } from '../reducers/timeline';
 import { getCollapsedThreadState } from '../utilities/threadCollapseState';
+import { navigate } from '../utilities/navigation';
 
 async function hitNetwork({ resource, params = {} }) {
   console.log(`params`, params);
@@ -61,7 +61,7 @@ function* fetchResource(actionType, { resource, params }) {
     yield put({ type: `${actionType}_SUCCEEDED`, data });
   } catch (e) {
     if (e.status === 401) {
-      yield put(push('/login'));
+      yield call(navigate, '/login');
       return;
     }
     console.log(`network error e`, e);

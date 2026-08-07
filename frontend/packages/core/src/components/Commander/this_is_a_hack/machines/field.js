@@ -1,59 +1,54 @@
-import { Machine, actions } from 'xstate';
+import { assign, createMachine } from 'xstate';
 import * as Utilities from '../utilities';
 
-const { assign } = actions;
-
-const commitParameter = assign((ctx, event) => ({
+const commitParameter = assign(({ context, event }) => ({
   parameters: {
-    ...ctx.parameters,
+    ...context.parameters,
     [event.parameter.key]: event.parameter.value,
   },
 }));
 
-const commandFullyLoaded = (ctx, event) =>
-  ctx.command && Utilities.commandFullyLoaded(ctx.command, ctx.parameters);
+const commandFullyLoaded = ({ context }) =>
+  context.command
+  && Utilities.commandFullyLoaded(context.command, context.parameters);
 
-const commandHasParameters = (ctx, event) =>
+const commandHasParameters = ({ event }) =>
   Utilities.commandHasParameters(event.command);
 
-const commandNotNull = ctx => ctx.command !== null;
+const commandNotNull = ({ context }) => context.command !== null;
 
-const setCommand = assign((ctx, event) => ({ command: event.command }));
+const setCommand = assign(({ event }) => ({ command: event.command }));
 
-const submitCommand = () => {};
-
-const fieldMachine = Machine(
-  {
+const fieldMachine = createMachine({
     id: 'field',
     initial: 'initial',
-    context: {
+    context: ({ input }) => ({
       command: null,
       parameters: {},
-    },
+      ...input,
+    }),
     states: {
       initial: {
-        on: {
-          '': [
+        always: [
             {
               target: 'fully_loaded',
-              cond: 'commandFullyLoaded',
+              guard: 'commandFullyLoaded',
             },
             {
               target: 'parameters',
-              cond: 'commandNotNull',
+              guard: 'commandNotNull',
             },
             {
               target: 'command',
             },
           ],
-        },
       },
       command: {
         on: {
           COMMAND_SELECT: [
             {
               target: 'parameters',
-              cond: 'commandHasParameters',
+              guard: 'commandHasParameters',
               actions: 'setCommand',
             },
             {
@@ -74,29 +69,24 @@ const fieldMachine = Machine(
         },
       },
       parameter_committed: {
-        on: {
-          '': [
+        always: [
             {
               target: 'fully_loaded',
-              cond: 'commandFullyLoaded',
+              guard: 'commandFullyLoaded',
             },
             { target: 'parameters' },
           ],
-        },
       },
       fully_loaded: {
-        onEntry: 'submitCommand',
+        entry: 'submitCommand',
       },
     },
-  },
-  {
+}).provide({
     actions: {
       commitParameter,
       setCommand,
-      submitCommand,
     },
     guards: { commandFullyLoaded, commandHasParameters, commandNotNull },
-  },
-);
+});
 
 export default fieldMachine;
