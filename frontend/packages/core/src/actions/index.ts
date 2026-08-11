@@ -487,7 +487,7 @@ export function selectTrace(trace: Trace) {
   };
 }
 
-export function fetchTrace(trace: Trace) {
+export function fetchTrace(trace: Trace | EntityId) {
   return {
     type: TRACE_FETCH,
     trace,
