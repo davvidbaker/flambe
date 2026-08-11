@@ -1,11 +1,23 @@
-import React, { Component } from 'react';
+import React from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
 
 import DraggableModal from '../components/DraggableModal';
 import { hideSettings as hideSettingsAction, toggleSetting } from '../actions';
+import type { SettingsState } from '../reducers/settings';
 
-const SETTINGS = [
+type BooleanSettingKey = {
+  [Key in keyof SettingsState]: SettingsState[Key] extends boolean ? Key : never;
+}[keyof SettingsState];
+
+interface SettingDefinition {
+  copy: string;
+  description?: string;
+  setting: BooleanSettingKey;
+  subsettings?: SettingDefinition[];
+}
+
+const SETTINGS: SettingDefinition[] = [
   {
     setting: 'attentionFlows',
     copy: 'Attention Flows',
@@ -55,10 +67,10 @@ const Setting = styled.div`
   }
 `;
 
-const Subsetting = styled.div`
+const Subsetting = styled.div<{ $disabled: boolean }>`
   margin-left: 20px;
 
-  color: ${props => (props.disabled ? 'lightgrey' : 'auto')};
+  color: ${props => (props.$disabled ? 'lightgrey' : 'inherit')};
 `;
 
 const Wrapper = styled.div`
@@ -73,23 +85,22 @@ const Wrapper = styled.div`
   }
 `;
 
+interface Props {
+  hideSettings: () => unknown;
+  settings: SettingsState;
+  settingsVisible: boolean;
+  toggleSetting: (setting: BooleanSettingKey) => unknown;
+}
+
 const Settings = ({
   settingsVisible,
   hideSettings,
   settings,
   toggleSetting,
-}) => (
+}: Props) => (
   <DraggableModal
     isOpen={settingsVisible}
     onRequestClose={hideSettings}
-    onDragStop={(e, { x, y }) => {
-      window.localStorage.setItem('settingsPositionX', x);
-      window.localStorage.setItem('settingsPositionY', y);
-    }}
-    defaultPosition={{
-      x: Number(window.localStorage.getItem('settingsPositionX')),
-      y: Number(window.localStorage.getItem('settingsPositionY')),
-    }}
   >
     <Wrapper>
       <h1 style={{ marginTop: 0 }}>Settings</h1>
@@ -109,7 +120,7 @@ const Settings = ({
                 subsettings.map(
                   ({ copy, description, setting: subsetting }) => (
                     <Setting key={subsetting}>
-                      <Subsetting disabled={!settings[setting]}>
+                      <Subsetting $disabled={!settings[setting]}>
                         <input
                           checked={settings[subsetting]}
                           onChange={() => toggleSetting(subsetting)}
@@ -132,12 +143,12 @@ const Settings = ({
 );
 
 export default connect(
-  state => ({
+  (state: { settingsVisible: boolean; settings: SettingsState }) => ({
     settingsVisible: state.settingsVisible,
     settings: state.settings,
   }),
   dispatch => ({
     hideSettings: () => dispatch(hideSettingsAction()),
-    toggleSetting: setting => dispatch(toggleSetting(setting)),
+    toggleSetting: (setting: BooleanSettingKey) => dispatch(toggleSetting(setting)),
   }),
 )(Settings);
