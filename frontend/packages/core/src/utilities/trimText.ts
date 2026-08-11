@@ -4,15 +4,15 @@
  * @param {number} maxLength
  * @return {string} string that is shortened to contain ellipsis
  */
-const trimMiddle = (str, maxLength) => {
+const trimMiddle = (str: string, maxLength: number): string => {
   if (str.length <= maxLength) return String(str);
   let leftHalf = maxLength >> 1;
   let rightHalf = maxLength - leftHalf - 1;
-  if (str.codePointAt(str.length - rightHalf - 1) >= 0x10000) {
+  if ((str.codePointAt(str.length - rightHalf - 1) ?? 0) >= 0x10000) {
     --rightHalf;
     ++leftHalf;
   }
-  if (leftHalf > 0 && str.codePointAt(leftHalf - 1) >= 0x10000) --leftHalf;
+  if (leftHalf > 0 && (str.codePointAt(leftHalf - 1) ?? 0) >= 0x10000) --leftHalf;
   return `${str.substr(0, leftHalf)}\u2026${str.substr(
     str.length - rightHalf,
     rightHalf
@@ -26,7 +26,12 @@ const trimMiddle = (str, maxLength) => {
  * @param {function(string, number):string} trimFunction
  * @return {string}
  */
-const trimText = (context, text, maxWidth, trimFunction) => {
+const trimText = (
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  trimFunction: (text: string, width: number) => string,
+): string => {
   const maxLength = 200;
   if (maxWidth <= 10) return '';
   if (text.length > maxLength) text = trimFunction(text, maxLength);
@@ -60,7 +65,7 @@ const trimText = (context, text, maxWidth, trimFunction) => {
  * @param {number} maxWidth
  * @return {string}
  */
-const trimTextMiddle = (context, text, maxWidth) =>
+const trimTextMiddle = (context: CanvasRenderingContext2D, text: string, maxWidth: number): string =>
   trimText(context, text, maxWidth, (text, width) => trimMiddle(text, width));
 
 export default trimTextMiddle;

@@ -6,7 +6,7 @@ import trimTextMiddle from './trimText';
 import deepArrayIsEqual from './deepArrayIsEqual';
 import shortEnglishHumanizer from './shortEnglishHumanizer';
 
-function findById(idToFind, arr) {
+function findById<T extends { id: unknown }>(idToFind: unknown, arr?: T[]): T | Record<string, never> | undefined {
   return !arr ? {} : arr.find(({ id }) => id === idToFind);
 }
 
@@ -29,9 +29,8 @@ export {
  * @param {number} max
  * @return {number}
  */
-export const constrain = (num, min, max) => {
+export const constrain = (num: number, min: number, max: number): number => {
   if (num < min) num = min;
   else if (num > max) num = max;
   return num;
 };
-

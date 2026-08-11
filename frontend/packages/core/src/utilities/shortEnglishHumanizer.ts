@@ -1,5 +1,6 @@
 import humanizeDuration from 'humanize-duration';
 
+// Compact duration labels used by the canvas timeline.
 const shortEnglishHumanizer = humanizeDuration.humanizer({
   language: 'shortEn',
   round: true,
