@@ -1,9 +1,11 @@
-
 import processTrace from './processTrace';
+import type { Activity } from '../types/Activity';
+import type { Thread } from '../types/Thread';
+import type { TraceEvent } from '../types/TraceEvent';
 
-const thread = { id: 1, name: 'Main' };
+const thread: Thread = { id: 1, name: 'Main' };
 
-const activity = {
+const activity: Activity = {
   id: 9,
   name: 'Ship the timeline',
   description: 'A trace-processing fixture',
@@ -14,7 +16,7 @@ const activity = {
 
 describe('processTrace', () => {
   it('orders events and builds a completed activity block', () => {
-    const trace = [
+    const trace: TraceEvent[] = [
       {
         id: 2,
         timestamp: 200,
