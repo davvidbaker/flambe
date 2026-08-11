@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { type FocusEventHandler, type KeyboardEvent } from 'react';
 import styled from 'styled-components';
 
 const Input = styled.input`
-  width: 50px
+  width: 50px;
   text-align: center;
   &[type=number]::-webkit-inner-spin-button, 
   &[type=number]::-webkit-outer-spin-button { 
@@ -15,15 +15,16 @@ const Input = styled.input`
   }
 `;
 
-const NumberInput = ({ placeholder, onSubmit, onBlur }) => {
+interface Props { placeholder: string; onSubmit: (value: string) => void; onBlur: FocusEventHandler<HTMLInputElement> }
+const NumberInput = ({ placeholder, onSubmit, onBlur }: Props) => {
   return (
     <Input
       type="number"
       placeholder={placeholder}
       onBlur={onBlur}
-      onKeyPress={e => {
+      onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
-          onSubmit(e.target.value);
+          onSubmit(e.currentTarget.value);
         }
       }}
     />

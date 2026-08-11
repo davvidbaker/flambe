@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Arrow = ({ scale = 1 }) => {
+const Arrow = ({ scale = 1 }: { scale?: number }) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
