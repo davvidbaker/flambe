@@ -146,6 +146,20 @@ the timeline behavior matches the Phase 0 contract tests.
 
 ## Phase 3 — Create a clean Phoenix 1.8 foundation
 
+**Status: in progress.** `backend_next/` is an isolated Phoenix 1.8.9 API
+foundation using a separate `flambe_next` application, PostgreSQL databases,
+and development port 4001. The legacy backend remains the running application
+on port 4000 until its routes have been migrated and contract-tested.
+
+- [x] Generate the side-by-side Phoenix 1.8 API foundation with no HTML,
+  LiveView, or frontend asset pipeline.
+- [x] Add and test a database-free `GET /api/health` endpoint.
+- [x] Port users, traces, and threads to the new database with automatic Main
+  thread creation; preserve the empty-trace JSON fixture in a new renderer test.
+- [x] Port local-password authentication with a signed session cookie and a
+  protected trace read, preserving the frontend login response shape.
+- [ ] Port the legacy API, authentication, and Channels behind contract tests.
+
 1. Generate a fresh Phoenix 1.8 API-oriented skeleton alongside the existing
    backend. Do not mutate the working backend into an untestable large upgrade.
 2. Port, in order: runtime configuration, Repo, migrations, domain contexts,
