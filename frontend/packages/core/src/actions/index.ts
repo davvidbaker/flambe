@@ -541,7 +541,7 @@ export function popToast(index = 0) {
   };
 }
 
-export function search(searchTerm: string, options: unknown) {
+export function search(searchTerm: string, options?: unknown) {
   return {
     type: SEARCH,
     searchTerm,

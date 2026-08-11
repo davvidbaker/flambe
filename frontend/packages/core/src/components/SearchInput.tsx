@@ -1,4 +1,4 @@
-import React, { Component, type ChangeEvent, type KeyboardEvent, type Ref } from 'react';
+import React, { Component, type ChangeEvent, type FocusEvent, type KeyboardEvent, type Ref } from 'react';
 import styled from 'styled-components';
 
 const Input = styled.input<{ padding?: string }>`
@@ -11,6 +11,7 @@ const Input = styled.input<{ padding?: string }>`
 
 interface Props {
   inputRef?: Ref<HTMLInputElement>;
+  onBlur?: (value: string) => void;
   onSubmit: (value: string) => void;
   padding?: string;
   placeholder?: string;
@@ -47,8 +48,12 @@ class SearchInput extends Component<Props, State> {
     }
   };
 
+  onBlur = (_event: FocusEvent<HTMLInputElement>): void => {
+    this.props.onBlur?.(this.state.value);
+  };
+
   render() {
-    return <Input padding={this.props.padding} onChange={this.onChange} onKeyDown={this.onKeyDown} onKeyPress={this.onKeyPress} value={this.state.value} placeholder={this.props.placeholder} type="text" ref={this.props.inputRef} />;
+    return <Input padding={this.props.padding} onBlur={this.onBlur} onChange={this.onChange} onKeyDown={this.onKeyDown} onKeyPress={this.onKeyPress} value={this.state.value} placeholder={this.props.placeholder} type="text" ref={this.props.inputRef} />;
   }
 }
 
