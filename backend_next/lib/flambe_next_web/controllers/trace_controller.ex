@@ -4,7 +4,7 @@ defmodule FlambeNextWeb.TraceController do
   alias FlambeNext.Traces
 
   def show(conn, %{"id" => id}) do
-    trace = Traces.get_user_trace!(conn.assigns.current_user, id)
-    render(conn, :show, trace: trace)
+    {trace, events} = Traces.get_user_trace_with_events!(conn.assigns.current_user, id)
+    render(conn, :show, trace: trace, events: events)
   end
 end

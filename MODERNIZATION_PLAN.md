@@ -158,6 +158,9 @@ on port 4000 until its routes have been migrated and contract-tested.
   thread creation; preserve the empty-trace JSON fixture in a new renderer test.
 - [x] Port local-password authentication with a signed session cookie and a
   protected trace read, preserving the frontend login response shape.
+- [x] Port activity/event creation with ownership-scoped lookups and render a
+  populated trace payload for the flame chart; category associations remain a
+  separate resource migration.
 - [ ] Port the legacy API, authentication, and Channels behind contract tests.
 
 1. Generate a fresh Phoenix 1.8 API-oriented skeleton alongside the existing

@@ -3,13 +3,14 @@ defmodule FlambeNext.Traces.Trace do
   import Ecto.Changeset
 
   alias FlambeNext.Accounts.User
-  alias FlambeNext.Traces.Thread
+  alias FlambeNext.Traces.{Event, Thread}
 
   schema "traces" do
     field :name, :string
 
     belongs_to :user, User
     has_many :threads, Thread, on_delete: :delete_all
+    has_many :events, Event, on_delete: :delete_all
 
     timestamps(type: :utc_datetime)
   end

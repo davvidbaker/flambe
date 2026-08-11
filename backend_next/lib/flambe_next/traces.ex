@@ -4,7 +4,7 @@ defmodule FlambeNext.Traces do
   alias Ecto.Multi
   alias FlambeNext.Accounts.User
   alias FlambeNext.Repo
-  alias FlambeNext.Traces.{Thread, Trace}
+  alias FlambeNext.Traces.{Activity, Event, Thread, Trace}
 
   def list_traces do
     Repo.all(Trace)
@@ -21,6 +21,20 @@ defmodule FlambeNext.Traces do
     |> where([trace], trace.user_id == ^user.id and trace.id == ^id)
     |> Repo.one!()
     |> Repo.preload(threads: from(thread in Thread, order_by: [asc: thread.rank, asc: thread.id]))
+  end
+
+  def get_user_trace_with_events!(%User{} = user, id) do
+    trace = get_user_trace!(user, id)
+
+    events =
+      from(event in Event,
+        where: event.trace_id == ^trace.id,
+        order_by: [asc: event.timestamp, asc: event.id],
+        preload: [activity: :thread]
+      )
+      |> Repo.all()
+
+    {trace, events}
   end
 
   def list_user_traces(%User{} = user) do
@@ -44,6 +58,46 @@ defmodule FlambeNext.Traces do
   def create_thread(%Trace{} = trace, attrs) do
     %Thread{trace_id: trace.id}
     |> Thread.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def get_user_trace_thread!(%User{} = user, trace_id, thread_id) do
+    from(thread in Thread,
+      join: trace in assoc(thread, :trace),
+      where: thread.id == ^thread_id and trace.id == ^trace_id and trace.user_id == ^user.id
+    )
+    |> Repo.one!()
+  end
+
+  def get_user_trace_activity!(%User{} = user, trace_id, activity_id) do
+    from(activity in Activity,
+      join: thread in assoc(activity, :thread),
+      join: trace in assoc(thread, :trace),
+      where: activity.id == ^activity_id and trace.id == ^trace_id and trace.user_id == ^user.id,
+      preload: [thread: thread]
+    )
+    |> Repo.one!()
+  end
+
+  def create_activity(%Trace{} = trace, %Thread{} = thread, activity_attrs, event_attrs) do
+    Multi.new()
+    |> Multi.insert(
+      :activity,
+      Activity.changeset(%Activity{thread_id: thread.id}, activity_attrs)
+    )
+    |> Multi.insert(:event, fn %{activity: activity} ->
+      Event.changeset(%Event{trace_id: trace.id, activity_id: activity.id}, event_attrs)
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{activity: activity, event: event}} -> {:ok, activity, event}
+      {:error, _operation, changeset, _changes} -> {:error, changeset}
+    end
+  end
+
+  def create_event(%Trace{} = trace, %Activity{} = activity, attrs) do
+    %Event{trace_id: trace.id, activity_id: activity.id}
+    |> Event.changeset(attrs)
     |> Repo.insert()
   end
 end
