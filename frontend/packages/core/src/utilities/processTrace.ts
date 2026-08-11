@@ -17,12 +17,12 @@ export interface TraceBlock {
   startTime: number;
 }
 
-interface ThreadLevel {
+export interface ThreadLevel {
   current: number;
   max: number;
 }
 
-interface ProcessedActivity extends Activity {
+export interface ProcessedActivity extends Activity {
   categories: EntityId[];
   events: EntityId[];
   suspendedChildren: EntityId[];
