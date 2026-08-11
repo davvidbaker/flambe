@@ -167,6 +167,8 @@ on port 4000 until its routes have been migrated and contract-tested.
   category IDs in populated trace events for the flame chart.
 - [x] Port activity and event updates plus activity deletion with owner-scoped
   lookups and lifecycle-controller coverage.
+- [x] Port the authenticated user/dashboard response with real traces and
+  categories plus stable empty placeholders for unmigrated resources.
 - [ ] Port the legacy API, authentication, and Channels behind contract tests.
 
 1. Generate a fresh Phoenix 1.8 API-oriented skeleton alongside the existing

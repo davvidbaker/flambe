@@ -18,6 +18,10 @@ defmodule FlambeNext.Accounts do
 
   def get_user(id), do: Repo.get(User, id)
 
+  def get_current_user!(%User{} = user, id) when is_binary(id) do
+    if Integer.to_string(user.id) == id, do: user, else: raise(Ecto.NoResultsError)
+  end
+
   def list_user_categories(%User{} = user) do
     from(category in Category, where: category.user_id == ^user.id, order_by: [asc: category.id])
     |> Repo.all()
