@@ -277,12 +277,12 @@ export function createActivityB({
   name: string,
   timestamp: number,
   description: string,
-  thread_id: number /* message */,
-  category_id: number | null;
+  thread_id: EntityId /* message */,
+  category_id: EntityId | null;
   phase: EventPhase;
 }) {
   return {
-    type: ACTIVITY_CREATE_Q,
+    type: ACTIVITY_CREATE_B,
     name,
     timestamp,
     description,
@@ -303,12 +303,12 @@ export function createActivityQ({
   name: string,
   timestamp: number,
   description: string,
-  thread_id: number /* message */,
-  category_id: number | null;
+  thread_id: EntityId /* message */,
+  category_id: EntityId | null;
   phase: EventPhase;
 }) {
   return {
-    type: ACTIVITY_CREATE_B,
+    type: ACTIVITY_CREATE_Q,
     name,
     timestamp,
     description,
@@ -500,7 +500,7 @@ export function deleteCurrentTrace() {
   };
 }
 
-export function changeView(view: string, thread_id?: number) {
+export function changeView(view: string, thread_id?: EntityId) {
   return {
     type: VIEW_CHANGE,
     view,
