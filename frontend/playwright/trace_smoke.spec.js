@@ -27,11 +27,14 @@ test('logs in, renders a trace, and persists thread collapse', async ({ page }) 
   const canvas = page.locator('#chart-wrapper canvas');
   await expect(canvas).toBeVisible();
 
-  const beforeCollapse = await page.evaluate(
-    ({ storageKey, id }) => JSON.parse(localStorage.getItem(storageKey) || '{}')[id],
-    { storageKey: collapseStorageKey, id: traceId },
-  );
-  expect(beforeCollapse[firstThread.id]).toBe(false);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        ({ storageKey, id, threadId }) => JSON.parse(localStorage.getItem(storageKey) || '{}')[id]?.[threadId],
+        { storageKey: collapseStorageKey, id: traceId, threadId: String(firstThread.id) },
+      ),
+    )
+    .toBe(false);
 
   const box = await canvas.boundingBox();
   await page.mouse.click(box.x + 100, box.y + 10);

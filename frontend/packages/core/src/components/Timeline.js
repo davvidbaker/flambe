@@ -1,7 +1,7 @@
 import * as React from 'react';
 import SplitPane, { SPLIT_PANE_HANDLE_SIZE } from './SplitPane';
 import throttle from 'lodash/throttle';
-import { filter, reduce } from 'lodash/fp';
+import { filter } from 'lodash/fp';
 import last from 'lodash/last';
 import Measure from './Measure';
 
@@ -16,7 +16,6 @@ import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
 import { persistCollapsedThreadState } from '../utilities/threadCollapseState';
 import { savedRangeIsUsable } from '../utilities/timelineViewport';
-import type { Activity } from '../types/Activity';
 import {
   SECOND, MINUTE, HOUR, DAY, WEEK, MONTH,
 } from '../utilities/time';
@@ -43,40 +42,11 @@ const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
 // leftBoundaryTime is timestamp of left bound of current view
 // rightBoundaryTime is timestamp of right bound of current view
 
-type Thread = {
-  id: string,
-  name: string,
-  __typename: 'Thread',
-  activities: (?Activity)[],
-  dividersData: { offsets: { position: number, time: number }[] },
-};
-
-type Props = {
-  trace_id: string,
-  minTime: number,
-  maxTime: number,
-  focusedBlockActivity_id: ?string,
-  activities: { [string]: Activity },
-  threads: (?Thread)[],
-  toggleThread: () => mixed,
-};
-
-type State = {
-  leftBoundaryTime: number,
-  rightBoundaryTime: number,
-  topOffset: number,
-  threadModal_id: ?number,
-  timeSeriesHeight: number,
-  zoomChord: string,
-  zoomChordMultiplier: number,
-};
-
 /* ⚠️ this is naive, but might be good enough */
-const threadsCollapsedChecksum = threads => threads
-  |> Object.values
-  |> reduce((acc, { collapsed }) => acc + (collapsed ? 1 : 0), 0);
+const threadsCollapsedChecksum = (threads = {}) => Object.values(threads)
+  .reduce((acc, { collapsed }) => acc + (collapsed ? 1 : 0), 0);
 
-class Timeline extends React.Component<Props, State> {
+class Timeline extends React.Component {
   state = {
     dividersData: {
       offsets: [],
@@ -134,6 +104,7 @@ class Timeline extends React.Component<Props, State> {
   }
 
   componentDidMount() {
+    persistCollapsedThreadState(this.props.trace_id, this.props.threads);
     requestAnimationFrame(this.drawChildren.bind(this));
   }
 
@@ -481,7 +452,7 @@ class Timeline extends React.Component<Props, State> {
     requestIdleCallback(this.setLocalStorage.bind(this));
   };
 
-  showThreadDetail = (id: number) => {
+  showThreadDetail = id => {
     this.setState({ threadModal_id: id });
   };
 
@@ -489,7 +460,7 @@ class Timeline extends React.Component<Props, State> {
     this.setState({ threadModal_id: null });
   };
 
-  handlePaneChange = (size: number) => {
+  handlePaneChange = size => {
     this.setState({ timeSeriesHeight: size });
   };
 
