@@ -3,6 +3,11 @@ declare module '*.svg' {
   export default source;
 }
 
+declare module '*.png' {
+  const source: string;
+  export default source;
+}
+
 declare const SERVER: string;
 declare const SOCKET_SERVER: string;
 
