@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import Modal from 'react-modal';
+import type { Styles } from 'react-modal';
 import styled from 'styled-components';
 
-const styleOverrides = {
+const styleOverrides: Styles = {
   overlay: {
     display: "flex",
     justifyContent: "center",
@@ -41,13 +42,17 @@ const ActualContent = styled.div`
   }
 `;
 
+interface Props {
+  children: ReactNode;
+  isOpen: boolean;
+  onRequestClose: () => unknown;
+}
+
 const DraggableModal = ({
   isOpen,
   children,
   onRequestClose,
-  defaultPosition,
-  onDragStop,
-}) => {
+}: Props) => {
   return (
     <Modal
       onRequestClose={onRequestClose}

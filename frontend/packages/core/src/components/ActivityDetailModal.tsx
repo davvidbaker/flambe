@@ -4,8 +4,14 @@ import { connect } from 'react-redux';
 import ActivityDetail from './ActivityDetail';
 import DraggableModal from './DraggableModal';
 import { hideActivityDetailModal } from '../actions';
+import type { ActivityDetailProps } from './ActivityDetail';
 
-const ActivityDetailModal = props => {
+interface Props extends Omit<ActivityDetailProps, 'activity_id' | 'categories' | 'createCategory' | 'deleteActivity' | 'events' | 'updateActivity' | 'updateCategory'> {
+  activityDetailModalVisible: boolean;
+  hideActivityDetailModal: () => unknown;
+}
+
+const ActivityDetailModal = (props: Props) => {
   const {
     activityDetailModalVisible,
     hideActivityDetailModal,
@@ -16,14 +22,6 @@ const ActivityDetailModal = props => {
     <DraggableModal
       isOpen={activityDetailModalVisible}
       onRequestClose={hideActivityDetailModal}
-      onDragStop={(e, { x, y }) => {
-        window.localStorage.setItem('activityDetailPositionX', x);
-        window.localStorage.setItem('activityDetailPositionY', y);
-      }}
-      defaultPosition={{
-        x: Number(window.localStorage.getItem('activityDetailPositionX')),
-        y: Number(window.localStorage.getItem('activityDetailPositionY')),
-      }}
     >
       <ActivityDetail {...passedThroughProps} />
     </DraggableModal>
@@ -31,7 +29,7 @@ const ActivityDetailModal = props => {
 };
 
 export default connect(
-  state => ({
+  (state: { activityDetailModalVisible: boolean }) => ({
     activityDetailModalVisible: state.activityDetailModalVisible,
   }),
   dispatch => ({

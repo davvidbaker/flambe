@@ -42,7 +42,7 @@ const Actions = styled.div`
   }
 `;
 
-interface Props {
+export interface ActivityDetailProps {
   activities: Record<string, ProcessedActivity>;
   activity_id: EntityId | null;
   blocks: TraceBlock[];
@@ -55,7 +55,7 @@ interface Props {
   updateCategory: (id: EntityId, updates: Record<string, unknown>) => unknown;
 }
 
-const ActivityDetail = (props: Props) => {
+const ActivityDetail = (props: ActivityDetailProps) => {
   const {
     activities,
     activity_id,
