@@ -8,8 +8,9 @@ import Measure from './Measure';
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import {
   rankThreadsByAttention,
-} from '../utilities/timelineChart';
-import { timeToPixels, pixelsToTime } from '../utilities/timelineGeometry';
+  timeToPixels,
+  pixelsToTime,
+} from '../utilities/timelineGeometry';
 import { layout } from '../styles';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
