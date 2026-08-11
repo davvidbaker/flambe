@@ -22,11 +22,12 @@ const defaultState: SettingsState = {
   uniformBlockHeight: false,
 };
 
-type ToggleAction = { setting: keyof SettingsState; type: string };
+type ToggleAction = { setting?: keyof SettingsState; type: string };
 
 function settings(state: SettingsState = defaultState, action: ToggleAction): SettingsState {
   if (action.type !== SETTING_TOGGLE) return state;
   const setting = action.setting;
+  if (!setting) return state;
   if (typeof state[setting] !== 'boolean') return state;
   return { ...state, [setting]: !state[setting] } as SettingsState;
 }
