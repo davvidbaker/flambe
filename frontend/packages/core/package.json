@@ -1,10 +1,8 @@
 {
   "name": "flambe-core",
   "version": "0.1.9",
-  "main": "lib/index.js",
   "license": "MIT",
   "private": true,
-  "scripts": {},
   "dependencies": {
     "dayjs": "^1.8.8",
     "downshift": "^9.4.0",

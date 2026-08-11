@@ -94,12 +94,14 @@ production build work without Webpack or `NODE_OPTIONS=--openssl-legacy-provider
 
 ## Phase 2 — Modernize React incrementally
 
-**Status: in progress.** React 19.2, the automatic JSX runtime, and the
+**Status: complete locally.** React 19.2, the automatic JSX runtime, and the
 `createRoot` API are now in place, with the browser smoke flow passing. React
 Router 7 is the current compatible router line. Flow and the Babel proposal
 syntax compatibility layer have been removed; strict TypeScript now covers all
 production frontend modules, including the trace shell, timeline, flame chart,
-Redux connectors, sagas, and application entry point.
+Redux connectors, sagas, and application entry point. The active Vite/Babel
+toolchain and all direct UI dependencies are current, with no npm audit
+findings.
 
 - [x] Upgrade React and React DOM from 16.8 to 18.3 and adopt `createRoot`.
 - [x] Upgrade React and React DOM to 19.2, enable the automatic JSX runtime,
@@ -149,7 +151,9 @@ Redux connectors, sagas, and application entry point.
   plugins after migrating or rewriting every remaining use of their syntax.
 - [x] Finish converting the remaining production JavaScript modules to strict
   TypeScript, prioritizing the trace shell, timeline, and flame chart.
-- [ ] Upgrade remaining UI dependencies individually.
+- [x] Upgrade remaining UI dependencies individually.
+- [x] Upgrade the active build transforms to Vite 8 and Babel 8, remove the
+  obsolete Babel 6/ESLint 5 configuration, and delete checked-in build output.
 
 1. Upgrade React and React DOM to a supported current release.
 2. Upgrade React Router and remove `react-router-redux`; let routing live in
