@@ -433,7 +433,7 @@ export function hideSettings() {
 }
 
 /** 💁 the thread_id is just being used here for optimistic updates when a command is run that operated on the activity */
-export function focusBlock({ index, activity_id, activityStatus, thread_id }: { index: number | null; activity_id: EntityId; activityStatus?: string; thread_id: EntityId }) {
+export function focusBlock({ index, activity_id, activityStatus, thread_id }: { index: number | null; activity_id: EntityId | null; activityStatus?: string | null; thread_id: EntityId | null }) {
   return {
     type: BLOCK_FOCUS,
     index,
@@ -443,7 +443,7 @@ export function focusBlock({ index, activity_id, activityStatus, thread_id }: { 
   };
 }
 
-export function hoverBlock(index: number) {
+export function hoverBlock(index: number | string | null) {
   return {
     type: BLOCK_HOVER,
     index,
