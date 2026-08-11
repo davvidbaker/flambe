@@ -46,6 +46,7 @@ interface CommandLabel {
 }
 
 export interface CommandParameter {
+  [key: string]: unknown;
   itemReturnKey?: string;
   itemStringKey?: string;
   key: string;
@@ -55,7 +56,8 @@ export interface CommandParameter {
 }
 
 export interface Command {
-  action: string;
+  [key: string]: unknown;
+  action: string | ((command: Command) => unknown);
   copy: string;
   label?: CommandLabel;
   parameters?: CommandParameter[];
