@@ -26,7 +26,7 @@ import {
 import {
   rankThreadsByAttention,
   sortThreadsByRank,
-} from '../utilities/timelineChart';
+} from '../utilities/timelineGeometry';
 import { colors } from '../styles';
 
 const threadParam = {

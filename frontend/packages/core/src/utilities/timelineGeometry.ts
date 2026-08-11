@@ -10,6 +10,15 @@ export interface ThreadLevel {
   max: number;
 }
 
+export interface RankedThread {
+  id: EntityId;
+  rank?: number;
+}
+
+export interface AttentionShift {
+  thread_id: EntityId;
+}
+
 export function pixelsToTime(
   x: number,
   leftBoundaryTime: number,
@@ -108,4 +117,30 @@ export function visibleThreadLevels(
   });
 
   return levels;
+}
+
+export function rankThreadsByAttention<T extends RankedThread>(
+  attentionShifts: AttentionShift[] = [],
+  threads: Record<string, T> = {},
+): Record<string, T> {
+  let rank = 0;
+  const rankedThreadIds: Set<string> = new Set();
+
+  [...attentionShifts].reverse().forEach(({ thread_id }) => {
+    const key = String(thread_id);
+    if (rankedThreadIds.has(key)) return;
+    rankedThreadIds.add(key);
+    if (threads[key]) threads[key].rank = rank;
+    rank += 1;
+  });
+
+  return threads;
+}
+
+export function sortThreadsByRank<T extends RankedThread>(
+  threads: Record<string, T> = {},
+): Array<[number, T]> {
+  return Object.entries(threads)
+    .sort(([, left], [, right]) => (left.rank ?? 0) - (right.rank ?? 0))
+    .map(([id, thread]) => [Number(id), thread]);
 }

@@ -2,6 +2,8 @@ import {
   getBlockTransform,
   isVisible,
   pixelsToTime,
+  rankThreadsByAttention,
+  sortThreadsByRank,
   timeToPixels,
   visibleThreadLevels,
 } from './timelineGeometry';
@@ -20,5 +22,15 @@ describe('timeline geometry', () => {
     expect(visibleThreadLevels([block], { 4: { thread_id: 2 } }, 100, 200, { 2: { id: 2 } })).toEqual({
       2: { current: 2, max: 3 },
     });
+  });
+
+  it('orders threads by their most recent attention shift', () => {
+    const threads = { 1: { id: 1, rank: 0 }, 2: { id: 2, rank: 1 } };
+    expect(sortThreadsByRank(rankThreadsByAttention([
+      { thread_id: 1 }, { thread_id: 2 }, { thread_id: 1 },
+    ], threads))).toEqual([
+      [1, { id: 1, rank: 0 }],
+      [2, { id: 2, rank: 1 }],
+    ]);
   });
 });
