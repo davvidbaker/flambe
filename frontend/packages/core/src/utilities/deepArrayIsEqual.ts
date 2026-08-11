@@ -3,7 +3,7 @@
 
 import isEqual from 'lodash/isEqual';
 
-export default function deepArrayIsEqual(a, b) {
+export default function deepArrayIsEqual(a: unknown[], b: unknown[]): boolean {
   if (a.length !== b.length) {
     return false;
   }
