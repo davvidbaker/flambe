@@ -5,15 +5,13 @@ export const colors = {
   'focus-activity-bg': 'hsla(216, 68%, 54%, 0.1)',
   text: '#000',
   red: '#e85050',
-
   flames: {
-    // must be a hex string for its use in color-picker (otherwise rgba, hsla is an object)
+    // Must be hex for color-picker; rgba/hsla are objects there.
     main: '#efc360',
   },
-
   dropTarget: 'hsl(130, 61%, 74%)',
-};
+} as const;
 
 export const layout = {
   headerHeight: '40px',
-};
+} as const;

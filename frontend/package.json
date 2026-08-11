@@ -13,6 +13,7 @@
     "preview": "vite preview --config vite.config.mjs",
     "test": "npm run test:smoke",
     "test:unit": "jest --runInBand",
+    "typecheck": "tsc --noEmit",
     "flow": "flow",
     "test:smoke": "playwright test"
   },
@@ -41,7 +42,12 @@
     "@babel/preset-flow": "^7.0.0",
     "@babel/preset-react": "^7.0.0",
     "@babel/preset-stage-2": "^7.0.0",
+    "@babel/preset-typescript": "^8.0.1",
     "@playwright/test": "^1.62.1",
+    "@types/lodash": "^4.17.25",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/tinycolor2": "^1.4.6",
     "@vitejs/plugin-react": "4.3.4",
     "babel-core": "^7.0.0-beta.51",
     "babel-eslint": "^10.0.1",
@@ -65,6 +71,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "redux": "^5.0.1",
+    "typescript": "^7.0.2",
     "vite": "5.4.20",
     "ws": "^6.1.4"
   }

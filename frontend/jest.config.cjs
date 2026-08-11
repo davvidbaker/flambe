@@ -10,7 +10,16 @@ module.exports = {
         presets: [
           ['@babel/preset-env', { modules: 'commonjs' }],
           ['@babel/preset-react', { runtime: 'automatic' }],
-          '@babel/preset-flow',
+        ],
+        overrides: [
+          {
+            test: /\.jsx?$/,
+            presets: ['@babel/preset-flow'],
+          },
+          {
+            test: /\.tsx?$/,
+            presets: ['@babel/preset-typescript'],
+          },
         ],
         plugins: [
           '@babel/plugin-proposal-optional-chaining',

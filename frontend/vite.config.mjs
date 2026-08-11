@@ -26,7 +26,16 @@ export default defineConfig(({ mode }) => {
           presets: [
             ['@babel/preset-env', { modules: false }],
             ['@babel/preset-react', { runtime: 'automatic' }],
-            '@babel/preset-flow',
+          ],
+          overrides: [
+            {
+              test: /\.jsx?$/,
+              presets: ['@babel/preset-flow'],
+            },
+            {
+              test: /\.tsx?$/,
+              presets: ['@babel/preset-typescript'],
+            },
           ],
           plugins: [
             '@babel/plugin-proposal-optional-chaining',
