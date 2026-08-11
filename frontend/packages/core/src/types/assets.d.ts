@@ -5,3 +5,7 @@ declare module '*.svg' {
 
 declare const SERVER: string;
 declare const SOCKET_SERVER: string;
+
+interface Window {
+  __REDUX_DEVTOOLS_EXTENSION_COMPOSE__?: unknown;
+}
