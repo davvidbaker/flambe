@@ -152,6 +152,8 @@ test('creates, renames, and deletes a thread through the authenticated same-orig
 });
 
 test('starts a new activity through the command palette', async ({ page }) => {
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
@@ -225,6 +227,7 @@ test('starts a new activity through the command palette', async ({ page }) => {
   }, created.data.activity.id);
 
   expect(deletion).toBe(204);
+  expect(pageErrors).toEqual([]);
 });
 
 test('logs out through the UI and clears the protected session', async ({ page }) => {

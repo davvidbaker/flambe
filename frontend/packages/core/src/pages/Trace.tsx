@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { connect } from 'react-redux';
 import SplitPane from '../components/SplitPane';
-import last from 'lodash/fp/last';
 import { useLocation, useParams } from 'react-router-dom';
 /* ⚠️ I was struggling to import commander without getting errors about hooks being used outside function component
       so I copied the code in here because I was frustrated
@@ -16,7 +15,7 @@ import AdvancedSearch from '../containers/AdvancedSearch';
 import Header from '../components/Header';
 import SidePanel from '../components/SidePanel';
 import SearchBar from '../containers/SearchBar';
-import WithEventListeners from '../components/WithEventListeners';
+import WithEventListeners, { type EventListenerTuple } from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
 import {
@@ -45,18 +44,37 @@ import COMMANDS, {
 import { getTimeline } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import isEndable from '../utilities/isEndable';
+import type { Location } from 'react-router-dom';
+import type { RootState } from '../store';
+import type { Command, CommandParameter } from '../constants/commands';
+import type { FieldInput } from '../components/Commander/this_is_a_hack/machines/field';
+import type { FuzzyAutocompleteItem } from '../components/Commander/this_is_a_hack/components/FuzzyAutocomplete';
+import type { EntityId } from '../types/ids';
+import type { Trace } from '../types/Trace';
+import type { UserState } from '../reducers/user';
+import type { OperandState } from '../reducers/operand';
+import type { SettingsState } from '../reducers/settings';
+import type { ProcessedActivity, ThreadLevel, TraceBlock } from '../utilities/processTrace';
+import type { Category } from '../types/Category';
+import type { Thread } from '../types/Thread';
+import type { TimelineState } from '../reducers/timeline';
 
 Modal.setAppElement('#app-root');
 
 console.log(`🔥  React.version`, React.version);
 
-const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }) =>
+const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }: {
+  children: React.ReactNode;
+  hideSidePanel: () => unknown;
+  isSplit: boolean;
+  threads: Record<string, Thread>;
+}) =>
   isSplit ? (
     <SplitPane
       split="vertical"
       minSize={100}
-      defaultSize={parseInt(localStorage.getItem('splitPos'), 10) || 100}
-      onChange={size => localStorage.setItem('splitPos', size)}
+      defaultSize={Number.parseInt(localStorage.getItem('splitPos') ?? '', 10) || 100}
+      onChange={size => localStorage.setItem('splitPos', String(size))}
       primary="second"
     >
       <SidePanel closePanel={hideSidePanel}>
@@ -68,8 +86,50 @@ const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }) =>
     <div style={{ height: '100%' }}>{children}</div>
   );
 
-class App extends React.Component {
-  state = {
+interface AppProps {
+  aModalIsOpen: boolean;
+  activities: Record<string, ProcessedActivity>;
+  advancedSearchVisible: boolean;
+  blocks: TraceBlock[];
+  categories: Category[];
+  collapseAllThreads: () => unknown;
+  createMantra: (name: string) => unknown;
+  createToast: (message: string, notificationType: string) => unknown;
+  deleteCurrentTrace: () => unknown;
+  deleteTrace: (id: EntityId) => unknown;
+  expandAllThreads: () => unknown;
+  fetchTrace: (trace: Trace | EntityId) => unknown;
+  fetchUser: (id: EntityId) => unknown;
+  hideAdvancedSearch: () => unknown;
+  keyDown: (key: string) => unknown;
+  keyUp: (key: string) => unknown;
+  location: Location;
+  operand: OperandState | null;
+  routeParams: { trace_id?: string; username?: string };
+  runCommand: (operand: OperandState | null, command: unknown) => unknown;
+  selectTrace: (trace: Trace) => unknown;
+  settings: SettingsState;
+  showActivityDetails: () => unknown;
+  showAdvancedSearch: () => unknown;
+  showSettings: () => unknown;
+  threadLevels: Record<string, ThreadLevel>;
+  threads: Record<string, Thread>;
+  toggleActivityMute: () => unknown;
+  trace: Trace | null;
+  user: UserState;
+  view: string;
+  viewThread: EntityId | null;
+}
+
+interface AppState {
+  additionalCommands: Command[];
+  commanderVisible: boolean;
+  field?: FieldInput;
+  searchBarVisible: boolean;
+}
+
+class App extends React.Component<AppProps, AppState> {
+  state: AppState = {
     // modalIsOpen,
     searchBarVisible: false,
     commanderVisible: false,
@@ -78,7 +138,9 @@ class App extends React.Component {
     field: undefined,
   };
 
-  constructor(props) {
+  searchRef: HTMLInputElement | null = null;
+
+  constructor(props: AppProps) {
     super(props);
 
     const trace_id = props.routeParams.trace_id;
@@ -90,33 +152,12 @@ class App extends React.Component {
       props.fetchTrace(trace_id);
     }
   }
-  componentDidCatch(e, info) {
-    console.log('component did catch', e);
-    createToast(`${(e, info)}. Top level error.`, 'error');
+  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+    this.props.createToast(`${error.message}. Top level error. ${info.componentStack ?? ''}`, 'error');
   }
 
-  componentDidMount() {
-    // impure!
-    const createKeyEvent = (DOMEvent, propFn) => {
-      document.addEventListener(DOMEvent, e => {
-        // flow-ignore
-        switch (e.key) {
-          case 'Shift':
-            // flow-ignore
-            propFn(e.key);
-            break;
-
-          default:
-            break;
-        }
-      });
-    };
-
-    createKeyEvent('keydown', this.props.keyDown);
-    createKeyEvent('keyup', this.props.keyUp);
-  }
-
-  getItems = selector => selector(this.props);
+  getItems = (selector: NonNullable<CommandParameter['selector']>): FuzzyAutocompleteItem[] =>
+    selector(this.props as never) as FuzzyAutocompleteItem[];
 
   logout = async () => {
     await fetch(`${SERVER}/auth/logout`, {
@@ -128,38 +169,38 @@ class App extends React.Component {
     window.location.assign('/login');
   };
 
-  addCommand = command => {
+  addCommand = (command: Command): void => {
     this.setState(state => ({
       additionalCommands: [command, ...state.additionalCommands],
     }));
   };
 
-  submitCommand = command => {
+  submitCommand = (command: { action: Command['action'] } & Record<string, unknown>): void => {
     this.hideCommander();
     console.log(`🔥  command`, command);
     this.props.runCommand(this.props.operand, command);
   };
 
-  showCommander = () => {
+  showCommander = (): void => {
     this.setState({ commanderVisible: true });
   };
 
-  showSearchPanel = () => {
+  showSearchPanel = (): void => {
     this.setState({ searchBarVisible: true });
 
-    this.searchRef.focus();
-    this.searchRef.setSelectionRange(0, this.searchRef.value.length);
+    this.searchRef?.focus();
+    this.searchRef?.setSelectionRange(0, this.searchRef.value.length);
   };
 
-  hideSearchPanel = () => {
+  hideSearchPanel = (): void => {
     this.setState({ searchBarVisible: false });
   };
 
-  hideCommander = () => {
+  hideCommander = (): void => {
     this.setState({ commanderVisible: false, field: undefined });
   };
 
-  setCommanderCommand = command => {
+  setCommanderCommand = (command?: Command): void => {
     this.setState(
       {
         field: {
@@ -167,19 +208,18 @@ class App extends React.Component {
           parameters: {},
         },
       },
-      state => {
+      () => {
         this.showCommander();
       },
     );
   };
 
-  renderTimeline = route => {
+  renderTimeline = (): React.ReactNode => {
     const { trace_id } = this.props.routeParams;
 
     return trace_id ? (
       <ConnectedTimeline
         trace_id={trace_id}
-        user={this.props.user}
         key="timeline"
         /* ⚠️ I don't like this api too much. Should mabye use context? */
         addCommand={this.addCommand}
@@ -188,14 +228,18 @@ class App extends React.Component {
     ) : null;
   };
 
-  getCommands = operand => {
+  getCommands = (operand: OperandState | null): Command[] => {
     const baseCommands = [...COMMANDS, ...this.state.additionalCommands];
 
     if (operand) {
       switch (operand.type) {
         case 'activity':
           return [
-            ...activityCommandsByStatus(operand.activityStatus),
+            ...(operand.activityStatus === 'active' ||
+            operand.activityStatus === 'suspended' ||
+            operand.activityStatus === 'complete'
+              ? activityCommandsByStatus(operand.activityStatus)
+              : []),
             ...baseCommands,
           ];
         default:
@@ -206,11 +250,13 @@ class App extends React.Component {
   };
 
   render() {
-    const eventListeners = [
+    const eventListeners: EventListenerTuple[] = [
       [
         'keydown',
-        e => {
+        event => {
+          const e = event as KeyboardEvent;
           if (e.repeat) return;
+          if (e.key === 'Shift') this.props.keyDown(e.key);
 
           if (e.ctrlKey || e.metaKey) {
             switch (e.key) {
@@ -248,8 +294,8 @@ class App extends React.Component {
             }
           }
           if (
-            e.target.nodeName !== 'INPUT' &&
-            e.target.nodeName !== 'TEXTAREA'
+            !(e.target instanceof HTMLInputElement) &&
+            !(e.target instanceof HTMLTextAreaElement)
           ) {
             if (e.shiftKey && e.key === '}') {
               this.props.expandAllThreads();
@@ -261,12 +307,14 @@ class App extends React.Component {
       ],
       [
         'keyup',
-        e => {
+        event => {
+          const e = event as KeyboardEvent;
+          if (e.key === 'Shift') this.props.keyUp(e.key);
           if (
             /* ⚠️ maybe don't want this.props.operand here */
             this.props.operand &&
-            e.target.nodeName !== 'INPUT' &&
-            e.target.nodeName !== 'TEXTAREA'
+            !(e.target instanceof HTMLInputElement) &&
+            !(e.target instanceof HTMLTextAreaElement)
           ) {
             switch (this.props.operand.type) {
               case 'activity':
@@ -277,14 +325,16 @@ class App extends React.Component {
                   switch (e.key) {
                     case 'e':
                     case 'v':
-                    case 'j':
-                      if (
+                    case 'j': {
+                      const activityId = this.props.operand.activity_id;
+                      const activity = activityId === undefined
+                        ? undefined
+                        : this.props.activities[String(activityId)];
+                      if (activity &&
                         isEndable(
-                          this.props.activities[this.props.operand.activity_id],
+                          activity,
                           this.props.blocks.filter(
-                            block =>
-                              block.activity_id ===
-                              this.props.operand.activity_id,
+                            block => String(block.activity_id) === String(activityId),
                           ),
                           this.props.threadLevels,
                         )
@@ -296,18 +346,20 @@ class App extends React.Component {
                         );
                       }
                       break;
-                    case 's':
+                    }
+                    case 's': {
                       /* ⚠️ not great code ahead */
-                      if (
-                        this.props.activities[this.props.operand.activity_id]
-                          .status === 'active'
-                      ) {
+                      const activityId = this.props.operand.activity_id;
+                      if (activityId !== undefined &&
+                        this.props.activities[String(activityId)]?.status === 'active') {
                         this.setCommanderCommand(
                           ACTIVITY_COMMANDS.find(
                             ({ shortcut }) => shortcut === 'S',
                           ),
                         );
                       }
+                      break;
+                    }
                     default:
                       break;
                   }
@@ -340,8 +392,7 @@ class App extends React.Component {
                 deleteCurrentTrace={this.props.deleteCurrentTrace}
                 currentMantra={
                   this.props.user &&
-                  last(this.props.user.mantras) &&
-                  last(this.props.user.mantras).name
+                  this.props.user.mantras[this.props.user.mantras.length - 1]?.name
                 }
                 createMantra={name => this.props.createMantra(name)}
                 logout={this.logout}
@@ -360,9 +411,9 @@ class App extends React.Component {
                             `/threads/${this.props.viewThread}`,
                           )
                         ? (
-                          <SingleThreadView
-                            thread={this.props.threads[this.props.viewThread]}
-                          />
+                          <SingleThreadView thread={this.props.viewThread === null
+                            ? undefined
+                            : this.props.threads[String(this.props.viewThread)]} />
                         )
                         : null}
                   </div>
@@ -406,42 +457,45 @@ class App extends React.Component {
 }
 
 const ConnectedTrace = connect(
-    state => ({
+    (state: RootState) => {
+      const timeline = getTimeline(state) as TimelineState;
+      const trace = timeline.trace?.id !== null && timeline.trace?.name
+        ? { id: timeline.trace.id, name: timeline.trace.name }
+        : null;
+      return {
       aModalIsOpen:
         state.settingsVisible ||
         state.activityDetailModalVisible ||
-        state.todosVisible ||
-        state.settingsVisible,
-      activities: getTimeline(state).activities,
+        state.todosVisible,
+      activities: timeline.activities,
       advancedSearchVisible: state.advancedSearchVisible,
-      blocks: getTimeline(state).blocks,
+      blocks: timeline.blocks,
       categories: getUser(state).categories,
-      threadLevels: getTimeline(state).threadLevels,
-      threads: getTimeline(state).threads,
+      threadLevels: timeline.threadLevels,
+      threads: timeline.threads,
       operand: state.operand,
       settings: state.settings,
-      todosVisible: state.todosVisible,
-      // trace: getTimeline(state).trace,
+      trace,
       user: getUser(state),
-      userTraces: getUser(state).traces,
       view: state.view,
       viewThread: state.viewThread,
-    }),
+      };
+    },
     dispatch => ({
-      collapseAllThreads: id => dispatch(collapseAllThreads(id)),
-      createMantra: (id, note) => dispatch(createMantra(id, note)),
-      createToast: (message, notificationType) =>
+      collapseAllThreads: () => dispatch(collapseAllThreads()),
+      createMantra: (name: string) => dispatch(createMantra(name)),
+      createToast: (message: string, notificationType: string) =>
         dispatch(createToast(message, notificationType)),
       deleteCurrentTrace: () => dispatch(deleteCurrentTrace()),
-      deleteTrace: id => dispatch(deleteTrace(id)),
-      expandAllThreads: id => dispatch(expandAllThreads(id)),
-      fetchTrace: trace => dispatch(fetchTrace(trace)),
-      fetchUser: user_id => dispatch(fetchUser(user_id)),
+      deleteTrace: (id: EntityId) => dispatch(deleteTrace(id)),
+      expandAllThreads: () => dispatch(expandAllThreads()),
+      fetchTrace: (trace: Trace | EntityId) => dispatch(fetchTrace(trace)),
+      fetchUser: (user_id: EntityId) => dispatch(fetchUser(user_id)),
       hideAdvancedSearch: () => dispatch(hideAdvancedSearch()),
-      keyDown: key => dispatch(keyDown(key)),
-      keyUp: key => dispatch(keyUp(key)),
-      runCommand: (operand, command) => dispatch(runCommand(operand, command)),
-      selectTrace: trace => dispatch(selectTrace(trace)),
+      keyDown: (key: string) => dispatch(keyDown(key)),
+      keyUp: (key: string) => dispatch(keyUp(key)),
+      runCommand: (operand: OperandState | null, command: unknown) => dispatch(runCommand(operand, command)),
+      selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
       showActivityDetails: () => dispatch(showActivityDetails()),
       showAdvancedSearch: () => dispatch(showAdvancedSearch()),
       showSettings: () => dispatch(showSettings()),

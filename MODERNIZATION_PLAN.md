@@ -8,8 +8,9 @@ runtime infrastructure in independently releasable stages.
 
 ## Current constraints
 
-- The frontend is React 19.2 with a mixed TypeScript/JavaScript codebase,
-  Redux/Saga, and React Router 7. The Flow-to-TypeScript migration is active.
+- The frontend is React 19.2 with strict TypeScript application code,
+  Redux/Saga, and React Router 7. JavaScript remains only in the Jest and
+  Playwright test files.
 - The backend began as Phoenix 1.3 / Ecto 2-era code and has compatibility
   patches for a current local Elixir/OTP runtime.
 - The app currently uses separate frontend and backend origins in development,
@@ -96,9 +97,9 @@ production build work without Webpack or `NODE_OPTIONS=--openssl-legacy-provider
 **Status: in progress.** React 19.2, the automatic JSX runtime, and the
 `createRoot` API are now in place, with the browser smoke flow passing. React
 Router 7 is the current compatible router line. Flow and the Babel proposal
-syntax compatibility layer have been removed; strict TypeScript now covers the
-shared models, actions, reducers, timeline utilities, search saga, and a growing
-set of UI components.
+syntax compatibility layer have been removed; strict TypeScript now covers all
+production frontend modules, including the trace shell, timeline, flame chart,
+Redux connectors, sagas, and application entry point.
 
 - [x] Upgrade React and React DOM from 16.8 to 18.3 and adopt `createRoot`.
 - [x] Upgrade React and React DOM to 19.2, enable the automatic JSX runtime,
@@ -146,7 +147,7 @@ set of UI components.
   coverage for ordered and empty traces.
 - [x] Remove Flow, its declaration stubs, and the pipeline/do-expression Babel
   plugins after migrating or rewriting every remaining use of their syntax.
-- [ ] Finish converting the remaining production JavaScript modules to strict
+- [x] Finish converting the remaining production JavaScript modules to strict
   TypeScript, prioritizing the trace shell, timeline, and flame chart.
 - [ ] Upgrade remaining UI dependencies individually.
 

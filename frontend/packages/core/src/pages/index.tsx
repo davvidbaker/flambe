@@ -6,6 +6,7 @@ import { createGlobalStyle } from 'styled-components';
 import Toaster from '../containers/Toaster';
 import { getUser } from '../reducers/user';
 import { colors } from '../styles';
+import type { RootState } from '../store';
 
 import Login from './Login';
 import Register from './Register';
@@ -98,8 +99,9 @@ const GlobalStyle = createGlobalStyle`
 
 `;
 
-const AppRoutes = ({ loggedIn, username = 'david' }) => console.log(`🔥  loggedIn`, loggedIn)
-  || console.log(`🔥 username`, username) || (
+interface Props { loggedIn: boolean; username?: string }
+
+const AppRoutes = ({ loggedIn, username = 'david' }: Props) => (
     <>
       <GlobalStyle />
       <Routes>
@@ -117,7 +119,7 @@ const AppRoutes = ({ loggedIn, username = 'david' }) => console.log(`🔥  logge
     </>
 );
 
-export default connect(state => ({
+export default connect((state: RootState) => ({
   /* ⚠️ need to make this a thing */
   loggedIn: state.loggedIn,
   username: getUser(state).username,

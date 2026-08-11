@@ -75,7 +75,6 @@ export interface TimelineProps {
   modifiers: ModifiersState;
   rightBoundaryTimeOverride?: number;
   searchTerms: SearchTerm[];
-  shiftModifier?: boolean;
   submitCommand: (command: any) => unknown;
   tabs: TabCount[];
   threadLevels: Record<string, ThreadLevel>;
@@ -490,7 +489,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     const dividersData = this.calculateGridOffsets();
     const { leftBoundaryTime, rightBoundaryTime, topOffset } = pan(
       dx,
-      this.props.shiftModifier ? dy : 0,
+      this.props.modifiers.shift ? dy : 0,
       this.leftBoundaryTime,
       this.rightBoundaryTime,
       canvasWidth,

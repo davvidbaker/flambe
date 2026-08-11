@@ -42,7 +42,27 @@ const composeEnhancers = devtoolsCompose
 // create the saga middleware
 const sagaMiddleware = createSagaMiddleware();
 
-const persistedState = loadState() as RootState | undefined;
+const storedState = loadState() as Partial<RootState> | undefined;
+const initialState = rootReducer(undefined, { type: '@@flambe/INIT' });
+const persistedState = storedState
+  ? Object.fromEntries(
+      Object.entries(initialState).map(([key, initialValue]) => {
+        const storedValue = storedState[key as keyof RootState];
+        if (storedValue === undefined) return [key, initialValue];
+        if (
+          initialValue !== null &&
+          storedValue !== null &&
+          typeof initialValue === 'object' &&
+          typeof storedValue === 'object' &&
+          !Array.isArray(initialValue) &&
+          !Array.isArray(storedValue)
+        ) {
+          return [key, { ...initialValue, ...storedValue }];
+        }
+        return [key, storedValue];
+      }),
+    ) as RootState
+  : undefined;
 const store = createStore(
   rootReducer,
   persistedState,

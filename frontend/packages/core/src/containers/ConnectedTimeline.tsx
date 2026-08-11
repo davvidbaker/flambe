@@ -1,23 +1,24 @@
 import { connect } from 'react-redux';
 
 import Timeline from '../components/Timeline';
+import type { TimelineProps } from '../components/Timeline';
+import type { RootState } from '../store';
+import type { EntityId } from '../types/ids';
 import {
   getTimeline,
   getTimelineWithFiltersApplied,
 } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import {
-  createThread,
   collapseThread,
   expandThread,
   focusBlock,
   hoverBlock,
-  updateActivity,
   updateEvent,
 } from '../actions';
 
 export default connect(
-  state => {
+  (state: RootState) => {
     const timeline = getTimelineWithFiltersApplied(state);
     return {
       activities: timeline.activities,
@@ -39,16 +40,16 @@ export default connect(
       // these are only used for overrides.
       leftBoundaryTimeOverride: getTimeline(state).leftBoundaryTime,
       rightBoundaryTimeOverride: getTimeline(state).rightBoundaryTime,
+      focusedBlockIndex: timeline.focusedBlockIndex,
+      hoveredBlockIndex: timeline.hoveredBlockIndex,
     };
   },
   dispatch => ({
-    createThread: (name, rank) => dispatch(createThread(name, rank)),
-    toggleThread: (id, isCollapsed = false) => dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
-    updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
-    updateEvent: (id, updates) => dispatch(updateEvent(id, updates)),
+    toggleThread: (id: EntityId, isCollapsed = false) => dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
+    updateEvent: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateEvent(id, updates)),
     focusBlock: ({
       index, activity_id, activityStatus, thread_id,
-    }) => dispatch(
+    }: Parameters<TimelineProps['focusBlock']>[0]) => dispatch(
       focusBlock({
         index,
         activity_id,
@@ -56,6 +57,6 @@ export default connect(
         thread_id,
       }),
     ),
-    hoverBlock: index => dispatch(hoverBlock(index)),
+    hoverBlock: (index: number | string | null) => dispatch(hoverBlock(index)),
   }),
 )(Timeline);
