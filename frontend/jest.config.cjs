@@ -1,6 +1,6 @@
 module.exports = {
   modulePaths: ['<rootDir>/packages/*/src'],
-  testMatch: ['<rootDir>/packages/core/src/**/*.test.js'],
+  testMatch: ['<rootDir>/packages/core/src/**/*.test.ts'],
   transform: {
     '\\.[jt]sx?$': [
       'babel-jest',

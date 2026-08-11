@@ -1,4 +1,3 @@
-
 import { savedRangeIsUsable } from './timelineViewport';
 
 describe('savedRangeIsUsable', () => {

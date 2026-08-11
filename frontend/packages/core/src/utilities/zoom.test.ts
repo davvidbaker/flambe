@@ -1,14 +1,11 @@
-
 import zoom from './zoom';
 
-console.table = () => {}
-
 describe('zoom function', () => {
-  const zoomCenter = 500,
-  zoomCenterTime = 15e10,
-  oldLeftBoundaryTime = 10e10,
-  oldRightBoundaryTime = 20e10,
-  width = 550;
+  const zoomCenter = 500;
+  const zoomCenterTime = 15e10;
+  const oldLeftBoundaryTime = 10e10;
+  const oldRightBoundaryTime = 20e10;
+  const width = 550;
 
   it('should zoom in when deltaY is negative', () => {
     const deltaY = -100;
@@ -20,7 +17,7 @@ describe('zoom function', () => {
       oldLeftBoundaryTime,
       oldRightBoundaryTime,
       width,
-      new Date().getTime()
+      Date.now(),
     );
     expect(leftBoundaryTime).toBeGreaterThan(oldLeftBoundaryTime);
     expect(rightBoundaryTime).toBeLessThan(oldRightBoundaryTime);
@@ -39,17 +36,6 @@ describe('zoom function', () => {
       new Date().getTime()
     );
 
-    console.log(`deltaY,
-      zoomCenter,
-      zoomCenterTime,
-      oldLeftBoundaryTime,
-      oldRightBoundaryTime,
-      width`, deltaY,
-      zoomCenter,
-      zoomCenterTime,
-      oldLeftBoundaryTime,
-      oldRightBoundaryTime,
-      width);
     expect(leftBoundaryTime).toBeLessThan(oldLeftBoundaryTime);
     expect(leftBoundaryTime).toBeLessThan(rightBoundaryTime);
     expect(rightBoundaryTime).toBeGreaterThan(oldRightBoundaryTime);
