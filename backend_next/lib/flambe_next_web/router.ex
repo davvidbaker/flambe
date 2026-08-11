@@ -30,6 +30,7 @@ defmodule FlambeNextWeb.Router do
     resources "/categories", CategoryController, except: [:new, :edit]
     resources "/activities", ActivityController, only: [:create, :show, :update, :delete]
     resources "/events", EventController, only: [:create, :update]
+    resources "/todos", TodoController, except: [:new, :edit]
     get "/users/:id", UserController, :show
   end
 end

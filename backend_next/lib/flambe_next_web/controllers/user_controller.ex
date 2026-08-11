@@ -9,7 +9,8 @@ defmodule FlambeNextWeb.UserController do
     render(conn, :show,
       user: user,
       traces: Traces.list_user_traces(user),
-      categories: Accounts.list_user_categories(user)
+      categories: Accounts.list_user_categories(user),
+      todos: Accounts.list_user_todos(user)
     )
   end
 end

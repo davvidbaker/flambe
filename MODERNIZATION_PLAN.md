@@ -169,6 +169,8 @@ on port 4000 until its routes have been migrated and contract-tested.
   lookups and lifecycle-controller coverage.
 - [x] Port the authenticated user/dashboard response with real traces and
   categories plus stable empty placeholders for unmigrated resources.
+- [x] Port user-owned todo CRUD and include todos in the authenticated
+  dashboard response.
 - [ ] Port the legacy API, authentication, and Channels behind contract tests.
 
 1. Generate a fresh Phoenix 1.8 API-oriented skeleton alongside the existing

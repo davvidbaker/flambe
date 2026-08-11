@@ -1,7 +1,7 @@
 defmodule FlambeNext.Accounts do
   import Ecto.Query
 
-  alias FlambeNext.Accounts.{Category, User}
+  alias FlambeNext.Accounts.{Category, Todo, User}
   alias FlambeNext.Repo
 
   def create_user(attrs) do
@@ -56,6 +56,30 @@ defmodule FlambeNext.Accounts do
   end
 
   def delete_category(%Category{} = category), do: Repo.delete(category)
+
+  def list_user_todos(%User{} = user) do
+    from(todo in Todo, where: todo.user_id == ^user.id, order_by: [asc: todo.id])
+    |> Repo.all()
+  end
+
+  def get_user_todo!(%User{} = user, id) do
+    from(todo in Todo, where: todo.id == ^id and todo.user_id == ^user.id)
+    |> Repo.one!()
+  end
+
+  def create_todo(%User{} = user, attrs) do
+    %Todo{user_id: user.id}
+    |> Todo.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_todo(%Todo{} = todo, attrs) do
+    todo
+    |> Todo.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_todo(%Todo{} = todo), do: Repo.delete(todo)
 
   def authenticate_by_email_password(email, password) do
     user =
