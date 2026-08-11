@@ -42,7 +42,7 @@
     "@babel/preset-react": "^7.0.0",
     "@babel/preset-stage-2": "^7.0.0",
     "@playwright/test": "^1.62.1",
-    "@vitejs/plugin-react": "4.3.4",
+    "@vitejs/plugin-react": "6.0.5",
     "babel-core": "^7.0.0-beta.51",
     "babel-eslint": "^10.0.1",
     "babel-jest": "^30.4.1",
@@ -65,7 +65,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "redux": "^5.0.1",
-    "vite": "5.4.20",
+    "vite": "8.2.1",
     "ws": "^6.1.4"
   }
 }
