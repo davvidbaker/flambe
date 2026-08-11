@@ -1,19 +1,21 @@
-import React, { Component } from 'react';
+import React, { Component, type ReactNode } from 'react';
 import styled from 'styled-components';
 
 import Unbutton from './Unbutton';
 import Arrow90 from './Arrow90';
 import NumberInput from './NumberInput';
+import type { Activity } from '../types/Activity';
 
 type Props = {
-  activities: Activity[],
-  updateActivity: () => void,
-  setSelectedActivity: (id: number) => void,
+  activities: Record<string, Activity>;
+  updateActivity: (id: string, updates: { weight: number }) => void;
+  setSelectedActivity: (id: number) => void;
+  selectedActivity_id?: number;
 };
 
-const LI = styled.li`
+const LI = styled.li<{ $isSelected: boolean }>`
   ${props =>
-    props.isSelected
+    props.$isSelected
       ? `
 background: yellow;
 border: 2px solid navajowhite;
@@ -21,17 +23,17 @@ border: 2px solid navajowhite;
       : 'border: 2px solid transparent;'};
 `;
 
-class WeightlessActivities extends Component {
-  submitWeight = (activity_id, value) => {
+class WeightlessActivities extends Component<Props> {
+  submitWeight = (activity_id: string, value: string): void => {
     if (value.length === 0) {
       return;
     }
 
-    const weight = Math.floor(value);
+    const weight = Math.floor(Number(value));
     this.props.updateActivity(activity_id, { weight });
   };
 
-  render() {
+  render(): ReactNode {
     const { activities, setSelectedActivity, selectedActivity_id } = this.props;
     return (
       <>
@@ -42,7 +44,7 @@ class WeightlessActivities extends Component {
             <LI
               key={activity_id}
               style={{ position: 'relative', display: 'flex' }}
-              isSelected={Number(activity_id) === selectedActivity_id}
+              $isSelected={Number(activity_id) === selectedActivity_id}
             >
               <NumberInput
                 placeholder={'🏋️'}
