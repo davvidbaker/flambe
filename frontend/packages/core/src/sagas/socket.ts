@@ -1,11 +1,18 @@
 import { Socket } from 'phoenix';
 import { put, takeLatest, select, take, cancelled } from 'redux-saga/effects';
 import { eventChannel as sagaEventChannel } from 'redux-saga';
+import type { EventChannel, SagaIterator } from 'redux-saga';
 
 import { getUser } from '../reducers/user';
+import type { EntityId } from '../types/ids';
 
-function createSocketChannel(socket, user_id) {
-  const socketEventChannel = sagaEventChannel(emit => {
+interface SocketAction {
+  type: string;
+  [key: string]: unknown;
+}
+
+function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<SocketAction> {
+  const socketEventChannel = sagaEventChannel<SocketAction>(emit => {
     socket.onOpen(() => {
       emit({ type: 'SOCKET_OPEN' });
     });
@@ -26,10 +33,10 @@ function createSocketChannel(socket, user_id) {
     phoenixChannel.onError(() => {});
     phoenixChannel.onClose(() => {});
 
-    phoenixChannel.on('tabs', tabs => {
+    phoenixChannel.on('tabs', (tabs: Record<string, unknown>) => {
       emit({ type: 'TABS_EVENT', ...tabs });
     });
-    phoenixChannel.on('search_terms', searchTerm => {
+    phoenixChannel.on('search_terms', (searchTerm: Record<string, unknown>) => {
       emit({ type: 'SEARCH_TERMS_EVENT', ...searchTerm });
     });
     return () => {
@@ -41,7 +48,7 @@ function createSocketChannel(socket, user_id) {
   return socketEventChannel;
 }
 
-function* initSocket() {
+function* initSocket(): SagaIterator {
   const user_id = (yield select(getUser)).id;
 
   // eslint-disable-next-line no-undef
@@ -49,7 +56,7 @@ function* initSocket() {
     // The legacy socket still reads this during the migration. Phoenix 1.8
     // authenticates from the signed session instead, so it safely ignores it.
     params: { user_id },
-    logger: (kind, msg, data) => {
+    logger: (_kind: string, _msg: string, _data: unknown) => {
       // console.log(`${kind}: ${msg}`, data);
     }
   });
@@ -67,7 +74,7 @@ function* initSocket() {
   }
 }
 
-function* socketSaga() {
+function* socketSaga(): SagaIterator {
   yield takeLatest('USER_FETCH_SUCCEEDED', initSocket);
 }
 
