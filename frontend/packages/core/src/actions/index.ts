@@ -203,7 +203,7 @@ export function createCategory({
   name,
   color_background,
 }: {
-  activity_id: string;
+  activity_id: EntityId;
   name: string;
   color_background: string;
 }) {

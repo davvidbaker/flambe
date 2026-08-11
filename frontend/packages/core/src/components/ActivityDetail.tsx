@@ -1,38 +1,31 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import Modal from 'react-modal';
 import { connect } from 'react-redux';
-import { identity, difference, flatMap, filter, map } from 'lodash/fp';
 
 import {
   deleteActivity,
-  endActivity,
   updateActivity,
   createCategory,
   updateCategory,
-  hideActivityDetailModal,
   ACTIVITY_DETAILS_SHOW,
 } from '../actions';
-import { getUser } from '../reducers/user';
-import { getTimeline } from '../reducers/timeline';
+import { getUser, type UserState } from '../reducers/user';
+import { getTimeline, type TimelineState } from '../reducers/timeline';
 import { blocksForActivity } from '../utilities/timeline';
 import containsGithubLink from '../utilities/containsGithubLink';
 // types
-import type { Activity } from '../types/Activity';
 import type { Category as CategoryType } from '../types/Category';
-import { activityCommandsByStatus } from '../constants/commands';
+import type { EntityId } from '../types/ids';
+import type { TraceEvent } from '../types/TraceEvent';
+import type { ProcessedActivity, TraceBlock } from '../utilities/processTrace';
+import { activityCommandsByStatus, type Command } from '../constants/commands';
 
 import Category from './Category';
 import ActivityEventFlow from './ActivityEventFlow';
 import AddCategory from './AddCategory';
 import DeleteButton from './DeleteButton';
-import Grid from './Grid';
 import Button, { InputFromButton } from './Button';
 import GithubMark from '../images/GitHub-Mark.svg';
-
-const P = styled.p`
-  margin: 0;
-`;
 
 const GithubAnchor = styled.a`
   opacity: 0.5;
@@ -49,68 +42,65 @@ const Actions = styled.div`
   }
 `;
 
-type Props = {
-  activity: Activity,
-  categories: CategoryType[],
-  updateActivity: (id: string, {}) => mixed,
-  endActivity: (
-    activity_id: number,
-    timestamp: number,
-    message: string,
-  ) => mixed,
-  DeleteButton: ({ variables: {} }) => mixed,
-  deleteActivity: (id, thread_id) => mixed,
-  deleteEvent: ({ variables: {} }) => mixed,
-  createCategory: () => mixed,
-  addCategory: ({ variables: {} }) => mixed,
-  updateCategory: ({ name?: string, color?: string }) => mixed,
-  updateName: ({ variables: { name: string } }) => mixed,
-};
+interface Props {
+  activities: Record<string, ProcessedActivity>;
+  activity_id: EntityId | null;
+  blocks: TraceBlock[];
+  categories: CategoryType[];
+  createCategory: (input: { activity_id: EntityId; name: string; color_background: string }) => unknown;
+  deleteActivity: (id: EntityId, thread_id: EntityId) => unknown;
+  events: TraceEvent[];
+  submitCommand: (command: Command & { activity_id: EntityId; message?: string; thread_id: EntityId }) => unknown;
+  updateActivity: (id: EntityId, updates: Record<string, unknown>) => unknown;
+  updateCategory: (id: EntityId, updates: Record<string, unknown>) => unknown;
+}
 
-const ActivityDetail = props => {
-  const addNewCategory = (name, hexString) => {
-    props.createCategory({
-      activity_id: props.activity_id,
-      name,
-      color_background: hexString,
-    });
-  };
-
-  const addExistingCategory = (category_id: string) => {
-    props.updateActivity(props.activity_id, {
-      category_ids: [category_id],
-    });
-  };
-
+const ActivityDetail = (props: Props) => {
   const {
     activities,
     activity_id,
     blocks,
     updateActivity,
-    endActivity,
     deleteActivity,
     updateCategory,
     categories,
     submitCommand,
   } = props;
 
-  const activity = activity_id && {
-    ...activities[activity_id],
+  if (activity_id === null) return <div>no activity</div>;
+  const baseActivity = activities[String(activity_id)];
+  const activity = baseActivity ? {
+    ...baseActivity,
     id: activity_id,
-  };
+  } : undefined;
 
   if (!activity) return <div>no activity</div>;
+  if (activity.thread_id === undefined) return <div>activity has no thread</div>;
+  const threadId = activity.thread_id;
+
+  const addNewCategory = (name: string, hexString: string) => {
+    props.createCategory({
+      activity_id,
+      name,
+      color_background: hexString,
+    });
+  };
+
+  const addExistingCategory = (category_id: EntityId) => {
+    props.updateActivity(activity_id, {
+      category_ids: [category_id],
+    });
+  };
 
   const activityBlocks = blocksForActivity(activity_id, blocks);
 
   // for example, an activity that is resolved after being suspended without
   // ever being resumed. It happens.
-  const additionalEventsNotIncludedInBlocks =
-    activityBlocks
-    |> flatMap(({ events }) => events)
-    |> filter(identity)
-    |> difference(activity.events)
-    |> map(event_id => props.events.find(({ id }) => id === event_id));
+  const blockEventIds = new Set(activityBlocks.flatMap(({ events }) => events).map(String));
+  const additionalEventsNotIncludedInBlocks = activity.events
+    .filter(eventId => !blockEventIds.has(String(eventId)))
+    .map(eventId => props.events.find(({ id }) => String(id) === String(eventId)))
+    .filter((event): event is TraceEvent => event !== undefined);
 
   /* ⚠️ I'm currently assuming these will only be resolve/reject events, which may not hold true */
   const falseBlocks = additionalEventsNotIncludedInBlocks.map(e => ({
@@ -138,7 +128,7 @@ const ActivityDetail = props => {
         submit={(value: string) => {
           updateActivity(activity.id, {
             name: value,
-            thread_id: activity.thread_id,
+            thread_id: threadId,
           });
         }}
       >
@@ -147,9 +137,10 @@ const ActivityDetail = props => {
       {/* abstract out the delete functionality */}
       <DeleteButton
         onConfirm={() => {
-          deleteActivity(activity.id, activity.thread_id);
+          deleteActivity(activity.id, threadId);
         }}
-        contentLabel="Delete Activity?"
+        dialogLabel="Delete Activity?"
+        message={activity.name ?? ''}
       >
         Delete Activity
       </DeleteButton>
@@ -160,7 +151,7 @@ const ActivityDetail = props => {
           submit={(value: string) => {
             updateActivity(activity.id, {
               weight: Number(value),
-              thread_id: activity.thread_id,
+              thread_id: threadId,
             });
           }}
         >
@@ -173,11 +164,10 @@ const ActivityDetail = props => {
           {activity.categories &&
             categories &&
             activity.categories.map(category_id => {
-              const category =
-                categories.find(cat => cat.id === category_id) || {};
+              const category = categories.find(cat => String(cat.id) === String(category_id));
+              if (!category) return null;
               return (
-                /* ⚠️ FIX THIS */
-                <li key={category.id + Math.random()}>
+                <li key={category.id}>
                   <Category
                     id={category.id}
                     name={category.name}
@@ -202,8 +192,8 @@ const ActivityDetail = props => {
           submit={(value: string) => {
             updateActivity(activity.id, {
               description: value,
-              thread_id: activity.thread_id,
-            }); 
+              thread_id: threadId,
+            });
           }}
         >
           {activity.description || 'Add notes in here (you can type in `whoa`'}
@@ -211,7 +201,7 @@ const ActivityDetail = props => {
       </div>
       <ActivityEventFlow activityBlocks={[...activityBlocks, ...falseBlocks]} />
       <Actions>
-        {activityCommandsByStatus(activity.status)
+        {activity.status && activity.status !== 'parent_suspended' && activityCommandsByStatus(activity.status)
           .filter(cmd => cmd.action !== ACTIVITY_DETAILS_SHOW)
           .map(
             cmd =>
@@ -225,7 +215,7 @@ const ActivityDetail = props => {
                       ...cmd,
                       message: value,
                       activity_id: activity.id,
-                      thread_id: activity.thread_id,
+                      thread_id: threadId,
                     });
                   }}
                   placeholder={cmd.parameters[0].placeholder}
@@ -240,7 +230,7 @@ const ActivityDetail = props => {
                     submitCommand({
                       ...cmd,
                       activity_id: activity.id,
-                      thread_id: activity.thread_id,
+                      thread_id: threadId,
                     })
                   }
                   key={cmd.copy}
@@ -255,26 +245,16 @@ const ActivityDetail = props => {
 };
 
 export default connect(
-  state => ({
+  (state: { timeline: TimelineState; user: UserState }) => ({
     activity_id: getTimeline(state).focusedBlockActivity_id,
     categories: getUser(state).categories,
     events: getTimeline(state).events,
   }),
   dispatch => ({
-    createCategory: ({ activity_id, name, color_background }) =>
+    createCategory: ({ activity_id, name, color_background }: { activity_id: EntityId; name: string; color_background: string }) =>
       dispatch(createCategory({ activity_id, name, color_background })),
-    updateCategory: (id, updates) => dispatch(updateCategory(id, updates)),
-    updateActivity: (id, updates) => dispatch(updateActivity(id, updates)),
-    deleteActivity: (id, thread_id) => dispatch(deleteActivity(id, thread_id)),
-    endActivity: ({ id, timestamp, message, thread_id, eventFlavor = 'E' }) =>
-      dispatch(
-        endActivity({
-          id,
-          timestamp,
-          message,
-          thread_id,
-          eventFlavor,
-        }),
-      ),
+    updateCategory: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateCategory(id, updates)),
+    updateActivity: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateActivity(id, updates)),
+    deleteActivity: (id: EntityId, thread_id: EntityId) => dispatch(deleteActivity(id, thread_id)),
   }),
 )(ActivityDetail);

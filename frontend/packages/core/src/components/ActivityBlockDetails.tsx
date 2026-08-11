@@ -1,8 +1,15 @@
 import React from 'react';
 import styled from 'styled-components';
 import day from 'dayjs';
+import type { EventPhase } from '../types/TraceEvent';
+import type { ActivityBlock } from './ActivityEventFlow';
 
-const Div = styled.div`
+interface EventStyleProps {
+  message?: string;
+  showTime?: boolean;
+}
+
+const Div = styled.div<EventStyleProps>`
   display: grid;
   align-items: center;
   grid-template-columns: ${({ showTime }) => (showTime ? '90px 1fr' : '1fr')};
@@ -80,7 +87,7 @@ const Div = styled.div`
   }
 `;
 
-const EventType = styled.div`
+const EventType = styled.div<{ eventType?: EventPhase }>`
   color: #aaa;
   position: relative;
 
@@ -99,7 +106,7 @@ const EventType = styled.div`
       : '')};
 `;
 
-const copy = {
+const copy: Partial<Record<EventPhase, string>> = {
   B: 'Began',
   J: 'Rejected',
   Q: 'Questioned',
@@ -116,14 +123,21 @@ const NoMessage = styled.div`
   width: 100%;
 `;
 
+interface ActivityEventProps {
+  eventType?: EventPhase;
+  message?: string;
+  showTime?: boolean;
+  time?: number;
+}
+
 const ActivityEvent = ({
   showTime, eventType, time, message
-}) => (
+}: ActivityEventProps) => (
   <Div showTime={showTime} message={message}>
     {showTime && (
       <div className="time-message">
         {/* 🔮 should be moved  */}
-        <EventType eventType={eventType}>{copy[eventType]}</EventType>
+        <EventType eventType={eventType}>{eventType ? copy[eventType] : ''}</EventType>
         {/* 🔮 better formatting */}
         <div className="time">{day(time).format('YYYY-MM-DD')}</div>
       </div>
@@ -155,7 +169,7 @@ const ActivityBlockDetails = ({
   endTime,
   ending,
   showTime
-}) => (
+}: ActivityBlock & { showTime?: boolean }) => (
   <Wrapper>
     <ActivityEvent
       eventType={beginning}

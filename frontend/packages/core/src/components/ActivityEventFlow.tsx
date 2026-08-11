@@ -1,10 +1,20 @@
 import React from 'react';
 import ActivityBlockDetails from './ActivityBlockDetails';
+import type { EventPhase } from '../types/TraceEvent';
 
 // styled.div`
 // `
 
-const ActivityEventFlow = ({ activityBlocks }) => (
+export interface ActivityBlock {
+  beginning?: EventPhase;
+  endMessage?: string;
+  endTime?: number;
+  ending?: EventPhase;
+  startMessage?: string;
+  startTime?: number;
+}
+
+const ActivityEventFlow = ({ activityBlocks }: { activityBlocks: ActivityBlock[] }) => (
   <div>
     {activityBlocks &&
       activityBlocks.map(

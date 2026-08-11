@@ -45,7 +45,7 @@ interface CommandLabel {
   copy: string;
 }
 
-interface CommandParameter {
+export interface CommandParameter {
   itemReturnKey?: string;
   itemStringKey?: string;
   key: string;
@@ -54,7 +54,7 @@ interface CommandParameter {
   selector?: (props: CommandSelectorProps) => unknown[];
 }
 
-interface Command {
+export interface Command {
   action: string;
   copy: string;
   label?: CommandLabel;
