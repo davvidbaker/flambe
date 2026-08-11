@@ -28,10 +28,10 @@ import {
   getBlockY,
   isVisible,
   pixelsToTime,
+  sortThreadsByRank,
   timeToPixels,
   visibleThreadLevels,
 } from '../utilities/timelineGeometry';
-import { sortThreadsByRank } from '../utilities/timelineChart';
 import { getShamefulColor } from '../utilities/timeline';
 import containsGithubLink from '../utilities/containsGithubLink';
 
