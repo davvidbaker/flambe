@@ -39,7 +39,7 @@ defmodule FlambeNextWeb.TraceJSON do
       id: activity.id,
       name: activity.name,
       thread: %{id: activity.thread_id},
-      categories: [],
+      categories: Enum.map(activity.categories, & &1.id),
       weight: activity.weight
     }
   end

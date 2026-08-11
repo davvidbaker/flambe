@@ -30,7 +30,7 @@ defmodule FlambeNext.Traces do
       from(event in Event,
         where: event.trace_id == ^trace.id,
         order_by: [asc: event.timestamp, asc: event.id],
-        preload: [activity: :thread]
+        preload: [activity: [:thread, :categories]]
       )
       |> Repo.all()
 
@@ -103,11 +103,32 @@ defmodule FlambeNext.Traces do
     |> Repo.one!()
   end
 
-  def create_activity(%Trace{} = trace, %Thread{} = thread, activity_attrs, event_attrs) do
+  def get_user_activities(%User{} = user, ids) when is_list(ids) do
+    activities =
+      from(activity in Activity,
+        join: thread in assoc(activity, :thread),
+        join: trace in assoc(thread, :trace),
+        where: activity.id in ^ids and trace.user_id == ^user.id
+      )
+      |> Repo.all()
+
+    if length(activities) == length(Enum.uniq(ids)),
+      do: {:ok, activities},
+      else: {:error, :not_found}
+  end
+
+  def create_activity(
+        %Trace{} = trace,
+        %Thread{} = thread,
+        activity_attrs,
+        event_attrs,
+        categories \\ []
+      ) do
     Multi.new()
     |> Multi.insert(
       :activity,
       Activity.changeset(%Activity{thread_id: thread.id}, activity_attrs)
+      |> Ecto.Changeset.put_assoc(:categories, categories)
     )
     |> Multi.insert(:event, fn %{activity: activity} ->
       Event.changeset(%Event{trace_id: trace.id, activity_id: activity.id}, event_attrs)

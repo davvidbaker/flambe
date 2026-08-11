@@ -27,6 +27,7 @@ defmodule FlambeNextWeb.Router do
 
     resources "/traces", TraceController, only: [:index, :create, :show, :update, :delete]
     resources "/threads", ThreadController, only: [:create, :show, :update, :delete]
+    resources "/categories", CategoryController, except: [:new, :edit]
     post "/activities", ActivityController, :create
     post "/events", EventController, :create
   end

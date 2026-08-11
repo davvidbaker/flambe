@@ -2,6 +2,7 @@ defmodule FlambeNext.Traces.Activity do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias FlambeNext.Accounts.Category
   alias FlambeNext.Traces.{Event, Thread}
 
   schema "activities" do
@@ -11,6 +12,7 @@ defmodule FlambeNext.Traces.Activity do
 
     belongs_to :thread, Thread
     has_many :events, Event, on_delete: :delete_all
+    many_to_many :categories, Category, join_through: "activities_categories", on_replace: :delete
 
     timestamps(type: :utc_datetime)
   end
