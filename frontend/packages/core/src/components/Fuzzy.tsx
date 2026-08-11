@@ -3,6 +3,13 @@ import fuzzaldrin from 'fuzzaldrin-plus';
 import { useCombobox } from 'downshift';
 import styled from 'styled-components';
 
+export interface FuzzyItem {
+  [key: string]: unknown;
+  label?: { background?: string; copy: React.ReactNode };
+  shortcut?: React.ReactNode;
+}
+interface Props<T extends FuzzyItem> { onChange: (item: T) => void; placeholder?: string; items: T[]; itemStringKey: keyof T & string }
+
 const StyledResults = styled.div`
   overflow-y: scroll;
   max-height: 100px;
@@ -22,17 +29,17 @@ const StyledResults = styled.div`
     flex: auto;
   }
 `;
-const Fuzzy = ({
+const Fuzzy = <T extends FuzzyItem,>({
   onChange,
   placeholder,
   items,
   itemStringKey,
-}) => {
-  const itemToString = item => (item ? item[itemStringKey] : '');
+}: Props<T>) => {
+  const itemToString = (item: T | null): string => item ? String(item[itemStringKey] ?? '') : '';
   const [filterValue, setFilterValue] = React.useState('');
   const filteredItems = filterValue.length === 0
     ? items
-    : fuzzaldrin.filter(items, filterValue, { key: itemStringKey });
+    : fuzzaldrin.filter(items, filterValue, { key: itemStringKey as never });
   const {
     getInputProps,
     getItemProps,
@@ -63,7 +70,7 @@ const Fuzzy = ({
           {filteredItems.map((item, index) => (
             <div
               className="commander-result"
-              key={itemStringKey ? item[itemStringKey] : item}
+              key={String(item[itemStringKey] ?? index)}
               {...getItemProps({
                 index,
                 item,
@@ -89,11 +96,11 @@ const Fuzzy = ({
                   </span>
                 )}
                 {filterValue.length === 0 ? (
-                  <span>{item[itemStringKey]}</span>
+                  <span>{String(item[itemStringKey] ?? '')}</span>
                 ) : (
                   <span
                     dangerouslySetInnerHTML={{
-                      __html: fuzzaldrin.wrap(item[itemStringKey], filterValue),
+                      __html: fuzzaldrin.wrap(String(item[itemStringKey] ?? ''), filterValue),
                     }}
                   />
                 )}

@@ -1,6 +1,3 @@
-// @flow
-import sortBy from 'lodash/fp/sortBy';
-import map from 'lodash/fp/map';
 import tinycolor from 'tinycolor2';
 
 import {
@@ -24,38 +21,62 @@ import {
   VIEW_CHANGE,
 } from '../actions';
 import {
+  type AttentionShift,
   rankThreadsByAttention,
   sortThreadsByRank,
 } from '../utilities/timelineGeometry';
 import { colors } from '../styles';
+import type { Category } from '../types/Category';
+import type { Thread } from '../types/Thread';
+
+interface CommandSelectorProps {
+  attentionShifts?: AttentionShift[];
+  settings: {
+    attentionDrivenThreadOrder: boolean;
+  };
+  threads: Record<string, Thread>;
+  user: {
+    categories: Category[];
+  };
+}
+
+interface CommandLabel {
+  background: string | null | undefined;
+  copy: string;
+}
+
+interface CommandParameter {
+  itemReturnKey?: string;
+  itemStringKey?: string;
+  key: string;
+  label?: (item: { color?: string | null }) => CommandLabel;
+  placeholder: string;
+  selector?: (props: CommandSelectorProps) => unknown[];
+}
+
+interface Command {
+  action: string;
+  copy: string;
+  label?: CommandLabel;
+  parameters?: CommandParameter[];
+  shortcut?: string;
+  status?: Status[];
+}
 
 const threadParam = {
   key: 'thread_id',
   placeholder: 'thread',
-  selector: props =>
-    console.log(
-      'props',
-
-      map(([_id, obj]) => obj)(
-        sortThreadsByRank(
-          props.settings.attentionDrivenThreadOrder
-            ? rankThreadsByAttention(props.attentionShifts, props.threads)
-            : props.threads,
-        ),
-      ),
-    ) ||
-    map(([_id, obj]) => obj)(
-      sortThreadsByRank(
-        props.settings.attentionDrivenThreadOrder
-          ? rankThreadsByAttention(props.attentionShifts, props.threads)
-          : props.threads,
-      ),
-    ),
+  selector: (props: CommandSelectorProps) =>
+    sortThreadsByRank(
+      props.settings.attentionDrivenThreadOrder
+        ? rankThreadsByAttention(props.attentionShifts, props.threads)
+        : props.threads,
+    ).map(([_id, thread]) => thread),
   itemStringKey: 'name',
   itemReturnKey: 'id',
 };
 
-const categoryLabel = color => ({
+const categoryLabel = (color: string | null | undefined): CommandLabel => ({
   copy: ' ',
   background: color,
 });
@@ -63,16 +84,18 @@ const categoryLabel = color => ({
 const categoryParam = {
   key: 'category_id',
   placeholder: 'category',
-  selector: props => {
-    const cats =
-      props.user.categories
-      |> map(cat => ({
+  selector: (props: CommandSelectorProps) => {
+    const cats = props.user.categories
+      .map(cat => ({
         ...cat,
         label: categoryLabel(cat.color_background),
       }))
-      |> sortBy(
-        ({ color_background }) =>
-          tinycolor(color_background)
+      .sort(
+        (left, right) =>
+          tinycolor(left.color_background)
+            .spin(180)
+            .toHsl().h -
+          tinycolor(right.color_background)
             .spin(180)
             .toHsl().h,
       );
@@ -80,7 +103,7 @@ const categoryParam = {
   },
   itemStringKey: 'name',
   itemReturnKey: 'id',
-  label: item => categoryLabel(item.color),
+  label: (item: { color?: string | null }) => categoryLabel(item.color),
 };
 
 const activityLabel = {
@@ -88,7 +111,7 @@ const activityLabel = {
   background: colors.flames.main,
 };
 
-const COMMANDS = [
+const COMMANDS: Command[] = [
   {
     action: ACTIVITY_CREATE_B,
     copy: 'start a new task/activity...',
@@ -195,7 +218,7 @@ const COMMANDS = [
 
 const messageParam = { key: 'message', placeholder: 'why?' };
 /** 💁 For when the operand is an activity. */
-export const ACTIVITY_COMMANDS = [
+export const ACTIVITY_COMMANDS: Command[] = [
   {
     action: ACTIVITY_END,
     copy: 'just end it',
@@ -268,7 +291,7 @@ export const ACTIVITY_COMMANDS = [
 
 type Status = 'active' | 'suspended' | 'complete';
 export function activityCommandsByStatus(status: Status): Command[] {
-  return ACTIVITY_COMMANDS.filter(cmd => cmd.status.includes(status));
+  return ACTIVITY_COMMANDS.filter(cmd => cmd.status?.includes(status));
 }
 
 export default COMMANDS;
