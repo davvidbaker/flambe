@@ -44,8 +44,7 @@ import type { EntityId } from '../types/ids';
 import { put, takeEvery, select } from 'redux-saga/effects';
 import type { SagaIterator } from 'redux-saga';
 
-interface RuntimeCommand extends Omit<Command, 'action'> {
-  action: string | ((command: RuntimeCommand) => unknown);
+interface RuntimeCommand extends Command {
   activity_id?: EntityId;
   category_id?: EntityId | null;
   message?: string;

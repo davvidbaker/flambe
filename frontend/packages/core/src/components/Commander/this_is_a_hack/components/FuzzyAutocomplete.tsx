@@ -20,7 +20,7 @@ const StyledResults = styled.div`
 
 export interface FuzzyAutocompleteItem {
   [key: string]: unknown;
-  label?: { background?: string; copy: ReactNode };
+  label?: { background?: string | null; copy: ReactNode };
   shortcut?: ReactNode;
 }
 
@@ -101,7 +101,7 @@ const FuzzyAutocomplete = <T extends FuzzyAutocompleteItem,>({
                 <span
                   className="item-label"
                   style={{
-                    background: item.label.background,
+                    background: item.label.background ?? undefined,
                     color: 'white',
                     padding: '1px 3px',
                     borderRadius: '2px',

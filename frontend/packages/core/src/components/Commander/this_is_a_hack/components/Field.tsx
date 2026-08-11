@@ -1,12 +1,51 @@
 import * as React from 'react';
+import styled from 'styled-components';
 
 import fieldMachine from '../machines/field';
 import useMachine from '../machines/use-machine';
 import FuzzyAutocomplete from './FuzzyAutocomplete';
 import SimplePrompt from './SimplePrompt';
 import * as Utilities from '../utilities';
+import type { Command, CommandParameter } from '../../../../constants/commands';
+import type { FieldInput } from '../machines/field';
+import type { FuzzyAutocompleteItem } from './FuzzyAutocomplete';
 
-const CommandSelect = ({ command, availableCommands, onChange, editing }) => {
+type Selector = NonNullable<CommandParameter['selector']>;
+export type GetItems = (selector: Selector) => FuzzyAutocompleteItem[];
+type ParameterCommit = { key: string; value: unknown };
+
+const CommandName = styled.span`
+  padding: 5px;
+  font-size: 0.75em;
+  font-weight: bold;
+`;
+
+const ParameterList = styled.ul`
+  list-style: none;
+  font-size: 0.75em;
+  padding: 5px 10px;
+  margin: 0;
+  li + li { margin-top: 3px; }
+`;
+
+const ParameterItem = styled.li` position: relative; `;
+const ParameterEditor = styled.div`
+  display: inline-block;
+  position: absolute;
+  top: -5px;
+  transform: translateX(-2px);
+  z-index: 10000;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 2px 4px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.1);
+`;
+const ParameterValue = styled.span` &:hover { background: #ccf1ff; } `;
+
+const CommandSelect = ({ command, availableCommands, onChange, editing }: {
+  availableCommands: Command[];
+  command: Command | null;
+  editing: boolean;
+  onChange: (command: Command) => unknown;
+}) => {
   return editing ? (
     <FuzzyAutocomplete
       items={availableCommands}
@@ -14,15 +53,9 @@ const CommandSelect = ({ command, availableCommands, onChange, editing }) => {
       itemStringKey="copy"
     />
   ) : (
-    <span
-      css={`
-        padding: 5px;
-        font-size: 0.75em;
-        font-weight: bold;
-      `}
-    >
+    <CommandName>
       {command && command.copy}
-    </span>
+    </CommandName>
   );
 };
 
@@ -32,14 +65,20 @@ const ParameterEntry = ({
   getItems,
   initialInputValue = '',
   onBlur = () => {},
+}: {
+  getItems: GetItems;
+  initialInputValue?: string;
+  onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  onSubmit: (parameter: ParameterCommit) => unknown;
+  parameter: CommandParameter | null;
 }) =>
   parameter ? (
     parameter.selector ? (
       <FuzzyAutocomplete
         items={getItems(parameter.selector)}
-        itemStringKey={parameter.itemStringKey}
+        itemStringKey={parameter.itemStringKey ?? 'name'}
         onChange={item =>
-          onSubmit({ key: parameter.key, value: item[parameter.itemReturnKey] })
+          onSubmit({ key: parameter.key, value: item[parameter.itemReturnKey ?? 'value'] })
         }
         placeholder={parameter.placeholder}
         initialInputValue={initialInputValue}
@@ -50,7 +89,6 @@ const ParameterEntry = ({
         onSubmit={value => onSubmit({ key: parameter.key, value })}
         onBlur={onBlur}
         placeholder={parameter.placeholder}
-        type="text"
         initialInputValue={initialInputValue}
       />
     )
@@ -61,48 +99,25 @@ const CommittedParameters = ({
   command,
   getItems,
   commitParameter,
+}: {
+  command: Command;
+  commitParameter: (parameter: ParameterCommit) => unknown;
+  getItems: GetItems;
+  parameters: Record<string, unknown>;
 }) => {
-  const [editingParameter, setEditingParameter] = React.useState(null);
+  const [editingParameter, setEditingParameter] = React.useState<CommandParameter | null>(null);
 
   return (
-    <ul
-      css={`
-        list-style: none;
-        font-size: 0.75em;
-        padding: 5px 10px;
-        margin: 0;
-
-        /* ignores the top one*/
-        li + li {
-          margin-top: 3px;
-        }
-      `}
-    >
+    <ParameterList>
       {Object.entries(parameters).map(([key, value]) => {
         const parameter = Utilities.parameterGivenKey(command, key);
+        if (!parameter) return null;
 
         return (
-          <li
-            css={`
-              position: relative;
-            `}
-            key={key}
-            onClick={() => setEditingParameter(parameter)}
-          >
+          <ParameterItem key={key} onClick={() => setEditingParameter(parameter)}>
             <span>{parameter.placeholder}</span>:{' '}
             {editingParameter && editingParameter.key === key ? (
-              <div
-                css={`
-                  display: inline-block;
-                  position: absolute;
-                  top: -5px;
-                  transform: translatex(-2px);
-                  z-index: 10000;
-
-                  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05),
-                    0 2px 4px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.1);
-                `}
-              >
+              <ParameterEditor>
                 <ParameterEntry
                   onSubmit={p => {
                     setEditingParameter(null);
@@ -110,38 +125,37 @@ const CommittedParameters = ({
                   }}
                   getItems={getItems}
                   parameter={parameter}
-                  initialInputValue={Utilities.parameterDisplayValue(
+                  initialInputValue={String(Utilities.parameterDisplayValue(
                     value,
                     parameter,
                     getItems,
-                  )}
+                  ))}
                   onBlur={() => {
                     setEditingParameter(null);
                   }}
                 />
-              </div>
+              </ParameterEditor>
             ) : (
-              <span
-                css={`
-                  &:hover {
-                    background: #ccf1ff;
-                  }
-                `}
-              >
-                {Utilities.parameterDisplayValue(value, parameter, getItems)}
-              </span>
+              <ParameterValue>
+                {String(Utilities.parameterDisplayValue(value, parameter, getItems))}
+              </ParameterValue>
             )}
-          </li>
+          </ParameterItem>
         );
       })}
-    </ul>
+    </ParameterList>
   );
 };
 
-const Parameters = ({ command, parameters, commitParameter, getItems }) => {
+const Parameters = ({ command, parameters, commitParameter, getItems }: {
+  command: Command | null;
+  commitParameter: (parameter: ParameterCommit) => unknown;
+  getItems: GetItems;
+  parameters: Record<string, unknown>;
+}) => {
   return (
     <div>
-      {Object.keys(parameters).length > 0 && (
+      {command && Object.keys(parameters).length > 0 && (
         <CommittedParameters
           parameters={parameters}
           command={command}
@@ -169,13 +183,21 @@ function Field({
     parameters: {},
   },
   onFullyLoaded,
+}: {
+  availableCommands: Command[];
+  field?: FieldInput;
+  getItems: GetItems;
+  onFullyLoaded: (command: { action: Command['action'] } & Record<string, unknown>) => unknown;
 }) {
   const [state, send] = useMachine(
     fieldMachine.provide(
       {
         actions: {
-          submitCommand: ({ context }) =>
-            onFullyLoaded({ action: context.command.action, ...context.parameters }),
+          submitCommand: ({ context }) => {
+            if (context.command) {
+              onFullyLoaded({ action: context.command.action, ...context.parameters });
+            }
+          },
         },
       },
     ),
@@ -187,7 +209,7 @@ function Field({
   );
 
   // eslint-disable-next-line no-unused-vars
-  const { command, parameters, _currentOptions } = state.context;
+  const { command, parameters } = state.context;
 
   return (
     <div>
