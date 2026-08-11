@@ -7,14 +7,12 @@ const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
-  // Phoenix 1.8 is the normal development backend. Set VITE_API_URL to the
-  // legacy server explicitly when comparing behavior during the cutover.
+  // Phoenix 1.8 is the application backend. VITE_API_URL can target another
+  // local instance when needed.
   const apiTarget = env.VITE_API_URL || 'http://127.0.0.1:4001';
   const socketTarget = env.VITE_SOCKET_URL || apiTarget;
   const useDevProxy = mode === 'development';
-  const phoenixStaticDir = env.VITE_PHOENIX_TARGET === 'legacy'
-    ? '../backend/priv/static/assets'
-    : '../backend_next/priv/static/assets';
+  const phoenixStaticDir = '../backend_next/priv/static/assets';
 
   return {
     plugins: [
@@ -63,7 +61,6 @@ export default defineConfig(({ mode }) => {
         'humanize-duration',
         'phoenix',
         'polished',
-        'prop-types',
         'react',
         'react-dom',
         'react-dom/client',
@@ -130,7 +127,15 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            return id.includes('/node_modules/') ? 'vendor' : undefined;
+            if (!id.includes('/node_modules/')) return undefined;
+            if (/\/(react|react-dom|react-router|react-redux|redux|redux-saga|scheduler|use-sync-external-store)\//.test(id)) {
+              return 'framework';
+            }
+            if (/\/(downshift|react-modal|react-select|styled-components|polished|tinycolor2)\//.test(id)) {
+              return 'ui';
+            }
+            if (/\/(phoenix|xstate)\//.test(id)) return 'services';
+            return 'vendor';
           },
         },
       },

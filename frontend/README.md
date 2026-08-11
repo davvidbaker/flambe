@@ -5,7 +5,7 @@ Vite on port 5173 during development and proxies API, auth, and WebSocket
 requests to Phoenix 1.8 on port 4001.
 
 ```sh
-nvm exec 22 npm ci --legacy-peer-deps
+nvm exec 22 npm ci
 nvm exec 22 npm run dev
 ```
 

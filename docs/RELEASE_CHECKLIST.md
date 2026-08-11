@@ -1,8 +1,8 @@
 # Phoenix 1.8 release and rollback checklist
 
 Use this checklist when promoting the Phoenix 1.8/Vite stack beyond local
-development. It deliberately keeps the legacy backend and restored database
-out of the deployment target.
+development. It deliberately keeps the restored legacy database out of the
+deployment target.
 
 ## Before release
 
@@ -33,8 +33,10 @@ out of the deployment target.
    nvm exec 22 npm run test:smoke
    ```
 
-5. On staging, verify local registration, login, logout, timeline rendering,
-   a thread rename, activity begin/end/delete, and persisted thread collapse.
+5. If a staging environment is introduced, verify local registration, login,
+   logout, timeline rendering, a thread rename, activity begin/end/delete, and
+   persisted thread collapse there. This project currently has local
+   environments only.
 
 ## Deploy
 
@@ -58,5 +60,5 @@ out of the deployment target.
 3. Start the previous application revision and check `/api/health` and login.
 4. Record the reason for rollback before attempting another release.
 
-The legacy source can be removed only after this release and rollback process
-has succeeded in the deployed environment and the new stack has been stable.
+The retired Phoenix 1.3 source is available in Git history. Its database is not
+a deployment target and remains usable as a read-only import source.

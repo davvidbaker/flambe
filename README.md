@@ -21,7 +21,7 @@ Requirements: Node 22 LTS, Elixir 1.18/OTP 27, and PostgreSQL.
 
    ```sh
    cd frontend
-   nvm exec 22 npm ci --legacy-peer-deps
+   nvm exec 22 npm ci
    nvm exec 22 npm run dev
    ```
 
@@ -52,8 +52,9 @@ nvm exec 22 npm run build
 nvm exec 22 npm run test:smoke
 ```
 
-The legacy `backend/` remains in the repository only as a read-only comparison
-and data-import source during final retirement. It is not the default runtime.
+The retired Phoenix 1.3 source remains available in Git history. Legacy data
+imports read directly from the isolated `flambe_legacy_restored` database; the
+old application does not need to be running.
 
 ## Local data safety
 
