@@ -103,6 +103,24 @@ defmodule FlambeNext.Traces do
     |> Repo.one!()
   end
 
+  def get_user_activity!(%User{} = user, activity_id) do
+    from(activity in Activity,
+      join: thread in assoc(activity, :thread),
+      join: trace in assoc(thread, :trace),
+      where: activity.id == ^activity_id and trace.user_id == ^user.id,
+      preload: [:categories]
+    )
+    |> Repo.one!()
+  end
+
+  def get_user_event!(%User{} = user, event_id) do
+    from(event in Event,
+      join: trace in assoc(event, :trace),
+      where: event.id == ^event_id and trace.user_id == ^user.id
+    )
+    |> Repo.one!()
+  end
+
   def get_user_activities(%User{} = user, ids) when is_list(ids) do
     activities =
       from(activity in Activity,
@@ -144,5 +162,20 @@ defmodule FlambeNext.Traces do
     %Event{trace_id: trace.id, activity_id: activity.id}
     |> Event.changeset(attrs)
     |> Repo.insert()
+  end
+
+  def update_activity(%Activity{} = activity, attrs, categories) do
+    activity
+    |> Activity.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:categories, categories)
+    |> Repo.update()
+  end
+
+  def delete_activity(%Activity{} = activity), do: Repo.delete(activity)
+
+  def update_event(%Event{} = event, attrs) do
+    event
+    |> Event.changeset(attrs)
+    |> Repo.update()
   end
 end
