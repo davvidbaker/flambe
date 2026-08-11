@@ -137,12 +137,16 @@ class Timeline extends React.Component<Props, State> {
     requestAnimationFrame(this.drawChildren.bind(this));
   }
 
-  componentWillReceiveProps(nextProps) {
+  componentDidUpdate(previousProps) {
+    this.syncTimelineToProps(this.props, previousProps);
+  }
+
+  syncTimelineToProps(nextProps, previousProps) {
     if (
       nextProps.leftBoundaryTimeOverride
-        !== this.props.leftBoundaryTimeOverride
+        !== previousProps.leftBoundaryTimeOverride
       || nextProps.rightBoundaryTimeOverride
-        !== this.props.rightBoundaryTimeOverride
+        !== previousProps.rightBoundaryTimeOverride
     ) {
       this.viewportTraceId = String(nextProps.trace_id);
       this.setTimelineState({
@@ -185,7 +189,7 @@ class Timeline extends React.Component<Props, State> {
 
     if (
       threadsCollapsedChecksum(nextProps.threads)
-      !== threadsCollapsedChecksum(this.props.threads)
+      !== threadsCollapsedChecksum(previousProps.threads)
     ) {
       requestAnimationFrame(this.drawChildren.bind(this));
     }

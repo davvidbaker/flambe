@@ -19,7 +19,7 @@ defmodule FlambeNext.Traces.Trace do
     trace
     |> cast(attrs, [:name])
     |> validate_required([:name])
-    |> unique_constraint(:name)
+    |> unique_constraint([:user_id, :name])
     |> assoc_constraint(:user)
   end
 end

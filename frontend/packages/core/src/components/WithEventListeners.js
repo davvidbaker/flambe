@@ -9,12 +9,9 @@ type Props = {
 };
 
 class WithEventListeners extends Component<Props> {
-  // 🤔 should event listeners be bound in componentDidMount or constructor?
-  // see https://reactjs.org/docs/react-component.html#constructor
-  constructor(props) {
-    super(props);
-    props.eventListeners.forEach(([evt, func]) => {
-      props.node.addEventListener(evt, func);
+  componentDidMount() {
+    this.props.eventListeners.forEach(([evt, func]) => {
+      this.props.node.addEventListener(evt, func);
     });
   }
 

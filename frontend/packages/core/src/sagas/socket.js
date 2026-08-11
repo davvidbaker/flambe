@@ -1,34 +1,30 @@
 import { Socket } from 'phoenix';
-import { put, takeEvery, select, take } from 'redux-saga/effects';
+import { put, takeLatest, select, take, cancelled } from 'redux-saga/effects';
 import { eventChannel as sagaEventChannel } from 'redux-saga';
 
 import { getUser } from '../reducers/user';
 
 function createSocketChannel(socket, user_id) {
   const socketEventChannel = sagaEventChannel(emit => {
-    socket.onOpen(e => {
+    socket.onOpen(() => {
       emit({ type: 'SOCKET_OPEN' });
-      console.log('OPEN', e);
     });
-    socket.onError(e => {
+    socket.onError(() => {
       emit({ type: 'SOCKET_ERROR' });
-      console.log('ERROR', e);
     });
-    socket.onClose(e => {
+    socket.onClose(() => {
       emit({ type: 'SOCKET_CLOSE' });
-      console.log('CLOSE', e);
     });
 
     const phoenixChannel = socket.channel(`events:${user_id}`, {});
     phoenixChannel
       .join()
-      .receive('ok', ({ messages }) => console.log('catching up', messages))
-      .receive('error', ({ reason }) => console.log('failed join', reason))
-      .receive('timeout', () =>
-        console.log('Networking issue. Still waiting...'));
+      .receive('ok', () => {})
+      .receive('error', () => {})
+      .receive('timeout', () => {});
 
-    phoenixChannel.onError(e => console.log('something went wrong', e));
-    phoenixChannel.onClose(e => console.log('channel closed', e));
+    phoenixChannel.onError(() => {});
+    phoenixChannel.onClose(() => {});
 
     phoenixChannel.on('tabs', tabs => {
       emit({ type: 'TABS_EVENT', ...tabs });
@@ -36,11 +32,10 @@ function createSocketChannel(socket, user_id) {
     phoenixChannel.on('search_terms', searchTerm => {
       emit({ type: 'SEARCH_TERMS_EVENT', ...searchTerm });
     });
-    // subscriber must return unsubscribe method
-    const unsubscribe = () => {
-      // TODO
+    return () => {
+      phoenixChannel.leave();
+      socket.disconnect();
     };
-    return unsubscribe;
   });
 
   return socketEventChannel;
@@ -51,27 +46,29 @@ function* initSocket() {
 
   // eslint-disable-next-line no-undef
   const socket = new Socket(`${SOCKET_SERVER}/socket`, {
-    params: {
-      user_id: 1
-    },
+    // The legacy socket still reads this during the migration. Phoenix 1.8
+    // authenticates from the signed session instead, so it safely ignores it.
+    params: { user_id },
     logger: (kind, msg, data) => {
       // console.log(`${kind}: ${msg}`, data);
     }
   });
 
+  const socketEventChannel = createSocketChannel(socket, user_id);
   socket.connect();
 
-  const socketEventChannel = createSocketChannel(socket, user_id);
-
-  while (true) {
-    const myAction = yield take(socketEventChannel);
-    yield put(myAction);
+  try {
+    while (true) {
+      const myAction = yield take(socketEventChannel);
+      yield put(myAction);
+    }
+  } finally {
+    if (yield cancelled()) socketEventChannel.close();
   }
 }
 
 function* socketSaga() {
-  // ⚠️ temporary until I think of a better event to listen on
-  yield takeEvery('USER_FETCH_SUCCEEDED', initSocket);
+  yield takeLatest('USER_FETCH_SUCCEEDED', initSocket);
 }
 
 export default socketSaga;

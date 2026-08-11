@@ -67,6 +67,22 @@ defmodule FlambeNextWeb.TraceThreadControllerTest do
     assert response(conn, 204) == ""
   end
 
+  test "does not expose or mutate another user's trace", %{conn: conn} do
+    {:ok, owner} = Accounts.create_user(%{name: "Owner", username: "trace-owner"})
+    {:ok, other_user} = Accounts.create_user(%{name: "Other", username: "trace-other"})
+    {:ok, trace} = FlambeNext.Traces.create_trace(owner, %{name: "Private trace"})
+
+    conn = authenticated_as(conn, other_user)
+
+    assert_error_sent :not_found, fn ->
+      get(conn, ~p"/api/traces/#{trace}")
+    end
+
+    assert_error_sent :not_found, fn ->
+      delete(conn, ~p"/api/traces/#{trace}")
+    end
+  end
+
   defp authenticated_as(conn, user) do
     conn
     |> init_test_session(%{})

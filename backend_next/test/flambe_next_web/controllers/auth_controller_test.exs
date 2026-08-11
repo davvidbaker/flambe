@@ -26,6 +26,10 @@ defmodule FlambeNextWeb.AuthControllerTest do
     assert user_id == user.id
     assert trace_id == trace.id
 
+    session_cookie = get_resp_header(conn, "set-cookie") |> Enum.join("\n")
+    assert session_cookie =~ "HttpOnly"
+    assert session_cookie =~ "SameSite=Lax"
+
     conn = conn |> recycle() |> get(~p"/api/traces/#{trace}")
 
     assert json_response(conn, 200)["data"]["name"] == "Contract trace"

@@ -277,7 +277,7 @@ export function createActivityB({
   phase: string,
 }) {
   return {
-    type: ACTIVITY_CREATE_B,
+    type: ACTIVITY_CREATE_Q,
     name,
     timestamp,
     description,

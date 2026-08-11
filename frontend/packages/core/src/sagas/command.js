@@ -42,14 +42,15 @@ import { put, takeEvery, select } from 'redux-saga/effects';
 
 function* handleCommand({ operand, command }) {
   let timeline = yield select(getTimeline);
+  const selectedOperand = operand || {};
 
   if (typeof command.action === 'function') {
     /* 💁 This may look funny, but is correct, because the command has been loaded up with arguments now */
     command.action(command);
   } else {
     /* 💁 command may supply activity id and thread id, otherwise fall back to operand */
-    const activity_id = command.activity_id || operand.activity_id;
-    const thread_id = command.thread_id || operand.thread_id;
+    const activity_id = command.activity_id || selectedOperand.activity_id;
+    const thread_id = command.thread_id || selectedOperand.thread_id;
 
     switch (command.action) {
       case ACTIVITY_CREATE_B:

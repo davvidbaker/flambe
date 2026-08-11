@@ -151,6 +151,7 @@ const Parameters = ({ command, parameters, commitParameter, getItems }) => {
       )}
       {command && (
         <ParameterEntry
+          key={Utilities.currentParameter(command, parameters)?.key || 'complete'}
           onSubmit={commitParameter}
           getItems={getItems}
           parameter={Utilities.currentParameter(command, parameters)}

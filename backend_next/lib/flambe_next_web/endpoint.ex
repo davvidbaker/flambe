@@ -1,19 +1,28 @@
 defmodule FlambeNextWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :flambe_next
 
-  # The session will be stored in the cookie and signed,
-  # this means its contents can be read but not tampered with.
-  # Set :encryption_salt if you would also like to encrypt it.
+  # The browser session is encrypted, signed, HTTP-only, and scoped to the
+  # same site. Production deployments additionally require HTTPS transport.
   @session_options [
     store: :cookie,
     key: "_flambe_next_key",
     signing_salt: "wpvY4weL",
-    same_site: "Lax"
+    encryption_salt: "eY8rV2mQ",
+    http_only: true,
+    same_site: "Lax",
+    secure: Application.compile_env(:flambe_next, :session_cookie_secure, false)
   ]
 
-  # socket "/live", Phoenix.LiveView.Socket,
-  #   websocket: [connect_info: [session: @session_options]],
-  #   longpoll: [connect_info: [session: @session_options]]
+  socket "/socket", FlambeNextWeb.UserSocket,
+    # The SPA has no server-rendered CSRF token to include in the WebSocket
+    # handshake. Authentication still comes exclusively from the encrypted,
+    # same-site session cookie, and Phoenix validates the request origin.
+    websocket: [
+      connect_info: [session: @session_options],
+      check_csrf: false,
+      check_origin: true
+    ],
+    longpoll: false
 
   # Serve at "/" the static files from "priv/static" directory.
   #

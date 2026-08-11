@@ -3,8 +3,6 @@ import styled from 'styled-components';
 
 import Logo from '../components/Logo/src';
 
-import Button from '../components/Button';
-
 const CenterFlex = styled.div`
   width: 100%;
   height: 100vh;
@@ -86,18 +84,6 @@ const Login = () => {
       </Form>
       {error && <p>{error}</p>}
       <p><a href="/register">Create an account</a></p>
-      <a
-        // onClick={() =>
-        //   window.open(
-        //     `${SERVER}/auth/github`,
-        //     'foo',
-        //     'width=200, height=300, top=0'
-        //   )
-        // }
-        href={`${SERVER}/auth/github`}
-      >
-        Log in with Github
-      </a>
     </div>
   </CenterFlex>
   );
