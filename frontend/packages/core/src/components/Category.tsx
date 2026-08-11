@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import ColorPicker from './ColorPicker';
 import ColorCircle from './ColorCircle';
 import Popup from './Popup';
+import type { EntityId } from '../types/ids';
 
 const Preview = styled.div<{ background: string; color: string }>`
   font-size: 12px;
@@ -14,7 +15,7 @@ const Preview = styled.div<{ background: string; color: string }>`
   color: ${props => props.color};
 `;
 
-interface Props { id: number; name: string; color_background: string; color_text: string; updateCategory: (id: number, colors: { color_background: string; color_text: string }) => unknown }
+interface Props { id: EntityId; name: string; color_background: string; color_text: string; updateCategory: (id: EntityId, colors: { color_background: string; color_text: string }) => unknown }
 interface State { color_background: string; color_text: string; colorPickerVisible: boolean; colorPickerFlavor: 'background' | 'text' | null }
 
 class Category extends Component<Props, State> {
