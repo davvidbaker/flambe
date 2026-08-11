@@ -28,13 +28,58 @@ import {
   TRACE_DELETE,
   USER_FETCH,
 } from '../actions';
-import { getUser } from '../reducers/user';
-import { getTimeline } from '../reducers/timeline';
+import { getUser, type UserState } from '../reducers/user';
+import { getTimeline, type TimelineState } from '../reducers/timeline';
 import { getCollapsedThreadState } from '../utilities/threadCollapseState';
 import { navigate } from '../utilities/navigation';
+import type { SagaIterator } from 'redux-saga';
+import type { EntityId } from '../types/ids';
+import type { EventPhase, TraceEvent } from '../types/TraceEvent';
+import type { Thread } from '../types/Thread';
+import type { Trace } from '../types/Trace';
 
-async function hitNetwork({ resource, params = {} }) {
-  console.log(`params`, params);
+interface Resource {
+  id?: EntityId;
+  path: string;
+}
+
+interface ResourceRequest {
+  params?: RequestInit;
+  resource: Resource;
+}
+
+interface NetworkResponse {
+  data: unknown;
+}
+
+interface IncomingTrace {
+  events: Array<Omit<TraceEvent, 'timestamp'> & { timestamp: number | string }>;
+  id: EntityId;
+  threads: Thread[];
+}
+
+interface NetworkAction {
+  activity_id?: EntityId;
+  category_id?: EntityId | null;
+  color_background?: string;
+  data?: IncomingTrace;
+  description?: string | null;
+  eventFlavor?: EventPhase;
+  id?: EntityId;
+  message?: string;
+  name?: string;
+  phase?: EventPhase;
+  rank?: number;
+  thread_id?: EntityId;
+  timestamp?: number;
+  todo_id?: EntityId | null;
+  trace?: Trace | EntityId;
+  type: string;
+  updates?: Record<string, unknown>;
+  weight?: number;
+}
+
+async function hitNetwork({ resource, params = {} }: ResourceRequest): Promise<NetworkResponse> {
   const response = await fetch(
     params.method === 'POST'
       ? `${SERVER}/api/${resource.path}`
@@ -49,22 +94,22 @@ async function hitNetwork({ resource, params = {} }) {
   );
   if (!response.ok) throw response;
   if (response.status === 204) return { data: null };
-  return response.json();
+  return response.json() as Promise<NetworkResponse>;
 }
 
 /** 💁 I tried doing an async generator but was running into call stack exceptions and it seemed to be swallowing put errors. Using Redux-Saga `call works instead */
-function* fetchResource(actionType, { resource, params }) {
+function* fetchResource(actionType: string, { resource, params }: ResourceRequest): SagaIterator {
   // action should be {resourceType, resourceIdentifier}
   try {
-    const json = yield call(hitNetwork, { resource, params });
+    const json: NetworkResponse = yield call(hitNetwork, { resource, params });
     const { data } = json;
     yield put({ type: `${actionType}_SUCCEEDED`, data });
-  } catch (e) {
-    if (e.status === 401) {
+  } catch (error: unknown) {
+    if (error instanceof Response && error.status === 401) {
       yield call(navigate, '/login');
       return;
     }
-    console.log(`network error e`, e);
+    console.log(`network error`, error);
     yield put(
       createToast(
         `${actionType.replace(/_/g, ' ')} failed. Network error.
@@ -88,15 +133,15 @@ function* createActivity({
   category_id,
   todo_id = null,
   phase = 'B',
-}) {
-  const timeline = yield select(getTimeline);
+}: NetworkAction): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
 
-  yield fetchResource(type, {
+  yield* fetchResource(type, {
     resource: { path: 'activities' },
     params: {
       method: 'POST',
       body: JSON.stringify({
-        trace_id: timeline.trace.id,
+        trace_id: timeline.trace?.id,
         thread_id,
         todo_id,
         event: { timestamp_integer: timestamp, phase },
@@ -110,15 +155,15 @@ function* createActivity({
   });
 }
 
-function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }) {
-  const timeline = yield select(getTimeline);
-  yield fetchResource(type, {
+function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }: NetworkAction): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
     resource: { path: 'events' },
     params: {
       method: 'POST',
       body: JSON.stringify({
-        trace_id: timeline.trace.id,
+        trace_id: timeline.trace?.id,
         activity_id: id,
         event: {
           timestamp_integer: timestamp,
@@ -130,15 +175,15 @@ function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }) {
   });
 }
 
-function* suspendActivity({ type, id, timestamp, message, weight }) {
-  const timeline = yield select(getTimeline);
-  yield fetchResource(type, {
+function* suspendActivity({ type, id, timestamp, message, weight }: NetworkAction): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
     resource: { path: 'events' },
     params: {
       method: 'POST',
       body: JSON.stringify({
-        trace_id: timeline.trace.id,
+        trace_id: timeline.trace?.id,
         activity_id: id,
         event: {
           timestamp_integer: timestamp,
@@ -149,14 +194,14 @@ function* suspendActivity({ type, id, timestamp, message, weight }) {
     },
   });
 
-  if (weight) {
+  if (weight && id !== undefined) {
     yield put(updateActivityAction(id, { weight }));
   }
 }
 
 // 🔮 if you don't want to delete the events along with the activity, make changes here
-function* deleteActivity({ type, id }) {
-  yield fetchResource(type, {
+function* deleteActivity({ type, id }: NetworkAction): SagaIterator {
+  yield* fetchResource(type, {
     resource: { path: 'activities', id },
     params: {
       method: 'DELETE',
@@ -168,8 +213,8 @@ function* deleteActivity({ type, id }) {
 }
 
 // { name, thread_id, category_ids = [], weight }
-function* updateActivity({ type, id, updates }) {
-  yield fetchResource(type, {
+function* updateActivity({ type, id, updates }: NetworkAction): SagaIterator {
+  yield* fetchResource(type, {
     resource: { path: 'activities', id },
     params: {
       method: 'PUT',
@@ -178,8 +223,8 @@ function* updateActivity({ type, id, updates }) {
   });
 }
 
-function* updateEvent({ type, id, updates }) {
-  yield fetchResource(type, {
+function* updateEvent({ type, id, updates }: NetworkAction): SagaIterator {
+  yield* fetchResource(type, {
     resource: { path: 'events', id },
     params: {
       method: 'PUT',
@@ -187,15 +232,15 @@ function* updateEvent({ type, id, updates }) {
     },
   });
 
-  const trace = (yield select(getTimeline)).trace;
-  console.log(`trace`, trace);
+  const timeline: TimelineState = yield select(getTimeline);
+  const trace = timeline.trace;
   /* ⚠️ This is bad. Shouldn't need to use the network!! */
-  yield call(fetchTrace, { trace });
+  if (trace && trace.id !== null) yield* fetchTrace({ type: TRACE_FETCH, trace: trace.id });
 }
 
-function* createCategory({ type, activity_id, name, color_background }) {
-  const user = yield select(getUser);
-  yield fetchResource(type, {
+function* createCategory({ type, activity_id, name, color_background }: NetworkAction): SagaIterator {
+  const user: UserState = yield select(getUser);
+  yield* fetchResource(type, {
     resource: { path: 'categories' },
     params: {
       method: 'POST',
@@ -209,9 +254,9 @@ function* createCategory({ type, activity_id, name, color_background }) {
   });
 }
 
-function* createTodo({ type, name, description }) {
-  const user = yield select(getUser);
-  yield fetchResource(type, {
+function* createTodo({ type, name, description }: NetworkAction): SagaIterator {
+  const user: UserState = yield select(getUser);
+  yield* fetchResource(type, {
     resource: { path: 'todos' },
     params: {
       method: 'POST',
@@ -226,8 +271,8 @@ function* createTodo({ type, name, description }) {
   });
 }
 
-function* updateCategory({ type, id, updates }) {
-  yield fetchResource(type, {
+function* updateCategory({ type, id, updates }: NetworkAction): SagaIterator {
+  yield* fetchResource(type, {
     resource: { path: 'categories', id },
     params: {
       method: 'PUT',
@@ -238,9 +283,9 @@ function* updateCategory({ type, id, updates }) {
   });
 }
 
-function* createMantra({ type, name }) {
-  const user = yield select(getUser);
-  yield fetchResource(type, {
+function* createMantra({ type, name }: NetworkAction): SagaIterator {
+  const user: UserState = yield select(getUser);
+  yield* fetchResource(type, {
     resource: { path: 'mantras' },
     params: {
       method: 'POST',
@@ -255,9 +300,9 @@ function* createMantra({ type, name }) {
   });
 }
 
-function* shiftAttention({ type, thread_id, timestamp }) {
-  const user = yield select(getUser);
-  yield fetchResource(type, {
+function* shiftAttention({ type, thread_id, timestamp }: NetworkAction): SagaIterator {
+  const user: UserState = yield select(getUser);
+  yield* fetchResource(type, {
     resource: { path: 'attentions' },
     params: {
       method: 'POST',
@@ -272,8 +317,8 @@ function* shiftAttention({ type, thread_id, timestamp }) {
   });
 }
 
-function* updateThread({ type, id, updates }) {
-  yield fetchResource(type, {
+function* updateThread({ type, id, updates }: NetworkAction): SagaIterator {
+  yield* fetchResource(type, {
     resource: { path: 'threads', id },
     params: {
       method: 'PUT',
@@ -284,8 +329,8 @@ function* updateThread({ type, id, updates }) {
   });
 }
 
-function* deleteThread({ type, id }) {
-  yield fetchResource(type, {
+function* deleteThread({ type, id }: NetworkAction): SagaIterator {
+  yield* fetchResource(type, {
     resource: { path: 'threads', id },
     params: {
       method: 'DELETE',
@@ -293,9 +338,9 @@ function* deleteThread({ type, id }) {
   });
 }
 
-function* createTrace({ type, name }) {
-  const user = yield select(getUser);
-  yield fetchResource(type, {
+function* createTrace({ type, name }: NetworkAction): SagaIterator {
+  const user: UserState = yield select(getUser);
+  yield* fetchResource(type, {
     resource: { path: 'traces' },
     params: {
       method: 'POST',
@@ -304,20 +349,21 @@ function* createTrace({ type, name }) {
   });
 }
 
-function* fetchUser({ type, id }) {
-  yield fetchResource(type, {
+function* fetchUser({ type, id }: NetworkAction): SagaIterator {
+  yield* fetchResource(type, {
     resource: { path: 'users', id },
   });
 }
 
-function* fetchTrace({ trace }) {
-  yield fetchResource(TRACE_FETCH, {
-    resource: { path: 'traces', id: typeof trace === 'string' ? trace : trace.id },
+function* fetchTrace({ trace }: NetworkAction): SagaIterator {
+  if (trace === undefined) return;
+  yield* fetchResource(TRACE_FETCH, {
+    resource: { path: 'traces', id: typeof trace === 'object' ? trace.id : trace },
   });
 }
 
-function* deleteTrace({ type, id }) {
-  yield fetchResource(type, {
+function* deleteTrace({ type, id }: NetworkAction): SagaIterator {
+  yield* fetchResource(type, {
     resource: { path: 'traces', id },
     params: {
       method: 'DELETE',
@@ -325,18 +371,19 @@ function* deleteTrace({ type, id }) {
   });
 }
 
-function isCollapsed(persistedThreads, thread) {
+function isCollapsed(persistedThreads: Record<string, Thread>, thread: Thread): boolean {
   if (!persistedThreads) return false;
 
-  const found = persistedThreads[thread.id];
+  const found = persistedThreads[String(thread.id)];
   if (found) {
-    return found.collapsed;
+    return Boolean(found.collapsed);
   }
   return false;
 }
 
-function* processFetchedTrace({ data }) {
-  const timeline = yield select(getTimeline);
+function* processFetchedTrace({ data }: NetworkAction): SagaIterator {
+  if (!data) return;
+  const timeline: TimelineState = yield select(getTimeline);
   const persistedThreads = timeline.threads;
   const persistedCollapseState = getCollapsedThreadState(data.id);
 
@@ -349,20 +396,20 @@ function* processFetchedTrace({ data }) {
       data.threads.map(thread => ({
         ...thread,
         collapsed: isCollapsed(persistedThreads, thread)
-          || persistedCollapseState[thread.id] === true,
+          || persistedCollapseState[String(thread.id)] === true,
       })),
     ),
   );
 }
 
-function* createThread({ type, name, rank }) {
-  const timeline = yield select(getTimeline);
-  yield fetchResource(type, {
+function* createThread({ type, name, rank }: NetworkAction): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  yield* fetchResource(type, {
     resource: { path: 'threads' },
     params: {
       method: 'POST',
       body: JSON.stringify({
-        trace_id: timeline.trace.id,
+        trace_id: timeline.trace?.id,
         thread: { name, rank },
       }),
     },
@@ -370,15 +417,15 @@ function* createThread({ type, name, rank }) {
 }
 
 /* ⚠️ Soooo resumeActivity and resurrectActivity are almost identical. Some refactoring is in ofder. */
-function* resumeActivity({ type, id, timestamp, message }) {
-  const timeline = yield select(getTimeline);
-  yield fetchResource(type, {
+function* resumeActivity({ type, id, timestamp, message }: NetworkAction): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
     resource: { path: 'events' },
     params: {
       method: 'POST',
       body: JSON.stringify({
-        trace_id: timeline.trace.id,
+        trace_id: timeline.trace?.id,
         activity_id: id,
         event: {
           timestamp_integer: timestamp,
@@ -390,15 +437,15 @@ function* resumeActivity({ type, id, timestamp, message }) {
   });
 }
 
-function* resurrectActivity({ type, id, timestamp, message }) {
-  const timeline = yield select(getTimeline);
-  yield fetchResource(type, {
+function* resurrectActivity({ type, id, timestamp, message }: NetworkAction): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
     resource: { path: 'events' },
     params: {
       method: 'POST',
       body: JSON.stringify({
-        trace_id: timeline.trace.id,
+        trace_id: timeline.trace?.id,
         activity_id: id,
         event: {
           timestamp_integer: timestamp,
@@ -411,7 +458,7 @@ function* resurrectActivity({ type, id, timestamp, message }) {
 }
 // // // // // // // // // // // // // // // // // // // // // // // //
 
-function* networkSaga() {
+function* networkSaga(): SagaIterator {
   yield takeEvery(ACTIVITY_CREATE_B, createActivity);
   yield takeEvery(ACTIVITY_CREATE_Q, createActivity);
   yield takeEvery(ACTIVITY_DELETE, deleteActivity);
