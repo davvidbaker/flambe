@@ -112,8 +112,6 @@ class App extends React.Component<
     createToast(`${(e, info)}. Top level error.`, 'error');
   }
 
-  componentWillMount() {}
-
   componentDidMount() {
     // impure!
     const createKeyEvent = (DOMEvent: string, propFn: () => mixed) => {
@@ -136,6 +134,16 @@ class App extends React.Component<
   }
 
   getItems = selector => selector(this.props);
+
+  logout = async () => {
+    await fetch(`${SERVER}/auth/logout`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+
+    localStorage.removeItem('state');
+    window.location.assign('/login');
+  };
 
   addCommand = command => {
     this.setState(state => ({
@@ -353,6 +361,7 @@ class App extends React.Component<
                   last(this.props.user.mantras).name
                 }
                 createMantra={name => this.props.createMantra(name)}
+                logout={this.logout}
               />
               <main style={{ position: 'relative', height: '100%' }}>
                 <MaybeSplitPane

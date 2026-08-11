@@ -11,7 +11,6 @@ module.exports = {
     browser: true,
     commonjs: true,
     es6: true,
-    'cypress/globals': true,
   },
   parser: 'babel-eslint',
   extends: 'airbnb',
@@ -22,7 +21,7 @@ module.exports = {
     // ecmaVersion: 6,
     sourceType: 'module',
   },
-  plugins: ['babel', 'import', 'react', 'jsx-a11y', 'cypress', 'react-hooks'],
+  plugins: ['babel', 'import', 'react', 'jsx-a11y', 'react-hooks'],
   globals: {
     NODE_ENV: true,
     SERVER: true,
@@ -75,12 +74,5 @@ module.exports = {
     'react/prop-types': 'off',
     'react/sort-comp': 'off',
     'react-hooks/rules-of-hooks': 'error',
-  },
-  settings: {
-    'import/resolver': {
-      webpack: {
-        config: './webpack.common.js',
-      },
-    },
   },
 };

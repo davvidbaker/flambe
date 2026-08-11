@@ -25,4 +25,10 @@ defmodule FlambeNextWeb.AuthController do
     |> put_status(:unprocessable_entity)
     |> json(%{error: "INVALID_CREDENTIALS"})
   end
+
+  def logout(conn, _params) do
+    conn
+    |> configure_session(drop: true)
+    |> send_resp(:no_content, "")
+  end
 end

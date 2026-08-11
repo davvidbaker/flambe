@@ -1,7 +1,20 @@
-# flame-chart🔥🔥🔥 web component
+# Flambe frontend
 
+The active frontend is the React/Vite SPA in `packages/core`. It is served by
+Vite on port 5173 during development and proxies API, auth, and WebSocket
+requests to Phoenix 1.8 on port 4001.
+
+```sh
+nvm exec 22 npm ci --legacy-peer-deps
+nvm exec 22 npm run dev
 ```
-npm run dev
+
+Use `nvm exec 22 npm run build` to place the production bundle in
+`../backend_next/priv/static/assets`, then visit http://localhost:4001.
+
+```sh
+nvm exec 22 npm run test:unit
+nvm exec 22 npm run test:smoke
 ```
 
 ---
@@ -16,7 +29,7 @@ npm run dev
 
 ---
 
-## Local Development
+## Historical notes
 
 ```
 npm install

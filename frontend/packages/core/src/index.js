@@ -18,5 +18,4 @@ createRoot(rootElement).render(
       <App />
     </BrowserRouter>
   </Provider>,
-  document.getElementById('app-root'),
 );
