@@ -25,3 +25,6 @@ export const TRACE_CREATE: string;
 export const USER_FETCH: string;
 export const SEARCH_TERMS_EVENT: string;
 export const TABS_EVENT: string;
+export const KEY_DOWN: string;
+export const KEY_UP: string;
+export function createTrace(name: string): { type: string; name: string };
