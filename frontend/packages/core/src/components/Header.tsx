@@ -11,6 +11,8 @@ import TraceList from './TraceList';
 import { colors, layout } from '../styles';
 
 import filterIcon from '../images/filter_icon.svg';
+import type { Trace } from '../types/Trace';
+import type { EntityId } from '../types/ids';
 
 const StyledHeader = styled.header`
   width: 100%;
@@ -39,6 +41,17 @@ const StyledHeader = styled.header`
   }
 `;
 
+interface Props {
+  createMantra: (name: string) => unknown;
+  currentMantra?: string;
+  currentTrace?: Trace | null;
+  deleteCurrentTrace: () => unknown;
+  deleteTrace: (id: EntityId) => unknown;
+  logout: () => unknown;
+  selectTrace: (trace: Trace) => unknown;
+  traces: Trace[];
+}
+
 const Header = ({
   traces,
   currentTrace,
@@ -48,10 +61,11 @@ const Header = ({
   currentMantra,
   createMantra,
   logout,
-}) => (
+}: Props) => (
   <StyledHeader>
     {traces && (
       <ToggleButton
+        title="Toggle traces"
         toggles={toggle => (
           <TraceList
             key="traces-list"

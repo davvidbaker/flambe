@@ -1,10 +1,11 @@
-import React, { Component } from 'react';
+import React, { Component, type ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
 
 import { popToast as popToastAction } from '../actions';
 import Toast from '../components/Toast';
+import type { Toast as ToastType } from '../reducers/toaster';
 
 const Wrapper = styled.div`
   position: fixed;
@@ -13,23 +14,31 @@ const Wrapper = styled.div`
   z-index: 10000;
 `;
 
-const toasterRoot = document.querySelector('#toaster-root');
-class Toaster extends Component {
-  constructor(props) {
+const toasterRoot = document.querySelector<HTMLElement>('#toaster-root');
+
+interface Props {
+  popToast: (index: number) => unknown;
+  toaster: ToastType[];
+}
+
+class Toaster extends Component<Props> {
+  el: HTMLDivElement;
+
+  constructor(props: Props) {
     super(props);
     this.el = document.createElement('div');
   }
 
   componentDidMount() {
-    toasterRoot.appendChild(this.el);
+    toasterRoot?.appendChild(this.el);
   }
 
   /* ⚠️ But I don't think I'll ever be unmounting... */
   componentWillUnmount() {
-    toasterRoot.removeChild(this.el);
+    if (toasterRoot?.contains(this.el)) toasterRoot.removeChild(this.el);
   }
 
-  render() {
+  render(): ReactNode {
     const { toaster, popToast } = this.props;
     return ReactDOM.createPortal(
       <Wrapper>
@@ -50,6 +59,6 @@ class Toaster extends Component {
 }
 
 export default connect(
-  state => ({ toaster: state.toaster }),
-  dispatch => ({ popToast: () => dispatch(popToastAction()) })
+  (state: { toaster: ToastType[] }) => ({ toaster: state.toaster }),
+  dispatch => ({ popToast: (index: number) => dispatch(popToastAction(index)) })
 )(Toaster);

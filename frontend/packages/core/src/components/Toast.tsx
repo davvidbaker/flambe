@@ -1,21 +1,20 @@
-import React, { Component } from 'react';
+import React, { Component, type ReactNode } from 'react';
 import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 // import mdx from 'mdx';
 
 import { colors } from '../styles';
 
-function getColor({ type }) {
+function getColor(type: string): string {
   return type === 'error' ? colors.red : 'green';
 }
-props => (props.type === 'error' ? colors.red : 'green');
 
-const Wrapper = styled.div`
-  background: ${getColor};
+const Wrapper = styled.div<{ $type: string }>`
+  background: ${props => getColor(props.$type)};
   font-size: 0.8em;
   border: 1px solid
     ${props =>
-    tinycolor(getColor(props))
+    tinycolor(getColor(props.$type))
       .darken(25)
       .toString()};
   border-radius: 2px;
@@ -28,7 +27,7 @@ const Wrapper = styled.div`
   }
 `;
 
-const ProgressBar = styled.div`
+const ProgressBar = styled.div<{ $playing: boolean }>`
   width: 100%;
   height: 5px;
   position: relative;
@@ -42,7 +41,7 @@ const ProgressBar = styled.div`
   animation: slide 10s linear;
   background: linear-gradient(to left, #40e0d0, #ff8c00, #ff0080, transparent);
 
-  animation-play-state: ${props => (props.playing ? 'running' : 'paused')};
+  animation-play-state: ${props => (props.$playing ? 'running' : 'paused')};
   animation-fill-mode: forwards;
   /* height: 100%; */
   width: 100%;
@@ -56,7 +55,14 @@ const ProgressBar = styled.div`
   /* } */
 `;
 
-class Toast extends Component {
+interface Props {
+  ind: number;
+  message: string;
+  popToast: (index: number) => unknown;
+  type: string;
+}
+
+class Toast extends Component<Props, { playing: boolean }> {
   state = {
     playing: true
   };
@@ -74,17 +80,17 @@ class Toast extends Component {
     this.props.popToast(this.props.ind);
   };
 
-  render() {
+  render(): ReactNode {
     return (
       <Wrapper
-        type={this.props.type}
+        $type={this.props.type}
         onMouseEnter={this.onMouseEnter}
         onMouseLeave={this.onMouseLeave}
         onClick={this.pop}
       >
         {/* <div>{mdx.sync(this.props.message)}</div> */}
         <div>{this.props.message}</div>
-        <ProgressBar playing={this.state.playing} onAnimationEnd={this.pop} />
+        <ProgressBar $playing={this.state.playing} onAnimationEnd={this.pop} />
       </Wrapper>
     );
   }

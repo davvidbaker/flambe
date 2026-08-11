@@ -252,14 +252,14 @@ export function createTrace(name: string) {
   };
 }
 
-export function deleteTrace(id: number) {
+export function deleteTrace(id: EntityId) {
   return {
     type: TRACE_DELETE,
     id,
   };
 }
 
-export function deleteThread(id: number) {
+export function deleteThread(id: EntityId) {
   return {
     type: THREAD_DELETE,
     id,
