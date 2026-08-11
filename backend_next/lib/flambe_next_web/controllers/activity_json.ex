@@ -5,6 +5,10 @@ defmodule FlambeNextWeb.ActivityJSON do
     %{data: %{activity: activity_data(activity), event: event_data(event)}}
   end
 
+  def show(%{activity: %Activity{} = activity}) do
+    %{data: activity_data(activity)}
+  end
+
   defp activity_data(activity) do
     %{
       id: activity.id,

@@ -21,6 +21,20 @@ defmodule FlambeNextWeb.EventController do
     end
   end
 
+  def update(conn, %{"id" => id, "event" => attrs}) do
+    event = Traces.get_user_event!(conn.assigns.current_user, id)
+
+    case Traces.update_event(event, attrs) do
+      {:ok, event} ->
+        render(conn, :show, event: event)
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: errors(changeset)})
+    end
+  end
+
   defp errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, _options} -> message end)
   end

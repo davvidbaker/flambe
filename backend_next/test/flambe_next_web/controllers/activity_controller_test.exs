@@ -89,6 +89,49 @@ defmodule FlambeNextWeb.ActivityControllerTest do
     assert is_integer(event_id)
   end
 
+  test "updates and deletes an activity and updates its event", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Lifecycle User", username: "lifecycle-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Lifecycle trace"})
+    thread = trace.id |> Traces.get_trace!() |> Map.fetch!(:threads) |> List.first()
+
+    {:ok, activity, event} =
+      Traces.create_activity(
+        trace,
+        thread,
+        %{"name" => "Draft", "weight" => 1},
+        %{"timestamp_integer" => 1_723_465_600_123, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{activity}", %{"activity" => %{"name" => "Final", "weight" => 2}})
+
+    assert json_response(conn, 200) == %{
+             "data" => %{
+               "description" => nil,
+               "id" => activity.id,
+               "name" => "Final",
+               "weight" => 2
+             }
+           }
+
+    conn =
+      conn
+      |> recycle()
+      |> put(~p"/api/events/#{event}", %{"event" => %{"message" => "Done", "phase" => "E"}})
+
+    assert json_response(conn, 200) == %{"data" => %{"id" => event.id, "phase" => "E"}}
+
+    conn = conn |> recycle() |> get(~p"/api/traces/#{trace}")
+
+    assert %{"data" => %{"events" => [%{"message" => "Done", "phase" => "E"}]}} =
+             json_response(conn, 200)
+
+    conn = conn |> recycle() |> delete(~p"/api/activities/#{activity}")
+    assert response(conn, 204) == ""
+  end
+
   defp authenticated_as(conn, user) do
     conn
     |> init_test_session(%{})
