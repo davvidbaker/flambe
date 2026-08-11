@@ -18,7 +18,7 @@ export function timeToPixels(
 
 export function getBlockTransform(
   startTime: number,
-  endTime: number,
+  endTime: number | null | undefined,
   topBoundaryTime: number,
   bottomBoundaryTime: number,
   blockWidth: number,
