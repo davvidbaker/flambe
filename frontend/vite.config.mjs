@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, loadEnv, splitVendorChunkPlugin } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const configDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -18,7 +18,6 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      splitVendorChunkPlugin(),
       react({
         babel: {
           babelrc: false,
@@ -33,7 +32,6 @@ export default defineConfig(({ mode }) => {
               presets: ['@babel/preset-typescript'],
             },
           ],
-          plugins: ['babel-plugin-styled-components'],
         },
       }),
     ],
@@ -129,6 +127,13 @@ export default defineConfig(({ mode }) => {
       assetsDir: '.',
       emptyOutDir: true,
       manifest: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            return id.includes('/node_modules/') ? 'vendor' : undefined;
+          },
+        },
+      },
     },
   };
 });
