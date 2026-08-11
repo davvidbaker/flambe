@@ -1,27 +1,32 @@
-import React, { Component } from 'react';
+import React from 'react';
 import Select from 'react-select';
-import styled from 'styled-components';
-import { pipe, filter, identity, fromPairs, map } from 'lodash/fp';
+import { getFilteredThreads } from '../utilities/timeline';
+import type { EntityId } from '../types/ids';
+import type { Thread } from '../types/Thread';
 
-import { getTimeline, getFilterExcludes } from '../reducers/timeline';
-import { filterTrace as filterTraceAction } from '../actions';
-import {
-  getFilteredThreads,
-  getShamefulColor,
-  loadSuspendedActivityCount,
-} from '../utilities/timeline';
+interface ThreadOption {
+  label: string;
+  value: EntityId;
+}
 
-const format = th =>
-  th
-  |> Object.entries
-  |> map(([id, thread]) => ({ value: id, label: thread.name }));
+type FilterThread = Thread & { suspendedActivityCount?: number };
+
+interface Props {
+  allThreads?: Record<string, FilterThread>;
+  includedThreads?: ThreadOption[];
+  filterExcludes: EntityId[];
+  onChange: (selectedThreads: ThreadOption[]) => unknown;
+}
+
+const format = (threads: Record<string, FilterThread>): ThreadOption[] =>
+  Object.entries(threads).map(([id, thread]) => ({ value: id, label: thread.name }));
 
 const ThreadFilter = ({
   allThreads = {},
   includedThreads,
   filterExcludes,
   onChange,
-}) => {
+}: Props) => {
   const threads = format(allThreads);
 
   const filteredThreads =
@@ -33,7 +38,7 @@ const ThreadFilter = ({
       isMulti
       value={filteredThreads}
       options={threads}
-      onChange={selectedThreads => onChange(selectedThreads || [])}
+      onChange={selectedThreads => onChange([...selectedThreads])}
     />
   );
 };
