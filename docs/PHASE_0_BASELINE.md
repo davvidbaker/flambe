@@ -58,8 +58,8 @@ response shapes without embedding restored personal data.
 | Browser smoke test | Passing locally | `npm run test:smoke` validates the Phoenix 1.8 production stack and core user flows with disposable data. |
 
 The checked-in GitHub Actions workflow runs Phoenix 1.8 backend checks,
-frontend unit tests, and the Phoenix-served Vite browser smoke flow against a
-disposable PostgreSQL service database.
+strict frontend TypeScript checks, frontend unit tests, and the Phoenix-served
+Vite browser smoke flow against a disposable PostgreSQL service database.
 
 The active controller and browser checks are first-class gates. The retired
 Phoenix 1.3 source is available in Git history, while controlled data imports

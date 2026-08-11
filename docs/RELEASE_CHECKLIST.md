@@ -28,6 +28,7 @@ deployment target.
    mix precommit
 
    cd ../frontend
+   nvm exec 22 npm run typecheck
    nvm exec 22 npm run test:unit
    nvm exec 22 npm run build
    nvm exec 22 npm run test:smoke
