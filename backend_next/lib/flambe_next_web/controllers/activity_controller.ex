@@ -33,6 +33,43 @@ defmodule FlambeNextWeb.ActivityController do
     end
   end
 
+  def update(conn, %{"id" => id, "activity" => attrs}) do
+    user = conn.assigns.current_user
+    activity = Traces.get_user_activity!(user, id)
+
+    with {:ok, categories} <- update_categories(user, activity, attrs),
+         {:ok, activity} <- Traces.update_activity(activity, attrs, categories) do
+      render(conn, :show, activity: activity)
+    else
+      {:error, :not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "NOT_FOUND"})
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: errors(changeset)})
+    end
+  end
+
+  def show(conn, %{"id" => id}) do
+    render(conn, :show, activity: Traces.get_user_activity!(conn.assigns.current_user, id))
+  end
+
+  def delete(conn, %{"id" => id}) do
+    activity = Traces.get_user_activity!(conn.assigns.current_user, id)
+    {:ok, _activity} = Traces.delete_activity(activity)
+    send_resp(conn, :no_content, "")
+  end
+
+  defp update_categories(user, activity, attrs) do
+    case Map.fetch(attrs, "category_ids") do
+      {:ok, category_ids} -> Accounts.get_user_categories(user, category_ids)
+      :error -> {:ok, activity.categories}
+    end
+  end
+
   defp errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, _options} -> message end)
   end
