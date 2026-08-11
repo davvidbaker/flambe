@@ -1,5 +1,5 @@
 import * as React from 'react';
-import SplitPane from './SplitPane';
+import SplitPane, { SPLIT_PANE_HANDLE_SIZE } from './SplitPane';
 import throttle from 'lodash/throttle';
 import { filter, reduce } from 'lodash/fp';
 import last from 'lodash/last';
@@ -15,6 +15,7 @@ import { layout } from '../styles';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
 import { persistCollapsedThreadState } from '../utilities/threadCollapseState';
+import { savedRangeIsUsable } from '../utilities/timelineViewport';
 import type { Activity } from '../types/Activity';
 import {
   SECOND, MINUTE, HOUR, DAY, WEEK, MONTH,
@@ -35,6 +36,7 @@ import FocusedBlock from './FocusedBlock';
 
 const MIN_GRID_SLICE_PX = 60;
 const isValidTime = value => Number.isFinite(value) && value > 0;
+const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
 
 // minTime is smallest timestamp in the entire timeline
 // maxTime is largest timestamp in the entire timeline
@@ -97,6 +99,7 @@ class Timeline extends React.Component<Props, State> {
       lbt: localStorage.getItem('lbt'),
       rbt: localStorage.getItem('rbt'),
     };
+    this.viewportTraceId = localStorage.getItem(viewportTraceStorageKey);
     const leftBoundaryTime = savedTimes.lbt && Number.parseFloat(savedTimes.lbt);
     const rightBoundaryTime = savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
     const dividersData = this.calculateGridOffsets();
@@ -141,6 +144,7 @@ class Timeline extends React.Component<Props, State> {
       || nextProps.rightBoundaryTimeOverride
         !== this.props.rightBoundaryTimeOverride
     ) {
+      this.viewportTraceId = String(nextProps.trace_id);
       this.setTimelineState({
         leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
         rightBoundaryTime: nextProps.rightBoundaryTimeOverride,
@@ -153,9 +157,14 @@ class Timeline extends React.Component<Props, State> {
       && isValidTime(this.rightBoundaryTime);
     const traceHasTimeRange = isValidTime(nextProps.minTime)
       && isValidTime(nextProps.maxTime);
-    const savedRangeOverlapsTrace = hasSavedRange
-      && this.rightBoundaryTime >= nextProps.minTime
-      && this.leftBoundaryTime <= nextProps.maxTime;
+    const savedRangeOverlapsTrace = savedRangeIsUsable(
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      nextProps.minTime,
+      nextProps.maxTime,
+      this.viewportTraceId,
+      nextProps.trace_id,
+    );
 
     // A trace can be restored or replaced with data from a different period.
     // In that case, a persisted viewport would otherwise leave every block
@@ -166,6 +175,7 @@ class Timeline extends React.Component<Props, State> {
       && traceHasTimeRange
       && (!hasSavedRange || !savedRangeOverlapsTrace)
     ) {
+      this.viewportTraceId = String(nextProps.trace_id);
       this.setTimelineState({
         leftBoundaryTime: nextProps.minTime,
         rightBoundaryTime: Math.max(nextProps.maxTime, Date.now())
@@ -257,8 +267,14 @@ class Timeline extends React.Component<Props, State> {
     const traceRangeIsValid = isValidTime(props.minTime)
       && isValidTime(props.maxTime);
     const savedRangeOverlapsTrace = !traceRangeIsValid
-      || (this.rightBoundaryTime >= props.minTime
-        && this.leftBoundaryTime <= props.maxTime);
+      || savedRangeIsUsable(
+        this.leftBoundaryTime,
+        this.rightBoundaryTime,
+        props.minTime,
+        props.maxTime,
+        this.viewportTraceId,
+        props.trace_id,
+      );
 
     if (savedRangeIsValid && savedRangeOverlapsTrace) {
       return {
@@ -350,6 +366,8 @@ class Timeline extends React.Component<Props, State> {
   }
 
   zoomTo(timePeriod) {
+    this.viewportTraceId = String(this.props.trace_id);
+
     switch (timePeriod) {
       // shows about the last 10 minutes
       case 'now':
@@ -365,6 +383,7 @@ class Timeline extends React.Component<Props, State> {
           leftBoundaryTime: Date.now() - 60 * MINUTE,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
+        break;
       case 'day':
         this.setTimelineState({
           dividersData: this.calculateGridOffsets(),
@@ -396,9 +415,10 @@ class Timeline extends React.Component<Props, State> {
       case 'all':
         this.setTimelineState({
           dividersData: this.calculateGridOffsets(),
-          leftBoundaryTime: this.props.minTIme,
+          leftBoundaryTime: this.props.minTime,
           rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
         });
+        break;
       default:
         break;
     }
@@ -406,6 +426,7 @@ class Timeline extends React.Component<Props, State> {
   }
 
   zoom = (dy, offsetX, zoomCenterTime, canvasWidth) => {
+    this.viewportTraceId = String(this.props.trace_id);
     const dividersData = this.calculateGridOffsets();
 
     const { leftBoundaryTime, rightBoundaryTime } = zoom(
@@ -427,6 +448,7 @@ class Timeline extends React.Component<Props, State> {
   };
 
   pan = (dx, dy, canvasWidth) => {
+    this.viewportTraceId = String(this.props.trace_id);
     const dividersData = this.calculateGridOffsets();
     const { leftBoundaryTime, rightBoundaryTime, topOffset } = pan(
       dx,
@@ -480,6 +502,9 @@ class Timeline extends React.Component<Props, State> {
     ) {
       localStorage.setItem('lbt', this.leftBoundaryTime);
       localStorage.setItem('rbt', this.rightBoundaryTime);
+      if (this.viewportTraceId) {
+        localStorage.setItem(viewportTraceStorageKey, this.viewportTraceId);
+      }
     }
   }, 1000);
 
@@ -653,13 +678,13 @@ class Timeline extends React.Component<Props, State> {
                       <FocusedBlock
                       key="focus"
                       ref={this.focusedBlock}
-                      yOffset={this.state.timeSeriesHeight}
+                      yOffset={this.state.timeSeriesHeight + SPLIT_PANE_HANDLE_SIZE}
                       flameChartRef={this.flameChart}
                     />,
                       <Tooltip
                       key="tooltip"
                       flameChartRef={this.flameChart}
-                      yOffset={this.state.timeSeriesHeight}
+                      yOffset={this.state.timeSeriesHeight + SPLIT_PANE_HANDLE_SIZE}
                       activities={props.activities}
                       blocks={props.blocks}
                     />,
