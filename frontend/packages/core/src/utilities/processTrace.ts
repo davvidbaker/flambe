@@ -1,0 +1,249 @@
+import uniq from 'lodash/uniq';
+
+import type { Activity, ActivityStatus } from '../types/Activity';
+import type { EntityId } from '../types/ids';
+import type { Thread } from '../types/Thread';
+import type { EventPhase, TraceEvent } from '../types/TraceEvent';
+
+export interface TraceBlock {
+  activity_id: EntityId;
+  beginning: EventPhase;
+  endMessage?: string;
+  endTime?: number;
+  ending?: EventPhase;
+  events: EntityId[];
+  level: number;
+  startMessage?: string;
+  startTime: number;
+}
+
+interface ThreadLevel {
+  current: number;
+  max: number;
+}
+
+interface ProcessedActivity extends Activity {
+  categories: EntityId[];
+  events: EntityId[];
+  suspendedChildren: EntityId[];
+  status?: ActivityStatus;
+}
+
+export interface ProcessedTrace {
+  activities: Record<string, ProcessedActivity>;
+  blocks: TraceBlock[];
+  events: TraceEvent[];
+  lastCategory_id?: EntityId | null;
+  lastThread_id?: EntityId;
+  max: number;
+  min: number;
+  threadLevels: Record<string, ThreadLevel>;
+  threads: Record<string, Thread>;
+}
+
+const keyFor = (id: EntityId): string => String(id);
+
+export function lastActivityBlock(
+  blocks: TraceBlock[],
+  activity_id: EntityId,
+): TraceBlock | undefined {
+  return [...blocks].reverse().find(block => block.activity_id === activity_id);
+}
+
+export function removeActivity(
+  activity_id: EntityId,
+  thread_id: EntityId,
+  threadOpenActivities: Record<string, EntityId[]>,
+): Record<string, EntityId[]> {
+  const key = keyFor(thread_id);
+  return {
+    ...threadOpenActivities,
+    [key]: (threadOpenActivities[key] ?? []).filter(id => id !== activity_id),
+  };
+}
+
+function decrementThreadLevel(level: number): number {
+  return Math.max(0, level - 1);
+}
+
+function isChildActivity(
+  activity_id: EntityId,
+  blocks: TraceBlock[],
+  event: TraceEvent,
+): boolean {
+  const activityBlock = lastActivityBlock(blocks, activity_id);
+  const parentId = event.activity?.id;
+  const parentBlock = parentId === undefined
+    ? undefined
+    : lastActivityBlock(blocks, parentId);
+
+  return Boolean(
+    activityBlock &&
+      parentBlock &&
+      activityBlock.startTime >= parentBlock.startTime &&
+      activityBlock.level > parentBlock.level,
+  );
+}
+
+/** A block can have at most a beginning and an ending event. */
+export function terminateBlock(
+  blocks: TraceBlock[],
+  activity_id: EntityId,
+  timestamp: number,
+  phase: EventPhase,
+  message = '',
+  event_id?: EntityId,
+): TraceBlock[] {
+  const block = lastActivityBlock(blocks, activity_id);
+  if (!block) return blocks;
+
+  block.endTime = timestamp;
+  block.ending = phase;
+  block.endMessage = message;
+  if (event_id !== undefined) block.events.push(event_id);
+  return blocks;
+}
+
+function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): ProcessedTrace {
+  const threadLevels: Record<string, ThreadLevel> = {};
+  const threadOpenActivities: Record<string, EntityId[]> = {};
+  const threadsObject: Record<string, Thread> = {};
+
+  threads.forEach(thread => {
+    const key = keyFor(thread.id);
+    threadsObject[key] = thread;
+    threadLevels[key] = { current: 0, max: 0 };
+    threadOpenActivities[key] = [];
+  });
+
+  if (trace.length === 0) {
+    const min = Date.now();
+    return {
+      activities: {}, blocks: [], events: trace, max: min + 1000, min,
+      threadLevels, threads: threadsObject,
+    };
+  }
+
+  const orderedTrace = [...trace].sort((left, right) => left.timestamp - right.timestamp);
+  const activities: Record<string, ProcessedActivity> = {};
+  const blocks: TraceBlock[] = [];
+  let leftTime = orderedTrace[0].timestamp;
+  let rightTime = orderedTrace[0].timestamp;
+  let lastCategory_id: EntityId | null | undefined;
+  let lastThread_id: EntityId | undefined;
+
+  orderedTrace.forEach((event, index) => {
+    const sourceActivity = event.activity;
+    if (!sourceActivity) return;
+
+    const thread_id = sourceActivity.thread?.id ?? sourceActivity.thread_id;
+    if (thread_id === undefined) return;
+
+    const threadKey = keyFor(thread_id);
+    const activityKey = keyFor(sourceActivity.id);
+    const threadLevel = threadLevels[threadKey] ?? { current: 0, max: 0 };
+    threadLevels[threadKey] = threadLevel;
+    threadOpenActivities[threadKey] ??= [];
+
+    const activity = activities[activityKey] ?? {
+      ...sourceActivity,
+      categories: [],
+      events: [],
+      suspendedChildren: [],
+    };
+    activities[activityKey] = activity;
+    activity.events.push(event.id);
+    activity.description ??= sourceActivity.description;
+    activity.categories = uniq([...activity.categories, ...sourceActivity.categories]);
+
+    switch (event.phase) {
+      case 'S': {
+        if (activity.status === 'suspended' || activity.status === 'parent_suspended') break;
+        terminateBlock(blocks, sourceActivity.id, event.timestamp, event.phase, event.message, event.id);
+        threadLevel.current = decrementThreadLevel(threadLevel.current);
+        activity.status = 'suspended';
+        const remaining = removeActivity(sourceActivity.id, thread_id, threadOpenActivities);
+        threadOpenActivities[threadKey] = remaining[threadKey];
+
+        [...threadOpenActivities[threadKey]].forEach(childId => {
+          if (!isChildActivity(childId, blocks, event)) return;
+          activity.suspendedChildren.push(childId);
+          const child = activities[keyFor(childId)];
+          if (child) child.status = 'parent_suspended';
+          terminateBlock(blocks, childId, event.timestamp, event.phase, event.message);
+          threadLevel.current = decrementThreadLevel(threadLevel.current);
+          threadOpenActivities[threadKey] = removeActivity(childId, thread_id, threadOpenActivities)[threadKey];
+        });
+        break;
+      }
+      case 'X':
+      case 'R': {
+        if (event.phase === 'R' && (activity.status === 'parent_suspended' || activity.status === 'active')) break;
+        blocks.push({ activity_id: sourceActivity.id, beginning: event.phase, events: [event.id], level: threadLevel.current, startMessage: event.message, startTime: event.timestamp });
+        threadLevel.current += 1;
+        threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
+        if (event.phase === 'R') {
+          activity.suspendedChildren.forEach(childId => {
+            const child = activities[keyFor(childId)];
+            if (child) child.status = 'active';
+            blocks.push({ activity_id: childId, beginning: event.phase, events: [event.id], level: threadLevel.current, startTime: event.timestamp });
+            threadLevel.current += 1;
+            threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
+            threadOpenActivities[threadKey].push(childId);
+          });
+          activity.suspendedChildren = [];
+        }
+        threadOpenActivities[threadKey].push(sourceActivity.id);
+        activity.status = 'active';
+        break;
+      }
+      case 'Q':
+      case 'B':
+        activity.startTime = event.timestamp;
+        activity.status = 'active';
+        activity.name = sourceActivity.name;
+        activity.weight = sourceActivity.weight;
+        activity.description = sourceActivity.description;
+        activity.thread_id = thread_id;
+        activity.flavor = event.phase === 'Q' ? 'question' : 'task';
+        blocks.push({ activity_id: sourceActivity.id, beginning: event.phase, events: [event.id], level: threadLevel.current, startMessage: event.message, startTime: event.timestamp });
+        threadOpenActivities[threadKey].push(sourceActivity.id);
+        threadLevel.current += 1;
+        threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
+        break;
+      case 'E':
+      case 'J':
+      case 'V': {
+        if (activity.status === 'suspended') {
+          activity.status = 'complete';
+          break;
+        }
+        activity.endTime = event.timestamp;
+        activity.status = 'complete';
+        [...threadOpenActivities[threadKey]].forEach(childId => {
+          const child = activities[keyFor(childId)];
+          if (!child || !isChildActivity(childId, blocks, event)) return;
+          terminateBlock(blocks, childId, event.timestamp, event.phase, event.message, event.id);
+          threadLevel.current = decrementThreadLevel(threadLevel.current);
+          child.status = 'complete';
+          threadOpenActivities[threadKey] = removeActivity(childId, thread_id, threadOpenActivities)[threadKey];
+        });
+        terminateBlock(blocks, sourceActivity.id, event.timestamp, event.phase, event.message, event.id);
+        threadLevel.current = decrementThreadLevel(threadLevel.current);
+        threadOpenActivities[threadKey] = removeActivity(sourceActivity.id, thread_id, threadOpenActivities)[threadKey];
+        break;
+      }
+      default:
+        break;
+    }
+
+    rightTime = Math.max(rightTime, event.timestamp);
+    leftTime = Math.min(leftTime, event.timestamp);
+    lastCategory_id = activity.categories[0] ?? null;
+    if (index === orderedTrace.length - 1) lastThread_id = activity.thread_id;
+  });
+
+  return { activities, blocks, events: trace, lastCategory_id, lastThread_id, max: rightTime, min: leftTime, threadLevels, threads: threadsObject };
+}
+
+export default processTrace;
