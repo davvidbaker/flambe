@@ -5,15 +5,17 @@ import {
   SEARCH_BLOCK_INCREMENT_RESULT, SET_THREAD_INCLUDE_LIST, SET_THREAD_EXCLUDE_LIST,
 } from '../actions';
 
-type Match = [string, unknown];
+import type { ProcessedActivity } from '../utilities/processTrace';
+
+export type SearchMatch = [string, ProcessedActivity];
 export interface SearchState {
-  matches: Match[]; blocksForMatch: Array<[number, TraceBlock]>; blockIndex: number; matchIndex: number;
+  matches: SearchMatch[]; blocksForMatch: Array<[number, TraceBlock]>; blockIndex: number; matchIndex: number;
   searchStack: string[]; includeStack: string[]; excludeStack: string[];
   options: { matchCase: boolean; matchWholeWord: boolean; useRegularExpression: boolean };
   advancedOptions: { limitToVisibleSectionOfTimeline: boolean; threadIncludeList: EntityId[]; threadExcludeList: EntityId[]; activityStatuses: string[] | null; activityFields: string };
 }
 const defaultState: SearchState = { matches: [], blocksForMatch: [], blockIndex: 0, matchIndex: 0, searchStack: [], includeStack: [], excludeStack: [], options: { matchCase: false, matchWholeWord: false, useRegularExpression: false }, advancedOptions: { limitToVisibleSectionOfTimeline: false, threadIncludeList: [], threadExcludeList: [], activityStatuses: null, activityFields: 'name' } };
-type SearchAction = { type: string; searchTerm?: string; matches?: Match[]; blocksForMatch?: Array<[number, TraceBlock]>; matchIndex?: number; blockIndex?: number; inputValue?: string; thread_ids?: EntityId[] };
+type SearchAction = { type: string; searchTerm?: string; matches?: SearchMatch[]; blocksForMatch?: Array<[number, TraceBlock]>; matchIndex?: number; blockIndex?: number; inputValue?: string; thread_ids?: EntityId[] };
 function addToStack(value: string, stack: string[]): string[] { return stack[0] === value ? stack : [value, ...stack].slice(0, 20); }
 function search(state: SearchState = defaultState, action: SearchAction): SearchState {
   switch (action.type) {

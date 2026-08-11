@@ -1,7 +1,8 @@
-import { pipe, filter, map, identity, mapKeys } from 'lodash/fp';
 import { call, put, takeLatest, select } from 'redux-saga/effects';
+import type { SagaIterator } from 'redux-saga';
 
-import { getTimeline } from '../reducers/timeline';
+import { getTimeline, type TimelineState } from '../reducers/timeline';
+import type { SearchMatch, SearchState } from '../reducers/search';
 import { blocksForActivityWithIndices } from '../utilities/timeline';
 
 import {
@@ -19,38 +20,43 @@ import {
 } from '../actions';
 import circularIncrement from '../utilities/circularIncrement';
 
+interface RootState {
+  search: SearchState;
+  timeline: TimelineState;
+}
+
+interface SearchAction {
+  options: unknown;
+  searchTerm: string;
+  type: string;
+}
+
+interface IncrementAction {
+  direction: 1 | -1;
+  type: string;
+}
+
 /* ⚠️ TODO options */
-function* handleSearch({ searchTerm, options }) {
+function* handleSearch({ searchTerm }: SearchAction): SagaIterator {
   if (searchTerm.length <= 0) return;
-  const timeline = yield select(getTimeline);
-  const { advancedOptions } = yield select(state => state.search);
+  const timeline: TimelineState = yield select(getTimeline);
+  const { advancedOptions }: SearchState = yield select((state: RootState) => state.search);
   const { threadIncludeList, threadExcludeList } = advancedOptions;
 
   const { activities, blocks } = timeline;
 
-  const matches =
-    activities
-    |> Object.entries
-    |> mapKeys(Number)
-    |> (threadIncludeList.length > 0
-      ? filter(([_key, val]) => threadIncludeList.includes(val.thread_id))
-      : identity)
-    |> (threadExcludeList.length > 0
-      ? filter(([_key, val]) => !threadExcludeList.includes(val.thread_id))
-      : identity)
-    |> filter(([_key, val]) => val.name.includes(searchTerm));
+  const matches: SearchMatch[] = Object.entries(activities).filter(([_key, activity]) => {
+    const threadId = activity.thread_id;
+    if (threadIncludeList.length > 0 && !threadIncludeList.includes(threadId ?? '')) return false;
+    if (threadExcludeList.length > 0 && threadExcludeList.includes(threadId ?? '')) return false;
+    return activity.name?.includes(searchTerm) ?? false;
+  });
 
   if (matches.length > 0) {
     const match = matches[0];
     const activity_id = match[0];
 
-    const blocksForMatch = do {
-      if (matches.length > 0) {
-        blocksForActivityWithIndices(activity_id, blocks);
-      } else {
-        [];
-      }
-    };
+    const blocksForMatch = blocksForActivityWithIndices(activity_id, blocks);
 
     yield put({ type: SEARCH_RESULT, matches, blocksForMatch });
   } else {
@@ -58,9 +64,9 @@ function* handleSearch({ searchTerm, options }) {
   }
 }
 
-function* handleMatchIncrement({ direction }) {
-  const searchState = yield select(state => state.search);
-  const { blocks } = yield select(getTimeline);
+function* handleMatchIncrement({ direction }: IncrementAction): SagaIterator {
+  const searchState: SearchState = yield select((state: RootState) => state.search);
+  const { blocks }: TimelineState = yield select(getTimeline);
   const matchCount = searchState.matches.length;
 
   const matchIndex = circularIncrement(
@@ -69,8 +75,11 @@ function* handleMatchIncrement({ direction }) {
     matchCount,
   );
 
+  const match = searchState.matches[matchIndex];
+  if (!match) return;
+
   const blocksForMatch = blocksForActivityWithIndices(
-    Number(searchState.matches[matchIndex][0]),
+    Number(match[0]),
     blocks,
   );
 
@@ -81,8 +90,8 @@ function* handleMatchIncrement({ direction }) {
   });
 }
 
-function* handleBlockIncrement({ direction }: { direction: 1 | -1 }) {
-  const searchState = yield select(state => state.search);
+function* handleBlockIncrement({ direction }: IncrementAction): SagaIterator {
+  const searchState: SearchState = yield select((state: RootState) => state.search);
   const blockCount = searchState.blocksForMatch.length;
 
   const blockIndex = circularIncrement(
@@ -94,15 +103,15 @@ function* handleBlockIncrement({ direction }: { direction: 1 | -1 }) {
   yield put({ type: SEARCH_BLOCK_INCREMENT_RESULT, blockIndex });
 }
 
-function* focusSearchResult() {
+function* focusSearchResult(): SagaIterator {
   const { matches, matchIndex, blockIndex, blocksForMatch } = yield select(
-    state => state.search,
+    (state: RootState) => state.search,
   );
 
   if (matches.length > 0) {
     const match = matches[matchIndex];
     const activity_id = match && Number(match[0]);
-    if (!activity_id) return;
+    if (activity_id === undefined || Number.isNaN(activity_id)) return;
 
     if (!blocksForMatch[blockIndex]) return;
     const index = Number(blocksForMatch[blockIndex][0]);
@@ -120,29 +129,30 @@ function* focusSearchResult() {
 
     const { startTime, endTime } = blocksForMatch[blockIndex][1];
 
-    const lbt = Number.parseFloat(localStorage.getItem('lbt'));
-    const rbt = Number.parseFloat(localStorage.getItem('rbt'));
+    const lbt = Number.parseFloat(localStorage.getItem('lbt') ?? '');
+    const rbt = Number.parseFloat(localStorage.getItem('rbt') ?? '');
 
-    if (startTime > rbt || endTime < lbt) {
-      yield put(setTimeline(startTime, endTime));
+    const resolvedEndTime = endTime ?? startTime;
+    if (startTime > rbt || resolvedEndTime < lbt) {
+      yield put(setTimeline(startTime, resolvedEndTime));
     }
   }
 }
 
-function* handleFilter() {
-  const { searchStack, options } = yield select(state => state.search);
+function* handleFilter(): SagaIterator {
+  const { searchStack, options }: SearchState = yield select((state: RootState) => state.search);
   /* ⚠️ TODO options */
-  yield put(search(searchStack[0], options));
+  yield put(search(searchStack[0] ?? '', options));
 }
 
-function* searchSaga() {
+function* searchSaga(): SagaIterator {
   yield takeLatest(SEARCH, handleSearch);
   yield takeLatest(SEARCH_MATCH_INCREMENT, handleMatchIncrement);
   yield takeLatest(SEARCH_BLOCK_INCREMENT, handleBlockIncrement);
   yield takeLatest(SET_THREAD_INCLUDE_LIST, handleFilter);
   yield takeLatest(SET_THREAD_EXCLUDE_LIST, handleFilter);
   yield takeLatest(
-    ({ type }) => /SEARCH.*RESULT/.test(type),
+    ({ type }: { type: string }) => /SEARCH.*RESULT/.test(type),
     focusSearchResult,
   );
 }
