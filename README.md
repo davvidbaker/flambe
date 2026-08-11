@@ -1,7 +1,7 @@
 # Flambe
 
 The Flambe timeline application lives in `frontend/packages/core` and is backed
-by the Phoenix 1.8 app in `backend_next`.
+by the Phoenix 1.8 app in `backend`.
 
 ## Run locally
 
@@ -10,7 +10,7 @@ Requirements: Node 22 LTS, Elixir 1.18/OTP 27, and PostgreSQL.
 1. Create local backend settings (adjust the PostgreSQL credentials if needed):
 
    ```sh
-   cd backend_next
+   cd backend
    mix deps.get
    mix ecto.create
    mix ecto.migrate
@@ -31,19 +31,19 @@ Phoenix at http://localhost:4001.
 
 To build the Phoenix-served production frontend, run `nvm exec 22 npm run
 build`. This produces hashed assets and a manifest in
-`backend_next/priv/static/assets`; Phoenix serves the resulting SPA and its
+`backend/priv/static/assets`; Phoenix serves the resulting SPA and its
 client-side routes at http://localhost:4001.
 
 Flambe uses local email/password accounts only. Create an account at
 `/register`, or seed the deterministic browser-test account with
-`mix flambe_next.seed_e2e` from `backend_next`.
+`mix flambe_next.seed_e2e` from `backend`.
 
 ## Verification
 
 With PostgreSQL available, run the checks that gate the active stack:
 
 ```sh
-cd backend_next
+cd backend
 mix precommit
 
 cd ../frontend
