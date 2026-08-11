@@ -4,6 +4,20 @@ import styled from 'styled-components';
 
 import { getTimeline } from '../reducers/timeline';
 import { colors } from '../styles';
+import type { TimelineState } from '../reducers/timeline';
+import type { FlameChartHandle } from '../types/FlameChartHandle';
+
+interface OwnProps {
+  flameChartRef: React.RefObject<FlameChartHandle | null>;
+  yOffset: number;
+}
+
+interface StateProps {
+  focusedBlockIndex: number | null;
+  hoveredBlockIndex?: number | null;
+}
+
+type Props = OwnProps & StateProps;
 
 const FocusBlock = styled.div`
   position: absolute;
@@ -18,7 +32,7 @@ const HoverBlock = styled.div`
   background: ${colors['hover-activity-bg']};
 `;
 
-class FocusedBlock extends React.Component {
+class FocusedBlock extends React.Component<Props> {
   render() {
     const {
       flameChartRef,
@@ -27,12 +41,12 @@ class FocusedBlock extends React.Component {
       yOffset,
     } = this.props;
 
-    const focusedBlock = focusedBlockIndex
-      ? flameChartRef.current.getBlockDetails(focusedBlockIndex)
+    const focusedBlock = focusedBlockIndex !== null
+      ? flameChartRef.current?.getBlockDetails(focusedBlockIndex)
       : null;
 
-    const hoveredBlock = hoveredBlockIndex
-      ? flameChartRef.current.getBlockDetails(hoveredBlockIndex)
+    const hoveredBlock = hoveredBlockIndex !== null && hoveredBlockIndex !== undefined
+      ? flameChartRef.current?.getBlockDetails(hoveredBlockIndex)
       : null;
     return (
       <>
@@ -44,7 +58,7 @@ class FocusedBlock extends React.Component {
                 left: `${hoveredBlock.blockX}px`,
                 top: `${hoveredBlock.blockY + yOffset}px`,
                 width: `${hoveredBlock.blockWidth}px`,
-                height: `${flameChartRef.current.blockHeight}px`,
+                height: `${flameChartRef.current?.blockHeight ?? 0}px`,
               }}
             />
           )}
@@ -56,7 +70,7 @@ class FocusedBlock extends React.Component {
                 left: `${focusedBlock.blockX}px`,
                 top: `${focusedBlock.blockY + yOffset}px`,
                 width: `${focusedBlock.blockWidth}px`,
-                height: `${flameChartRef.current.blockHeight}px`,
+                height: `${flameChartRef.current?.blockHeight ?? 0}px`,
               }}
             />
           )}
@@ -66,7 +80,7 @@ class FocusedBlock extends React.Component {
 }
 
 export default connect(
-  state => ({
+  (state: { timeline: TimelineState }): StateProps => ({
     focusedBlockIndex: getTimeline(state).focusedBlockIndex,
     hoveredBlockIndex: getTimeline(state).hoveredBlockIndex,
   }),

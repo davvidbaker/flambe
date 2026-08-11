@@ -5,6 +5,9 @@ import { connect } from 'react-redux';
 import ActivityBlockDetails from './ActivityBlockDetails';
 import { getTimeline } from '../reducers/timeline';
 import { colors } from '../styles';
+import type { TimelineState } from '../reducers/timeline';
+import type { FlameChartHandle } from '../types/FlameChartHandle';
+import type { ProcessedActivity, TraceBlock } from '../utilities/processTrace';
 
 const Div = styled.div`
   background: ${colors.background};
@@ -18,13 +21,25 @@ const Div = styled.div`
   font-size: 11px;
 `;
 
-const getTooltipPosition = (tooltipRef, flameChartRef, topOffset) => {
-  let tx, ty;
+const getTooltipPosition = (
+  tooltipRef: React.RefObject<HTMLDivElement | null>,
+  flameChartRef: React.RefObject<FlameChartHandle | null>,
+  topOffset: number,
+): { x: number; y: number } | null => {
+  if (!tooltipRef.current || !flameChartRef.current) return null;
   const { x, y } = flameChartRef.current.calcTooltipOffset(tooltipRef.current);
-  tx = x;
-  ty = y + topOffset;
-  return { x: tx, y: ty };
+  return { x, y: y + topOffset };
 };
+
+interface Props {
+  activities: Record<string, ProcessedActivity>;
+  blocks: TraceBlock[];
+  flameChartRef: React.RefObject<FlameChartHandle | null>;
+  focusedBlockActivity_id: number | string | null;
+  focusedBlockIndex: number | null;
+  hoveredBlockIndex?: number | null;
+  yOffset: number;
+}
 
 const Tooltip = ({
   activities,
@@ -34,42 +49,37 @@ const Tooltip = ({
   focusedBlockIndex,
   focusedBlockActivity_id,
   yOffset,
-}) => {
-  const focusedBlock =
-    flameChartRef &&
-    flameChartRef.current &&
-    flameChartRef.current.getBlockDetails(activities && focusedBlockIndex);
-
+}: Props) => {
   const hoveredBlock =
-    flameChartRef &&
     flameChartRef.current &&
-    flameChartRef.current.getBlockDetails(activities && hoveredBlockIndex);
+    hoveredBlockIndex !== null && hoveredBlockIndex !== undefined &&
+    flameChartRef.current.getBlockDetails(hoveredBlockIndex);
 
   const hoveredActivity =
-    blocks && hoveredBlock
-      ? activities[blocks[hoveredBlockIndex].activity_id]
+    hoveredBlock && hoveredBlockIndex !== null && hoveredBlockIndex !== undefined && blocks[hoveredBlockIndex]
+      ? activities[String(blocks[hoveredBlockIndex].activity_id)]
       : null;
 
-  const ending = hoveredBlock ? hoveredBlock.ending : null;
-  const endMessage = hoveredBlock ? hoveredBlock.endMessage : null;
+  const ending = hoveredBlock ? hoveredBlock.ending : undefined;
+  const endMessage = hoveredBlock ? hoveredBlock.endMessage : undefined;
 
   const name = hoveredActivity ? hoveredActivity.name : null;
-  const startMessage = hoveredBlock ? hoveredBlock.startmessage : null;
-
-  const otherMessages = hoveredBlock ? hoveredBlock.otherMessages : null;
+  const startMessage = hoveredBlock ? hoveredBlock.startMessage : undefined;
 
   // ref={this.tooltip}
   // tooltipRef={this.tooltip}
   // left={`${tx}px`}
   // top={`${ty}px`
 
-  const tooltipRef = React.useRef(null);
+  const tooltipRef = React.useRef<HTMLDivElement>(null);
 
   let left, top;
   if (tooltipRef.current && flameChartRef && flameChartRef.current) {
-    const { x, y } = getTooltipPosition(tooltipRef, flameChartRef, yOffset);
-    left = `${x}px`;
-    top = `${y}px`;
+    const position = getTooltipPosition(tooltipRef, flameChartRef, yOffset);
+    if (position) {
+      left = `${position.x}px`;
+      top = `${position.y}px`;
+    }
   }
 
   return (
@@ -87,7 +97,7 @@ const Tooltip = ({
     </Div>
   );
 };
-export default connect(state => {
+export default connect((state: { timeline: TimelineState }) => {
   const timeline = getTimeline(state);
   return {
     focusedBlockActivity_id: timeline.focusedBlockActivity_id,
