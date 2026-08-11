@@ -1,7 +1,7 @@
 defmodule FlambeNextWeb.UserJSON do
   alias FlambeNext.Accounts.User
 
-  def show(%{user: %User{} = user, traces: traces, categories: categories}) do
+  def show(%{user: %User{} = user, traces: traces, categories: categories, todos: todos}) do
     %{
       data: %{
         id: user.id,
@@ -9,7 +9,7 @@ defmodule FlambeNextWeb.UserJSON do
         username: user.username,
         traces: Enum.map(traces, &trace_data/1),
         categories: Enum.map(categories, &category_data/1),
-        todos: [],
+        todos: Enum.map(todos, &todo_data/1),
         mantras: [],
         attentionShifts: [],
         tabs: [],
@@ -28,4 +28,6 @@ defmodule FlambeNextWeb.UserJSON do
       color_text: category.color_text
     }
   end
+
+  defp todo_data(todo), do: %{id: todo.id, name: todo.name, description: todo.description}
 end
