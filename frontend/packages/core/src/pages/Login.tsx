@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, type FormEvent } from 'react';
 import styled from 'styled-components';
 
 import Logo from '../components/Logo/src';
@@ -38,11 +38,11 @@ const Padded = styled.div`
   /* background: ; */
 `;
 const Login = () => {
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const submit = async event => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.target);
+    const form = new FormData(event.currentTarget);
     const response = await fetch(`${SERVER}/auth/identity/callback`, {
       method: 'POST',
       credentials: 'include',
@@ -58,8 +58,10 @@ const Login = () => {
       return;
     }
 
-    const { data } = await response.json();
-    const existing = JSON.parse(localStorage.getItem('state') || '{}');
+    const { data } = await response.json() as {
+      data: { trace_id?: number | string; username: string; [key: string]: unknown };
+    };
+    const existing = JSON.parse(localStorage.getItem('state') || '{}') as { user?: Record<string, unknown> };
     localStorage.setItem('state', JSON.stringify({ ...existing, user: { ...existing.user, ...data }, loggedIn: true }));
     window.location.assign(data.trace_id ? `/${data.username}/traces/${data.trace_id}` : `/${data.username}`);
   };
