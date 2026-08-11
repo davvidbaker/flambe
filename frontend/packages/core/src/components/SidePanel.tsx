@@ -26,12 +26,12 @@ const Wrapper = styled.div`
 `;
 
 type Props = {
-  title: string;
+  title?: string;
   children: React.ReactNode;
   closePanel: () => void;
 };
 
-const SidePanel = ({ title, children, closePanel }: Props) => {
+const SidePanel = ({ title = '', children, closePanel }: Props) => {
   return (
     <Wrapper>
       <header>
