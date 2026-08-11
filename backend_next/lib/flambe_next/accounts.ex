@@ -1,7 +1,7 @@
 defmodule FlambeNext.Accounts do
   import Ecto.Query
 
-  alias FlambeNext.Accounts.User
+  alias FlambeNext.Accounts.{Category, User}
   alias FlambeNext.Repo
 
   def create_user(attrs) do
@@ -17,6 +17,41 @@ defmodule FlambeNext.Accounts do
   end
 
   def get_user(id), do: Repo.get(User, id)
+
+  def list_user_categories(%User{} = user) do
+    from(category in Category, where: category.user_id == ^user.id, order_by: [asc: category.id])
+    |> Repo.all()
+  end
+
+  def get_user_category!(%User{} = user, id) do
+    from(category in Category, where: category.id == ^id and category.user_id == ^user.id)
+    |> Repo.one!()
+  end
+
+  def get_user_categories(%User{} = user, ids) when is_list(ids) do
+    categories =
+      from(category in Category, where: category.id in ^ids and category.user_id == ^user.id)
+      |> Repo.all()
+
+    if length(categories) == length(Enum.uniq(ids)),
+      do: {:ok, categories},
+      else: {:error, :not_found}
+  end
+
+  def create_category(%User{} = user, activities, attrs) do
+    %Category{user_id: user.id}
+    |> Category.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:activities, activities)
+    |> Repo.insert()
+  end
+
+  def update_category(%Category{} = category, attrs) do
+    category
+    |> Category.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_category(%Category{} = category), do: Repo.delete(category)
 
   def authenticate_by_email_password(email, password) do
     user =
