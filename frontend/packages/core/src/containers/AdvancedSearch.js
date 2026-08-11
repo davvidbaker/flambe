@@ -320,9 +320,9 @@ export default connect(
   }),
   dispatch => ({
     search: (searchTerm, options) => dispatch(search(searchTerm, options)),
-    setThreadIncludeList: (thread_ids: number[], inputValue) =>
+    setThreadIncludeList: (thread_ids, inputValue) =>
       dispatch(setThreadIncludeList(thread_ids, inputValue)),
-    setThreadExcludeList: (thread_ids: number[], inputValue) =>
+    setThreadExcludeList: (thread_ids, inputValue) =>
       dispatch(setThreadExcludeList(thread_ids, inputValue)),
   }),
 )(AdvancedSearch);

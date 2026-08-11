@@ -1,4 +1,3 @@
-// @flow
 import * as React from 'react';
 import { connect } from 'react-redux';
 import SplitPane from '../components/SplitPane';
@@ -48,8 +47,6 @@ import COMMANDS, {
 import { getTimeline } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import isEndable from '../utilities/isEndable';
-import type { Trace } from '../types/Trace';
-import type { Todo } from '../types/Todo';
 
 Modal.setAppElement('#app-root');
 
@@ -73,19 +70,7 @@ const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }) =>
     <div style={{ height: '100%' }}>{children}</div>
   );
 
-class App extends React.Component<
-  {
-    keyDown: () => mixed,
-    keyUp: () => mixed,
-    selectTrace: (trace: Trace) => mixed,
-    trace: ?Trace,
-    user: { id: string, name: string },
-    userTraces: (?Trace)[],
-    userTodos: (?Todo)[],
-    todosVisible: boolean,
-  },
-  { commanderVisible: boolean },
-> {
+class App extends React.Component {
   state = {
     // modalIsOpen,
     searchBarVisible: false,
@@ -114,7 +99,7 @@ class App extends React.Component<
 
   componentDidMount() {
     // impure!
-    const createKeyEvent = (DOMEvent: string, propFn: () => mixed) => {
+    const createKeyEvent = (DOMEvent, propFn) => {
       document.addEventListener(DOMEvent, e => {
         // flow-ignore
         switch (e.key) {
@@ -370,19 +355,18 @@ class App extends React.Component<
                   threads={this.props.threads}
                 >
                   <div style={{ height: '100%', width: '100%' }}>
-                    {do {
-                      if (this.props.view === 'multithread') {
-                        this.renderTimeline();
-                      } else if (this.props.view === 'singlethread') {
-                        this.props.location.pathname.endsWith(
-                          `/threads/${this.props.viewThread}`,
-                        ) && (
+                    {this.props.view === 'multithread'
+                      ? this.renderTimeline()
+                      : this.props.view === 'singlethread' &&
+                          this.props.location.pathname.endsWith(
+                            `/threads/${this.props.viewThread}`,
+                          )
+                        ? (
                           <SingleThreadView
                             thread={this.props.threads[this.props.viewThread]}
                           />
-                        );
-                      }
-                    }}
+                        )
+                        : null}
                   </div>
                 </MaybeSplitPane>
                 <div
@@ -423,7 +407,6 @@ class App extends React.Component<
   }
 }
 
-// flow-ignore
 const ConnectedTrace = connect(
     state => ({
       aModalIsOpen:
@@ -452,15 +435,15 @@ const ConnectedTrace = connect(
       createToast: (message, notificationType) =>
         dispatch(createToast(message, notificationType)),
       deleteCurrentTrace: () => dispatch(deleteCurrentTrace()),
-      deleteTrace: (id: number) => dispatch(deleteTrace(id)),
+      deleteTrace: id => dispatch(deleteTrace(id)),
       expandAllThreads: id => dispatch(expandAllThreads(id)),
-      fetchTrace: (trace: Trace) => dispatch(fetchTrace(trace)),
+      fetchTrace: trace => dispatch(fetchTrace(trace)),
       fetchUser: user_id => dispatch(fetchUser(user_id)),
       hideAdvancedSearch: () => dispatch(hideAdvancedSearch()),
       keyDown: key => dispatch(keyDown(key)),
       keyUp: key => dispatch(keyUp(key)),
       runCommand: (operand, command) => dispatch(runCommand(operand, command)),
-      selectTrace: (trace: Trace) => dispatch(selectTrace(trace)),
+      selectTrace: trace => dispatch(selectTrace(trace)),
       showActivityDetails: () => dispatch(showActivityDetails()),
       showAdvancedSearch: () => dispatch(showAdvancedSearch()),
       showSettings: () => dispatch(showSettings()),

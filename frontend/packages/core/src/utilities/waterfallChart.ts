@@ -1,6 +1,6 @@
 /* ⚠️ TODO topBoundaryTime and leftBoundaryTime in timelineChart are the same thing and should be refactored to not take horizontal/vertical into account, etc */
 
-export function getBlockX(offsetFromLeft) {
+export function getBlockX(offsetFromLeft: number): number {
   return offsetFromLeft;
 }
 
@@ -8,8 +8,8 @@ export function timeToPixels(
   timestamp: number,
   topBoundaryTime: number,
   bottomBoundaryTime: number,
-  canvasHeight: number
-) {
+  canvasHeight: number,
+): number {
   return (
     ((timestamp - topBoundaryTime) * canvasHeight) /
     (bottomBoundaryTime - topBoundaryTime)
@@ -24,8 +24,8 @@ export function getBlockTransform(
   blockWidth: number,
   offsetFromLeft: number,
   canvasWidth: number,
-  canvasHeight: number
-): { blockX: number, blockY: number, blockHeight: number } {
+  canvasHeight: number,
+): { blockX: number; blockY: number; blockHeight: number } {
   if (endTime == null) {
     // eslint-disable-next-line no-param-reassign
     endTime = bottomBoundaryTime;

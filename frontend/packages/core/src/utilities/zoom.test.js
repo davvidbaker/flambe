@@ -1,4 +1,3 @@
-// @flow
 
 import zoom from './zoom';
 

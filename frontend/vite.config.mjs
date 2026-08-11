@@ -29,22 +29,11 @@ export default defineConfig(({ mode }) => {
           ],
           overrides: [
             {
-              test: /\.jsx?$/,
-              presets: ['@babel/preset-flow'],
-            },
-            {
               test: /\.tsx?$/,
               presets: ['@babel/preset-typescript'],
             },
           ],
-          plugins: [
-            '@babel/plugin-proposal-optional-chaining',
-            '@babel/plugin-proposal-class-properties',
-            '@babel/plugin-proposal-object-rest-spread',
-            '@babel/plugin-proposal-do-expressions',
-            ['@babel/plugin-proposal-pipeline-operator', { proposal: 'minimal' }],
-            'babel-plugin-styled-components',
-          ],
+          plugins: ['babel-plugin-styled-components'],
         },
       }),
     ],
@@ -67,9 +56,7 @@ export default defineConfig(({ mode }) => {
     // Phoenix serves the Vite output directory at /assets. Keep generated
     // files directly in that directory so URLs and on-disk paths match.
     base: mode === 'production' ? '/assets/' : '/',
-    // Vite's dependency scanner runs esbuild before Babel and cannot parse
-    // this codebase's Flow annotations and pipeline operators. Disable its
-    // automatic discovery and explicitly pre-bundle the app's legacy imports.
+    // Keep dependency discovery deterministic for this restored workspace.
     optimizeDeps: {
       include: [
         'dayjs',

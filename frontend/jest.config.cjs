@@ -13,27 +13,11 @@ module.exports = {
         ],
         overrides: [
           {
-            test: /\.jsx?$/,
-            presets: ['@babel/preset-flow'],
-          },
-          {
             test: /\.tsx?$/,
             presets: ['@babel/preset-typescript'],
           },
         ],
-        plugins: [
-          '@babel/plugin-proposal-optional-chaining',
-          '@babel/plugin-proposal-class-properties',
-          '@babel/plugin-proposal-object-rest-spread',
-          '@babel/plugin-proposal-do-expressions',
-          '@babel/plugin-syntax-dynamic-import',
-          [
-            '@babel/plugin-proposal-pipeline-operator',
-            { proposal: 'minimal' },
-          ],
-          '@babel/plugin-transform-react-jsx',
-          '@babel/plugin-transform-regenerator',
-        ],
+        plugins: [],
       },
     ],
   },
