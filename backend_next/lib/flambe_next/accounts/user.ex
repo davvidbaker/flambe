@@ -2,7 +2,7 @@ defmodule FlambeNext.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias FlambeNext.Accounts.Credential
+  alias FlambeNext.Accounts.{Category, Credential}
   alias FlambeNext.Traces.Trace
 
   schema "users" do
@@ -11,6 +11,7 @@ defmodule FlambeNext.Accounts.User do
 
     has_many :credentials, Credential, on_replace: :delete
     has_many :traces, Trace
+    has_many :categories, Category
 
     timestamps(type: :utc_datetime)
   end
