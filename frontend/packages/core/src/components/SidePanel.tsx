@@ -1,4 +1,3 @@
-// @flow
 import * as React from 'react';
 import styled from 'styled-components';
 import CloseButton from './CloseButton';
@@ -27,9 +26,9 @@ const Wrapper = styled.div`
 `;
 
 type Props = {
-  title: string,
-  children: React.Element<*>,
-  closePanel: () => void,
+  title: string;
+  children: React.ReactNode;
+  closePanel: () => void;
 };
 
 const SidePanel = ({ title, children, closePanel }: Props) => {
