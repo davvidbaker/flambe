@@ -1,5 +1,4 @@
-// @flow
-import React, { Component } from 'react';
+import React, { Component, type Ref, type ReactNode } from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
 
@@ -38,44 +37,55 @@ const SearchResultCount = styled.div`
   color: var(--secondary-panel-color);
 `;
 
-type Props = {
-  hideSearchBar: () => {},
-};
+interface Props {
+  hideSearchBar: () => void;
+  inputRef?: Ref<HTMLInputElement>;
+  matches: unknown[];
+  blocksForMatch: unknown[];
+  blockIndex: number;
+  matchIndex: number;
+  searchStack: string[];
+  search: (value: string) => unknown;
+  incrementMatch: (direction: 1 | -1) => unknown;
+  incrementBlock: (direction: 1 | -1) => unknown;
+}
+interface State { error: string | null; errorInfo: string | null }
+interface SearchRootState { search: Pick<Props, 'matches' | 'blocksForMatch' | 'blockIndex' | 'matchIndex' | 'searchStack'> }
 
-class SearchBar extends Component<Props> {
-  state = {
+class SearchBar extends Component<Props, State> {
+  state: State = {
     error: null,
     errorInfo: null,
   };
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     // Display fallback UI
-    this.setState({ error, errorInfo });
+    this.setState({ error: error.message, errorInfo: errorInfo.componentStack ?? null });
     // You can also log the error to an error reporting service
     // logErrorToMyService(error, info);
   }
 
-  search = value => {
+  search = (value: string): void => {
     this.props.search(value);
   };
 
-  onNext = () => {
+  onNext = (): void => {
     this.props.incrementMatch(1);
   };
 
-  onPrevious = () => {
+  onPrevious = (): void => {
     this.props.incrementMatch(-1);
   };
 
-  onNextBlock = () => {
+  onNextBlock = (): void => {
     this.props.incrementBlock(1);
   };
 
-  onPreviousBlock = () => {
+  onPreviousBlock = (): void => {
     this.props.incrementBlock(-1);
   };
 
-  render() {
+  render(): ReactNode {
     const matchCount = this.props.matches.length;
     const blockCount = this.props.blocksForMatch.length;
 
@@ -143,7 +153,7 @@ class SearchBar extends Component<Props> {
 }
 
 export default connect(
-  state => ({
+  (state: SearchRootState) => ({
     matches: state.search.matches,
     blocksForMatch: state.search.blocksForMatch,
     blockIndex: state.search.blockIndex,
@@ -151,8 +161,8 @@ export default connect(
     searchStack: state.search.searchStack,
   }),
   dispatch => ({
-    incrementBlock: direction => dispatch(incrementBlock(direction)),
-    incrementMatch: direction => dispatch(incrementMatch(direction)),
-    search: (searchTerm, options) => dispatch(search(searchTerm, options)),
+    incrementBlock: (direction: 1 | -1) => dispatch(incrementBlock(direction)),
+    incrementMatch: (direction: 1 | -1) => dispatch(incrementMatch(direction)),
+    search: (searchTerm: string) => dispatch(search(searchTerm, undefined)),
   }),
 )(SearchBar);
