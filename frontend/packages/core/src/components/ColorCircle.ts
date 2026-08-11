@@ -2,7 +2,7 @@ import styled from 'styled-components';
 
 import { colors } from '../styles';
 
-const ColorCircle = styled.div`
+const ColorCircle = styled.div<{ background?: string }>`
   border-radius: 50%;
   width: 15px;
   height: 15px;

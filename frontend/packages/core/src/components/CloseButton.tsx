@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type MouseEventHandler } from 'react';
 import Unbutton from './Unbutton';
 import styled from 'styled-components';
 
@@ -42,7 +42,7 @@ const X = styled.div`
   }
 `;
 
-const CloseButton = ({ onClick }) => {
+const CloseButton = ({ onClick }: { onClick: MouseEventHandler<HTMLButtonElement> }) => {
   return (
     <Unbutton title="close" onClick={onClick}>
       <X />

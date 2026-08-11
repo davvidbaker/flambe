@@ -1,4 +1,3 @@
-// @flow
 import React, { Component } from 'react';
 
 import styled from 'styled-components';
@@ -7,9 +6,7 @@ import ColorPicker from './ColorPicker';
 import ColorCircle from './ColorCircle';
 import Popup from './Popup';
 
-import type { Category as CategoryType } from '../types/Category';
-
-const Preview = styled.div`
+const Preview = styled.div<{ background: string; color: string }>`
   font-size: 12px;
   padding: 5px;
   display: inline-block;
@@ -17,21 +14,12 @@ const Preview = styled.div`
   color: ${props => props.color};
 `;
 
-class Category extends Component<{
-  id: number,
-  name: string,
-  color_background: string,
-  color_text: string,
-  updateCategory: () => mixed
-}> {
-  state = {
-    color_background: null,
-    color_text: null,
-    colorPickerVisible: false,
-    colorPickerFlavor: null
-  };
+interface Props { id: number; name: string; color_background: string; color_text: string; updateCategory: (id: number, colors: { color_background: string; color_text: string }) => unknown }
+interface State { color_background: string; color_text: string; colorPickerVisible: boolean; colorPickerFlavor: 'background' | 'text' | null }
 
-  constructor(props) {
+class Category extends Component<Props, State> {
+
+  constructor(props: Props) {
     super(props);
     this.state = {
       color_background: props.color_background,
@@ -41,11 +29,12 @@ class Category extends Component<{
     };
   }
 
-  setColor = color => {
-    this.setState({ [`color_${this.state.colorPickerFlavor}`]: color.hex });
+  setColor = (color: { hex: string }): void => {
+    if (this.state.colorPickerFlavor === 'background') this.setState({ color_background: color.hex });
+    if (this.state.colorPickerFlavor === 'text') this.setState({ color_text: color.hex });
   };
 
-  closeColorPicker = () => {
+  closeColorPicker = (): void => {
     this.props.updateCategory(this.props.id, {
       color_background: this.state.color_background,
       color_text: this.state.color_text
@@ -53,7 +42,7 @@ class Category extends Component<{
     this.setState({ colorPickerVisible: false });
   };
 
-  openColorPicker = colorPickerFlavor => {
+  openColorPicker = (colorPickerFlavor: 'background' | 'text'): void => {
     // if (this.state.colorPickerVisible) {
     //   this.props.updateCategory(this.state.color);
     // }

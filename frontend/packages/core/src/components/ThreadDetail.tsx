@@ -1,8 +1,6 @@
-import React, { Component } from 'react';
+import React, { Component, type ReactNode } from 'react';
 import Modal from 'react-modal';
 import { connect } from 'react-redux';
-import filter from 'lodash/fp/filter';
-import pipe from 'lodash/fp/pipe';
 
 import { updateThread, deleteThread } from '../actions';
 
@@ -12,29 +10,28 @@ import DeleteButton from './DeleteButton';
 import type { Activity } from '../types/Activity';
 
 type Props = {
-  updateThread: (name: string) => mixed,
-  deleteThread: (id: number) => mixed,
-  closeThreadDetail: () => mixed,
-  activities: Activity[],
-  id: number,
-  name: string,
+  updateThread: (id: number, updates: { name: string }) => unknown;
+  deleteThread: (id: number) => unknown;
+  closeThreadDetail: () => void;
+  activities: Activity[] | Record<string, Activity>;
+  id: number;
+  name: string;
 };
 
 class ThreadDetail extends Component<Props> {
-  updateName = (name: string) => {
+  updateName = (name: string): void => {
     this.props.updateThread(this.props.id, { name });
   };
 
-  delete = () => {
+  delete = (): void => {
     this.props.closeThreadDetail();
     this.props.deleteThread(this.props.id);
   };
 
-  render() {
-    const suspendedActivities =
-      this.props.activities
-      |> filter(activity => activity.thread_id === this.props.id)
-      |> filter(activity => activity.status === 'suspended');
+  render(): ReactNode {
+    const suspendedActivities = Object.values(this.props.activities).filter(
+      activity => activity.thread_id === this.props.id && activity.status === 'suspended',
+    );
 
     return (
       <Modal
@@ -66,7 +63,7 @@ class ThreadDetail extends Component<Props> {
 export default connect(
   null,
   dispatch => ({
-    updateThread: (id, updates) => dispatch(updateThread(id, updates)),
+    updateThread: (id: number, updates: { name: string }) => dispatch(updateThread(id, updates)),
     deleteThread: (id: number) => dispatch(deleteThread(id)),
   }),
 )(ThreadDetail);
