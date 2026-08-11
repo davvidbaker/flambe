@@ -8,11 +8,21 @@ import { getUser } from './reducers/user';
 import { loadState, saveState } from './utilities';
 import sagas from './sagas';
 
-// eslint-disable-next-line no-underscore-dangle
-const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
-  ? window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
+const rootReducer = combineReducers({
+  ...reducers,
+});
+export type RootState = ReturnType<typeof rootReducer>;
+
+type DevtoolsCompose = (options: {
+  actionsBlacklist: string[];
+  stateSanitizer: (state: RootState) => unknown;
+}) => typeof compose;
+
+const devtoolsCompose = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ as DevtoolsCompose | undefined;
+const composeEnhancers = devtoolsCompose
+  ? devtoolsCompose({
       actionsBlacklist: ['BLOCK_HOVER', 'KEY_DOWN', 'KEY_UP'],
-      stateSanitizer: state => ({
+      stateSanitizer: (state: RootState) => ({
         ...state,
         user: {
           ...state.user,
@@ -32,11 +42,7 @@ const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
 // create the saga middleware
 const sagaMiddleware = createSagaMiddleware();
 
-const persistedState = loadState();
-
-const rootReducer = combineReducers({
-  ...reducers,
-});
+const persistedState = loadState() as RootState | undefined;
 const store = createStore(
   rootReducer,
   persistedState,
