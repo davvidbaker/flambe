@@ -9,8 +9,8 @@ runtime infrastructure in independently releasable stages.
 ## Current constraints
 
 - The frontend is React 19.2 with strict TypeScript application code,
-  Redux/Saga, and React Router 7. JavaScript remains only in the Jest and
-  Playwright test files.
+  Redux/Saga, and React Router 7. JavaScript remains only in the Playwright
+  browser test and build configuration files.
 - The backend began as Phoenix 1.3 / Ecto 2-era code and has compatibility
   patches for a current local Elixir/OTP runtime.
 - The app currently uses separate frontend and backend origins in development,
@@ -154,6 +154,8 @@ findings.
 - [x] Upgrade remaining UI dependencies individually.
 - [x] Upgrade the active build transforms to Vite 8 and Babel 8, remove the
   obsolete Babel 6/ESLint 5 configuration, and delete checked-in build output.
+- [x] Convert the maintained Jest utility tests to strict TypeScript and check
+  them in the normal application typecheck.
 
 1. Upgrade React and React DOM to a supported current release.
 2. Upgrade React Router and remove `react-router-redux`; let routing live in
