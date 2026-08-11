@@ -7,7 +7,7 @@ const Wrapper = styled.div`
   z-index: 1;
 `;
 
-const H1 = styled.h1`
+const H1 = styled.h1<{ $isAnimated?: boolean; $size: number }>`
   font-size: ${props => props.$size}px;
   font-family: 'Yesteryear', cursive, sans-serif;
   position: relative;
@@ -50,7 +50,7 @@ const H1 = styled.h1`
   `)}
 `;
 
-const Logo = ({ size, isAnimated }) => (
+const Logo = ({ size, isAnimated }: { size?: number; isAnimated?: boolean }) => (
   <Wrapper>
     <H1 $isAnimated={isAnimated} $size={size || 40}>
       flambé
