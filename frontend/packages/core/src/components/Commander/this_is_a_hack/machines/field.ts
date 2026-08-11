@@ -1,25 +1,23 @@
 import { assign, createMachine } from 'xstate';
 import * as Utilities from '../utilities';
+import type { Command } from '../../../../constants/commands';
 
-const commitParameter = assign(({ context, event }) => ({
-  parameters: {
-    ...context.parameters,
-    [event.parameter.key]: event.parameter.value,
-  },
-}));
+export interface FieldContext {
+  command: Command | null;
+  parameters: Record<string, unknown>;
+}
 
-const commandFullyLoaded = ({ context }) =>
-  context.command
-  && Utilities.commandFullyLoaded(context.command, context.parameters);
+export interface FieldInput {
+  command?: Command | null;
+  parameters?: Record<string, unknown>;
+}
 
-const commandHasParameters = ({ event }) =>
-  Utilities.commandHasParameters(event.command);
-
-const commandNotNull = ({ context }) => context.command !== null;
-
-const setCommand = assign(({ event }) => ({ command: event.command }));
+export type FieldEvent =
+  | { type: 'COMMAND_SELECT'; command: Command }
+  | { type: 'PARAMETER_COMMIT'; parameter: { key: string; value: unknown } };
 
 const fieldMachine = createMachine({
+    types: {} as { context: FieldContext; events: FieldEvent; input: FieldInput },
     id: 'field',
     initial: 'initial',
     context: ({ input }) => ({
@@ -81,12 +79,25 @@ const fieldMachine = createMachine({
         entry: 'submitCommand',
       },
     },
-}).provide({
+}, {
     actions: {
-      commitParameter,
-      setCommand,
+      commitParameter: assign(({ context, event }) => ({
+        parameters: event.type === 'PARAMETER_COMMIT'
+          ? { ...context.parameters, [event.parameter.key]: event.parameter.value }
+          : context.parameters,
+      })),
+      setCommand: assign(({ context, event }) => ({
+        command: event.type === 'COMMAND_SELECT' ? event.command : context.command,
+      })),
     },
-    guards: { commandFullyLoaded, commandHasParameters, commandNotNull },
+    guards: {
+      commandFullyLoaded: ({ context }) => Boolean(
+        context.command && Utilities.commandFullyLoaded(context.command, context.parameters),
+      ),
+      commandHasParameters: ({ event }) =>
+        event.type === 'COMMAND_SELECT' && Utilities.commandHasParameters(event.command),
+      commandNotNull: ({ context }) => context.command !== null,
+    },
 });
 
 export default fieldMachine;
