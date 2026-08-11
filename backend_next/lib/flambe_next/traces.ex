@@ -61,6 +61,14 @@ defmodule FlambeNext.Traces do
     |> Repo.insert()
   end
 
+  def update_trace(%Trace{} = trace, attrs) do
+    trace
+    |> Trace.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_trace(%Trace{} = trace), do: Repo.delete(trace)
+
   def get_user_trace_thread!(%User{} = user, trace_id, thread_id) do
     from(thread in Thread,
       join: trace in assoc(thread, :trace),
@@ -68,6 +76,22 @@ defmodule FlambeNext.Traces do
     )
     |> Repo.one!()
   end
+
+  def get_user_thread!(%User{} = user, thread_id) do
+    from(thread in Thread,
+      join: trace in assoc(thread, :trace),
+      where: thread.id == ^thread_id and trace.user_id == ^user.id
+    )
+    |> Repo.one!()
+  end
+
+  def update_thread(%Thread{} = thread, attrs) do
+    thread
+    |> Thread.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_thread(%Thread{} = thread), do: Repo.delete(thread)
 
   def get_user_trace_activity!(%User{} = user, trace_id, activity_id) do
     from(activity in Activity,

@@ -161,6 +161,8 @@ on port 4000 until its routes have been migrated and contract-tested.
 - [x] Port activity/event creation with ownership-scoped lookups and render a
   populated trace payload for the flame chart; category associations remain a
   separate resource migration.
+- [x] Port ownership-scoped trace and thread CRUD, including automatic Main
+  thread creation and legacy JSON response shapes.
 - [ ] Port the legacy API, authentication, and Channels behind contract tests.
 
 1. Generate a fresh Phoenix 1.8 API-oriented skeleton alongside the existing
