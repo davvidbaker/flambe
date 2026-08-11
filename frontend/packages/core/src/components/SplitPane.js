@@ -18,7 +18,9 @@ type State = {
   size: number,
 };
 
-const HANDLE_SIZE = 6;
+// Keep this exported so overlays which sit above a pane can account for the
+// divider in the same coordinate system as the pane layout.
+export const SPLIT_PANE_HANDLE_SIZE = 6;
 
 // The old react-split-pane package only supports React 16. This small native
 // replacement preserves the two layouts this app uses while avoiding a
@@ -48,7 +50,7 @@ class SplitPane extends React.Component<Props, State> {
 
     const bounds = this.root.getBoundingClientRect();
     const horizontal = this.props.split === 'horizontal';
-    const totalSize = (horizontal ? bounds.height : bounds.width) - HANDLE_SIZE;
+    const totalSize = (horizontal ? bounds.height : bounds.width) - SPLIT_PANE_HANDLE_SIZE;
     const minSize = Math.min(this.props.minSize || 0, totalSize / 2);
 
     return { bounds, minSize, totalSize };
@@ -137,7 +139,7 @@ class SplitPane extends React.Component<Props, State> {
           style={{
             background: '#e9e9e9',
             cursor: horizontal ? 'row-resize' : 'col-resize',
-            flex: `0 0 ${HANDLE_SIZE}px`,
+            flex: `0 0 ${SPLIT_PANE_HANDLE_SIZE}px`,
             position: 'relative',
             userSelect: 'none',
             zIndex: 1,
