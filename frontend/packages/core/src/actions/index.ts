@@ -1,5 +1,10 @@
-// @flow
-import type { Trace } from 'types/Trace';
+import type { Trace } from '../types/Trace';
+import type { EntityId } from '../types/ids';
+import type { Thread } from '../types/Thread';
+import type { TraceEvent, EventPhase } from '../types/TraceEvent';
+
+type Updates = Record<string, unknown>;
+interface ActivityLifecycleInput { id: EntityId; timestamp: number; message?: string; thread_id: EntityId }
 
 export const PROCESS_TIMELINE_TRACE = 'PROCESS_TIMELINE_TRACE';
 export const REFLECT_PROCESSED_TRACE = 'REFLECT_PROCESSED_TRACE';
@@ -95,21 +100,21 @@ export const TABS_EVENT = 'TABS_EVENT';
 export const SET_THREAD_INCLUDE_LIST = 'SET_THREAD_INCLUDE_LIST';
 export const SET_THREAD_EXCLUDE_LIST = 'SET_THREAD_EXCLUDE_LIST';
 
-export function toggleTodos(bool) {
+export function toggleTodos(bool: boolean) {
   return {
     type: TODOS_TOGGLE,
     bool,
   };
 }
 
-export function incrementBlock(direction) {
+export function incrementBlock(direction: 1 | -1) {
   return {
     type: SEARCH_BLOCK_INCREMENT,
     direction,
   };
 }
 
-export function incrementMatch(direction) {
+export function incrementMatch(direction: 1 | -1) {
   return {
     type: SEARCH_MATCH_INCREMENT,
     direction,
@@ -117,7 +122,7 @@ export function incrementMatch(direction) {
 }
 
 // trace array of events -> object of activities
-export function processTimelineTrace(events, threads) {
+export function processTimelineTrace(events: TraceEvent[], threads: Thread[]) {
   return {
     type: PROCESS_TIMELINE_TRACE,
     events,
@@ -125,7 +130,7 @@ export function processTimelineTrace(events, threads) {
   };
 }
 
-export function runCommand(operand, command) {
+export function runCommand(operand: unknown, command: unknown) {
   console.log(`🔥  operand, command`, operand, command);
   return {
     type: COMMAND_RUN,
@@ -134,7 +139,7 @@ export function runCommand(operand, command) {
   };
 }
 
-export function createThread(name, rank) {
+export function createThread(name: string, rank: number) {
   return {
     type: THREAD_CREATE,
     name,
@@ -142,14 +147,14 @@ export function createThread(name, rank) {
   };
 }
 
-export function collapseThread(id) {
+export function collapseThread(id: EntityId) {
   return {
     type: THREAD_COLLAPSE,
     id,
   };
 }
 
-export function expandThread(id) {
+export function expandThread(id: EntityId) {
   return {
     type: THREAD_EXPAND,
     id,
@@ -168,7 +173,7 @@ export function expandAllThreads() {
   };
 }
 
-export function createTodo(name, description) {
+export function createTodo(name: string, description: string | null) {
   return {
     type: TODO_CREATE,
     name,
@@ -182,7 +187,7 @@ export function beginTodo({
   name,
   description,
   timestamp,
-}) {
+}: { todo_id: EntityId; thread_id: EntityId; name: string; description: string | null; timestamp: number }) {
   return {
     type: TODO_BEGIN,
     todo_id,
@@ -198,9 +203,9 @@ export function createCategory({
   name,
   color_background,
 }: {
-  activity_id: string,
-  name: string,
-  color_background: string,
+  activity_id: string;
+  name: string;
+  color_background: string;
 }) {
   return {
     type: CATEGORY_CREATE,
@@ -210,7 +215,7 @@ export function createCategory({
   };
 }
 
-export function updateCategory(id, updates) {
+export function updateCategory(id: EntityId, updates: Updates) {
   return {
     type: CATEGORY_UPDATE,
     id,
@@ -218,14 +223,14 @@ export function updateCategory(id, updates) {
   };
 }
 
-export function createMantra(name) {
+export function createMantra(name: string) {
   return {
     type: MANTRA_CREATE,
     name,
   };
 }
 
-export function updateThread(id, updates) {
+export function updateThread(id: EntityId, updates: Updates) {
   return {
     type: THREAD_UPDATE,
     id,
@@ -233,7 +238,7 @@ export function updateThread(id, updates) {
   };
 }
 
-export function fetchUser(id) {
+export function fetchUser(id: EntityId) {
   return {
     type: USER_FETCH,
     id,
@@ -273,8 +278,8 @@ export function createActivityB({
   timestamp: number,
   description: string,
   thread_id: number /* message */,
-  category_id: ?number,
-  phase: string,
+  category_id: number | null;
+  phase: EventPhase;
 }) {
   return {
     type: ACTIVITY_CREATE_Q,
@@ -299,8 +304,8 @@ export function createActivityQ({
   timestamp: number,
   description: string,
   thread_id: number /* message */,
-  category_id: ?number,
-  phase: string,
+  category_id: number | null;
+  phase: EventPhase;
 }) {
   return {
     type: ACTIVITY_CREATE_B,
@@ -320,7 +325,7 @@ export function endActivity({
   message,
   thread_id,
   eventFlavor = 'E',
-}) {
+}: ActivityLifecycleInput & { eventFlavor?: EventPhase }) {
   return {
     type: ACTIVITY_END,
     id,
@@ -332,7 +337,7 @@ export function endActivity({
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function suspendActivity({ id, timestamp, message, thread_id, weight }) {
+export function suspendActivity({ id, timestamp, message, thread_id, weight }: ActivityLifecycleInput & { weight?: number }) {
   return {
     type: ACTIVITY_SUSPEND,
     id,
@@ -344,7 +349,7 @@ export function suspendActivity({ id, timestamp, message, thread_id, weight }) {
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function resumeActivity({ id, timestamp, message, thread_id }) {
+export function resumeActivity({ id, timestamp, message, thread_id }: ActivityLifecycleInput) {
   return {
     type: ACTIVITY_RESUME,
     id,
@@ -355,7 +360,7 @@ export function resumeActivity({ id, timestamp, message, thread_id }) {
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function resurrectActivity({ id, timestamp, message, thread_id }) {
+export function resurrectActivity({ id, timestamp, message, thread_id }: ActivityLifecycleInput) {
   return {
     type: ACTIVITY_RESURRECT,
     id,
@@ -366,7 +371,7 @@ export function resurrectActivity({ id, timestamp, message, thread_id }) {
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
-export function deleteActivity(id, thread_id) {
+export function deleteActivity(id: EntityId, thread_id: EntityId) {
   return {
     type: ACTIVITY_DELETE,
     id,
@@ -375,7 +380,7 @@ export function deleteActivity(id, thread_id) {
 }
 
 /** 💁 the thread_id is just being used here for lastThread_id */
-export function updateActivity(id, updates) {
+export function updateActivity(id: EntityId, updates: Updates) {
   return {
     type: ACTIVITY_UPDATE,
     id,
@@ -383,7 +388,7 @@ export function updateActivity(id, updates) {
   };
 }
 
-export function updateEvent(id, updates) {
+export function updateEvent(id: EntityId, updates: Updates) {
   return {
     type: EVENT_UPDATE,
     id,
@@ -428,7 +433,7 @@ export function hideSettings() {
 }
 
 /** 💁 the thread_id is just being used here for optimistic updates when a command is run that operated on the activity */
-export function focusBlock({ index, activity_id, activityStatus, thread_id }) {
+export function focusBlock({ index, activity_id, activityStatus, thread_id }: { index: number | null; activity_id: EntityId; activityStatus?: string; thread_id: EntityId }) {
   return {
     type: BLOCK_FOCUS,
     index,
@@ -504,8 +509,8 @@ export function changeView(view: string, thread_id?: number) {
 }
 
 export function fetchResource(
-  resource: ?{ type: string, id: string },
-  params: ?{} = { method: 'GET' },
+  resource: { type: string; id: string } | null,
+  params: Record<string, unknown> | null = { method: 'GET' },
 ) {
   return {
     type: FETCH_RESOURCE,
@@ -514,14 +519,14 @@ export function fetchResource(
   };
 }
 
-export function toggleSetting(setting) {
+export function toggleSetting(setting: string) {
   return {
     type: SETTING_TOGGLE,
     setting,
   };
 }
 
-export function createToast(message, notificationType) {
+export function createToast(message: string, notificationType: string) {
   return {
     type: TOAST_CREATE,
     message,
@@ -536,7 +541,7 @@ export function popToast(index = 0) {
   };
 }
 
-export function search(searchTerm, options) {
+export function search(searchTerm: string, options: unknown) {
   return {
     type: SEARCH,
     searchTerm,
@@ -544,7 +549,7 @@ export function search(searchTerm, options) {
   };
 }
 
-export function setTimeline(leftBoundaryTime, rightBoundaryTime) {
+export function setTimeline(leftBoundaryTime: number, rightBoundaryTime: number) {
   return { type: TIMELINE_SET, leftBoundaryTime, rightBoundaryTime };
 }
 
@@ -564,7 +569,7 @@ export function setThreadExcludeList(thread_ids: number[], inputValue: string) {
   };
 }
 
-export function filterTrace(selectedThreads) {
+export function filterTrace(selectedThreads: Array<{ value: EntityId }>) {
   return {
     type: TRACE_FILTER,
     selectedThreads,
@@ -643,7 +648,7 @@ export function panTimeline(
 }
 
 // shifting your attention to this thread
-export function shiftAttention(thread_id, timestamp) {
+export function shiftAttention(thread_id: EntityId, timestamp: number) {
   return {
     type: ATTENTION_SHIFT,
     thread_id,
