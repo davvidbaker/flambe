@@ -13,6 +13,7 @@ Use `nvm exec 22 npm run build` to place the production bundle in
 `../backend_next/priv/static/assets`, then visit http://localhost:4001.
 
 ```sh
+nvm exec 22 npm run typecheck
 nvm exec 22 npm run test:unit
 nvm exec 22 npm run test:smoke
 ```
