@@ -20,17 +20,25 @@ import operand from './operand';
 import search from './search';
 import settings from './settings';
 import toaster from './toaster';
+import type { EntityId } from '../types/ids';
 
-function todosVisible(state = false, action) {
+interface RootAction {
+  bool?: boolean;
+  thread_id?: EntityId;
+  type: string;
+  view?: string;
+}
+
+function todosVisible(state = false, action: RootAction): boolean {
   switch (action.type) {
     case TODOS_TOGGLE:
-      return action.bool;
+      return action.bool ?? state;
     default:
       return state;
   }
 }
 
-function activityDetailModalVisible(state = false, action) {
+function activityDetailModalVisible(state = false, action: RootAction): boolean {
   switch (action.type) {
     case ACTIVITY_DETAILS_SHOW:
       return true;
@@ -41,7 +49,7 @@ function activityDetailModalVisible(state = false, action) {
   }
 }
 
-function categoryManagerVisible(state = false, action) {
+function categoryManagerVisible(state = false, action: RootAction): boolean {
   switch (action.type) {
     case CATEGORY_MANAGER_SHOW:
       return true;
@@ -52,7 +60,7 @@ function categoryManagerVisible(state = false, action) {
   }
 }
 
-function settingsVisible(state = false, action) {
+function settingsVisible(state = false, action: RootAction): boolean {
   switch (action.type) {
     case SETTINGS_SHOW:
       return true;
@@ -63,25 +71,25 @@ function settingsVisible(state = false, action) {
   }
 }
 
-function view(state = 'multithread', action) {
+function view(state = 'multithread', action: RootAction): string {
   switch (action.type) {
     case VIEW_CHANGE:
-      return action.view;
+      return action.view ?? 'multithread';
     default:
       return state;
   }
 }
 
-function viewThread(state = null, action) {
+function viewThread(state: EntityId | null = null, action: RootAction): EntityId | null {
   switch (action.type) {
     case VIEW_CHANGE:
-      return action.view === 'multithread' ? null : action.thread_id;
+      return action.view === 'multithread' ? null : action.thread_id ?? null;
     default:
       return state;
   }
 }
 
-function advancedSearchVisible(state = false, action) {
+function advancedSearchVisible(state = false, action: RootAction): boolean {
   switch (action.type) {
     case ADVANCED_SEARCH_SHOW:
       return true;
@@ -92,7 +100,7 @@ function advancedSearchVisible(state = false, action) {
   }
 }
 
-function loggedIn(state = false, action) {
+function loggedIn(_state = false, _action: RootAction): boolean {
   return true;
   /* ⚠️ uncomment me */
   // switch (action.type) {
