@@ -98,7 +98,7 @@ const connector = connect((state: RootState) => ({
 type Props = OwnProps & ConnectedProps<typeof connector>;
 interface State { canvasHeight: number }
 
-class FlameChart extends Component<Props, State> {
+export class FlameChart extends Component<Props, State> {
   ctx!: CanvasRenderingContext2D;
   canvas!: HTMLCanvasElement;
   tooltip: HTMLElement | null = null;

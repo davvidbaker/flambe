@@ -14,16 +14,18 @@ type Props = {
   deleteThread: (id: number) => unknown;
   closeThreadDetail: () => void;
   activities: Activity[] | Record<string, Activity>;
-  id: number;
-  name: string;
+  id: number | null;
+  name?: string;
 };
 
 class ThreadDetail extends Component<Props> {
   updateName = (name: string): void => {
+    if (this.props.id === null) return;
     this.props.updateThread(this.props.id, { name });
   };
 
   delete = (): void => {
+    if (this.props.id === null) return;
     this.props.closeThreadDetail();
     this.props.deleteThread(this.props.id);
   };
@@ -42,7 +44,7 @@ class ThreadDetail extends Component<Props> {
       >
         <h1>Thread Details</h1>
         <InputFromButton submit={this.updateName} placeholderIsDefaultValue>
-          {this.props.name}
+          {this.props.name ?? ''}
         </InputFromButton>
         <DeleteButton
           dialogLabel="Delete Thread?"
