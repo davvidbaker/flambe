@@ -26,5 +26,7 @@ defmodule FlambeNextWeb.Router do
     pipe_through [:api, :authenticated_api]
 
     get "/traces/:id", TraceController, :show
+    post "/activities", ActivityController, :create
+    post "/events", EventController, :create
   end
 end

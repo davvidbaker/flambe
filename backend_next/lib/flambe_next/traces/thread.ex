@@ -2,13 +2,14 @@ defmodule FlambeNext.Traces.Thread do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias FlambeNext.Traces.Trace
+  alias FlambeNext.Traces.{Activity, Trace}
 
   schema "threads" do
     field :name, :string
     field :rank, :integer, default: 0
 
     belongs_to :trace, Trace
+    has_many :activities, Activity, on_delete: :delete_all
 
     timestamps(type: :utc_datetime)
   end
