@@ -9,14 +9,14 @@ runtime infrastructure in independently releasable stages.
 ## Current constraints
 
 - The frontend is React 19.2 with strict TypeScript application code,
-  Redux/Saga, and React Router 7. JavaScript remains only in the Playwright
-  browser test and build configuration files.
-- The backend began as Phoenix 1.3 / Ecto 2-era code and has compatibility
-  patches for a current local Elixir/OTP runtime.
-- The app currently uses separate frontend and backend origins in development,
-  which makes authentication cookies and CORS unnecessarily fragile.
-- Automated coverage is limited; the canvas timeline is the highest-risk UI
-  surface and should not be rewritten during framework upgrades.
+  Redux/Saga, and React Router 7. The application and maintained test suites
+  are fully covered by strict TypeScript.
+- The active backend is the clean Phoenix 1.8 application in `backend_next`;
+  the retired Phoenix 1.3 source remains available in Git history.
+- Vite and Phoenix run as separate development processes, while the browser
+  stays on one origin through Vite's API, auth, and socket proxies.
+- Automated coverage protects the core flows; the canvas timeline remains the
+  highest-risk UI surface and should be changed incrementally.
 
 ## Target architecture
 
@@ -55,8 +55,8 @@ the core user-flow tests.
 **Status: complete locally.** Vite is the only frontend build path and is
 covered by the browser smoke test. CI runs the same production flow on Node 22.
 
-- [x] Model the maintained React app as an npm workspace; the unrelated Gatsby
-  homepage package remains archived outside the active workspace.
+- [x] Model the maintained React app as an npm workspace and retire the
+  unrelated Gatsby homepage package.
 - [x] Standardize the app and CI on Node 22 LTS.
 - [x] Add a Vite dev server, Flow/pipeline-compatible Babel transform, API
   proxy, and production asset manifest.
@@ -84,7 +84,7 @@ covered by the browser smoke test. CI runs the same production flow on Node 22.
    `VITE_SOCKET_URL` environment variables.
 5. Replace React Hot Loader with Vite Fast Refresh.
 6. Configure Vite's development proxy for `/api`, `/auth`, and `/socket`.
-7. Configure production output to `backend/priv/static/assets`, with hashed
+7. Configure production output to `backend_next/priv/static/assets`, with hashed
    assets and a generated manifest.
 8. Remove the superseded Webpack configs and OpenSSL legacy workaround after
    Vite passes every smoke test.
@@ -154,8 +154,8 @@ findings.
 - [x] Upgrade remaining UI dependencies individually.
 - [x] Upgrade the active build transforms to Vite 8 and Babel 8, remove the
   obsolete Babel 6/ESLint 5 configuration, and delete checked-in build output.
-- [x] Convert the maintained Jest utility tests to strict TypeScript and check
-  them in the normal application typecheck.
+- [x] Convert the maintained utility tests to strict TypeScript, move them to
+  Vite-native Vitest, and check them in the normal application typecheck.
 
 1. Upgrade React and React DOM to a supported current release.
 2. Upgrade React Router and remove `react-router-redux`; let routing live in
@@ -176,8 +176,8 @@ the timeline behavior matches the Phase 0 contract tests.
 
 **Status: complete locally.** `backend_next/` is the normal Phoenix 1.8.9 API
 and SPA development stack on port 4001, using its own `flambe_next` PostgreSQL
-database. The legacy backend remains available only through explicit Vite
-configuration while it is retained for comparison and retirement.
+database. The retired backend remains available in Git history; legacy data
+imports use an explicitly selected, isolated PostgreSQL source.
 
 - [x] Generate the side-by-side Phoenix 1.8 API foundation with no HTML,
   LiveView, or frontend asset pipeline.
@@ -214,7 +214,7 @@ configuration while it is retained for comparison and retirement.
   suite and validate both direct SPA/browser smoke and backend checks in CI.
 - [x] Prove resource ownership at every API read surface, including dashboard
   telemetry and event mutation, with cross-user controller coverage.
-- [ ] Port the legacy API, authentication, and Channels behind contract tests.
+- [x] Port the legacy API, authentication, and Channels behind contract tests.
 
 1. Generate a fresh Phoenix 1.8 API-oriented skeleton alongside the existing
    backend. Do not mutate the working backend into an untestable large upgrade.
@@ -251,24 +251,27 @@ covered by browser and authorization tests using one documented session model.
 
 ## Phase 5 — Cut over and retire legacy code
 
-**Status: in progress.** Phoenix 1.8/Vite is now the documented local runtime
-and the only required CI stack. The legacy backend and restored database remain
-available solely for controlled import, comparison, and rollback rehearsal.
+**Status: complete locally.** Phoenix 1.8/Vite is the documented runtime and
+the only CI stack. The Phoenix 1.3 source has been retired to Git history. The
+restored legacy database remains isolated and available only as a controlled
+import source. There are currently no production or staging environments.
 
 - [x] Make Phoenix 1.8/Vite the documented local and production build path.
 - [x] Remove the legacy Phoenix 1.3 jobs from required CI validation.
 - [x] Rehearse backup, import, and rollback with a disposable database copy.
 - [x] Document the release, staging verification, and rollback procedure.
-- [ ] Remove legacy backend source only after that rehearsal and a stable
-  release.
+- [x] Remove the legacy backend source after the local production-stack gates
+  and import/rollback rehearsal passed.
+- [x] Remove checked-in Webpack bundles, generated API docs, obsolete Docz and
+  Gatsby sources, and unused legacy JSON fixtures.
 
 1. Run the old and new backends against separate copies of the database.
 2. Verify browser smoke tests, API-contract fixtures, and manual timeline
-   acceptance tests on a staging environment.
+   acceptance tests locally, and on staging if one is introduced.
 3. Take a pre-release database backup and rehearse rollback.
 4. Deploy the Vite frontend and Phoenix 1.8 backend together.
-5. After a stable release, remove old Phoenix 1.3 code, Webpack/Lerna files,
-   stale generated documentation, and superseded auth code.
+5. Retire old Phoenix 1.3 code, Webpack/Lerna files, stale generated
+   documentation, and superseded auth code once the applicable gates pass.
 
 **Exit criterion:** the production app uses Vite and Phoenix 1.8, with a
 repeatable release/rollback procedure and no runtime compatibility workarounds.
@@ -284,11 +287,11 @@ repeatable release/rollback procedure and no runtime compatibility workarounds.
 - Treat flame-chart rendering, event chronology, and ownership checks as
   release blockers.
 
-## Recommended first milestone
+## Completion status
 
-Complete Phases 0 and 1 only: a tested Vite frontend running against the
-current backend. It removes the immediate Webpack/Node fragility while keeping
-the database and Phoenix migration independent.
+All planned modernization phases are complete for the current local-only
+project. A future deployment should follow the release checklist and add an
+environment-specific verification gate without reviving the retired stack.
 
 ## References
 

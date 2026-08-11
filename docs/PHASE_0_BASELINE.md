@@ -51,25 +51,16 @@ Redacted API-contract fixtures live in
 `backend_next/test/fixtures/api_contracts`; their tests verify trace and thread
 response shapes without embedding restored personal data.
 
-## Known baseline failures
+## Current gates
 
-These failures are intentionally visible so modernization work has an honest
-starting point.
-
-| Check | Result | Why it is not a gate yet |
+| Check | Result | Coverage |
 | --- | --- | --- |
-| `backend/` legacy test suite | Not a gate | The old Phoenix 1.3 app remains only for comparison and controlled data import while retirement is completed. |
 | Browser smoke test | Passing locally | `npm run test:smoke` validates the Phoenix 1.8 production stack and core user flows with disposable data. |
 
 The checked-in GitHub Actions workflow runs Phoenix 1.8 backend checks,
 frontend unit tests, and the Phoenix-served Vite browser smoke flow against a
 disposable PostgreSQL service database.
 
-The active controller and browser checks are first-class gates. Do not restore
-the legacy stack as a default CI target; add compatibility checks only when they
-are needed to validate an import or an intentional migration.
-
-## Next Phase 0 work
-
-1. Add interaction coverage for remaining activity lifecycle commands.
-2. Rehearse a backup, import, and rollback before deleting the legacy source.
+The active controller and browser checks are first-class gates. The retired
+Phoenix 1.3 source is available in Git history, while controlled data imports
+operate directly on an explicitly selected legacy database.
