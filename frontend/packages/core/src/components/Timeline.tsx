@@ -1,8 +1,6 @@
 import * as React from 'react';
 import SplitPane, { SPLIT_PANE_HANDLE_SIZE } from './SplitPane';
 import throttle from 'lodash/throttle';
-import { filter } from 'lodash/fp';
-import last from 'lodash/last';
 import Measure from './Measure';
 
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
@@ -11,30 +9,36 @@ import {
   timeToPixels,
   pixelsToTime,
 } from '../utilities/timelineGeometry';
-import { layout } from '../styles';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
 import { persistCollapsedThreadState } from '../utilities/threadCollapseState';
 import { savedRangeIsUsable } from '../utilities/timelineViewport';
 import {
-  SECOND, MINUTE, HOUR, DAY, WEEK, MONTH,
+  MINUTE, DAY, WEEK, MONTH,
 } from '../utilities/time';
 import {
   loadSuspendedActivityCount,
-  blocksForActivity,
 } from '../utilities/timeline';
+import type { Command } from '../constants/commands';
+import type { EntityId } from '../types/ids';
+import type { Category } from '../types/Category';
+import type { Thread } from '../types/Thread';
+import type { ModifiersState } from '../reducers/modifiers';
+import type { AttentionShift, Mantra, SearchTerm, TabCount } from '../reducers/user';
+import type { ProcessedActivity, ThreadLevel, TraceBlock } from '../utilities/processTrace';
 
 import WithEventListeners from './WithEventListeners';
 import ThreadDetail from './ThreadDetail';
 import ActivityDetailModal from './ActivityDetailModal';
 import TimeSeries from './TimeSeries';
-import FlameChart from './FlameChart';
+import FlameChart, { FlameChart as FlameChartComponent } from './FlameChart';
 import Tooltip from './Tooltip';
 import FocusedBlock from './FocusedBlock';
 
 
 const MIN_GRID_SLICE_PX = 60;
-const isValidTime = value => Number.isFinite(value) && value > 0;
+const isValidTime = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
 const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
 
 // minTime is smallest timestamp in the entire timeline
@@ -43,27 +47,81 @@ const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
 // rightBoundaryTime is timestamp of right bound of current view
 
 /* ⚠️ this is naive, but might be good enough */
-const threadsCollapsedChecksum = (threads = {}) => Object.values(threads)
+const threadsCollapsedChecksum = (threads: Record<string, Thread> = {}) => Object.values(threads)
   .reduce((acc, { collapsed }) => acc + (collapsed ? 1 : 0), 0);
 
-class Timeline extends React.Component {
-  state = {
+interface DividerData {
+  offsets: Array<{ position: number; time: number }>;
+  precision: number;
+}
+
+type ZoomPeriod = 'now' | 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';
+
+export interface TimelineProps {
+  activities: Record<string, ProcessedActivity>;
+  addCommand: (command: Command) => unknown;
+  attentionDrivenThreadOrder: boolean;
+  attentionShifts: AttentionShift[];
+  blocks: TraceBlock[];
+  categories: Category[];
+  focusBlock: (input: { index: number | null; activity_id: EntityId | null; activityStatus?: string | null; thread_id: EntityId | null }) => unknown;
+  focusedBlockIndex?: number | null;
+  hoverBlock: (index: number | string | null) => unknown;
+  hoveredBlockIndex?: number | null;
+  leftBoundaryTimeOverride?: number;
+  mantras: Mantra[];
+  maxTime?: number;
+  minTime?: number;
+  modifiers: ModifiersState;
+  rightBoundaryTimeOverride?: number;
+  searchTerms: SearchTerm[];
+  shiftModifier?: boolean;
+  submitCommand: (command: any) => unknown;
+  tabs: TabCount[];
+  threadLevels: Record<string, ThreadLevel>;
+  threads: Record<string, Thread>;
+  toggleThread: (id: EntityId, isCollapsed?: boolean) => unknown;
+  trace_id: EntityId;
+  updateEvent: (id: EntityId, updates: Record<string, unknown>) => unknown;
+}
+
+interface TimelineComponentState {
+  composingZoomChord: boolean;
+  dividersData: DividerData;
+  height: number;
+  threadModal_id: number | null;
+  timeSeriesHeight: number;
+  width: number;
+  zoomChord: string;
+  zoomChordMultiplier: number;
+}
+
+class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
+  state: TimelineComponentState = {
     dividersData: {
       offsets: [],
+      precision: 0,
     },
     composingZoomChord: false,
+    height: 0,
+    threadModal_id: null,
     timeSeriesHeight: 100,
+    width: 0,
     zoomChord: '',
     zoomChordMultiplier: 1,
   };
 
-  constructor(props) {
-    super(props);
+  flameChart = React.createRef<FlameChartComponent>();
+  timeSeries = React.createRef<TimeSeries>();
+  focusedBlock = React.createRef<React.ComponentRef<typeof FocusedBlock>>();
+  viewportTraceId: string | null = null;
+  leftBoundaryTime = 0;
+  rightBoundaryTime = 0;
+  topOffset = 0;
+  dividersData: DividerData = { offsets: [], precision: 0 };
 
-    this.flameChart = React.createRef();
-    this.timeSeries = React.createRef();
-    this.tooltip = React.createRef();
-    this.focusedBlock = React.createRef();
+  constructor(props: TimelineProps) {
+    super(props);
 
     const savedTimes = {
       lbt: localStorage.getItem('lbt'),
@@ -82,8 +140,7 @@ class Timeline extends React.Component {
 
     props.addCommand({
       action: command => {
-        console.log(`command`, command);
-        this.zoomTo(command.timePeriod);
+        this.zoomTo(command.timePeriod as ZoomPeriod);
       },
       copy: 'zoom to...',
       parameters: [
@@ -108,11 +165,12 @@ class Timeline extends React.Component {
     requestAnimationFrame(this.drawChildren.bind(this));
   }
 
-  componentDidUpdate(previousProps) {
+  componentDidUpdate(previousProps: TimelineProps): void {
     this.syncTimelineToProps(this.props, previousProps);
+    requestAnimationFrame(this.drawChildren);
   }
 
-  syncTimelineToProps(nextProps, previousProps) {
+  syncTimelineToProps(nextProps: TimelineProps, previousProps: TimelineProps): void {
     if (
       nextProps.leftBoundaryTimeOverride
         !== previousProps.leftBoundaryTimeOverride
@@ -135,8 +193,8 @@ class Timeline extends React.Component {
     const savedRangeOverlapsTrace = savedRangeIsUsable(
       this.leftBoundaryTime,
       this.rightBoundaryTime,
-      nextProps.minTime,
-      nextProps.maxTime,
+      nextProps.minTime ?? 0,
+      nextProps.maxTime ?? 0,
       this.viewportTraceId,
       nextProps.trace_id,
     );
@@ -152,8 +210,8 @@ class Timeline extends React.Component {
     ) {
       this.viewportTraceId = String(nextProps.trace_id);
       this.setTimelineState({
-        leftBoundaryTime: nextProps.minTime,
-        rightBoundaryTime: Math.max(nextProps.maxTime, Date.now())
+        leftBoundaryTime: nextProps.minTime!,
+        rightBoundaryTime: Math.max(nextProps.maxTime!, Date.now())
           + MAX_TIME_INTO_FUTURE,
       });
     }
@@ -168,7 +226,7 @@ class Timeline extends React.Component {
     persistCollapsedThreadState(nextProps.trace_id, nextProps.threads);
   }
 
-  handleWheel = e => {
+  handleWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
     // preventDefault basically broken as this is a passive event listener, and there is currently no way to make it active in react
     // https://github.com/facebook/react/issues/6436
     // e.preventDefault();
@@ -269,7 +327,10 @@ class Timeline extends React.Component {
     return { leftBoundaryTime: null, rightBoundaryTime: null };
   };
 
-  calculateGridOffsets(leftBoundaryTime, rightBoundaryTime) {
+  calculateGridOffsets(
+    leftBoundaryTime = this.leftBoundaryTime,
+    rightBoundaryTime = this.rightBoundaryTime,
+  ): DividerData {
     const clientWidth = this.state.width;
     if (!isValidTime(leftBoundaryTime) || !isValidTime(rightBoundaryTime)
       || !Number.isFinite(clientWidth) || clientWidth <= 0) {
@@ -329,8 +390,10 @@ class Timeline extends React.Component {
     };
   }
 
-  timeToPixels(timestamp) {
+  timeToPixels(timestamp: number): number {
     const { leftBoundaryTime, rightBoundaryTime } = this.getVisibleTimeRange();
+
+    if (leftBoundaryTime === null || rightBoundaryTime === null) return 0;
 
     return timeToPixels(
       timestamp,
@@ -340,7 +403,7 @@ class Timeline extends React.Component {
     );
   }
 
-  zoomTo(timePeriod) {
+  zoomTo(timePeriod: ZoomPeriod | ''): void {
     this.viewportTraceId = String(this.props.trace_id);
 
     switch (timePeriod) {
@@ -400,7 +463,7 @@ class Timeline extends React.Component {
     requestAnimationFrame(this.drawChildren.bind(this));
   }
 
-  zoom = (dy, offsetX, zoomCenterTime, canvasWidth) => {
+  zoom = (dy: number, offsetX: number, zoomCenterTime: number, canvasWidth: number): void => {
     this.viewportTraceId = String(this.props.trace_id);
     const dividersData = this.calculateGridOffsets();
 
@@ -412,7 +475,7 @@ class Timeline extends React.Component {
       this.rightBoundaryTime,
       canvasWidth,
       Date.now(),
-      this.props.minTime,
+      this.props.minTime ?? 0,
     );
 
     this.setTimelineState({
@@ -422,18 +485,18 @@ class Timeline extends React.Component {
     });
   };
 
-  pan = (dx, dy, canvasWidth) => {
+  pan = (dx: number, dy: number, canvasWidth: number): void => {
     this.viewportTraceId = String(this.props.trace_id);
     const dividersData = this.calculateGridOffsets();
     const { leftBoundaryTime, rightBoundaryTime, topOffset } = pan(
       dx,
-      this.props.shiftModifier && dy,
+      this.props.shiftModifier ? dy : 0,
       this.leftBoundaryTime,
       this.rightBoundaryTime,
       canvasWidth,
       this.topOffset,
       Date.now(),
-      this.props.minTime,
+      this.props.minTime ?? 0,
     );
 
     this.setTimelineState({
@@ -445,22 +508,25 @@ class Timeline extends React.Component {
   };
 
   // avoiding react state for some stuff
-  setTimelineState = state => {
-    Object.entries(state).forEach(([key, val]) => {
-      this[key] = val;
-    });
+  setTimelineState = (state: Partial<{
+    dividersData: DividerData;
+    leftBoundaryTime: number;
+    rightBoundaryTime: number;
+    topOffset: number;
+  }>): void => {
+    Object.assign(this, state);
     requestIdleCallback(this.setLocalStorage.bind(this));
   };
 
-  showThreadDetail = id => {
-    this.setState({ threadModal_id: id });
+  showThreadDetail = (id: EntityId): void => {
+    this.setState({ threadModal_id: Number(id) });
   };
 
-  closeThreadDetail = () => {
+  closeThreadDetail = (): void => {
     this.setState({ threadModal_id: null });
   };
 
-  handlePaneChange = size => {
+  handlePaneChange = (size: number): void => {
     this.setState({ timeSeriesHeight: size });
   };
 
@@ -470,13 +536,11 @@ class Timeline extends React.Component {
    */
   setLocalStorage = throttle(() => {
     if (
-      typeof this.leftBoundaryTime === 'number'
-      && this.leftBoundaryTime !== NaN
-      && typeof this.rightBoundaryTime === 'number'
-      && this.rightBoundaryTime !== NaN
+      Number.isFinite(this.leftBoundaryTime)
+      && Number.isFinite(this.rightBoundaryTime)
     ) {
-      localStorage.setItem('lbt', this.leftBoundaryTime);
-      localStorage.setItem('rbt', this.rightBoundaryTime);
+      localStorage.setItem('lbt', String(this.leftBoundaryTime));
+      localStorage.setItem('rbt', String(this.rightBoundaryTime));
       if (this.viewportTraceId) {
         localStorage.setItem(viewportTraceStorageKey, this.viewportTraceId);
       }
@@ -500,19 +564,18 @@ class Timeline extends React.Component {
     // load in the sense of bearing load
     threads = loadSuspendedActivityCount(props.activities, threads);
 
-    this.drawChildren();
-
     return (
       <WithEventListeners
         node={document}
         eventListeners={[
           [
             'keyup',
-            e => {
-              if (e.target.nodeName !== 'INPUT') {
+            ((event: Event) => {
+              const e = event as KeyboardEvent;
+              if (!(e.target instanceof HTMLInputElement)) {
                 if (this.state.composingZoomChord) {
                   if (this.state.zoomChord.length === 0) {
-                    let zoomChord = '';
+                    let zoomChord: ZoomPeriod | '' = '';
                     switch (e.key) {
                       case 'n':
                         this.setState({ composingZoomChord: false });
@@ -566,7 +629,7 @@ class Timeline extends React.Component {
                   this.setState({ composingZoomChord: true });
                 }
               }
-            },
+            }) as EventListener,
           ],
         ]}
       >
@@ -609,10 +672,10 @@ class Timeline extends React.Component {
                       pan={this.pan}
                       // rightBoundaryTime={rightBoundaryTime}
                       searchTerms={props.searchTerms}
-                      tabs={filter(
-                        ({ timestamp }) => timestamp > leftBoundaryTime
-                          && timestamp < rightBoundaryTime,
-                      )(props.tabs)}
+                      tabs={props.tabs.filter(
+                        ({ timestamp }) => timestamp > (leftBoundaryTime ?? 0)
+                          && timestamp < (rightBoundaryTime ?? 0),
+                      )}
                       zoom={this.zoom}
                     />
                     <FlameChart
@@ -623,12 +686,10 @@ class Timeline extends React.Component {
                       categories={props.categories}
                       currentAttention={
                         (props.attentionShifts || []).length > 0
-                          ? last(props.attentionShifts).thread_id
+                          ? props.attentionShifts[props.attentionShifts.length - 1].thread_id
                           : null
                       }
                       // leftBoundaryTime={leftBoundaryTime}
-                      maxTime={props.maxTime}
-                      minTime={props.minTime}
                       modifiers={props.modifiers}
                       pan={this.pan}
                       // rightBoundaryTime={rightBoundaryTime}
@@ -667,10 +728,9 @@ class Timeline extends React.Component {
                   <ThreadDetail
                     closeThreadDetail={this.closeThreadDetail}
                     id={this.state.threadModal_id}
-                    name={
-                      this.state.threadModal_id
-                      && props.threads[this.state.threadModal_id].name
-                    }
+                    name={this.state.threadModal_id === null
+                      ? undefined
+                      : props.threads[this.state.threadModal_id]?.name}
                     activities={props.activities}
                   />
                   <ActivityDetailModal
@@ -693,7 +753,6 @@ hours
                 ago
               </div>
             )}
-            }
           </>
         )}
       </WithEventListeners>

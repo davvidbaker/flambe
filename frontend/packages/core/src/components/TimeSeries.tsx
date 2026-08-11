@@ -24,10 +24,10 @@ const CountsBar = styled.div<{ $hidden: boolean }>`
 interface Props {
   height?: string;
   mantras: Mantra[];
-  pan?: (...args: unknown[]) => unknown;
+  pan?: (...args: any[]) => unknown;
   searchTerms: SearchTerm[];
   tabs: TabCount[];
-  zoom?: (...args: unknown[]) => unknown;
+  zoom?: (...args: any[]) => unknown;
 }
 
 interface State {
@@ -39,7 +39,7 @@ interface State {
   canvasHeight: number;
 }
 
-class TimeSeries extends Component<Props, State> {
+export class TimeSeries extends Component<Props, State> {
   static textPadding = { x: 5, y: 13.5 };
   static chartPadding = { x: 0, y: 15 };
 
