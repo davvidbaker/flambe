@@ -9,10 +9,10 @@ import {
 } from '../actions';
 
 interface TimedRecord { timestamp: number }
-interface AttentionShift extends TimedRecord { thread_id: EntityId }
-interface Mantra extends TimedRecord { name: string }
-interface SearchTerm extends TimedRecord { term: string }
-interface TabCount extends TimedRecord { count: number; window_count: number }
+export interface AttentionShift extends TimedRecord { thread_id: EntityId }
+export interface Mantra extends TimedRecord { name: string }
+export interface SearchTerm extends TimedRecord { term: string }
+export interface TabCount extends TimedRecord { count: number; window_count: number }
 
 export interface UserState {
   id: EntityId;
