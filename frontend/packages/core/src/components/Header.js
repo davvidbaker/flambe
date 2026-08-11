@@ -47,6 +47,7 @@ const Header = ({
   deleteCurrentTrace,
   currentMantra,
   createMantra,
+  logout,
 }) => (
   <StyledHeader>
     {traces && (
@@ -96,7 +97,7 @@ const Header = ({
       {currentMantra || 'Note to self'}
     </InputFromButton>
     {currentTrace && <h1>{currentTrace.name}</h1>}
-    {/* <div style={{ width: '50px' }} /> */}
+    <button type="button" onClick={logout}>Log out</button>
   </StyledHeader>
 );
 

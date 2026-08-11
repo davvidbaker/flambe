@@ -10,16 +10,22 @@ defmodule FlambeNextWeb.Router do
     plug FlambeNextWeb.Plugs.RequireUser
   end
 
+  pipeline :spa do
+    plug :accepts, ["html"]
+  end
+
   scope "/api", FlambeNextWeb do
     pipe_through :api
 
     get "/health", HealthController, :show
+    post "/register", RegistrationController, :create
   end
 
   scope "/auth", FlambeNextWeb do
     pipe_through :api
 
     post "/identity/callback", AuthController, :identity_callback
+    delete "/logout", AuthController, :logout
   end
 
   scope "/api", FlambeNextWeb do
@@ -31,6 +37,16 @@ defmodule FlambeNextWeb.Router do
     resources "/activities", ActivityController, only: [:create, :show, :update, :delete]
     resources "/events", EventController, only: [:create, :update]
     resources "/todos", TodoController, except: [:new, :edit]
+    resources "/mantras", MantraController, except: [:new, :edit]
+    resources "/attentions", AttentionController, except: [:new, :edit]
+    resources "/tabs", TabController, except: [:new, :edit]
+    resources "/search_terms", SearchTermController, except: [:new, :edit]
     get "/users/:id", UserController, :show
+  end
+
+  scope "/", FlambeNextWeb do
+    pipe_through :spa
+
+    get "/*path", SpaController, :index
   end
 end

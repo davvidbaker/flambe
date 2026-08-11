@@ -1,7 +1,7 @@
 # Flambe
 
 The Flambe timeline application lives in `frontend/packages/core` and is backed
-by the Phoenix app in `backend`.
+by the Phoenix 1.8 app in `backend_next`.
 
 ## Run locally
 
@@ -10,8 +10,7 @@ Requirements: Node 22 LTS, Elixir 1.18/OTP 27, and PostgreSQL.
 1. Create local backend settings (adjust the PostgreSQL credentials if needed):
 
    ```sh
-   cd backend
-   cp config/dev.secret.example.exs config/dev.secret.exs
+   cd backend_next
    mix deps.get
    mix ecto.create
    mix ecto.migrate
@@ -22,22 +21,44 @@ Requirements: Node 22 LTS, Elixir 1.18/OTP 27, and PostgreSQL.
 
    ```sh
    cd frontend
-   npm ci --ignore-scripts
-   npm run dev
+   nvm exec 22 npm ci --legacy-peer-deps
+   nvm exec 22 npm run dev
    ```
 
 Open http://localhost:5173, create an account, and you will be taken to its
 default `Main` trace. Vite proxies API, authentication, and socket requests to
-Phoenix at http://localhost:4000.
+Phoenix at http://localhost:4001.
 
-To build the Phoenix-served production frontend, run `npm run build`. This
-produces hashed assets and a manifest in `backend/priv/static/assets`; Phoenix
-serves the resulting SPA and its client-side routes at http://localhost:4000.
+To build the Phoenix-served production frontend, run `nvm exec 22 npm run
+build`. This produces hashed assets and a manifest in
+`backend_next/priv/static/assets`; Phoenix serves the resulting SPA and its
+client-side routes at http://localhost:4001.
 
-GitHub sign-in remains optional; configure `GITHUB_CLIENT_ID` and
-`GITHUB_CLIENT_SECRET` in the shell that starts Phoenix to enable it.
+Flambe uses local email/password accounts only. Create an account at
+`/register`, or seed the deterministic browser-test account with
+`mix flambe_next.seed_e2e` from `backend_next`.
+
+## Verification
+
+With PostgreSQL available, run the checks that gate the active stack:
+
+```sh
+cd backend_next
+mix precommit
+
+cd ../frontend
+nvm exec 22 npm run test:unit
+nvm exec 22 npm run build
+nvm exec 22 npm run test:smoke
+```
+
+The legacy `backend/` remains in the repository only as a read-only comparison
+and data-import source during final retirement. It is not the default runtime.
 
 ## Local data safety
 
 See [the local database workflow](docs/LOCAL_DATABASE.md) before backing up,
 restoring, or resetting a database.
+
+For a deployment or rollback, follow the
+[Phoenix 1.8 release checklist](docs/RELEASE_CHECKLIST.md).

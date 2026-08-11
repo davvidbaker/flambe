@@ -5,7 +5,7 @@ config :flambe_next, FlambeNext.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "flambe_next_dev",
+  database: System.get_env("FLAMBE_NEXT_DATABASE") || "flambe_next_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

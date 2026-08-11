@@ -39,7 +39,7 @@ Current baseline status is tracked in
 1. Commit the project-resurrection work separately from modernization work.
 2. Create and document a repeatable PostgreSQL backup/restore procedure.
 3. Add smoke tests covering:
-   - local-password login and GitHub login callback handling;
+   - local-password registration, login, and logout handling;
    - loading a trace and rendering the flame chart;
    - creating, renaming, collapsing, and deleting a thread;
    - creating, ending, and deleting an activity;
@@ -64,6 +64,16 @@ covered by the browser smoke test. CI runs the same production flow on Node 22.
   thread-collapse smoke flow.
 - [x] Switch Phoenix to serve the Vite production build.
 - [x] Replace React Hot Loader and remove the Webpack/Lerna path.
+- [x] Replace the unusable Cypress/Electron runner with Playwright using the
+  installed Chrome binary for the production-stack browser smoke flow.
+- [x] Exercise authenticated thread creation and deletion through the
+  same-origin browser/API stack, covering the prior deletion regression.
+- [x] Use Vite's supported vendor chunk split; verify the Phoenix-served
+  production build before retaining the smaller application entry chunk.
+- [x] Cover local account registration and first login in the real browser,
+  including creation of the new account's isolated Main trace.
+- [x] Load Vite configuration through native ESM, removing the deprecated CJS
+  Node API warning from development and production builds.
 
 1. Flatten the frontend into one maintained app package; remove the Lerna
    dependency only after its packages are accounted for.
@@ -122,6 +132,12 @@ upgrades stay separate milestones.
   palette filtering in the browser smoke flow.
 - [x] Upgrade the command palette's XState machine from v4 to v5 actors and
   explicit eventless transitions.
+- [x] Remove remaining React 19 runtime warnings from the application root,
+  styled DOM props, deprecated lifecycle use, and listener setup.
+- [x] Upgrade the Phoenix browser client to 1.8.10 and make its Redux-Saga
+  socket lifecycle cancel and close superseded connections.
+- [x] Extend production-stack browser coverage through thread rename and the
+  activity begin/end/delete lifecycle.
 - [x] Replace React Color with a native color-input adapter while retaining
   the existing `{ hex }` callback contract.
 - [x] Update Emoji Regex to its current Unicode data release.
@@ -146,18 +162,19 @@ the timeline behavior matches the Phase 0 contract tests.
 
 ## Phase 3 — Create a clean Phoenix 1.8 foundation
 
-**Status: in progress.** `backend_next/` is an isolated Phoenix 1.8.9 API
-foundation using a separate `flambe_next` application, PostgreSQL databases,
-and development port 4001. The legacy backend remains the running application
-on port 4000 until its routes have been migrated and contract-tested.
+**Status: complete locally.** `backend_next/` is the normal Phoenix 1.8.9 API
+and SPA development stack on port 4001, using its own `flambe_next` PostgreSQL
+database. The legacy backend remains available only through explicit Vite
+configuration while it is retained for comparison and retirement.
 
 - [x] Generate the side-by-side Phoenix 1.8 API foundation with no HTML,
   LiveView, or frontend asset pipeline.
 - [x] Add and test a database-free `GET /api/health` endpoint.
 - [x] Port users, traces, and threads to the new database with automatic Main
   thread creation; preserve the empty-trace JSON fixture in a new renderer test.
-- [x] Port local-password authentication with a signed session cookie and a
-  protected trace read, preserving the frontend login response shape.
+- [x] Port local-password signup, login, and logout with a signed session
+  cookie and protected trace read; automatically create a per-user Main trace
+  while preserving the frontend login response shape.
 - [x] Port activity/event creation with ownership-scoped lookups and render a
   populated trace payload for the flame chart; category associations remain a
   separate resource migration.
@@ -171,6 +188,20 @@ on port 4000 until its routes have been migrated and contract-tested.
   categories plus stable empty placeholders for unmigrated resources.
 - [x] Port user-owned todo CRUD and include todos in the authenticated
   dashboard response.
+- [x] Port user-owned mantras, attention shifts, tab counts, and search terms;
+  preserve millisecond timestamps and return populated timeline telemetry from
+  the authenticated dashboard.
+- [x] Port the authenticated `events:<user_id>` Channel and live tab/search
+  telemetry broadcasts, rejecting joins to another user's topic.
+- [x] Add a guarded importer from the restored legacy database into the
+  isolated next database; verify a Vite-proxied local login, dashboard, and
+  populated trace response against the imported data.
+- [x] Build the Vite SPA into `backend_next/priv/static` on demand and serve
+  it through Phoenix 1.8, including browser-route fallback and static assets.
+- [x] Recreate the frozen legacy trace/thread JSON fixtures in the Phoenix 1.8
+  suite and validate both direct SPA/browser smoke and backend checks in CI.
+- [x] Prove resource ownership at every API read surface, including dashboard
+  telemetry and event mutation, with cross-user controller coverage.
 - [ ] Port the legacy API, authentication, and Channels behind contract tests.
 
 1. Generate a fresh Phoenix 1.8 API-oriented skeleton alongside the existing
@@ -188,22 +219,36 @@ database and satisfies all API and browser smoke tests.
 
 ## Phase 4 — Simplify authentication and authorization
 
-1. Preserve GitHub OAuth, but move local-password login to Phoenix's current
-   Accounts/authentication conventions.
-2. Deliver the SPA and API from the same origin in production, removing the
+**Status: complete locally.** Phoenix 1.8 uses one encrypted, signed,
+HTTP-only session cookie for local-password authentication, API access, and
+Channels. All migrated resources have ownership coverage. Flambe intentionally
+uses local email/password authentication only.
+
+- [x] Complete the local account lifecycle in the SPA: registration, login,
+  protected access, and explicit logout are covered in the browser suite.
+
+1. Deliver the SPA and API from the same origin in production, removing the
    need for cross-origin credential handling.
-3. Use an explicit current-user scope in context functions and apply ownership
+2. Use an explicit current-user scope in context functions and apply ownership
    checks to traces, threads, activities, events, categories, and todos.
-4. Decide whether Guardian remains necessary for external API clients. Browser
-   sessions should use one well-tested mechanism rather than mixed custom
-   Guardian/Ueberauth/session behavior.
-5. Add authorization tests that prove one user cannot read or mutate another
+3. Add authorization tests that prove one user cannot read or mutate another
    user's data.
 
-**Exit criterion:** both local and GitHub login work with documented session
-behavior, and data access is scoped by the authenticated user.
+**Exit criterion:** local registration, login, logout, and data access are
+covered by browser and authorization tests using one documented session model.
 
 ## Phase 5 — Cut over and retire legacy code
+
+**Status: in progress.** Phoenix 1.8/Vite is now the documented local runtime
+and the only required CI stack. The legacy backend and restored database remain
+available solely for controlled import, comparison, and rollback rehearsal.
+
+- [x] Make Phoenix 1.8/Vite the documented local and production build path.
+- [x] Remove the legacy Phoenix 1.3 jobs from required CI validation.
+- [x] Rehearse backup, import, and rollback with a disposable database copy.
+- [x] Document the release, staging verification, and rollback procedure.
+- [ ] Remove legacy backend source only after that rehearsal and a stable
+  release.
 
 1. Run the old and new backends against separate copies of the database.
 2. Verify browser smoke tests, API-contract fixtures, and manual timeline

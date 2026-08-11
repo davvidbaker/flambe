@@ -1,7 +1,16 @@
 defmodule FlambeNextWeb.UserJSON do
   alias FlambeNext.Accounts.User
 
-  def show(%{user: %User{} = user, traces: traces, categories: categories, todos: todos}) do
+  def show(%{
+        user: %User{} = user,
+        traces: traces,
+        categories: categories,
+        todos: todos,
+        mantras: mantras,
+        attentions: attentions,
+        tabs: tabs,
+        search_terms: search_terms
+      }) do
     %{
       data: %{
         id: user.id,
@@ -10,10 +19,10 @@ defmodule FlambeNextWeb.UserJSON do
         traces: Enum.map(traces, &trace_data/1),
         categories: Enum.map(categories, &category_data/1),
         todos: Enum.map(todos, &todo_data/1),
-        mantras: [],
-        attentionShifts: [],
-        tabs: [],
-        searchTerms: []
+        mantras: Enum.map(mantras, &mantra_data/1),
+        attentionShifts: Enum.map(attentions, &attention_data/1),
+        tabs: Enum.map(tabs, &tab_data/1),
+        searchTerms: Enum.map(search_terms, &search_term_data/1)
       }
     }
   end
@@ -30,4 +39,16 @@ defmodule FlambeNextWeb.UserJSON do
   end
 
   defp todo_data(todo), do: %{id: todo.id, name: todo.name, description: todo.description}
+  defp mantra_data(mantra), do: %{id: mantra.id, name: mantra.name, timestamp: mantra.timestamp}
+
+  defp attention_data(attention),
+    do: %{id: attention.id, thread_id: attention.thread_id, timestamp: attention.timestamp}
+
+  defp tab_data(tab) do
+    %{id: tab.id, count: tab.count, window_count: tab.window_count, timestamp: tab.timestamp}
+  end
+
+  defp search_term_data(search_term) do
+    %{id: search_term.id, term: search_term.term, timestamp: search_term.timestamp}
+  end
 end
