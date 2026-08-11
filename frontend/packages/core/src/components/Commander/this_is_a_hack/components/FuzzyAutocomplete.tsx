@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type FocusEventHandler, type ReactNode } from 'react';
 import fuzzaldrin from 'fuzzaldrin-plus';
 import { useCombobox } from 'downshift';
 import styled from 'styled-components';
@@ -17,7 +17,24 @@ const StyledResults = styled.div`
     flex: auto;
   }
 `;
-const FuzzyAutocomplete = ({
+
+export interface FuzzyAutocompleteItem {
+  [key: string]: unknown;
+  label?: { background?: string; copy: ReactNode };
+  shortcut?: ReactNode;
+}
+
+interface Props<T extends FuzzyAutocompleteItem> {
+  initialInputValue?: string;
+  items: T[];
+  itemStringKey: keyof T & string;
+  onBlur?: FocusEventHandler<HTMLInputElement>;
+  onChange: (item: T) => unknown;
+  onInputChange?: (value?: string) => unknown;
+  placeholder?: string;
+}
+
+const FuzzyAutocomplete = <T extends FuzzyAutocompleteItem,>({
   onChange,
   placeholder,
   items,
@@ -25,19 +42,21 @@ const FuzzyAutocomplete = ({
   onInputChange,
   initialInputValue = '',
   onBlur,
-}) => {
-  const itemToString = item => (item ? item[itemStringKey] : '');
+}: Props<T>) => {
+  const itemToString = (item: T | null): string => item
+    ? String(item[itemStringKey] ?? '')
+    : '';
   const [filterValue, setFilterValue] = React.useState(initialInputValue);
   const filteredItems = filterValue.length === 0
     ? items
-    : fuzzaldrin.filter(items, filterValue, { key: itemStringKey });
+    : fuzzaldrin.filter(items, filterValue, { key: itemStringKey as never });
   const {
     getInputProps,
     getItemProps,
     getLabelProps,
     getMenuProps,
     highlightedIndex,
-  } = useCombobox({
+  } = useCombobox<T>({
     isOpen: true,
     initialInputValue,
     items: filteredItems,
@@ -67,7 +86,7 @@ const FuzzyAutocomplete = ({
         {filteredItems.map((item, index) => (
           <div
             className="commander-result"
-            key={itemStringKey ? item[itemStringKey] : item}
+            key={String(item[itemStringKey] ?? index)}
             {...getItemProps({
               index,
               item,
@@ -93,11 +112,11 @@ const FuzzyAutocomplete = ({
                 </span>
               )}
               {filterValue.length === 0 ? (
-                <span>{item[itemStringKey]}</span>
+                <span>{String(item[itemStringKey] ?? '')}</span>
               ) : (
                 <span
                   dangerouslySetInnerHTML={{
-                    __html: fuzzaldrin.wrap(item[itemStringKey], filterValue),
+                    __html: fuzzaldrin.wrap(String(item[itemStringKey] ?? ''), filterValue),
                   }}
                 />
               )}

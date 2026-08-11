@@ -1,21 +1,28 @@
 import * as React from 'react';
 
-function SimplePrompt({ initialInputValue, onBlur, placeholder, onSubmit }) {
-  const [value, setValue] = React.useState(initialInputValue);
-  const inputRef = React.useRef(null);
+interface Props {
+  initialInputValue: string;
+  onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  onSubmit: (value: string) => unknown;
+  placeholder?: string;
+}
 
-  const selectionRef = React.useRef();
+function SimplePrompt({ initialInputValue, onBlur, placeholder, onSubmit }: Props) {
+  const [value, setValue] = React.useState(initialInputValue);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const selectionRef = React.useRef(false);
 
   /* 💁 I only want this effect to run once. */
   // https://reactjs.org/docs/hooks-faq.html#is-there-something-like-instance-variables
   React.useLayoutEffect(() => {
     if (!selectionRef.current) {
       selectionRef.current = true;
-      inputRef.current.setSelectionRange(0, value.length);
+      inputRef.current?.setSelectionRange(0, value.length);
     }
   });
 
-  const maybeSubmit = event => {
+  const maybeSubmit = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       setValue('');
       onSubmit(value);
