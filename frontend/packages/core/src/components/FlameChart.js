@@ -1,4 +1,3 @@
-// @flow
 import React, { Component, useEffect } from 'react';
 import { connect } from 'react-redux';
 import emojiRegex from 'emoji-regex';
@@ -6,15 +5,11 @@ import styled from 'styled-components';
 /* 💁     👇 intentionally "maxx"  */
 import {
   map,
-  max as maxx,
   pickBy,
-  sortBy,
   reduce,
   filter,
   compose,
-  reverse,
   zipWith,
-  identity,
   mapValues,
   isUndefined,
 } from 'lodash/fp';
@@ -46,8 +41,6 @@ import {
 import { focusBlock, hoverBlock } from '../actions';
 import { getTimeline } from '../reducers/timeline';
 import { colors } from '../styles';
-import type { Activity } from '../types/Activity';
-import type { Category as CategoryType } from '../types/Category';
 
 const Wrapper = styled.div`
   height: 100%;
@@ -67,47 +60,14 @@ function activityByBlockIndex(blocks, index) {
   return blocks[Number(index)].activity_id;
 }
 
-type Props = {
-  // functions
-  // state.scrollTop: number,
-  activities?: { [id: string]: Activity },
-  categories: CategoryType[],
-  focusBlock: (id: number, thread_id: number) => mixed,
-  focusedBlockIndex?: string,
-  hoverBlock: (?string) => mixed,
-  hoveredBlockIndex?: string,
-  leftBoundaryTime: number,
-  maxTime?: number,
-  minTime?: number,
-  modifiers: { shift: boolean },
-  rightBoundaryTime: number,
-  showSuspendResumeFlows: boolean,
-  showThreadDetail: (id: number) => mixed,
-  threadLevels: { id: { current: number, max: number } }[],
-  threads: { name: string, id: number, rank: number, collapsed: boolean }[],
-  toggleThread: (id: number, isCollapsed: boolean) => mixed,
-};
+class FlameChart extends Component {
+  ctx;
 
-type State = {
-  canvasHeight: number, // in pixels
-  cursor: { x: number, y: number },
-  hoverThreadEllipsis: number | null, // the id of the thread whose details ellipsis is being hovered
-  hoverGithubLink: boolean,
-  mousedown: boolean,
-  mousedownX: number,
-  offsets: {},
-  scrollTop: number,
-  threadStatuses: {},
-};
+  canvas;
 
-class FlameChart extends Component<Props, State> {
-  ctx: CanvasRenderingContext2D;
+  tooltip;
 
-  canvas: ?HTMLCanvasElement;
-
-  tooltip: ?HTMLElement;
-
-  minTextWidth: number;
+  minTextWidth;
 
   static textPadding = { x: 5, y: 13.5 };
 
@@ -620,7 +580,10 @@ class FlameChart extends Component<Props, State> {
     console.log('trying to render fc');
 
     // debugger;
-    this.maxThreadLevels = this.threadLevels |> map(({ max }) => max) |> maxx;
+    const maxThreadLevels = Object.values(this.threadLevels || {}).map(({ max }) => max);
+    this.maxThreadLevels = maxThreadLevels.length > 0
+      ? Math.max(...maxThreadLevels)
+      : undefined;
 
     /* ⚠️ this is definitely not what I want to be doing */
     // debounce(() =>
@@ -1020,21 +983,11 @@ class FlameChart extends Component<Props, State> {
     const sameActivity = this.focusActivity_id === block.activity_id
       || this.hoverActivity_id === block.activity_id;
 
-    this.ctx.globalAlpha = do {
-      if (collapsed) {
-        0.4;
-      } else if (this.props.activityMute) {
-        if (sameActivity) {
-          1;
-        } else {
-          /* ⚠️  */
-          0.1;
-          // this.props.activityMuteOpacity;
-        }
-      } else {
-        1;
-      }
-    };
+    this.ctx.globalAlpha = collapsed
+      ? 0.4
+      : this.props.activityMute && !sameActivity
+        ? 0.1
+        : 1;
 
     this.ctx.fillStyle = colors.flames.main;
     /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
@@ -1148,7 +1101,7 @@ class FlameChart extends Component<Props, State> {
     return collapsed || false;
   }
 
-  pixelsToThreadId(y: number): ?number {
+  pixelsToThreadId(y) {
     const sortedThreads = this.threadsSortedByRank || [];
 
     for (let index = 0; index < sortedThreads.length; index++) {
@@ -1165,8 +1118,9 @@ class FlameChart extends Component<Props, State> {
     return null;
   }
 
-  pixelsToLevel(y: number): number {
-    const reverseOffsets = this.offsets |> sortBy(identity) |> reverse;
+  pixelsToLevel(y) {
+    const reverseOffsets = Object.values(this.offsets || {})
+      .sort((left, right) => right - left);
     let i = 0;
     while (y < reverseOffsets[i]) {
       i++;

@@ -1,4 +1,3 @@
-// @flow
 
 import { savedRangeIsUsable } from './timelineViewport';
 
