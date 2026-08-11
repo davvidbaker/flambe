@@ -12,7 +12,6 @@ import {
 import { getUser, type UserState } from '../reducers/user';
 import { getTimeline, type TimelineState } from '../reducers/timeline';
 import { blocksForActivity } from '../utilities/timeline';
-import containsGithubLink from '../utilities/containsGithubLink';
 // types
 import type { Category as CategoryType } from '../types/Category';
 import type { EntityId } from '../types/ids';
@@ -25,14 +24,6 @@ import ActivityEventFlow from './ActivityEventFlow';
 import AddCategory from './AddCategory';
 import DeleteButton from './DeleteButton';
 import Button, { InputFromButton } from './Button';
-import GithubMark from '../images/GitHub-Mark.svg';
-
-const GithubAnchor = styled.a`
-  opacity: 0.5;
-  &:hover {
-    opacity: 1;
-  }
-`;
 
 const Actions = styled.div`
   display: flex;
@@ -109,20 +100,8 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     ending: e.phase,
   }));
 
-  const githubLink = containsGithubLink(activity.name || '');
-
   return (
     <>
-      {githubLink && (
-        <GithubAnchor
-          target="_blnk"
-          href={`https://github.com/elasticsuite/${githubLink[2]}/issues/${
-            githubLink[3]
-          }`}
-        >
-          <img height="16px" src={GithubMark} alt="Open in Github" />
-        </GithubAnchor>
-      )}
       <InputFromButton
         placeholderIsDefaultValue
         submit={(value: string) => {
