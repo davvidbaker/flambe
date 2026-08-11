@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_URL || 'http://127.0.0.1:4001';
   const socketTarget = env.VITE_SOCKET_URL || apiTarget;
   const useDevProxy = mode === 'development';
-  const phoenixStaticDir = '../backend_next/priv/static/assets';
+  const phoenixStaticDir = '../backend/priv/static/assets';
 
   return {
     plugins: [
@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       // Browser requests must stay same-origin in development. VITE_API_URL
-      // selects Vite's proxy target (including backend_next on port 4001),
+      // selects Vite's proxy target (including Phoenix on port 4001),
       // rather than leaking that separate origin into legacy API call sites.
       SERVER: JSON.stringify(useDevProxy ? '' : env.VITE_API_URL || ''),
       SOCKET_SERVER: JSON.stringify(useDevProxy ? '' : env.VITE_SOCKET_URL || ''),

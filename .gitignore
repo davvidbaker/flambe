@@ -32,9 +32,8 @@ erl_crash.dump
 
 # Local/generated artifacts from the legacy app and development tooling.
 /backend/priv/static/assets/
-/backend_next/priv/static/assets/
+/backend/priv/static/assets/
 /backend/vendor/
-/frontend/_old-frontend/
 /frontend/dist/
 /frontend/storybook-static/
 /frontend/cypress/screenshots/

@@ -33,7 +33,7 @@ psql --dbname=flambe_restore_check --file=/absolute/path/to/dump.sql
 psql --dbname=flambe_restore_check --command='select count(*) from users;'
 ```
 
-Point `backend_next/config/dev.exs` at the new database only after the row
+Point `backend/config/dev.exs` at the new database only after the row
 counts and application startup have been checked.
 
 For a custom archive created by `pg_dump --format=custom`, restore with:
@@ -49,7 +49,7 @@ pg_restore --exit-on-error --dbname=flambe_restore_check /absolute/path/to/dump.
 time:
 
 ```sh
-cd backend_next
+cd backend
 MIX_ENV=test mix ecto.drop
 MIX_ENV=test mix ecto.create
 MIX_ENV=test mix ecto.migrate
@@ -62,6 +62,6 @@ verified a backup. The legacy database is an import source only; use
 `mix flambe_next.import_legacy --dry-run` before any `--replace` import.
 
 For an import/rollback rehearsal, use a fresh target and set
-`FLAMBE_NEXT_DATABASE` for each `backend_next` command. The importer will then
+`FLAMBE_NEXT_DATABASE` for each `backend` command. The importer will then
 truncate only that explicitly named disposable database; see
-[the Phoenix 1.8 migration guide](../backend_next/MIGRATION.md#rehearse-an-import-without-touching-local-data).
+[the Phoenix 1.8 migration guide](../backend/MIGRATION.md#rehearse-an-import-without-touching-local-data).

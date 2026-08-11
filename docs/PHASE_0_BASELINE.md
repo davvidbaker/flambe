@@ -15,7 +15,7 @@ the restored personal-data database.
 Run the active backend regression suite with:
 
 ```sh
-cd backend_next
+cd backend
 mix precommit
 ```
 
@@ -31,7 +31,7 @@ development/test account. It can run against the Vite dev server or a
 Phoenix-served production bundle:
 
 ```sh
-cd backend_next
+cd backend
 mix flambe_next.seed_e2e
 
 cd frontend
@@ -48,7 +48,7 @@ creation, and logout. It never reads or mutates restored personal history. Set
 `FLAMBE_E2E_PASSWORD` before seeding to override the local default.
 
 Redacted API-contract fixtures live in
-`backend_next/test/fixtures/api_contracts`; their tests verify trace and thread
+`backend/test/fixtures/api_contracts`; their tests verify trace and thread
 response shapes without embedding restored personal data.
 
 ## Current gates

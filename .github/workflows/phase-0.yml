@@ -26,10 +26,10 @@ jobs:
           elixir-version: '1.18.3'
           otp-version: '27.3'
       - name: Install Phoenix 1.8 dependencies
-        working-directory: backend_next
+        working-directory: backend
         run: mix deps.get
       - name: Run Phoenix 1.8 checks
-        working-directory: backend_next
+        working-directory: backend
         run: |
           MIX_ENV=test mix ecto.create
           MIX_ENV=test mix ecto.migrate
@@ -61,7 +61,7 @@ jobs:
           elixir-version: '1.18.3'
           otp-version: '27.3'
       - name: Install Phoenix 1.8 dependencies and seed CI data
-        working-directory: backend_next
+        working-directory: backend
         run: |
           mix deps.get
           mix ecto.create
@@ -83,7 +83,7 @@ jobs:
         working-directory: frontend
         run: npm run build
       - name: Start Phoenix 1.8 with the built frontend
-        working-directory: backend_next
+        working-directory: backend
         run: mix phx.server > /tmp/flambe-next-phoenix.log 2>&1 &
       - name: Run Phoenix 1.8-served browser smoke test
         working-directory: frontend
