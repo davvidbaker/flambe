@@ -1,41 +1,71 @@
-import React, { Component } from 'react';
+import React, { Component, type ReactNode } from 'react';
 import Measure from './Measure';
 
 import { colors } from '../styles';
 import { getBlockTransform } from '../utilities/waterfallChart';
+import type { ProcessedActivity, TraceBlock } from '../utilities/processTrace';
+import type { Category } from '../types/Category';
 
-class WaterfallChart extends Component {
-  state = {
+interface Props {
+  activities: Record<string, ProcessedActivity>;
+  blocksByActivity: Record<string, TraceBlock[]>;
+  categories: Category[];
+  maxTime?: number;
+  minTime?: number;
+}
+
+interface Size { height: number; width: number }
+
+interface State {
+  bottomBoundaryTime: number;
+  canvasHeight: number;
+  canvasWidth: number;
+  topBoundaryTime: number;
+}
+
+class WaterfallChart extends Component<Props, State> {
+  state: State = {
     canvasWidth: 300,
-    canvasHeight: 150
+    canvasHeight: 150,
+    topBoundaryTime: 0,
+    bottomBoundaryTime: Date.now(),
   };
+
+  canvas: HTMLCanvasElement | null = null;
+  ctx: CanvasRenderingContext2D | null = null;
+  drawFrame: number | null = null;
 
   blockWidth = 10;
   blockPadding = 1;
 
   componentDidMount() {
-    const ctx = this.canvas.getContext('2d');
-    this.ctx = ctx;
+    this.ctx = this.canvas?.getContext('2d') ?? null;
 
     this.setState({
-      topBoundaryTime: this.props.minTime,
-      bottomBoundaryTime: Date.now()
+      topBoundaryTime: this.props.minTime ?? 0,
+      bottomBoundaryTime: this.props.maxTime ?? Date.now(),
     });
 
     this.setCanvasSize({ width: 300, height: 150 });
   }
 
-  setCanvasSize = ({ width, height }) => {
+  componentDidUpdate(): void {
+    if (this.drawFrame !== null) cancelAnimationFrame(this.drawFrame);
+    this.drawFrame = requestAnimationFrame(() => this.draw());
+  }
+
+  componentWillUnmount(): void {
+    if (this.drawFrame !== null) cancelAnimationFrame(this.drawFrame);
+  }
+
+  setCanvasSize = ({ width, height }: Size): void => {
     this.setState({
       canvasWidth: width,
       canvasHeight: height
     });
   };
 
-  render() {
-    requestAnimationFrame(() => {
-      this.draw();
-    });
+  render(): ReactNode {
     return (
       <div style={{ width: '100%' }}>
         <Measure
@@ -63,9 +93,6 @@ class WaterfallChart extends Component {
               height={this.state.canvasHeight * window.devicePixelRatio || 300}
               width={this.state.canvasWidth * window.devicePixelRatio || 450}
               /* ⚠️ this hs got to be an antipattern to put this in render, right? */
-              onMouseMove={this.onMouseMove}
-              onMouseEnter={this.onMouseEnter}
-              onMouseLeave={this.onMouseLeave}
             />
           )}
         </Measure>
@@ -73,17 +100,20 @@ class WaterfallChart extends Component {
     );
   }
 
-  draw() {
+  draw(): void {
+    if (!this.ctx) return;
     this.drawActivityColumns();
     // this.drawBlocks();
   }
 
-  drawActivityColumns() {
+  drawActivityColumns(): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
     Object.entries(this.props.blocksByActivity).forEach(([activity_id, blocks], ind) => {
-      this.ctx.fillStyle = '#f00';
+      ctx.fillStyle = '#f00';
       const activity = this.props.activities[activity_id];
       if (activity.status === 'suspended') {
-        this.ctx.fillRect(
+        ctx.fillRect(
           ind * (this.blockWidth + 1),
           this.state.canvasHeight / 2,
           this.blockWidth,
@@ -91,13 +121,13 @@ class WaterfallChart extends Component {
         );
       }
 
-      this.ctx.fillStyle = colors.flames.main;
+      ctx.fillStyle = colors.flames.main;
       /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
       if (activity.categories.length > 0 && activity.categories[0]) {
         // ⚠️ don't always just show the color belonging to category 0... need a better way
         const cat = this.props.categories.find(element => element.id === activity.categories[0]);
         if (cat) {
-          this.ctx.fillStyle = cat.color_background;
+          ctx.fillStyle = cat.color_background;
         }
       }
 
@@ -105,7 +135,9 @@ class WaterfallChart extends Component {
     });
   }
 
-  drawActivityColumn(ind, blocks, activity) {
+  drawActivityColumn(ind: number, blocks: TraceBlock[], _activity: ProcessedActivity): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
     blocks.forEach(block => {
       const { startTime, endTime } = block;
       const { blockX, blockY, blockHeight } = this.getBlockTransform(
@@ -113,11 +145,11 @@ class WaterfallChart extends Component {
         endTime,
         ind
       );
-      this.ctx.fillRect(blockX, blockY, this.blockWidth, blockHeight);
+      ctx.fillRect(blockX, blockY, this.blockWidth, blockHeight);
     });
   }
 
-  getBlockTransform(startTime, endTime, columnInd) {
+  getBlockTransform(startTime: number, endTime: number | undefined, columnInd: number) {
     return getBlockTransform(
       startTime,
       endTime,
@@ -130,9 +162,6 @@ class WaterfallChart extends Component {
     );
   }
 
-  drawBlock(block) {
-    this.ctx.fillText(block.startTime, 0, Math.random() * 100);
-  }
 }
 
 export default WaterfallChart;
