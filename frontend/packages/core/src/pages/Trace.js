@@ -9,7 +9,6 @@ import { useLocation, useParams } from 'react-router-dom';
 import Commander from '../components/Commander/this_is_a_hack';
 import Modal from 'react-modal';
 
-import Dashboard from '../containers/Dashboard';
 import ConnectedTimeline from '../containers/ConnectedTimeline';
 import SingleThreadView from '../containers/SingleThreadView';
 import AdvancedSearch from '../containers/AdvancedSearch';
@@ -20,7 +19,6 @@ import SearchBar from '../containers/SearchBar';
 import WithEventListeners from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
-import PanePicker from '../components/PanePicker';
 import {
   collapseAllThreads,
   createMantra,

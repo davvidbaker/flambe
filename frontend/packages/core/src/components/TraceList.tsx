@@ -5,6 +5,16 @@ import Dropdown from './Dropdown';
 import NewTrace from './NewTrace';
 
 import { layout } from '../styles';
+import type { Trace } from '../types/Trace';
+import type { EntityId } from '../types/ids';
+
+interface TraceListItemProps {
+  current: boolean;
+  deleteTrace: (id: EntityId) => unknown;
+  selectTrace: (trace: Trace) => unknown;
+  toggle: () => unknown;
+  trace: Trace;
+}
 
 const TraceListItem = ({
   trace,
@@ -12,8 +22,7 @@ const TraceListItem = ({
   toggle,
   selectTrace,
   current,
-  deleteCurrentTrace
-}) => (
+}: TraceListItemProps) => (
   <li>
     <Link
       onClick={() => {
@@ -46,7 +55,14 @@ const TraceList = ({
   selectTrace,
   deleteTrace,
   currentTrace,
-  deleteCurrentTrace
+  deleteCurrentTrace,
+}: {
+  currentTrace?: Trace | null;
+  deleteCurrentTrace: () => unknown;
+  deleteTrace: (id: EntityId) => unknown;
+  selectTrace: (trace: Trace) => unknown;
+  toggle: () => unknown;
+  traces: Trace[];
 }) => (
   <Dropdown style={{ top: layout.headerHeight }}>
     {traces.map(trace => (
@@ -55,10 +71,7 @@ const TraceList = ({
         trace={trace}
         toggle={toggle}
         selectTrace={selectTrace}
-        current={currentTrace && trace.id === currentTrace.id}
-        deleteCurrentTrace={
-          currentTrace && trace.id === currentTrace.id && deleteCurrentTrace
-        }
+        current={Boolean(currentTrace && trace.id === currentTrace.id)}
         deleteTrace={deleteTrace}
       />
     ))}
