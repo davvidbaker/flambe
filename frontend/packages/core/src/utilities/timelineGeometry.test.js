@@ -1,0 +1,24 @@
+import {
+  getBlockTransform,
+  isVisible,
+  pixelsToTime,
+  timeToPixels,
+  visibleThreadLevels,
+} from './timelineGeometry';
+
+describe('timeline geometry', () => {
+  it('round-trips a timestamp through pixel coordinates', () => {
+    expect(pixelsToTime(timeToPixels(150, 100, 200, 500), 100, 200, 500)).toBe(150);
+    expect(getBlockTransform(90, 150, 2, 20, 10, 100, 200, 500)).toEqual({
+      blockX: 0, blockY: 52, blockWidth: 250,
+    });
+  });
+
+  it('finds visible blocks and their thread depth', () => {
+    const block = { activity_id: 4, beginning: 'B', events: [1], level: 2, startTime: 120 };
+    expect(isVisible(block, 100, 200)).toBe(true);
+    expect(visibleThreadLevels([block], { 4: { thread_id: 2 } }, 100, 200, { 2: { id: 2 } })).toEqual({
+      2: { current: 2, max: 3 },
+    });
+  });
+});

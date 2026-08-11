@@ -12,8 +12,8 @@ import {
   timeToPixels,
   pixelsToTime,
   drawFutureWindow,
-  handleWheel3,
-} from '../utilities/timelineChart';
+} from '../utilities/timelineGeometry';
+import { handleWheel3 } from '../utilities/timelineChart';
 import { trimTextMiddle } from '../utilities';
 
 const windowColor = '#48A2ED';
