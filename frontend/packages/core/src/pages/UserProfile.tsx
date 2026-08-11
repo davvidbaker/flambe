@@ -3,9 +3,16 @@ import { connect } from 'react-redux';
 import { Link } from 'react-router-dom';
 
 import { getUser } from '../reducers/user';
+import type { UserState } from '../reducers/user';
+import type { Trace } from '../types/Trace';
 
-/* ⚠️ fix 'david' */
-const UserProfile = ({ name, traces, username = 'david' }) => console.log(`🔥  username`, username) || (
+interface Props {
+  name: string;
+  traces: Trace[];
+  username?: string;
+}
+
+const UserProfile = ({ name, traces, username = 'david' }: Props) => (
   <div>
     <h1>{name}</h1>
     <div>
@@ -21,7 +28,7 @@ const UserProfile = ({ name, traces, username = 'david' }) => console.log(`🔥 
   </div>
 );
 
-export default connect(state => {
+export default connect((state: { user: UserState }) => {
   const user = getUser(state);
 
   return {
