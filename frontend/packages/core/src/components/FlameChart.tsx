@@ -6,7 +6,6 @@ import styled from 'styled-components';
 import Measure, { type Bounds } from './Measure';
 import { shade } from 'polished';
 
-import GithubMark from '../images/GitHub-Mark-32px.png';
 import {
   drawFutureWindow,
   getBlockTransform,
@@ -18,7 +17,6 @@ import {
   visibleThreadLevels,
 } from '../utilities/timelineGeometry';
 import { getShamefulColor } from '../utilities/timeline';
-import containsGithubLink from '../utilities/containsGithubLink';
 
 /* 🔮  abstract into parts of react-flame-chart? */
 
@@ -60,7 +58,6 @@ type BlockEntry = [string, TraceBlock];
 type ResizeDirection = 'left' | 'right';
 type Hit =
   | { type: 'thread_ellipsis' | 'thread_header'; value: number }
-  | { type: 'githubLink'; githubLink: RegExpMatchArray; value: BlockEntry }
   | { type: 'block' | 'block_edge_left' | 'block_edge_right'; value: BlockEntry };
 
 interface OwnProps {
@@ -125,8 +122,6 @@ export class FlameChart extends Component<Props, State> {
 
   hoverThreadEllipsis: number | null = null;
 
-  hoverGithubLink = false;
-
   mousedown = false;
 
   mousedownX: number | null = null;
@@ -156,7 +151,6 @@ export class FlameChart extends Component<Props, State> {
   threadsSortedByRank: Array<[number, ChartThread]> = [];
   maxThreadLevels = 0;
   threadStatuses: Record<string, unknown> = {};
-  githubMarkImage: HTMLImageElement;
   canvasCapture: ImageData | null = null;
   threadCapture: ImageData | null = null;
   hoverActivity_id: EntityId | null = null;
@@ -173,8 +167,6 @@ export class FlameChart extends Component<Props, State> {
       };
     });
 
-    this.githubMarkImage = new Image(32, 32);
-    this.githubMarkImage.src = GithubMark;
   }
 
   componentDidMount() {
@@ -317,31 +309,6 @@ export class FlameChart extends Component<Props, State> {
 
     const activity = this.props.activities[String(hitBlock[1].activity_id)];
     if (!activity) return null;
-    const githubLink = containsGithubLink(activity.name ?? '');
-
-    if (githubLink) {
-      const startX = this.timeToPixels(hitBlock[1].startTime) > 0
-        ? this.timeToPixels(hitBlock[1].startTime)
-        : 0;
-      const endX = this.timeToPixels(hitBlock[1].endTime ?? this.rightBoundaryTime);
-
-      const blockWidth = endX - startX;
-
-      // don't even think about hitting github icon if bar is too small
-      if (blockWidth < this.minTextWidth) {
-        return { type: 'block', value: hitBlock };
-      }
-
-      this.ctx.font = `${hitBlock[1].endTime ? '' : 'bold'} 11px sans-serif`;
-      const { width: textWidth } = this.ctx.measureText(activity.name ?? '');
-      if (
-        mouseX > startX + textWidth + FlameChart.textPadding.x * 2 + 2
-        && mouseX < startX + textWidth + FlameChart.textPadding.x * 2 + 14 + 2
-      ) {
-        return { type: 'githubLink', githubLink, value: hitBlock };
-      }
-    }
-
     return { type: 'block', value: hitBlock };
   };
 
@@ -369,15 +336,6 @@ export class FlameChart extends Component<Props, State> {
           }
           break;
           /** 💁 hit.value is array like [key, val] */
-
-        case 'githubLink':
-          /* ⚠️ fix this and make it more customizable */
-          window.open(
-            `https://github.com/elasticsuite/${hit.githubLink[2]}/issues/${
-              hit.githubLink[3]
-            }`,
-          );
-          break;
 
         case 'block':
           const block = this.props.blocks[Number(hit.value[0])];
@@ -423,7 +381,6 @@ export class FlameChart extends Component<Props, State> {
             this.props.hoverBlock(null);
             this.setFlamechartState({
               hoverThreadEllipsis: hit.value,
-              hoverGithubLink: false,
             });
             break;
           case 'thread_header':
@@ -431,16 +388,6 @@ export class FlameChart extends Component<Props, State> {
             this.props.hoverBlock(null);
             this.setFlamechartState({
               hoverThreadEllipsis: null,
-              hoverGithubLink: false,
-            });
-            break;
-          /** 💁 hit.value is array like [key, val] */
-          case 'githubLink':
-            this.props.hoverBlock(hit.value[0]);
-            this.canvas.style.cursor = 'pointer';
-            this.setFlamechartState({
-              hoverThreadEllipsis: null,
-              hoverGithubLink: true,
             });
             break;
           /** 💁 hit.value is array like [key, val] */
@@ -449,7 +396,6 @@ export class FlameChart extends Component<Props, State> {
             this.canvas.style.cursor = 'default';
             this.setFlamechartState({
               hoverThreadEllipsis: null,
-              hoverGithubLink: false,
             });
             break;
           case 'block_edge_left':
@@ -457,7 +403,6 @@ export class FlameChart extends Component<Props, State> {
             this.canvas.style.cursor = 'w-resize';
             this.setFlamechartState({
               hoverThreadEllipsis: null,
-              hoverGithubLink: false,
             });
             break;
           case 'block_edge_right':
@@ -465,7 +410,6 @@ export class FlameChart extends Component<Props, State> {
             this.canvas.style.cursor = 'e-resize';
             this.setFlamechartState({
               hoverThreadEllipsis: null,
-              hoverGithubLink: false,
             });
             break;
 
@@ -473,7 +417,6 @@ export class FlameChart extends Component<Props, State> {
             this.canvas.style.cursor = 'default';
             this.setFlamechartState({
               hoverThreadEllipsis: null,
-              hoverGithubLink: false,
             });
             break;
         }
@@ -484,7 +427,6 @@ export class FlameChart extends Component<Props, State> {
         if (this.hoverThreadEllipsis) {
           this.setFlamechartState({
             hoverThreadEllipsis: null,
-            hoverGithubLink: false,
           });
         }
       }
@@ -1086,20 +1028,6 @@ export class FlameChart extends Component<Props, State> {
       blockX + FlameChart.textPadding.x,
       blockY + FlameChart.textPadding.y,
     );
-
-    const githubLink = containsGithubLink(text);
-
-    this.ctx.globalAlpha = this.hoverGithubLink && sameActivity ? 1 : 0.5;
-    if (githubLink) {
-      this.ctx.drawImage(
-        this.githubMarkImage,
-        blockX + textWidth + FlameChart.textPadding.x * 2,
-        blockY + 3,
-        14,
-        14,
-      );
-    }
-    this.ctx.globalAlpha = 1;
 
     // visually denote a resumed activity
     if (block.beginning === 'R') {
