@@ -1,6 +1,6 @@
 # Phoenix 1.8 migration foundation
 
-`backend_next/` is the Phoenix 1.8 application used by the React app in normal
+`backend/` is the Phoenix 1.8 application used by the React app in normal
 development. Its database remains isolated from the restored legacy database,
 which is retained only as an import source.
 
@@ -59,7 +59,7 @@ pg_restore --dbname=flambe_next_rehearsal /tmp/flambe-next-before-import.dump
 Use an explicit, verified database name for the `dropdb` step; it is intended
 only for the throwaway rehearsal target.
 
-# Serving the Vite SPA from backend_next
+# Serving the Vite SPA from backend
 
 Build the frontend into the isolated Phoenix 1.8 app with:
 
@@ -68,17 +68,17 @@ cd ../frontend
 nvm exec 22 npm run build
 ```
 
-`backend_next` then serves the SPA and its `/assets` on port 4001.
+`backend` then serves the SPA and its `/assets` on port 4001.
 
 # Browser smoke test
 
-Seed the deterministic browser-test account before starting `backend_next`:
+Seed the deterministic browser-test account before starting `backend`:
 
 ```bash
 mix flambe_next.seed_e2e
 ```
 
-With `backend_next` running on port 4001, run the supported browser smoke
+With `backend` running on port 4001, run the supported browser smoke
 suite against the Phoenix-served SPA:
 
 ```bash

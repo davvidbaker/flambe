@@ -24,7 +24,7 @@ deployment target.
    bundle:
 
    ```sh
-   cd backend_next
+   cd backend
    mix precommit
 
    cd ../frontend
@@ -42,7 +42,7 @@ deployment target.
 ## Deploy
 
 1. Build the frontend with `nvm exec 22 npm run build`.
-2. Run `mix ecto.migrate` from `backend_next` against the intended target.
+2. Run `mix ecto.migrate` from `backend` against the intended target.
 3. Start Phoenix 1.8 and verify `GET /api/health` returns `{"status":"ok"}`.
 4. Run the browser smoke suite against the deployed origin with
    `PLAYWRIGHT_BASE_URL=https://your-host nvm exec 22 npm run test:smoke`.
