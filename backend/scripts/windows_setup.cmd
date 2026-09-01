@@ -23,9 +23,21 @@ if errorlevel 1 (
   exit /b 1
 )
 
-rem bcrypt_elixir uses elixir_make. Explicitly select nmake so its Windows
-rem Makefile builds bcrypt_nif.dll rather than a Unix-style .so.
-set "MAKE=nmake"
+where nmake >nul 2>&1
+if errorlevel 1 (
+  echo nmake was not found after activating the Visual Studio C++ environment.
+  exit /b 1
+)
+
+where cl >nul 2>&1
+if errorlevel 1 (
+  echo cl.exe was not found after activating the Visual Studio C++ environment.
+  exit /b 1
+)
+
+rem bcrypt_elixir uses elixir_make, which selects nmake and Makefile.win on
+rem Windows when nmake is available. Activating vcvars64 above prevents its
+rem fallback to a Unix-style make build that produces an unloadable .so NIF.
 
 pushd "%~dp0.."
 call mix deps.get || goto :error
