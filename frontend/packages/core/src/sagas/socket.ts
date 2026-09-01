@@ -4,6 +4,8 @@ import { eventChannel as sagaEventChannel } from 'redux-saga';
 import type { EventChannel, SagaIterator } from 'redux-saga';
 
 import { TIMELINE_EVENT_RECEIVED } from '../constants/liveEvents';
+import { TRACE_FETCH } from '../actions';
+import { getTimeline, type TimelineState } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import type { EntityId } from '../types/ids';
 import type { TraceEvent } from '../types/TraceEvent';
@@ -33,7 +35,12 @@ function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<So
     const phoenixChannel = socket.channel(`events:${user_id}`, {});
     phoenixChannel
       .join()
-      .receive('ok', () => {})
+      .receive('ok', () => {
+        // Channel delivery is intentionally ephemeral. Re-fetching the current
+        // trace after every successful join/rejoin fills any gap that occurred
+        // while this browser was disconnected.
+        emit({ type: 'EVENTS_CHANNEL_JOINED' });
+      })
       .receive('error', () => {})
       .receive('timeout', () => {});
 
@@ -78,6 +85,14 @@ function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<So
   return socketEventChannel;
 }
 
+function* refreshOpenTrace(): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  const trace_id = timeline.trace?.id;
+  if (trace_id === null || trace_id === undefined) return;
+
+  yield put({ type: TRACE_FETCH, trace: trace_id });
+}
+
 function* initSocket(): SagaIterator {
   const user_id = (yield select(getUser)).id;
 
@@ -98,6 +113,10 @@ function* initSocket(): SagaIterator {
     while (true) {
       const myAction = yield take(socketEventChannel);
       yield put(myAction);
+
+      if (myAction.type === 'EVENTS_CHANNEL_JOINED') {
+        yield* refreshOpenTrace();
+      }
     }
   } finally {
     if (yield cancelled()) socketEventChannel.close();
