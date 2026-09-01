@@ -8,6 +8,12 @@ by the Phoenix 1.8 app in `backend`.
 Requirements: Node 22 LTS, Elixir 1.18/OTP 27, and PostgreSQL. Native Windows,
 macOS, and Linux are supported; WSL is not required.
 
+On Windows, also install Visual Studio Build Tools with the **Desktop
+development with C++** workload. Flambe currently uses `bcrypt_elixir`, whose
+native password-hashing extension must be compiled with the Windows C++
+toolchain. The repo's Windows scripts locate and activate that toolchain for
+you.
+
 Make sure `node --version` reports Node 22 before installing the frontend.
 
 The backend defaults to a local PostgreSQL server at `localhost:5432` with the
@@ -22,7 +28,17 @@ $env:PGHOST = "localhost"
 $env:PGPORT = "5432"
 ```
 
-1. Create local backend settings and start Phoenix:
+1. Prepare and start the backend.
+
+   On Windows (PowerShell or Command Prompt):
+
+   ```text
+   cd backend
+   scripts\windows_setup.cmd
+   mix phx.server
+   ```
+
+   On macOS or Linux:
 
    ```text
    cd backend
@@ -55,7 +71,22 @@ Flambe uses local email/password accounts only. Create an account at
 
 ## Verification
 
-With PostgreSQL available, run the checks that gate the active stack:
+With PostgreSQL available, run the checks that gate the active stack.
+
+On Windows:
+
+```text
+cd backend
+scripts\windows_check.cmd
+
+cd ..\frontend
+npm run typecheck
+npm run test:unit
+npm run build
+npm run test:smoke
+```
+
+On macOS or Linux:
 
 ```text
 cd backend
@@ -68,9 +99,9 @@ npm run build
 npm run test:smoke
 ```
 
-The same commands are intended to work from PowerShell, Command Prompt, and
-Unix shells. CI includes a native Windows job to prevent platform-specific
-regressions.
+CI runs the complete backend and frontend stack on a native Windows runner,
+including starting Phoenix and exercising the Playwright browser smoke test, so
+platform-specific regressions are caught continuously.
 
 The retired Phoenix 1.3 source remains available in Git history. Legacy data
 imports read directly from the isolated `flambe_legacy_restored` database; the
