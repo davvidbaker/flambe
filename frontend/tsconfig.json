@@ -17,8 +17,6 @@
   "include": [
     "packages/core/src/**/*.ts",
     "packages/core/src/**/*.tsx",
-    "packages/flame-chart/src/**/*.ts",
-    "packages/flame-chart/src/**/*.tsx",
     "playwright/**/*.ts",
     "playwright.config.ts",
     "vitest.config.mts"
