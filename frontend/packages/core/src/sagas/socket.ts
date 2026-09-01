@@ -1,81 +1,88 @@
 import { Socket } from 'phoenix';
-import { put, takeLatest, select, take, cancelled } from 'redux-saga/effects';
-import { eventChannel as sagaEventChannel } from 'redux-saga';
-import type { EventChannel, SagaIterator } from 'redux-saga';
+import { eventChannel, type EventChannel } from 'redux-saga';
+import { call, fork, put, take, takeEvery } from 'redux-saga/effects';
+import type { SagaIterator } from 'redux-saga';
 
-import { getUser } from '../reducers/user';
+import { TIMELINE_EVENT_RECEIVED } from '../constants/liveEvents';
 import type { EntityId } from '../types/ids';
+import type { TraceEvent } from '../types/TraceEvent';
 
-interface SocketAction {
+interface UserFetchAction {
+  data?: { id?: number };
   type: string;
-  [key: string]: unknown;
 }
 
-function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<SocketAction> {
-  const socketEventChannel = sagaEventChannel<SocketAction>(emit => {
-    socket.onOpen(() => {
-      emit({ type: 'SOCKET_OPEN' });
-    });
-    socket.onError(() => {
-      emit({ type: 'SOCKET_ERROR' });
-    });
-    socket.onClose(() => {
-      emit({ type: 'SOCKET_CLOSE' });
-    });
+interface TimelineEventPayload {
+  event?: Omit<TraceEvent, 'timestamp'> & { timestamp: number | string };
+  trace_id?: EntityId;
+}
 
-    const phoenixChannel = socket.channel(`events:${user_id}`, {});
+function createSocketChannel(userId: number): EventChannel<Record<string, unknown>> {
+  return eventChannel(emit => {
+    const socket = new Socket('/socket');
+    socket.connect();
+
+    const phoenixChannel = socket.channel(`events:${userId}`, {});
+    phoenixChannel.onMessage = (eventName, payload) => {
+      if (eventName === 'timeline_event') {
+        const { event, trace_id } = payload as TimelineEventPayload;
+        if (!event || trace_id === undefined) return payload;
+
+        const timestamp = typeof event.timestamp === 'number'
+          ? event.timestamp
+          : new Date(event.timestamp).getTime();
+
+        if (!Number.isFinite(timestamp)) {
+          console.error('received timeline event with invalid timestamp', payload);
+          return payload;
+        }
+
+        emit({
+          type: TIMELINE_EVENT_RECEIVED,
+          trace_id,
+          event: {
+            ...event,
+            timestamp,
+          },
+        });
+      } else if (eventName !== 'phx_reply') {
+        emit({
+          type: eventName,
+          ...(payload as Record<string, unknown>),
+        });
+      }
+      return payload;
+    };
+
     phoenixChannel
       .join()
-      .receive('ok', () => {})
-      .receive('error', () => {})
-      .receive('timeout', () => {});
+      .receive('ok', () => {
+        console.log(`joined events:${userId}`);
+      })
+      .receive('error', response => {
+        console.log('events channel join failed', response);
+      });
 
-    phoenixChannel.onError(() => {});
-    phoenixChannel.onClose(() => {});
-
-    phoenixChannel.on('tabs', (tabs: Record<string, unknown>) => {
-      emit({ type: 'TABS_EVENT', ...tabs });
-    });
-    phoenixChannel.on('search_terms', (searchTerm: Record<string, unknown>) => {
-      emit({ type: 'SEARCH_TERMS_EVENT', ...searchTerm });
-    });
     return () => {
-      phoenixChannel.leave();
+      void phoenixChannel.leave();
       socket.disconnect();
     };
   });
-
-  return socketEventChannel;
 }
 
-function* initSocket(): SagaIterator {
-  const user_id = (yield select(getUser)).id;
-
-  // eslint-disable-next-line no-undef
-  const socket = new Socket(`${SOCKET_SERVER}/socket`, {
-    // The legacy socket still reads this during the migration. Phoenix 1.8
-    // authenticates from the signed session instead, so it safely ignores it.
-    params: { user_id },
-    logger: (_kind: string, _msg: string, _data: unknown) => {
-      // console.log(`${kind}: ${msg}`, data);
-    }
-  });
-
-  const socketEventChannel = createSocketChannel(socket, user_id);
-  socket.connect();
-
-  try {
-    while (true) {
-      const myAction = yield take(socketEventChannel);
-      yield put(myAction);
-    }
-  } finally {
-    if (yield cancelled()) socketEventChannel.close();
+function* watchSocket(channel: EventChannel<Record<string, unknown>>): SagaIterator {
+  while (true) {
+    const action: Record<string, unknown> = yield take(channel);
+    yield put(action);
   }
 }
 
-function* socketSaga(): SagaIterator {
-  yield takeLatest('USER_FETCH_SUCCEEDED', initSocket);
+function* connectSocket({ data }: UserFetchAction): SagaIterator {
+  if (!data?.id) return;
+  const channel: EventChannel<Record<string, unknown>> = yield call(createSocketChannel, data.id);
+  yield fork(watchSocket, channel);
 }
 
-export default socketSaga;
+export default function* socketSaga(): SagaIterator {
+  yield takeEvery('USER_FETCH_SUCCEEDED', connectSocket);
+}
