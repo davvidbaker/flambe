@@ -1,0 +1,31 @@
+name: Flame chart package
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/packages/flame-chart/**'
+      - '.github/workflows/flame-chart-package.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/packages/flame-chart/**'
+      - '.github/workflows/flame-chart-package.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/packages/flame-chart
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/packages/flame-chart/package-lock.json
+      - run: npm install --package-lock-only
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run build-storybook
