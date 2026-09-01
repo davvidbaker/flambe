@@ -20,13 +20,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const agentSpans: FlameSpan[] = [
-  { id: 'task', label: 'Implement feature', start: 0, end: 8600, lane: 'agent', depth: 0, color: '#f97316' },
-  { id: 'inspect', label: 'Inspect repository', start: 100, end: 1350, lane: 'agent', depth: 1, color: '#60a5fa' },
-  { id: 'design', label: 'Design component API', start: 1450, end: 2650, lane: 'agent', depth: 1, color: '#a78bfa' },
-  { id: 'code', label: 'Write implementation', start: 2750, end: 6250, lane: 'agent', depth: 1, color: '#34d399' },
+  { id: 'task', label: 'Implement feature', start: 0, end: 8600, lane: 'agent', depth: 0, color: '#f97316', metadata: { kind: 'task' } },
+  { id: 'inspect', label: 'Inspect repository', start: 100, end: 1350, lane: 'agent', depth: 1, color: '#60a5fa', metadata: { kind: 'analysis', filesRead: 8 } },
+  { id: 'design', label: 'Design component API', start: 1450, end: 2650, lane: 'agent', depth: 1, color: '#a78bfa', metadata: { kind: 'reasoning' } },
+  { id: 'code', label: 'Write implementation', start: 2750, end: 6250, lane: 'agent', depth: 1, color: '#34d399', metadata: { kind: 'code', filesChanged: 7 } },
   { id: 'types', label: 'Types', start: 2850, end: 3900, lane: 'agent', depth: 2 },
   { id: 'canvas', label: 'Canvas renderer', start: 4050, end: 6100, lane: 'agent', depth: 2 },
-  { id: 'test', label: 'Build + verify', start: 6400, end: 8350, lane: 'agent', depth: 1, color: '#facc15' },
+  { id: 'test', label: 'Build + verify', start: 6400, end: 8350, lane: 'agent', depth: 1, color: '#facc15', metadata: { kind: 'verification' } },
 ];
 
 export const AgentExecution: Story = {
@@ -50,25 +50,34 @@ export const MultipleLanes: Story = {
   },
 };
 
-export const Selection: Story = {
+export const InteractiveInspector: Story = {
   render: (args) => {
     const [selected, setSelected] = useState<FlameSpanId | null>('code');
+    const [hovered, setHovered] = useState<FlameSpan | null>(null);
+    const inspected = hovered ?? agentSpans.find((span) => span.id === selected) ?? null;
+
     return (
-      <div>
-        <div style={{ color: '#e5e7eb', marginBottom: 12, fontFamily: 'sans-serif' }}>
-          Selected: {String(selected ?? 'none')}
-        </div>
+      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(0, 1fr) 260px' }}>
         <FlameChart
           {...args}
           selectedSpanId={selected}
           onSpanClick={({ span }) => setSelected(span.id)}
+          onSpanHover={(selection) => setHovered(selection?.span ?? null)}
         />
+        <aside style={{ color: '#e5e7eb', fontFamily: 'ui-monospace, monospace', fontSize: 13 }}>
+          <strong>{inspected?.label ?? 'Hover a span'}</strong>
+          {inspected && (
+            <pre style={{ whiteSpace: 'pre-wrap', marginTop: 12 }}>
+              {JSON.stringify({ duration: inspected.end - inspected.start, lane: inspected.lane, depth: inspected.depth ?? 0, metadata: inspected.metadata }, null, 2)}
+            </pre>
+          )}
+        </aside>
       </div>
     );
   },
   args: {
     spans: agentSpans,
-    height: 260,
+    height: 280,
   },
 };
 
