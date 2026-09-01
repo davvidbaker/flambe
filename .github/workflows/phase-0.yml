@@ -5,7 +5,7 @@ on:
   pull_request:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -195,7 +195,7 @@ jobs:
 
           try {
             $ready = $false
-            $deadline = (Get-Date).AddSeconds(45)
+            $deadline = (Get-Date).AddSeconds(120)
             do {
               if ($server.HasExited) {
                 Get-Content $stdout -ErrorAction SilentlyContinue
@@ -217,7 +217,7 @@ jobs:
             if (-not $ready) {
               Get-Content $stdout -ErrorAction SilentlyContinue
               Get-Content $stderr -ErrorAction SilentlyContinue
-              throw 'Phoenix did not become ready within 45 seconds.'
+              throw 'Phoenix did not become ready within 120 seconds.'
             }
 
             $env:PLAYWRIGHT_BASE_URL = 'http://localhost:4001'
