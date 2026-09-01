@@ -3,7 +3,7 @@ defmodule FlambeNextWeb.EventStream do
 
   alias FlambeNext.Accounts.User
   alias FlambeNext.Repo
-  alias FlambeNext.Traces.{Activity, Event}
+  alias FlambeNext.Traces.{Activity, Event, Thread}
   alias FlambeNextWeb.Endpoint
 
   def broadcast_event(%User{id: user_id}, %Event{} = event) do
@@ -32,9 +32,13 @@ defmodule FlambeNextWeb.EventStream do
       id: activity.id,
       name: activity.name,
       description: activity.description,
-      thread: %{id: activity.thread_id},
+      thread: thread_data(activity.thread),
       categories: Enum.map(activity.categories, & &1.id),
       weight: activity.weight
     }
+  end
+
+  defp thread_data(%Thread{} = thread) do
+    %{id: thread.id, name: thread.name, rank: thread.rank}
   end
 end
