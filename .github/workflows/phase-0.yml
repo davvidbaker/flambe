@@ -126,6 +126,9 @@ jobs:
             throw 'The windows-latest runner does not expose a PostgreSQL service.'
           }
 
+          # GitHub's Windows image installs PostgreSQL with the service disabled.
+          # Enable it for this job before attempting to start it.
+          Set-Service -Name $postgres.Name -StartupType Manual
           if ($postgres.Status -ne 'Running') {
             Start-Service -Name $postgres.Name
           }
