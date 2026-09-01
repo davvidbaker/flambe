@@ -9,11 +9,16 @@
     "strict": true,
     "skipLibCheck": true,
     "target": "ES2022",
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    "paths": {
+      "@davvidbaker/flame-chart": ["./packages/flame-chart/src/index.ts"]
+    }
   },
   "include": [
     "packages/core/src/**/*.ts",
     "packages/core/src/**/*.tsx",
+    "packages/flame-chart/src/**/*.ts",
+    "packages/flame-chart/src/**/*.tsx",
     "playwright/**/*.ts",
     "playwright.config.ts",
     "vitest.config.mts"
