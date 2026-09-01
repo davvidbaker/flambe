@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { FlameChartProps, FlameChartSelection, FlameSpan } from './types';
+import type {
+  FlameChartProps,
+  FlameChartSelection,
+  FlameLane,
+  FlameLaneSelection,
+  FlameSpan,
+} from './types';
 
 const DEFAULT_COLORS = ['#f97316', '#fb7185', '#facc15', '#34d399', '#60a5fa', '#a78bfa'];
+
+type SpanHit = { type: 'span'; span: FlameSpan; x: number; y: number; width: number; height: number };
+type LaneHit = { type: 'lane'; lane: FlameLane; x: number; y: number; width: number; height: number };
+type HitRect = SpanHit | LaneHit;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -20,10 +30,12 @@ function spanColor(span: FlameSpan) {
 
 export function FlameChart({
   spans,
+  lanes,
   start,
   end,
   height = 320,
   rowHeight = 24,
+  laneHeaderHeight = 20,
   laneGap = 8,
   padding = 12,
   background = '#111827',
@@ -32,12 +44,15 @@ export function FlameChart({
   className,
   style,
   selectedSpanId,
+  hoveredSpanId,
   onSpanClick,
   onSpanHover,
+  onLaneClick,
+  onBackgroundClick,
   formatTime = (value) => `${value.toFixed(0)} ms`,
 }: FlameChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const hitRects = useRef<Array<{ span: FlameSpan; x: number; y: number; width: number; height: number }>>([]);
+  const hitRects = useRef<HitRect[]>([]);
   const [canvasWidth, setCanvasWidth] = useState(0);
 
   const domain = useMemo(() => {
@@ -50,18 +65,28 @@ export function FlameChart({
   }, [spans, start, end]);
 
   const layout = useMemo(() => {
-    const lanes = new Map<string, FlameSpan[]>();
+    const spansByLane = new Map<string, FlameSpan[]>();
     for (const span of spans) {
-      const lane = span.lane ?? 'default';
-      if (!lanes.has(lane)) lanes.set(lane, []);
-      lanes.get(lane)!.push(span);
+      const laneId = span.lane ?? 'default';
+      if (!spansByLane.has(laneId)) spansByLane.set(laneId, []);
+      spansByLane.get(laneId)!.push(span);
     }
-    return [...lanes.entries()].map(([lane, laneSpans]) => ({
-      lane,
-      spans: [...laneSpans].sort((a, b) => a.start - b.start || (a.depth ?? 0) - (b.depth ?? 0)),
-      maxDepth: Math.max(0, ...laneSpans.map((span) => span.depth ?? 0)),
-    }));
-  }, [spans]);
+
+    const explicit = lanes ?? [];
+    const laneIds = new Set(explicit.map((lane) => lane.id));
+    const inferred: FlameLane[] = [...spansByLane.keys()]
+      .filter((laneId) => !laneIds.has(laneId))
+      .map((laneId) => ({ id: laneId, label: laneId }));
+
+    return [...explicit, ...inferred].map((lane) => {
+      const laneSpans = spansByLane.get(lane.id) ?? [];
+      return {
+        lane,
+        spans: [...laneSpans].sort((a, b) => a.start - b.start || (a.depth ?? 0) - (b.depth ?? 0)),
+        maxDepth: Math.max(0, ...laneSpans.map((span) => span.depth ?? 0)),
+      };
+    });
+  }, [lanes, spans]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -118,72 +143,117 @@ export function FlameChart({
       ctx.globalAlpha = 1;
     }
 
-    const nextRects: typeof hitRects.current = [];
-    let y = 30;
-    for (const lane of layout) {
+    const nextRects: HitRect[] = [];
+    let y = 0;
+    for (const entry of layout) {
+      if (y >= height) break;
+      const { lane } = entry;
+      const headerY = y;
       ctx.fillStyle = textColor;
-      ctx.globalAlpha = 0.72;
-      ctx.fillText(lane.lane, padding, y + rowHeight / 2);
+      ctx.globalAlpha = 0.82;
+      ctx.fillText(lane.collapsed ? '▸' : '▾', padding, headerY + laneHeaderHeight / 2);
+      ctx.fillText(lane.label ?? lane.id, padding + 16, headerY + laneHeaderHeight / 2);
       ctx.globalAlpha = 1;
-      const laneHeight = (lane.maxDepth + 1) * rowHeight;
+      nextRects.push({ type: 'lane', lane, x: 0, y: headerY, width, height: laneHeaderHeight });
+      y += laneHeaderHeight;
 
-      for (const span of lane.spans) {
-        const depth = span.depth ?? 0;
-        const spanY = y + depth * rowHeight;
-        const rawX = xFor(span.start);
-        const rawX2 = xFor(span.end);
-        const x = Math.min(rawX, rawX2);
-        const spanWidth = Math.max(1, Math.abs(rawX2 - rawX));
-        const blockHeight = rowHeight - 3;
-        ctx.fillStyle = spanColor(span);
-        ctx.globalAlpha = selectedSpanId == null || selectedSpanId === span.id ? 1 : 0.5;
-        ctx.fillRect(x, spanY, spanWidth, blockHeight);
-        ctx.globalAlpha = 1;
+      if (!lane.collapsed) {
+        const laneHeight = entry.spans.length > 0 ? (entry.maxDepth + 1) * rowHeight : 0;
+        for (const span of entry.spans) {
+          const depth = span.depth ?? 0;
+          const spanY = y + depth * rowHeight;
+          const rawX = xFor(span.start);
+          const rawX2 = xFor(span.end);
+          const x = Math.min(rawX, rawX2);
+          const spanWidth = Math.max(1, Math.abs(rawX2 - rawX));
+          const blockHeight = rowHeight - 3;
+          ctx.fillStyle = spanColor(span);
+          ctx.globalAlpha = selectedSpanId == null || selectedSpanId === span.id ? 1 : 0.5;
+          ctx.fillRect(x, spanY, spanWidth, blockHeight);
+          ctx.globalAlpha = 1;
 
-        if (selectedSpanId === span.id) {
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(x + 1, spanY + 1, Math.max(0, spanWidth - 2), Math.max(0, blockHeight - 2));
+          if (hoveredSpanId === span.id) {
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fillRect(x, spanY, spanWidth, blockHeight);
+          }
+
+          if (selectedSpanId === span.id) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 1, spanY + 1, Math.max(0, spanWidth - 2), Math.max(0, blockHeight - 2));
+          }
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x + 4, spanY, Math.max(0, spanWidth - 8), blockHeight);
+          ctx.clip();
+          ctx.fillStyle = textColor;
+          ctx.fillText(span.label, x + 6, spanY + blockHeight / 2);
+          ctx.restore();
+
+          nextRects.push({ type: 'span', span, x, y: spanY, width: spanWidth, height: blockHeight });
         }
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(x + 4, spanY, Math.max(0, spanWidth - 8), blockHeight);
-        ctx.clip();
-        ctx.fillStyle = textColor;
-        ctx.fillText(span.label, x + 6, spanY + blockHeight / 2);
-        ctx.restore();
-
-        nextRects.push({ span, x, y: spanY, width: spanWidth, height: blockHeight });
+        y += laneHeight;
       }
-      y += laneHeight + laneGap + 8;
-      if (y > height) break;
+
+      y += laneGap;
     }
 
     hitRects.current = nextRects;
-  }, [background, canvasWidth, domain, formatTime, gridColor, height, laneGap, layout, padding, rowHeight, selectedSpanId, textColor]);
+  }, [background, canvasWidth, domain, formatTime, gridColor, height, hoveredSpanId, laneGap, laneHeaderHeight, layout, padding, rowHeight, selectedSpanId, textColor]);
 
-  function selectionAt(event: React.MouseEvent<HTMLCanvasElement>): FlameChartSelection | null {
+  function pointer(event: React.MouseEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
-    const x = clamp(event.clientX - rect.left, 0, rect.width);
-    const y = clamp(event.clientY - rect.top, 0, rect.height);
-    const hit = [...hitRects.current].reverse().find((entry) => x >= entry.x && x <= entry.x + entry.width && y >= entry.y && y <= entry.y + entry.height);
-    return hit ? { span: hit.span, x, y } : null;
+    return {
+      x: clamp(event.clientX - rect.left, 0, rect.width),
+      y: clamp(event.clientY - rect.top, 0, rect.height),
+    };
+  }
+
+  function hitAt(event: React.MouseEvent<HTMLCanvasElement>): HitRect | null {
+    const { x, y } = pointer(event);
+    return [...hitRects.current].reverse().find((entry) =>
+      x >= entry.x && x <= entry.x + entry.width && y >= entry.y && y <= entry.y + entry.height) ?? null;
+  }
+
+  function spanSelection(event: React.MouseEvent<HTMLCanvasElement>, hit: SpanHit): FlameChartSelection {
+    const { x, y } = pointer(event);
+    return { span: hit.span, x, y };
+  }
+
+  function laneSelection(event: React.MouseEvent<HTMLCanvasElement>, hit: LaneHit): FlameLaneSelection {
+    const { x, y } = pointer(event);
+    return { lane: hit.lane, x, y };
   }
 
   return (
     <canvas
       ref={canvasRef}
       className={className}
-      style={{ display: 'block', width: '100%', height, borderRadius: 8, ...style }}
+      style={{ display: 'block', width: '100%', height, borderRadius: 0, ...style }}
       role="img"
       aria-label="Flame chart"
       onClick={(event) => {
-        const selection = selectionAt(event);
-        if (selection) onSpanClick?.(selection);
+        const hit = hitAt(event);
+        if (hit?.type === 'span') {
+          onSpanClick?.(spanSelection(event, hit));
+          return;
+        }
+        if (hit?.type === 'lane') {
+          onLaneClick?.(laneSelection(event, hit));
+          return;
+        }
+        onBackgroundClick?.(pointer(event));
       }}
-      onMouseMove={(event) => onSpanHover?.(selectionAt(event))}
-      onMouseLeave={() => onSpanHover?.(null)}
+      onMouseMove={(event) => {
+        const hit = hitAt(event);
+        event.currentTarget.style.cursor = hit?.type === 'lane' ? 'pointer' : 'default';
+        onSpanHover?.(hit?.type === 'span' ? spanSelection(event, hit) : null);
+      }}
+      onMouseLeave={(event) => {
+        event.currentTarget.style.cursor = 'default';
+        onSpanHover?.(null);
+      }}
     />
   );
 }
