@@ -145,22 +145,19 @@ jobs:
             throw 'PostgreSQL did not become ready within 30 seconds.'
           }
 
+      - name: Prepare Windows backend
+        working-directory: backend
+        shell: cmd
+        run: scripts\windows_setup.cmd
+
       - name: Run Phoenix checks on Windows
         working-directory: backend
-        env:
-          MIX_ENV: test
-        run: |
-          mix deps.get
-          mix ecto.create
-          mix ecto.migrate
-          mix precommit
+        shell: cmd
+        run: scripts\windows_check.cmd
 
-      - name: Prepare Windows browser-smoke database
+      - name: Seed Windows browser-smoke data
         working-directory: backend
-        run: |
-          mix ecto.create
-          mix ecto.migrate
-          mix flambe_next.seed_e2e
+        run: mix flambe_next.seed_e2e
 
       - name: Install frontend dependencies
         working-directory: frontend
