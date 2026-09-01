@@ -1,0 +1,49 @@
+{
+  "name": "@davvidbaker/flame-chart",
+  "version": "0.1.0",
+  "description": "Standalone React flame chart component extracted from Flambe",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@storybook/addon-essentials": "^9.1.5",
+    "@storybook/react-vite": "^9.1.5",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "storybook": "^9.1.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davvidbaker/flambe.git",
+    "directory": "frontend/packages/flame-chart"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}
