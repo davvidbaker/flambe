@@ -1,5 +1,6 @@
 import { TIMELINE_EVENT_RECEIVED } from '../constants/liveEvents';
 import type { EntityId } from '../types/ids';
+import type { Thread } from '../types/Thread';
 import type { TraceEvent } from '../types/TraceEvent';
 import processTrace from '../utilities/processTrace';
 import baseTimeline, { type TimelineState } from './timeline';
@@ -21,6 +22,23 @@ export function upsertTraceEvent(events: TraceEvent[], incoming: TraceEvent): Tr
   return nextEvents;
 }
 
+function mergeIncomingThread(
+  threads: Record<string, Thread>,
+  event: TraceEvent,
+): Record<string, Thread> {
+  const incomingThread = event.activity?.thread;
+  if (!incomingThread?.name) return threads;
+
+  const key = String(incomingThread.id);
+  return {
+    ...threads,
+    [key]: {
+      ...threads[key],
+      ...incomingThread,
+    },
+  };
+}
+
 export default function liveTimeline(
   state: TimelineState | undefined,
   action: LiveTimelineEventAction,
@@ -34,7 +52,8 @@ export default function liveTimeline(
   if (String(nextState.trace?.id) !== String(action.trace_id)) return nextState;
 
   const events = upsertTraceEvent(nextState.events, action.event);
-  const processed = processTrace(events, Object.values(nextState.threads));
+  const threads = mergeIncomingThread(nextState.threads, action.event);
+  const processed = processTrace(events, Object.values(threads));
 
   return {
     ...nextState,
