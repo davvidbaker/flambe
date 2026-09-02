@@ -2,6 +2,7 @@ defmodule FlambeNextWeb.EventController do
   use FlambeNextWeb, :controller
 
   alias FlambeNext.Traces
+  alias FlambeNextWeb.EventStream
 
   def create(conn, %{"trace_id" => trace_id, "activity_id" => activity_id, "event" => attrs}) do
     user = conn.assigns.current_user
@@ -10,6 +11,8 @@ defmodule FlambeNextWeb.EventController do
 
     case Traces.create_event(trace, activity, attrs) do
       {:ok, event} ->
+        :ok = EventStream.broadcast_event(user, event)
+
         conn
         |> put_status(:created)
         |> render(:show, event: event)
@@ -22,10 +25,12 @@ defmodule FlambeNextWeb.EventController do
   end
 
   def update(conn, %{"id" => id, "event" => attrs}) do
-    event = Traces.get_user_event!(conn.assigns.current_user, id)
+    user = conn.assigns.current_user
+    event = Traces.get_user_event!(user, id)
 
     case Traces.update_event(event, attrs) do
       {:ok, event} ->
+        :ok = EventStream.broadcast_event(user, event)
         render(conn, :show, event: event)
 
       {:error, changeset} ->

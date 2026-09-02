@@ -13,7 +13,7 @@ import {
   VIEW_CHANGE,
 } from '../actions';
 
-import timeline from './timeline';
+import timeline from './liveTimeline';
 import modifiers from './modifiers';
 import user from './user';
 import operand from './operand';

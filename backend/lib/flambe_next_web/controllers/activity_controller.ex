@@ -2,6 +2,7 @@ defmodule FlambeNextWeb.ActivityController do
   use FlambeNextWeb, :controller
 
   alias FlambeNext.{Accounts, Traces}
+  alias FlambeNextWeb.EventStream
 
   def create(conn, %{
         "trace_id" => trace_id,
@@ -17,6 +18,8 @@ defmodule FlambeNextWeb.ActivityController do
     with {:ok, categories} <- Accounts.get_user_categories(user, category_ids),
          {:ok, activity, event} <-
            Traces.create_activity(trace, thread, activity_attrs, event_attrs, categories) do
+      :ok = EventStream.broadcast_event(user, event)
+
       conn
       |> put_status(:created)
       |> render(:show, activity: activity, event: event)
