@@ -202,7 +202,7 @@ test('suspend and resume post lifecycle events', async () => {
   ]);
 });
 
-test('queues offline start and end operations, then flushes them in order', async () => {
+test('queues the full offline activity lifecycle and replays it in order', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'flambe-queue-'));
   const queuePath = join(directory, 'queue.json');
   const requests = [];
@@ -220,23 +220,25 @@ test('queues offline start and end operations, then flushes them in order', asyn
       if (url.endsWith('/api/activities')) {
         return jsonResponse({ data: { activity: { id: 42 }, event: { id: 50 } } }, 201);
       }
-      return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
+      return jsonResponse({ data: { id: 77, phase: JSON.parse(options.body).event.phase } }, 201);
     },
   });
 
   try {
     const activityId = await client.start({ name: 'Work offline', threadId: 4, categoryIds: [5] });
     assert.match(activityId, /^offline-/);
+    connected = true;
+    assert.equal(await client.suspend({ activityId, message: 'Waiting offline' }), 'queued');
+    assert.equal(await client.resume({ activityId, message: 'Back offline' }), 'queued');
     assert.equal(await client.end({ activityId, message: 'Finished offline' }), 'queued');
 
     const queued = readFileSync(queuePath, 'utf8');
     assert.doesNotMatch(queued, /do-not-store-me/);
-    assert.deepEqual(JSON.parse(queued).entries.map(entry => entry.type), ['start', 'end']);
+    assert.deepEqual(JSON.parse(queued).entries.map(entry => entry.type), ['start', 'suspend', 'resume', 'end']);
 
-    connected = true;
     await client.flushQueue();
 
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 4);
     assert.deepEqual(JSON.parse(requests[0].options.body), {
       trace_id: 3,
       thread_id: 4,
@@ -244,6 +246,16 @@ test('queues offline start and end operations, then flushes them in order', asyn
       event: { timestamp_integer: 456, phase: 'B' },
     });
     assert.deepEqual(JSON.parse(requests[1].options.body), {
+      trace_id: 3,
+      activity_id: 42,
+      event: { timestamp_integer: 456, phase: 'S', message: 'Waiting offline' },
+    });
+    assert.deepEqual(JSON.parse(requests[2].options.body), {
+      trace_id: 3,
+      activity_id: 42,
+      event: { timestamp_integer: 456, phase: 'R', message: 'Back offline' },
+    });
+    assert.deepEqual(JSON.parse(requests[3].options.body), {
       trace_id: 3,
       activity_id: 42,
       event: { timestamp_integer: 456, phase: 'E', message: 'Finished offline' },
