@@ -1,7 +1,7 @@
 import { clientFromEnv } from './client.mjs';
 
 const usage = `Usage:
-  flambe start <activity name> [--description <text>] [--thread <id>] [--category <id>...]
+  flambe start <activity name> [--description <text>] [--thread <id>] [--category <id>...] [--started-at <ISO-8601>]
   flambe end <activity-id> [message]
   flambe status [--active] [--json]
   flambe threads [--json]
@@ -21,6 +21,7 @@ function parseStart(args) {
   const nameParts = [];
   let description;
   let threadId;
+  let startedAt;
   const categoryIds = [];
 
   for (let index = 0; index < args.length; index += 1) {
@@ -38,6 +39,10 @@ function parseStart(args) {
       if (categoryId === undefined) throw new Error('--category requires a value');
       categoryIds.push(categoryId);
       index += 1;
+    } else if (arg === '--started-at') {
+      startedAt = args[index + 1];
+      if (startedAt === undefined) throw new Error('--started-at requires a value');
+      index += 1;
     } else if (arg.startsWith('--')) {
       throw new Error(`Unknown option: ${arg}`);
     } else {
@@ -45,7 +50,7 @@ function parseStart(args) {
     }
   }
 
-  return { name: nameParts.join(' '), description, threadId, categoryIds };
+  return { name: nameParts.join(' '), description, threadId, categoryIds, startedAt };
 }
 
 function parseStatus(args) {

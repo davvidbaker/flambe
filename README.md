@@ -94,6 +94,13 @@ associate categories with a new activity:
 flambe start "Investigate authentication" --thread 14 --category 3 --category 8
 ```
 
+To record work that began earlier, pass an ISO-8601 timestamp with an explicit
+timezone. Omitting `--started-at` records the current time as before:
+
+```sh
+flambe start "Agent logging" --thread 1 --started-at "2026-09-01T20:00:00-06:00"
+```
+
 Use `flambe status --active --json` at the start of an agent session to inspect
 work that has started but has not ended; it includes each activity's thread name
 and category IDs.

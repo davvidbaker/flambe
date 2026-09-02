@@ -145,8 +145,23 @@ export class FlambeClient {
     return [...new Set(resolved)];
   }
 
-  async start({ name, description, threadId, categoryIds }) {
+  resolveStartTimestamp(startedAt) {
+    if (startedAt === undefined || startedAt === null) return this.now();
+    if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(startedAt)) {
+      throw new Error('--started-at must be an ISO-8601 timestamp with a timezone');
+    }
+
+    const timestamp = Date.parse(startedAt);
+    if (!Number.isFinite(timestamp)) {
+      throw new Error('--started-at must be a valid ISO-8601 timestamp');
+    }
+
+    return timestamp;
+  }
+
+  async start({ name, description, threadId, categoryIds, startedAt }) {
     if (!name?.trim()) throw new Error('Activity name is required');
+    const timestamp = this.resolveStartTimestamp(startedAt);
     const resolvedThreadId = await this.resolveThreadId(threadId);
     const resolvedCategoryIds = this.resolveCategoryIds(categoryIds);
 
@@ -161,7 +176,7 @@ export class FlambeClient {
           categories: resolvedCategoryIds,
         },
         event: {
-          timestamp_integer: this.now(),
+          timestamp_integer: timestamp,
           phase: 'B',
         },
       },
