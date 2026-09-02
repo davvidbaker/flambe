@@ -245,6 +245,10 @@ export class FlambeClient {
 
     try {
       const id = await this.queue.resolveActivityId(activityId);
+      if (String(id).startsWith('offline-')) {
+        await this.queue.enqueue(queueType, input);
+        return 'queued';
+      }
       const eventId = await this.postLifecycleEvent({ ...input, activityId: id, phase });
       if (phase === 'E') await this.queue.removeAlias(activityId);
       return eventId;
