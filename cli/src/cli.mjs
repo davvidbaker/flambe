@@ -3,6 +3,7 @@ import { clientFromEnv } from './client.mjs';
 const usage = `Usage:
   flambe start <activity name> [--description <text>] [--thread <id>]
   flambe end <activity-id> [message]
+  flambe status [--active] [--json]
   flambe ping
 
 Configuration:
@@ -39,6 +40,19 @@ function parseStart(args) {
   return { name: nameParts.join(' '), description, threadId };
 }
 
+function parseStatus(args) {
+  let activeOnly = false;
+  let json = false;
+
+  for (const arg of args) {
+    if (arg === '--active') activeOnly = true;
+    else if (arg === '--json') json = true;
+    else throw new Error(`Unknown option: ${arg}`);
+  }
+
+  return { activeOnly, json };
+}
+
 export async function run(argv, { env = process.env, stdout = process.stdout, client } = {}) {
   const [command, ...args] = argv;
 
@@ -60,6 +74,21 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
     if (!activityId) throw new Error('Usage: flambe end <activity-id> [message]');
     const eventId = await flambe.end({ activityId, message: messageParts.join(' ') || undefined });
     stdout.write(`${eventId}\n`);
+    return;
+  }
+
+  if (command === 'status') {
+    const { activeOnly, json } = parseStatus(args);
+    const status = await flambe.status({ activeOnly });
+
+    if (json) {
+      stdout.write(`${JSON.stringify(status)}\n`);
+    } else {
+      for (const activity of status.activities) {
+        stdout.write(`${activity.id}\t${activity.name}\t${activity.threadId}\t${activity.latestEvent.phase}\t${activity.latestEvent.timestamp}\n`);
+      }
+    }
+
     return;
   }
 

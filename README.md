@@ -86,8 +86,10 @@ flambe end "$ACTIVITY_ID" "Confirmed bearer-token path"
 ```
 
 Use `flambe start ... --description "..."` for optional detail or `--thread ID`
-to target a specific thread. `flambe ping` verifies connectivity. The commands
-print machine-friendly numeric IDs on stdout so agents can capture them easily.
+to target a specific thread. Use `flambe status --active --json` at the start
+of an agent session to inspect work that has started but has not ended.
+`flambe ping` verifies connectivity. The commands print machine-friendly IDs
+or JSON on stdout so agents can capture them easily.
 The server persists each event first and then broadcasts it over Phoenix
 Channels, so any open FlameChart updates live.
 

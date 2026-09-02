@@ -142,6 +142,36 @@ test('end posts an authenticated end event with the completion message', async (
   });
 });
 
+test('status identifies activities whose latest event is a begin event', async () => {
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 3,
+    fetchImpl: async () => jsonResponse({
+      data: {
+        id: 3,
+        name: 'Agent work',
+        events: [
+          { id: 3, timestamp: '2026-09-02T12:00:00Z', phase: 'E', message: 'Done', activity: { id: 10, name: 'Closed work', thread: { id: 2 } } },
+          { id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', message: null, activity: { id: 10, name: 'Closed work', thread: { id: 2 } } },
+          { id: 2, timestamp: '2026-09-02T11:00:00Z', phase: 'B', message: null, activity: { id: 11, name: 'Open work', thread: { id: 4 } } },
+        ],
+      },
+    }),
+  });
+
+  assert.deepEqual(await client.status({ activeOnly: true }), {
+    trace: { id: 3, name: 'Agent work' },
+    activities: [{
+      id: 11,
+      name: 'Open work',
+      threadId: 4,
+      startedAt: '2026-09-02T11:00:00Z',
+      latestEvent: { id: 2, phase: 'B', timestamp: '2026-09-02T11:00:00Z' },
+    }],
+  });
+});
+
 test('API errors are useful without echoing credentials', async () => {
   const client = new FlambeClient({
     baseUrl: 'http://flambe.test',
@@ -158,21 +188,27 @@ test('API errors are useful without echoing credentials', async () => {
   });
 });
 
-test('CLI start and end print machine-friendly ids', async () => {
+test('CLI commands print machine-friendly output', async () => {
   const output = [];
   const stdout = { write(value) { output.push(value); } };
   const calls = [];
   const client = {
     async start(input) { calls.push(['start', input]); return 123; },
     async end(input) { calls.push(['end', input]); return 456; },
+    async status(input) {
+      calls.push(['status', input]);
+      return { trace: { id: 1, name: 'Work' }, activities: [{ id: 9, name: 'Open work', threadId: 2, latestEvent: { id: 3, phase: 'B', timestamp: '2026-09-02T11:00:00Z' } }] };
+    },
   };
 
   await run(['start', 'Inspect', 'auth', '--description', 'Agent work'], { stdout, client });
   await run(['end', '123', 'Done'], { stdout, client });
+  await run(['status', '--active', '--json'], { stdout, client });
 
-  assert.deepEqual(output, ['123\n', '456\n']);
+  assert.deepEqual(output, ['123\n', '456\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n']);
   assert.deepEqual(calls, [
     ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined }],
     ['end', { activityId: '123', message: 'Done' }],
+    ['status', { activeOnly: true }],
   ]);
 });
