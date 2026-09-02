@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -184,6 +184,58 @@ test('end posts an authenticated end event with the completion message', async (
   });
 });
 
+test('queues offline start and end operations, then flushes them in order', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'flambe-queue-'));
+  const queuePath = join(directory, 'queue.json');
+  const requests = [];
+  let connected = false;
+
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'do-not-store-me',
+    traceId: 3,
+    queuePath,
+    now: () => 456,
+    fetchImpl: async (url, options = {}) => {
+      if (!connected) throw new TypeError('network unavailable');
+      requests.push({ url, options });
+      if (url.endsWith('/api/activities')) {
+        return jsonResponse({ data: { activity: { id: 42 }, event: { id: 50 } } }, 201);
+      }
+      return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
+    },
+  });
+
+  try {
+    const activityId = await client.start({ name: 'Work offline', threadId: 4, categoryIds: [5] });
+    assert.match(activityId, /^offline-/);
+    assert.equal(await client.end({ activityId, message: 'Finished offline' }), 'queued');
+
+    const queued = readFileSync(queuePath, 'utf8');
+    assert.doesNotMatch(queued, /do-not-store-me/);
+    assert.deepEqual(JSON.parse(queued).entries.map(entry => entry.type), ['start', 'end']);
+
+    connected = true;
+    await client.flushQueue();
+
+    assert.equal(requests.length, 2);
+    assert.deepEqual(JSON.parse(requests[0].options.body), {
+      trace_id: 3,
+      thread_id: 4,
+      activity: { name: 'Work offline', categories: [5] },
+      event: { timestamp_integer: 456, phase: 'B' },
+    });
+    assert.deepEqual(JSON.parse(requests[1].options.body), {
+      trace_id: 3,
+      activity_id: 42,
+      event: { timestamp_integer: 456, phase: 'E', message: 'Finished offline' },
+    });
+    assert.throws(() => readFileSync(queuePath, 'utf8'), /ENOENT/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('status identifies activities whose latest event is a begin event', async () => {
   const client = new FlambeClient({
     baseUrl: 'http://flambe.test',
@@ -260,6 +312,7 @@ test('CLI commands print machine-friendly output', async () => {
   const stdout = { write(value) { output.push(value); } };
   const calls = [];
   const client = {
+    async flushQueue() { calls.push(['flushQueue']); },
     async start(input) { calls.push(['start', input]); return 123; },
     async end(input) { calls.push(['end', input]); return 456; },
     async status(input) {
@@ -278,10 +331,15 @@ test('CLI commands print machine-friendly output', async () => {
 
   assert.deepEqual(output, ['123\n', '456\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"threadName":"Main","categoryIds":[5],"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n', '2\t0\tMain\tdefault\n', '[{"id":5,"name":"Work","color_background":"#fff","color_text":"#000"}]\n']);
   assert.deepEqual(calls, [
+    ['flushQueue'],
     ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined, categoryIds: ['5'], startedAt: '2026-09-01T20:00:00-06:00' }],
+    ['flushQueue'],
     ['end', { activityId: '123', message: 'Done' }],
+    ['flushQueue'],
     ['status', { activeOnly: true }],
+    ['flushQueue'],
     ['threads'],
+    ['flushQueue'],
     ['categories'],
   ]);
 });

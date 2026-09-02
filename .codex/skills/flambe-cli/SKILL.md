@@ -53,5 +53,17 @@ names or completion messages.
 
 The CLI loads `.env` from the current working directory. It requires
 `FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID`; never put the token in
-agent instructions or version-controlled files. Run `flambe ping` to confirm
-connectivity before retrying a failed command.
+agent instructions or version-controlled files.
+
+When Flambe is temporarily unreachable, `flambe start` and `flambe end` save
+their operations locally and print an `offline-…` activity ID (or `queued` for
+an end event) instead of losing the work. Use that offline ID with `flambe end`
+as usual. On the next successful CLI command, Flambe replays its compatible
+queued operations in order before handling the new command, then deletes the
+local backlog and any resolved offline-ID mapping. The default queue is
+`~/.flambe/event-queue.json`; set `FLAMBE_QUEUE_PATH` to override it. The queue
+contains operation data only, never the API token.
+
+If an operation is still queued, do not retry it manually: invoke any Flambe
+command once connectivity returns and let the CLI flush it. Run `flambe ping`
+to confirm connectivity when useful.

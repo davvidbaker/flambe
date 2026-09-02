@@ -1,4 +1,5 @@
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
+import { zoomTimeRange } from '@davvidbaker/flame-chart';
 
 export type TimeRange = {
   leftBoundaryTime: number;
@@ -15,20 +16,15 @@ function zoom(
   nowTime: number,
   minTime = 0,
 ): TimeRange {
-  const zoomPower = 1.1;
-  const mouseWheelZoomSpeed = 1 / 120;
-  const zoomFactor = zoomPower ** (deltaY * mouseWheelZoomSpeed);
-
-  const newLeftBoundaryTime = Math.max(
-    zoomCenterTime + (leftBoundaryTime - zoomCenterTime) * zoomFactor,
-    minTime,
-  );
-  const newRightBoundaryTime = Math.min(
-    zoomCenterTime + (rightBoundaryTime - zoomCenterTime) * zoomFactor,
-    nowTime + MAX_TIME_INTO_FUTURE,
+  const range = zoomTimeRange(
+    deltaY,
+    zoomCenterTime,
+    leftBoundaryTime,
+    rightBoundaryTime,
+    { min: minTime, max: nowTime + MAX_TIME_INTO_FUTURE },
   );
 
-  return { leftBoundaryTime: newLeftBoundaryTime, rightBoundaryTime: newRightBoundaryTime };
+  return { leftBoundaryTime: range.start, rightBoundaryTime: range.end };
 }
 
 export default zoom;
