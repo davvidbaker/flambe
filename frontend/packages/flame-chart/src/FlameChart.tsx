@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FlameChartProps, FlameChartSelection, FlameSpan } from './types';
 
 const DEFAULT_COLORS = ['#f97316', '#fb7185', '#facc15', '#34d399', '#60a5fa', '#a78bfa'];
@@ -38,6 +38,7 @@ export function FlameChart({
 }: FlameChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hitRects = useRef<Array<{ span: FlameSpan; x: number; y: number; width: number; height: number }>>([]);
+  const [canvasWidth, setCanvasWidth] = useState(0);
 
   const domain = useMemo(() => {
     if (spans.length === 0) return { start: start ?? 0, end: end ?? 1 };
@@ -65,9 +66,26 @@ export function FlameChart({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
+
+    const updateWidth = () => setCanvasWidth(canvas.getBoundingClientRect().width);
+    updateWidth();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(updateWidth);
+      observer.observe(canvas);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || canvasWidth <= 0) return;
+
     const dpr = window.devicePixelRatio || 1;
-    const width = Math.max(1, rect.width);
+    const width = Math.max(1, canvasWidth);
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
     const ctx = canvas.getContext('2d');
@@ -94,23 +112,28 @@ export function FlameChart({
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(249,250,251,0.65)';
+      ctx.fillStyle = textColor;
+      ctx.globalAlpha = 0.65;
       ctx.fillText(formatTime(t - domain.start), x + 4, 10);
+      ctx.globalAlpha = 1;
     }
 
     const nextRects: typeof hitRects.current = [];
     let y = 30;
     for (const lane of layout) {
-      ctx.fillStyle = 'rgba(249,250,251,0.72)';
+      ctx.fillStyle = textColor;
+      ctx.globalAlpha = 0.72;
       ctx.fillText(lane.lane, padding, y + rowHeight / 2);
+      ctx.globalAlpha = 1;
       const laneHeight = (lane.maxDepth + 1) * rowHeight;
 
       for (const span of lane.spans) {
         const depth = span.depth ?? 0;
         const spanY = y + depth * rowHeight;
-        const x = xFor(span.start);
-        const x2 = xFor(span.end);
-        const spanWidth = Math.max(1, x2 - x);
+        const rawX = xFor(span.start);
+        const rawX2 = xFor(span.end);
+        const x = Math.min(rawX, rawX2);
+        const spanWidth = Math.max(1, Math.abs(rawX2 - rawX));
         const blockHeight = rowHeight - 3;
         ctx.fillStyle = spanColor(span);
         ctx.globalAlpha = selectedSpanId == null || selectedSpanId === span.id ? 1 : 0.5;
@@ -138,7 +161,7 @@ export function FlameChart({
     }
 
     hitRects.current = nextRects;
-  }, [background, domain, formatTime, gridColor, height, laneGap, layout, padding, rowHeight, selectedSpanId, textColor]);
+  }, [background, canvasWidth, domain, formatTime, gridColor, height, laneGap, layout, padding, rowHeight, selectedSpanId, textColor]);
 
   function selectionAt(event: React.MouseEvent<HTMLCanvasElement>): FlameChartSelection | null {
     const rect = event.currentTarget.getBoundingClientRect();
