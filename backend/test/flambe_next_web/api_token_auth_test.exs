@@ -40,6 +40,32 @@ defmodule FlambeNextWeb.ApiTokenAuthTest do
     assert %{"error" => "UNAUTHENTICATED"} = json_response(conn, 401)
   end
 
+  test "reports recently successful bearer-token agents without counting the status poll", %{
+    conn: conn
+  } do
+    {:ok, user} = Accounts.create_user(%{name: "Present Agent", username: "present-agent"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Presence trace"})
+    {:ok, _api_token, raw_token} = ApiTokens.create(user, "Codex")
+    {:ok, _second_api_token, second_raw_token} = ApiTokens.create(user, "Second agent")
+
+    conn
+    |> put_req_header("authorization", "Bearer #{raw_token}")
+    |> get(~p"/api/traces/#{trace.id}")
+    |> json_response(200)
+
+    build_conn()
+    |> put_req_header("authorization", "Bearer #{second_raw_token}")
+    |> get(~p"/api/traces/#{trace.id}")
+    |> json_response(200)
+
+    conn =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{raw_token}")
+      |> get(~p"/api/agent-status")
+
+    assert json_response(conn, 200) == %{"active_agents" => 2}
+  end
+
   test "bearer-authenticated activity writes broadcast live timeline events", %{conn: conn} do
     {:ok, user} = Accounts.create_user(%{name: "Streaming Agent", username: "streaming-agent"})
     {:ok, trace} = Traces.create_trace(user, %{name: "Streaming trace"})

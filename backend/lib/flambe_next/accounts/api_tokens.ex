@@ -11,7 +11,8 @@ defmodule FlambeNext.Accounts.ApiTokens do
   @encoded_token_length 43
 
   def create(%User{} = user, name \\ "agent") when is_binary(name) do
-    raw_token = @prefix <> Base.url_encode64(:crypto.strong_rand_bytes(@token_bytes), padding: false)
+    raw_token =
+      @prefix <> Base.url_encode64(:crypto.strong_rand_bytes(@token_bytes), padding: false)
 
     result =
       %ApiToken{user_id: user.id}
@@ -25,22 +26,31 @@ defmodule FlambeNext.Accounts.ApiTokens do
   end
 
   def authenticate(raw_token) when is_binary(raw_token) do
+    case authenticate_with_token(raw_token) do
+      {:ok, user, _api_token} -> {:ok, user}
+      {:error, :invalid_token} -> {:error, :invalid_token}
+    end
+  end
+
+  def authenticate(_raw_token), do: {:error, :invalid_token}
+
+  def authenticate_with_token(raw_token) when is_binary(raw_token) do
     if valid_format?(raw_token) do
-      user =
+      api_token =
         from(api_token in ApiToken,
           join: user in assoc(api_token, :user),
           where: api_token.token_hash == ^hash(raw_token),
-          select: user
+          preload: [user: user]
         )
         |> Repo.one()
 
-      if user, do: {:ok, user}, else: {:error, :invalid_token}
+      if api_token, do: {:ok, api_token.user, api_token}, else: {:error, :invalid_token}
     else
       {:error, :invalid_token}
     end
   end
 
-  def authenticate(_raw_token), do: {:error, :invalid_token}
+  def authenticate_with_token(_raw_token), do: {:error, :invalid_token}
 
   defp valid_format?(raw_token) do
     String.starts_with?(raw_token, @prefix) and
