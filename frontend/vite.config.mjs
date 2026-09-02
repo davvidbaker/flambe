@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: {
+        '@davvidbaker/flame-chart': path.resolve(configDirectory, 'packages/flame-chart/src/index.ts'),
         components: path.resolve(configDirectory, 'packages/core/src/components'),
         containers: path.resolve(configDirectory, 'packages/core/src/containers'),
         types: path.resolve(configDirectory, 'packages/core/src/types'),
