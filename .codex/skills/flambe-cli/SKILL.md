@@ -28,6 +28,10 @@ example, `nvm exec 22 flambe …`).
 flambe start "Implement activity status" --thread 14 --category 3
 ```
 
+When the real start time is known and meaningful, create the activity with
+`--started-at "YYYY-MM-DDTHH:MM:SS±HH:MM"`. It is optional and defaults to the
+current time; do not guess a historical timestamp.
+
 Save the numeric activity ID printed by `start`.
 
 The `start` command prints only its numeric activity ID so it can safely be

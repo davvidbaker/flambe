@@ -123,6 +123,34 @@ test('explicit thread skips trace discovery', async () => {
   });
 });
 
+test('start accepts a timezone-aware ISO timestamp for a backdated begin event', async () => {
+  let request;
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 't', traceId: 2,
+    fetchImpl: async (_url, options = {}) => {
+      request = options;
+      return jsonResponse({ data: { activity: { id: 8 }, event: { id: 9 } } }, 201);
+    },
+    now: () => 7,
+  });
+
+  await client.start({ name: 'Last night', threadId: '11', startedAt: '2026-09-01T20:00:00-06:00' });
+
+  assert.equal(JSON.parse(request.body).event.timestamp_integer, Date.parse('2026-09-01T20:00:00-06:00'));
+});
+
+test('start rejects timestamps without a timezone before posting an activity', async () => {
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 't', traceId: 2,
+    fetchImpl: async () => { throw new Error('should not make a request'); },
+  });
+
+  await assert.rejects(
+    client.start({ name: 'Last night', threadId: '11', startedAt: '2026-09-01T20:00:00' }),
+    /--started-at must be an ISO-8601 timestamp with a timezone/,
+  );
+});
+
 test('start rejects invalid category IDs before posting an activity', async () => {
   const client = new FlambeClient({
     baseUrl: 'http://flambe.test', token: 't', traceId: 2,
@@ -242,7 +270,7 @@ test('CLI commands print machine-friendly output', async () => {
     async categories() { calls.push(['categories']); return [{ id: 5, name: 'Work', color_background: '#fff', color_text: '#000' }]; },
   };
 
-  await run(['start', 'Inspect', 'auth', '--description', 'Agent work', '--category', '5'], { stdout, client });
+  await run(['start', 'Inspect', 'auth', '--description', 'Agent work', '--category', '5', '--started-at', '2026-09-01T20:00:00-06:00'], { stdout, client });
   await run(['end', '123', 'Done'], { stdout, client });
   await run(['status', '--active', '--json'], { stdout, client });
   await run(['threads'], { stdout, client });
@@ -250,7 +278,7 @@ test('CLI commands print machine-friendly output', async () => {
 
   assert.deepEqual(output, ['123\n', '456\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"threadName":"Main","categoryIds":[5],"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n', '2\t0\tMain\tdefault\n', '[{"id":5,"name":"Work","color_background":"#fff","color_text":"#000"}]\n']);
   assert.deepEqual(calls, [
-    ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined, categoryIds: ['5'] }],
+    ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined, categoryIds: ['5'], startedAt: '2026-09-01T20:00:00-06:00' }],
     ['end', { activityId: '123', message: 'Done' }],
     ['status', { activeOnly: true }],
     ['threads'],
