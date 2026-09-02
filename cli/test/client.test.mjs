@@ -92,7 +92,7 @@ test('start discovers the default thread and posts an authenticated begin event'
     now: () => 1_788_360_000_123,
   });
 
-  assert.equal(await client.start({ name: 'Inspect authentication flow' }), 42);
+  assert.equal(await client.start({ name: 'Inspect authentication flow', categoryIds: ['5', '5', '8'] }), 42);
   assert.equal(requests.length, 2);
   assert.equal(requests[0].url, 'http://flambe.test/api/traces/9');
   assert.equal(requests[1].url, 'http://flambe.test/api/activities');
@@ -100,7 +100,7 @@ test('start discovers the default thread and posts an authenticated begin event'
   assert.deepEqual(JSON.parse(requests[1].options.body), {
     trace_id: 9,
     thread_id: 4,
-    activity: { name: 'Inspect authentication flow', categories: [] },
+    activity: { name: 'Inspect authentication flow', categories: [5, 8] },
     event: { timestamp_integer: 1_788_360_000_123, phase: 'B' },
   });
 });
@@ -112,10 +112,24 @@ test('explicit thread skips trace discovery', async () => {
     return jsonResponse({ data: { activity: { id: 8 }, event: { id: 9 } } }, 201);
   };
 
-  const client = new FlambeClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 2, fetchImpl });
-  assert.equal(await client.start({ name: 'Run tests', threadId: '11', description: 'CI' }), 8);
+  const client = new FlambeClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 2, fetchImpl, now: () => 7 });
+  assert.equal(await client.start({ name: 'Run tests', threadId: '11', description: 'CI', categoryIds: ['4'] }), 8);
   assert.equal(requests.length, 1);
-  assert.equal(JSON.parse(requests[0].options.body).thread_id, 11);
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
+    trace_id: 2,
+    thread_id: 11,
+    activity: { name: 'Run tests', description: 'CI', categories: [4] },
+    event: { timestamp_integer: 7, phase: 'B' },
+  });
+});
+
+test('start rejects invalid category IDs before posting an activity', async () => {
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 't', traceId: 2,
+    fetchImpl: async () => { throw new Error('should not make a request'); },
+  });
+
+  await assert.rejects(client.start({ name: 'Run tests', threadId: '11', categoryIds: ['nope'] }), /--category must be a positive integer/);
 });
 
 test('end posts an authenticated end event with the completion message', async () => {
@@ -152,10 +166,11 @@ test('status identifies activities whose latest event is a begin event', async (
         id: 3,
         name: 'Agent work',
         events: [
-          { id: 3, timestamp: '2026-09-02T12:00:00Z', phase: 'E', message: 'Done', activity: { id: 10, name: 'Closed work', thread: { id: 2 } } },
-          { id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', message: null, activity: { id: 10, name: 'Closed work', thread: { id: 2 } } },
-          { id: 2, timestamp: '2026-09-02T11:00:00Z', phase: 'B', message: null, activity: { id: 11, name: 'Open work', thread: { id: 4 } } },
+          { id: 3, timestamp: '2026-09-02T12:00:00Z', phase: 'E', message: 'Done', activity: { id: 10, name: 'Closed work', thread: { id: 2 }, categories: [7] } },
+          { id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', message: null, activity: { id: 10, name: 'Closed work', thread: { id: 2 }, categories: [7] } },
+          { id: 2, timestamp: '2026-09-02T11:00:00Z', phase: 'B', message: null, activity: { id: 11, name: 'Open work', thread: { id: 4 }, categories: [5] } },
         ],
+        threads: [{ id: 2, name: 'Closed' }, { id: 4, name: 'Open' }],
       },
     }),
   });
@@ -166,10 +181,34 @@ test('status identifies activities whose latest event is a begin event', async (
       id: 11,
       name: 'Open work',
       threadId: 4,
+      threadName: 'Open',
+      categoryIds: [5],
       startedAt: '2026-09-02T11:00:00Z',
       latestEvent: { id: 2, phase: 'B', timestamp: '2026-09-02T11:00:00Z' },
     }],
   });
+});
+
+test('threads sorts by rank and identifies the default thread', async () => {
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
+    fetchImpl: async () => jsonResponse({ data: { threads: [{ id: 8, name: 'Later', rank: 2 }, { id: 4, name: 'Main', rank: 0 }, { id: 3, name: 'Also main', rank: 0 }] } }),
+  });
+
+  assert.deepEqual(await client.threads(), [
+    { id: 3, name: 'Also main', rank: 0, default: true },
+    { id: 4, name: 'Main', rank: 0, default: false },
+    { id: 8, name: 'Later', rank: 2, default: false },
+  ]);
+});
+
+test('categories returns the authenticated user categories', async () => {
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
+    fetchImpl: async () => jsonResponse({ data: [{ id: 5, name: 'Client', color_background: '#fff', color_text: '#000' }] }),
+  });
+
+  assert.deepEqual(await client.categories(), [{ id: 5, name: 'Client', color_background: '#fff', color_text: '#000' }]);
 });
 
 test('API errors are useful without echoing credentials', async () => {
@@ -197,18 +236,24 @@ test('CLI commands print machine-friendly output', async () => {
     async end(input) { calls.push(['end', input]); return 456; },
     async status(input) {
       calls.push(['status', input]);
-      return { trace: { id: 1, name: 'Work' }, activities: [{ id: 9, name: 'Open work', threadId: 2, latestEvent: { id: 3, phase: 'B', timestamp: '2026-09-02T11:00:00Z' } }] };
+      return { trace: { id: 1, name: 'Work' }, activities: [{ id: 9, name: 'Open work', threadId: 2, threadName: 'Main', categoryIds: [5], latestEvent: { id: 3, phase: 'B', timestamp: '2026-09-02T11:00:00Z' } }] };
     },
+    async threads() { calls.push(['threads']); return [{ id: 2, name: 'Main', rank: 0, default: true }]; },
+    async categories() { calls.push(['categories']); return [{ id: 5, name: 'Work', color_background: '#fff', color_text: '#000' }]; },
   };
 
-  await run(['start', 'Inspect', 'auth', '--description', 'Agent work'], { stdout, client });
+  await run(['start', 'Inspect', 'auth', '--description', 'Agent work', '--category', '5'], { stdout, client });
   await run(['end', '123', 'Done'], { stdout, client });
   await run(['status', '--active', '--json'], { stdout, client });
+  await run(['threads'], { stdout, client });
+  await run(['categories', '--json'], { stdout, client });
 
-  assert.deepEqual(output, ['123\n', '456\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n']);
+  assert.deepEqual(output, ['123\n', '456\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"threadName":"Main","categoryIds":[5],"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n', '2\t0\tMain\tdefault\n', '[{"id":5,"name":"Work","color_background":"#fff","color_text":"#000"}]\n']);
   assert.deepEqual(calls, [
-    ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined }],
+    ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined, categoryIds: ['5'] }],
     ['end', { activityId: '123', message: 'Done' }],
     ['status', { activeOnly: true }],
+    ['threads'],
+    ['categories'],
   ]);
 });
