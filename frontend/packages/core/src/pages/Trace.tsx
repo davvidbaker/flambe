@@ -36,6 +36,7 @@ import {
   showAdvancedSearch,
   showSettings,
   toggleSetting,
+  undoLastCommand,
 } from '../actions';
 import COMMANDS, {
   ACTIVITY_COMMANDS,
@@ -115,6 +116,7 @@ interface AppProps {
   threadLevels: Record<string, ThreadLevel>;
   threads: Record<string, Thread>;
   toggleActivityMute: () => unknown;
+  undoLastCommand: () => unknown;
   trace: Trace | null;
   user: UserState;
   view: string;
@@ -260,6 +262,18 @@ class App extends React.Component<AppProps, AppState> {
 
           if (e.ctrlKey || e.metaKey) {
             switch (e.key) {
+              case 'z':
+                if (
+                  !e.shiftKey &&
+                  !this.props.aModalIsOpen &&
+                  !(e.target instanceof HTMLInputElement) &&
+                  !(e.target instanceof HTMLTextAreaElement)
+                ) {
+                  e.preventDefault();
+                  this.props.undoLastCommand();
+                }
+                break;
+
               case 'f':
                 if (!this.props.aModalIsOpen) {
                   e.preventDefault();
@@ -500,6 +514,7 @@ const ConnectedTrace = connect(
       showAdvancedSearch: () => dispatch(showAdvancedSearch()),
       showSettings: () => dispatch(showSettings()),
       toggleActivityMute: () => dispatch(toggleSetting('activityMute')),
+      undoLastCommand: () => dispatch(undoLastCommand()),
     }),
 )(App);
 

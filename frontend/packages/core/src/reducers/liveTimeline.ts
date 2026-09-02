@@ -1,4 +1,4 @@
-import { TIMELINE_EVENT_RECEIVED } from '../constants/liveEvents';
+import { TIMELINE_EVENT_DELETED, TIMELINE_EVENT_RECEIVED } from '../constants/liveEvents';
 import type { EntityId } from '../types/ids';
 import type { Thread } from '../types/Thread';
 import type { TraceEvent } from '../types/TraceEvent';
@@ -7,6 +7,7 @@ import baseTimeline, { type TimelineState } from './timeline';
 
 interface LiveTimelineEventAction {
   event?: TraceEvent;
+  event_id?: EntityId;
   trace_id?: EntityId;
   type: string;
 }
@@ -20,6 +21,10 @@ export function upsertTraceEvent(events: TraceEvent[], incoming: TraceEvent): Tr
   const nextEvents = [...events];
   nextEvents[index] = incoming;
   return nextEvents;
+}
+
+export function removeTraceEvent(events: TraceEvent[], eventId: EntityId): TraceEvent[] {
+  return events.filter(event => String(event.id) !== String(eventId));
 }
 
 function mergeIncomingThread(
@@ -48,11 +53,17 @@ export default function liveTimeline(
     action as Parameters<typeof baseTimeline>[1],
   );
 
-  if (action.type !== TIMELINE_EVENT_RECEIVED || !action.event) return nextState;
+  if (action.type !== TIMELINE_EVENT_RECEIVED && action.type !== TIMELINE_EVENT_DELETED) return nextState;
   if (String(nextState.trace?.id) !== String(action.trace_id)) return nextState;
 
-  const events = upsertTraceEvent(nextState.events, action.event);
-  const threads = mergeIncomingThread(nextState.threads, action.event);
+  const events = action.type === TIMELINE_EVENT_RECEIVED && action.event
+    ? upsertTraceEvent(nextState.events, action.event)
+    : action.event_id === undefined
+      ? nextState.events
+      : removeTraceEvent(nextState.events, action.event_id);
+  const threads = action.type === TIMELINE_EVENT_RECEIVED && action.event
+    ? mergeIncomingThread(nextState.threads, action.event)
+    : nextState.threads;
 
   // TODO(perf): Each live event currently reprocesses the entire trace. If agent
   // telemetry becomes high-volume, update only the affected activity/block/thread
