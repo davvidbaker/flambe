@@ -15,9 +15,11 @@ defmodule FlambeNextWeb.ActivityController do
     thread = Traces.get_user_trace_thread!(user, trace.id, thread_id)
     category_ids = Map.get(activity_attrs, "categories", [])
 
-    with {:ok, categories} <- Accounts.get_user_categories(user, category_ids),
+    with {:ok, parent} <-
+           parent_activity(user, trace.id, thread.id, Map.get(activity_attrs, "parent_id")),
+         {:ok, categories} <- Accounts.get_user_categories(user, category_ids),
          {:ok, activity, event} <-
-           Traces.create_activity(trace, thread, activity_attrs, event_attrs, categories) do
+           Traces.create_activity(trace, thread, parent, activity_attrs, event_attrs, categories) do
       :ok = EventStream.broadcast_event(user, event)
 
       conn
@@ -72,6 +74,25 @@ defmodule FlambeNextWeb.ActivityController do
       :error -> {:ok, activity.categories}
     end
   end
+
+  defp parent_activity(_user, _trace_id, _thread_id, nil), do: {:ok, nil}
+
+  defp parent_activity(user, trace_id, thread_id, parent_id) when is_binary(parent_id) do
+    case Integer.parse(parent_id) do
+      {id, ""} -> parent_activity(user, trace_id, thread_id, id)
+      _ -> {:error, :not_found}
+    end
+  end
+
+  defp parent_activity(user, trace_id, thread_id, parent_id)
+       when is_integer(parent_id) and parent_id > 0 do
+    case Traces.get_user_trace_thread_activity(user, trace_id, thread_id, parent_id) do
+      nil -> {:error, :not_found}
+      parent -> {:ok, parent}
+    end
+  end
+
+  defp parent_activity(_user, _trace_id, _thread_id, _parent_id), do: {:error, :not_found}
 
   defp errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, _options} -> message end)

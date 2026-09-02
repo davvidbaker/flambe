@@ -1,7 +1,7 @@
 import { clientFromEnv } from './client.mjs';
 
 const usage = `Usage:
-  flambe start <activity name> [--description <text>] [--thread <id>] [--category <id>...] [--started-at <ISO-8601>]
+  flambe start <activity name> [--description <text>] [--thread <id>] [--parent <id> | --root] [--category <id>...] [--started-at <ISO-8601>]
   flambe end <activity-id> [message]
   flambe suspend <activity-id> [message]
   flambe resume <activity-id> [message]
@@ -26,6 +26,7 @@ function parseStart(args) {
   const nameParts = [];
   let description;
   let threadId;
+  let parentId;
   let startedAt;
   const categoryIds = [];
 
@@ -39,6 +40,14 @@ function parseStart(args) {
       threadId = args[index + 1];
       if (threadId === undefined) throw new Error('--thread requires a value');
       index += 1;
+    } else if (arg === '--parent') {
+      if (parentId !== undefined) throw new Error('--parent and --root cannot be combined');
+      parentId = args[index + 1];
+      if (parentId === undefined) throw new Error('--parent requires a value');
+      index += 1;
+    } else if (arg === '--root') {
+      if (parentId !== undefined) throw new Error('--parent and --root cannot be combined');
+      parentId = null;
     } else if (arg === '--category') {
       const categoryId = args[index + 1];
       if (categoryId === undefined) throw new Error('--category requires a value');
@@ -55,7 +64,14 @@ function parseStart(args) {
     }
   }
 
-  return { name: nameParts.join(' '), description, threadId, categoryIds, startedAt };
+  return {
+    name: nameParts.join(' '),
+    description,
+    threadId,
+    ...(parentId === undefined ? {} : { parentId }),
+    categoryIds,
+    startedAt,
+  };
 }
 
 function parseStatus(args) {
@@ -121,7 +137,7 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
       stdout.write(`${JSON.stringify(status)}\n`);
     } else {
       for (const activity of status.activities) {
-        stdout.write(`${activity.id}\t${activity.name}\t${activity.threadId}\t${activity.threadName ?? ''}\t${activity.categoryIds.join(',')}\t${activity.latestEvent.phase}\t${activity.latestEvent.timestamp}\n`);
+        stdout.write(`${activity.id}\t${activity.path.join(' > ')}\t${activity.threadId}\t${activity.threadName ?? ''}\t${activity.categoryIds.join(',')}\t${activity.latestEvent.phase}\t${activity.latestEvent.timestamp}\n`);
       }
     }
 

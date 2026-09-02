@@ -68,4 +68,22 @@ describe('processTrace', () => {
     expect(result.threadLevels[thread.id]).toEqual({ current: 0, max: 0 });
     expect(result.max).toBeGreaterThan(result.min);
   });
+
+  it('uses explicit parentage for flame-chart depth', () => {
+    const root: Activity = { ...activity, id: 10, name: 'Root work' };
+    const child: Activity = { ...activity, id: 11, name: 'Inspect config', parent_id: root.id };
+
+    const result = processTrace([
+      { id: 1, timestamp: 100, phase: 'B', activity: root },
+      { id: 2, timestamp: 110, phase: 'B', activity: child },
+      { id: 3, timestamp: 120, phase: 'E', activity: child },
+      { id: 4, timestamp: 130, phase: 'E', activity: root },
+    ], [thread]);
+
+    expect(result.blocks.map(block => [block.activity_id, block.level])).toEqual([
+      [root.id, 0],
+      [child.id, 1],
+    ]);
+    expect(result.threadLevels[thread.id]).toEqual({ current: 0, max: 2 });
+  });
 });

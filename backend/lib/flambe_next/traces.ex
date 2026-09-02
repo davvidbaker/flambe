@@ -103,6 +103,17 @@ defmodule FlambeNext.Traces do
     |> Repo.one!()
   end
 
+  def get_user_trace_thread_activity(%User{} = user, trace_id, thread_id, activity_id) do
+    from(activity in Activity,
+      join: thread in assoc(activity, :thread),
+      join: trace in assoc(thread, :trace),
+      where:
+        activity.id == ^activity_id and thread.id == ^thread_id and trace.id == ^trace_id and
+          trace.user_id == ^user.id
+    )
+    |> Repo.one()
+  end
+
   def get_user_activity!(%User{} = user, activity_id) do
     from(activity in Activity,
       join: thread in assoc(activity, :thread),
@@ -138,6 +149,7 @@ defmodule FlambeNext.Traces do
   def create_activity(
         %Trace{} = trace,
         %Thread{} = thread,
+        parent,
         activity_attrs,
         event_attrs,
         categories \\ []
@@ -145,7 +157,10 @@ defmodule FlambeNext.Traces do
     Multi.new()
     |> Multi.insert(
       :activity,
-      Activity.changeset(%Activity{thread_id: thread.id}, activity_attrs)
+      Activity.changeset(
+        %Activity{thread_id: thread.id, parent_id: parent && parent.id},
+        activity_attrs
+      )
       |> Ecto.Changeset.put_assoc(:categories, categories)
     )
     |> Multi.insert(:event, fn %{activity: activity} ->

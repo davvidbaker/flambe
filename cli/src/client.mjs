@@ -101,6 +101,10 @@ export class FlambeClient {
   async status({ activeOnly = false, suspendedOnly = false } = {}) {
     if (activeOnly && suspendedOnly) throw new Error('--active and --suspended cannot be used together');
     const trace = await this.getTrace();
+    return this.statusFromTrace(trace, { activeOnly, suspendedOnly });
+  }
+
+  statusFromTrace(trace, { activeOnly = false, suspendedOnly = false } = {}) {
     const threadNames = new Map((trace.threads ?? []).map(thread => [thread.id, thread.name]));
     const latestByActivity = new Map();
     const startedAtByActivity = new Map();
@@ -119,6 +123,16 @@ export class FlambeClient {
       }
     }
 
+    const pathsByActivity = new Map();
+    const activityById = new Map([...latestByActivity.values()].map(event => [event.activity.id, event.activity]));
+    const pathFor = activity => {
+      if (pathsByActivity.has(activity.id)) return pathsByActivity.get(activity.id);
+      const parent = activity.parent_id == null ? null : activityById.get(activity.parent_id);
+      const path = [...(parent ? pathFor(parent) : []), activity.name];
+      pathsByActivity.set(activity.id, path);
+      return path;
+    };
+
     const activities = [...latestByActivity.values()]
       .filter(event => !activeOnly || event.phase === 'B' || event.phase === 'R')
       .filter(event => !suspendedOnly || event.phase === 'S')
@@ -128,6 +142,8 @@ export class FlambeClient {
         name: event.activity.name,
         threadId: event.activity.thread.id,
         threadName: threadNames.get(event.activity.thread.id) ?? null,
+        parentId: event.activity.parent_id ?? null,
+        path: pathFor(event.activity),
         categoryIds: event.activity.categories ?? [],
         startedAt: startedAtByActivity.get(event.activity.id)?.timestamp ?? null,
         latestEvent: {
@@ -144,14 +160,13 @@ export class FlambeClient {
     };
   }
 
-  async resolveThreadId(explicitThreadId) {
+  resolveThreadId(explicitThreadId, trace) {
     if (explicitThreadId !== undefined && explicitThreadId !== null) {
       const id = Number(explicitThreadId);
       if (!Number.isInteger(id) || id <= 0) throw new Error('--thread must be a positive integer');
       return id;
     }
 
-    const trace = await this.getTrace();
     const threads = [...(trace.threads ?? [])].sort((a, b) => (a.rank - b.rank) || (a.id - b.id));
     if (threads.length === 0) throw new Error(`Trace ${this.traceId} has no threads`);
     return threads[0].id;
@@ -163,6 +178,14 @@ export class FlambeClient {
       throw new Error('--category must be a positive integer');
     }
     return [...new Set(resolved)];
+  }
+
+  resolveParentId(parentId) {
+    if (parentId === undefined || parentId === null) return parentId;
+    if (String(parentId).startsWith('offline-')) return parentId;
+    const id = Number(parentId);
+    if (!Number.isInteger(id) || id <= 0) throw new Error('--parent must be a positive integer');
+    return id;
   }
 
   resolveStartTimestamp(startedAt) {
@@ -179,7 +202,7 @@ export class FlambeClient {
     return timestamp;
   }
 
-  async start({ name, description, threadId, categoryIds, startedAt }) {
+  async start({ name, description, threadId, parentId, categoryIds, startedAt }) {
     if (!name?.trim()) throw new Error('Activity name is required');
     const timestamp = this.resolveStartTimestamp(startedAt);
     const resolvedCategoryIds = this.resolveCategoryIds(categoryIds);
@@ -188,6 +211,7 @@ export class FlambeClient {
       name: name.trim(),
       description,
       threadId,
+      parentId: this.resolveParentId(parentId),
       categoryIds: resolvedCategoryIds,
       timestamp,
     };
@@ -200,8 +224,22 @@ export class FlambeClient {
     }
   }
 
-  async postStart({ name, description, threadId, categoryIds, timestamp }) {
-    const resolvedThreadId = await this.resolveThreadId(threadId);
+  async postStart({ name, description, threadId, parentId, categoryIds, timestamp }) {
+    const trace = await this.getTrace();
+    const resolvedThreadId = this.resolveThreadId(threadId, trace);
+    const activeActivities = this.statusFromTrace(trace, { activeOnly: true }).activities;
+    const inferredParentId = activeActivities
+      .filter(activity => activity.threadId === resolvedThreadId)
+      .at(-1)?.id;
+    const resolvedParentId = parentId === undefined
+      ? inferredParentId
+      : await this.queue.resolveActivityId(parentId);
+
+    if (String(resolvedParentId).startsWith('offline-')) {
+      const error = new Error('Parent activity is queued for offline delivery');
+      error.retryable = true;
+      throw error;
+    }
 
     const payload = await this.request('/api/activities', {
       method: 'POST',
@@ -211,6 +249,7 @@ export class FlambeClient {
         activity: {
           name,
           ...(description ? { description } : {}),
+          ...(resolvedParentId ? { parent_id: resolvedParentId } : {}),
           categories: categoryIds,
         },
         event: {
