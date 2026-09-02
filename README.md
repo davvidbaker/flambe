@@ -5,11 +5,26 @@ by the Phoenix 1.8 app in `backend`.
 
 ## Run locally
 
-Requirements: Node 22 LTS, Elixir 1.18/OTP 27, and PostgreSQL.
+Requirements: Node 22 LTS, Elixir 1.18/OTP 27, and PostgreSQL. Native Windows,
+macOS, and Linux are supported; WSL is not required.
 
-1. Create local backend settings (adjust the PostgreSQL credentials if needed):
+Make sure `node --version` reports Node 22 before installing the frontend.
 
-   ```sh
+The backend defaults to a local PostgreSQL server at `localhost:5432` with the
+username/password `postgres` / `postgres`. If your local installation differs,
+set the standard PostgreSQL environment variables before running Mix. For
+example, in PowerShell:
+
+```powershell
+$env:PGUSER = "postgres"
+$env:PGPASSWORD = "your-password"
+$env:PGHOST = "localhost"
+$env:PGPORT = "5432"
+```
+
+1. Create local backend settings and start Phoenix:
+
+   ```text
    cd backend
    mix deps.get
    mix ecto.create
@@ -19,18 +34,18 @@ Requirements: Node 22 LTS, Elixir 1.18/OTP 27, and PostgreSQL.
 
 2. In another terminal, start the Vite development server:
 
-   ```sh
+   ```text
    cd frontend
-   nvm exec 22 npm ci
-   nvm exec 22 npm run dev
+   npm ci
+   npm run dev
    ```
 
 Open http://localhost:5173, create an account, and you will be taken to its
 default `Main` trace. Vite proxies API, authentication, and socket requests to
 Phoenix at http://localhost:4001.
 
-To build the Phoenix-served production frontend, run `nvm exec 22 npm run
-build`. This produces hashed assets and a manifest in
+To build the Phoenix-served production frontend, run `npm run build` from
+`frontend`. This produces hashed assets and a manifest in
 `backend/priv/static/assets`; Phoenix serves the resulting SPA and its
 client-side routes at http://localhost:4001.
 
@@ -42,16 +57,20 @@ Flambe uses local email/password accounts only. Create an account at
 
 With PostgreSQL available, run the checks that gate the active stack:
 
-```sh
+```text
 cd backend
 mix precommit
 
 cd ../frontend
-nvm exec 22 npm run typecheck
-nvm exec 22 npm run test:unit
-nvm exec 22 npm run build
-nvm exec 22 npm run test:smoke
+npm run typecheck
+npm run test:unit
+npm run build
+npm run test:smoke
 ```
+
+The same commands are intended to work from PowerShell, Command Prompt, and
+Unix shells. CI includes a native Windows job to prevent platform-specific
+regressions.
 
 The retired Phoenix 1.3 source remains available in Git history. Legacy data
 imports read directly from the isolated `flambe_legacy_restored` database; the
