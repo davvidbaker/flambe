@@ -1,3 +1,5 @@
+import { FlambeQueue } from './queue.mjs';
+
 export function configFromEnv(env = process.env) {
   const required = ['FLAMBE_URL', 'FLAMBE_API_TOKEN', 'FLAMBE_TRACE_ID'];
   const missing = required.filter(key => !env[key]?.trim());
@@ -26,23 +28,30 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, fetchImpl = globalThis.fetch, now = Date.now }) {
+  constructor({ baseUrl, token, traceId, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue }) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.token = token;
     this.traceId = Number(traceId);
     this.fetch = fetchImpl;
     this.now = now;
+    this.queue = queue ?? new FlambeQueue({ baseUrl: this.baseUrl, traceId: this.traceId, path: queuePath });
   }
 
   async request(path, { method = 'GET', body } = {}) {
-    const response = await this.fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers: {
-        authorization: `Bearer ${this.token}`,
-        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-      },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
+    let response;
+    try {
+      response = await this.fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers: {
+          authorization: `Bearer ${this.token}`,
+          ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    } catch (error) {
+      error.retryable = true;
+      throw error;
+    }
 
     const text = await response.text();
     let payload = null;
@@ -57,7 +66,9 @@ export class FlambeClient {
 
     if (!response.ok) {
       const detail = errorDetail(payload);
-      throw new Error(`Flambe API request failed (${response.status})${detail ? `: ${detail}` : ''}`);
+      const error = new Error(`Flambe API request failed (${response.status})${detail ? `: ${detail}` : ''}`);
+      error.retryable = response.status >= 500;
+      throw error;
     }
 
     return payload;
@@ -162,8 +173,26 @@ export class FlambeClient {
   async start({ name, description, threadId, categoryIds, startedAt }) {
     if (!name?.trim()) throw new Error('Activity name is required');
     const timestamp = this.resolveStartTimestamp(startedAt);
-    const resolvedThreadId = await this.resolveThreadId(threadId);
     const resolvedCategoryIds = this.resolveCategoryIds(categoryIds);
+
+    const input = {
+      name: name.trim(),
+      description,
+      threadId,
+      categoryIds: resolvedCategoryIds,
+      timestamp,
+    };
+
+    try {
+      return await this.postStart(input);
+    } catch (error) {
+      if (!error?.retryable) throw error;
+      return this.queue.enqueue('start', { input });
+    }
+  }
+
+  async postStart({ name, description, threadId, categoryIds, timestamp }) {
+    const resolvedThreadId = await this.resolveThreadId(threadId);
 
     const payload = await this.request('/api/activities', {
       method: 'POST',
@@ -171,9 +200,9 @@ export class FlambeClient {
         trace_id: this.traceId,
         thread_id: resolvedThreadId,
         activity: {
-          name: name.trim(),
+          name,
           ...(description ? { description } : {}),
-          categories: resolvedCategoryIds,
+          categories: categoryIds,
         },
         event: {
           timestamp_integer: timestamp,
@@ -186,16 +215,34 @@ export class FlambeClient {
   }
 
   async end({ activityId, message }) {
-    const id = Number(activityId);
-    if (!Number.isInteger(id) || id <= 0) throw new Error('Activity id must be a positive integer');
+    if (!String(activityId).startsWith('offline-')) {
+      const id = Number(activityId);
+      if (!Number.isInteger(id) || id <= 0) throw new Error('Activity id must be a positive integer');
+    }
 
+    const timestamp = this.now();
+    const input = { activityId, message, timestamp };
+
+    try {
+      const id = await this.queue.resolveActivityId(activityId);
+      const eventId = await this.postEnd({ ...input, activityId: id });
+      await this.queue.removeAlias(activityId);
+      return eventId;
+    } catch (error) {
+      if (!error?.retryable) throw error;
+      await this.queue.enqueue('end', input);
+      return 'queued';
+    }
+  }
+
+  async postEnd({ activityId, message, timestamp }) {
     const payload = await this.request('/api/events', {
       method: 'POST',
       body: {
         trace_id: this.traceId,
-        activity_id: id,
+        activity_id: Number(activityId),
         event: {
-          timestamp_integer: this.now(),
+          timestamp_integer: timestamp,
           phase: 'E',
           ...(message ? { message } : {}),
         },
@@ -204,10 +251,17 @@ export class FlambeClient {
 
     return payload.data.id;
   }
+
+  async flushQueue() {
+    return this.queue.flush({
+      start: input => this.postStart(input),
+      end: input => this.postEnd(input),
+    });
+  }
 }
 
 export function clientFromEnv(env = process.env, overrides = {}) {
-  return new FlambeClient({ ...configFromEnv(env), ...overrides });
+  return new FlambeClient({ ...configFromEnv(env), queuePath: env.FLAMBE_QUEUE_PATH, ...overrides });
 }
 
 function compareEvents(a, b) {
