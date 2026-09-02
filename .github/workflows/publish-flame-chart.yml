@@ -3,8 +3,9 @@ name: Publish flame chart
 on:
   workflow_dispatch:
   push:
-    tags:
-      - 'flame-chart-v*'
+    branches: [main]
+    paths:
+      - 'frontend/packages/flame-chart/package.json'
 
 permissions:
   contents: read
