@@ -13,6 +13,7 @@ defmodule FlambeNextWeb.CategoryControllerTest do
       Traces.create_activity(
         trace,
         thread,
+        nil,
         %{"name" => "Categorized work"},
         %{"timestamp_integer" => 1_723_465_600_123, "phase" => "B"}
       )

@@ -13,6 +13,7 @@ defmodule FlambeNextWeb.OwnershipControllerTest do
       Traces.create_activity(
         trace,
         thread,
+        nil,
         %{name: "Private activity"},
         %{phase: "B", timestamp_integer: 1_700_000_000_000}
       )

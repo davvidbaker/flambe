@@ -11,6 +11,8 @@ defmodule FlambeNext.Traces.Activity do
     field :weight, :integer
 
     belongs_to :thread, Thread
+    belongs_to :parent, __MODULE__, foreign_key: :parent_id
+    has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :events, Event, on_delete: :delete_all
     many_to_many :categories, Category, join_through: "activities_categories", on_replace: :delete
 

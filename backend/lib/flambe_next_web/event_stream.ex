@@ -39,6 +39,7 @@ defmodule FlambeNextWeb.EventStream do
       id: activity.id,
       name: activity.name,
       description: activity.description,
+      parent_id: activity.parent_id,
       thread: thread_data(activity.thread),
       categories: Enum.map(activity.categories, & &1.id),
       weight: activity.weight

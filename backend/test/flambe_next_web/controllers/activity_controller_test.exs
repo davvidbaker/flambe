@@ -68,6 +68,7 @@ defmodule FlambeNextWeb.ActivityControllerTest do
       Traces.create_activity(
         trace,
         thread,
+        nil,
         %{"name" => "Open activity"},
         %{"timestamp_integer" => 1_723_465_600_123, "phase" => "B"}
       )
@@ -89,6 +90,48 @@ defmodule FlambeNextWeb.ActivityControllerTest do
     assert is_integer(event_id)
   end
 
+  test "creates a child only under an activity in the same trace and thread", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Tree User", username: "tree-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Tree trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+
+    {:ok, parent, _event} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Root"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> post(~p"/api/activities", %{
+        "trace_id" => trace.id,
+        "thread_id" => thread.id,
+        "activity" => %{"name" => "Child", "parent_id" => parent.id},
+        "event" => %{"timestamp_integer" => 2, "phase" => "B"}
+      })
+
+    assert %{"data" => %{"activity" => %{"parent_id" => parent_id}}} = json_response(conn, 201)
+    assert parent_id == parent.id
+
+    {:ok, other_thread} = Traces.create_thread(trace, %{name: "Other", rank: 1})
+
+    conn =
+      conn
+      |> recycle()
+      |> post(~p"/api/activities", %{
+        "trace_id" => trace.id,
+        "thread_id" => other_thread.id,
+        "activity" => %{"name" => "Invalid child", "parent_id" => parent.id},
+        "event" => %{"timestamp_integer" => 3, "phase" => "B"}
+      })
+
+    assert json_response(conn, 404) == %{"error" => "NOT_FOUND"}
+  end
+
   test "updates and deletes an activity and updates its event", %{conn: conn} do
     {:ok, user} = Accounts.create_user(%{name: "Lifecycle User", username: "lifecycle-user"})
     {:ok, trace} = Traces.create_trace(user, %{name: "Lifecycle trace"})
@@ -98,6 +141,7 @@ defmodule FlambeNextWeb.ActivityControllerTest do
       Traces.create_activity(
         trace,
         thread,
+        nil,
         %{"name" => "Draft", "weight" => 1},
         %{"timestamp_integer" => 1_723_465_600_123, "phase" => "B"}
       )
@@ -112,6 +156,7 @@ defmodule FlambeNextWeb.ActivityControllerTest do
                "description" => nil,
                "id" => activity.id,
                "name" => "Final",
+               "parent_id" => nil,
                "weight" => 2
              }
            }

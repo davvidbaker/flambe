@@ -14,7 +14,8 @@ defmodule FlambeNextWeb.ActivityJSON do
       id: activity.id,
       name: activity.name,
       description: activity.description,
-      weight: activity.weight
+      weight: activity.weight,
+      parent_id: activity.parent_id
     }
   end
 

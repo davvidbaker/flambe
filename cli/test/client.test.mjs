@@ -105,22 +105,82 @@ test('start discovers the default thread and posts an authenticated begin event'
   });
 });
 
-test('explicit thread skips trace discovery', async () => {
+test('explicit thread still discovers an active parent in that thread', async () => {
   const requests = [];
   const fetchImpl = async (url, options = {}) => {
     requests.push({ url, options });
+    if (options.method === undefined || options.method === 'GET') {
+      return jsonResponse({ data: { id: 2, threads: [{ id: 11, name: 'Main', rank: 0 }], events: [] } });
+    }
     return jsonResponse({ data: { activity: { id: 8 }, event: { id: 9 } } }, 201);
   };
 
   const client = new FlambeClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 2, fetchImpl, now: () => 7 });
   assert.equal(await client.start({ name: 'Run tests', threadId: '11', description: 'CI', categoryIds: ['4'] }), 8);
-  assert.equal(requests.length, 1);
-  assert.deepEqual(JSON.parse(requests[0].options.body), {
+  assert.equal(requests.length, 2);
+  assert.deepEqual(JSON.parse(requests[1].options.body), {
     trace_id: 2,
     thread_id: 11,
     activity: { name: 'Run tests', description: 'CI', categories: [4] },
     event: { timestamp_integer: 7, phase: 'B' },
   });
+});
+
+test('start makes the latest active activity in its thread the parent by default', async () => {
+  let request;
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 't', traceId: 2, now: () => 7,
+    fetchImpl: async (_url, options = {}) => {
+      if (options.method === undefined || options.method === 'GET') {
+        return jsonResponse({ data: {
+          id: 2,
+          threads: [{ id: 11, name: 'Main', rank: 0 }],
+          events: [{ id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', activity: { id: 6, name: 'Root task', thread: { id: 11 }, categories: [] } }],
+        } });
+      }
+      request = options;
+      return jsonResponse({ data: { activity: { id: 8 }, event: { id: 9 } } }, 201);
+    },
+  });
+
+  await client.start({ name: 'Inspect config', threadId: 11 });
+  assert.equal(JSON.parse(request.body).activity.parent_id, 6);
+});
+
+test('start can explicitly remain a root in a thread with active work', async () => {
+  let request;
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 't', traceId: 2, now: () => 7,
+    fetchImpl: async (_url, options = {}) => {
+      if (options.method === undefined || options.method === 'GET') {
+        return jsonResponse({ data: {
+          id: 2,
+          threads: [{ id: 11, name: 'Main', rank: 0 }],
+          events: [{ id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', activity: { id: 6, name: 'Existing work', thread: { id: 11 }, categories: [] } }],
+        } });
+      }
+      request = options;
+      return jsonResponse({ data: { activity: { id: 8 }, event: { id: 9 } } }, 201);
+    },
+  });
+
+  await client.start({ name: 'New root', threadId: 11, parentId: null });
+  assert.equal(Object.hasOwn(JSON.parse(request.body).activity, 'parent_id'), false);
+});
+
+test('CLI parses --root as an explicit root activity', async () => {
+  let input;
+  const client = {
+    flushQueue: async () => {},
+    start: async value => {
+      input = value;
+      return 1;
+    },
+  };
+  const stdout = { write: () => {} };
+
+  await run(['start', 'New', 'root', '--root'], { client, stdout });
+  assert.equal(input.parentId, null);
 });
 
 test('start accepts a timezone-aware ISO timestamp for a backdated begin event', async () => {
@@ -217,6 +277,9 @@ test('queues the full offline activity lifecycle and replays it in order', async
     fetchImpl: async (url, options = {}) => {
       if (!connected) throw new TypeError('network unavailable');
       requests.push({ url, options });
+      if (options.method === undefined || options.method === 'GET') {
+        return jsonResponse({ data: { id: 3, threads: [{ id: 4, name: 'Main', rank: 0 }], events: [] } });
+      }
       if (url.endsWith('/api/activities')) {
         return jsonResponse({ data: { activity: { id: 42 }, event: { id: 50 } } }, 201);
       }
@@ -238,24 +301,25 @@ test('queues the full offline activity lifecycle and replays it in order', async
 
     await client.flushQueue();
 
-    assert.equal(requests.length, 4);
-    assert.deepEqual(JSON.parse(requests[0].options.body), {
+    assert.equal(requests.length, 5);
+    assert.equal(requests[0].url, 'http://flambe.test/api/traces/3');
+    assert.deepEqual(JSON.parse(requests[1].options.body), {
       trace_id: 3,
       thread_id: 4,
       activity: { name: 'Work offline', categories: [5] },
       event: { timestamp_integer: 456, phase: 'B' },
     });
-    assert.deepEqual(JSON.parse(requests[1].options.body), {
+    assert.deepEqual(JSON.parse(requests[2].options.body), {
       trace_id: 3,
       activity_id: 42,
       event: { timestamp_integer: 456, phase: 'S', message: 'Waiting offline' },
     });
-    assert.deepEqual(JSON.parse(requests[2].options.body), {
+    assert.deepEqual(JSON.parse(requests[3].options.body), {
       trace_id: 3,
       activity_id: 42,
       event: { timestamp_integer: 456, phase: 'R', message: 'Back offline' },
     });
-    assert.deepEqual(JSON.parse(requests[3].options.body), {
+    assert.deepEqual(JSON.parse(requests[4].options.body), {
       trace_id: 3,
       activity_id: 42,
       event: { timestamp_integer: 456, phase: 'E', message: 'Finished offline' },
@@ -296,6 +360,8 @@ test('status identifies active and suspended activities by their latest lifecycl
       name: 'Open work',
       threadId: 4,
       threadName: 'Open',
+      parentId: null,
+      path: ['Open work'],
       categoryIds: [5],
       startedAt: '2026-09-02T11:00:00Z',
       latestEvent: { id: 2, phase: 'B', timestamp: '2026-09-02T11:00:00Z' },
@@ -304,6 +370,8 @@ test('status identifies active and suspended activities by their latest lifecycl
       name: 'Resumed work',
       threadId: 4,
       threadName: 'Open',
+      parentId: null,
+      path: ['Resumed work'],
       categoryIds: [],
       startedAt: '2026-09-02T12:15:00Z',
       latestEvent: { id: 6, phase: 'R', timestamp: '2026-09-02T14:00:00Z' },
@@ -315,6 +383,8 @@ test('status identifies active and suspended activities by their latest lifecycl
     name: 'Paused work',
     threadId: 4,
     threadName: 'Open',
+    parentId: null,
+    path: ['Paused work'],
     categoryIds: [],
     startedAt: '2026-09-02T12:30:00Z',
     latestEvent: { id: 4, phase: 'S', timestamp: '2026-09-02T13:00:00Z', message: 'Waiting' },
