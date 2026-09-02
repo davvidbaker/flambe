@@ -156,7 +156,13 @@ test('creates, renames, and deletes a thread through the authenticated same-orig
 
 test('starts a new activity through the command palette', async ({ page }) => {
   const pageErrors: string[] = [];
+  const socketFrames: string[] = [];
   page.on('pageerror', error => pageErrors.push(error.message));
+  page.on('websocket', socket => {
+    socket.on('framereceived', event => {
+      if (typeof event.payload === 'string') socketFrames.push(event.payload);
+    });
+  });
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
@@ -203,6 +209,10 @@ test('starts a new activity through the command palette', async ({ page }) => {
 
   const created = await (await createResponse).json();
   expect(created.data.activity).toMatchObject({ name });
+
+  await expect.poll(() => socketFrames.some(frame =>
+    frame.includes('timeline_event') && frame.includes(String(created.data.activity.id)),
+  )).toBe(true);
 
   const ended = await page.evaluate(async ({ activityId, traceId: id }) => {
     const response = await fetch('/api/events', {
