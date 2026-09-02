@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import { FlambeClient, configFromEnv } from '../src/client.mjs';
 import { run } from '../src/cli.mjs';
+import { loadProjectEnv } from '../src/env.mjs';
 
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -26,6 +30,48 @@ test('configFromEnv requires exactly the agent-facing configuration', () => {
     () => configFromEnv({ FLAMBE_URL: 'x', FLAMBE_API_TOKEN: 'y', FLAMBE_TRACE_ID: 'nope' }),
     /positive integer/,
   );
+});
+
+test('loadProjectEnv reads .env from cwd without overriding existing environment values', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'flambe-env-'));
+
+  try {
+    writeFileSync(
+      join(directory, '.env'),
+      [
+        'FLAMBE_URL=http://from-dotenv:4001',
+        'FLAMBE_API_TOKEN="flb_from_dotenv"',
+        'FLAMBE_TRACE_ID=27',
+      ].join('\n'),
+    );
+
+    const env = { FLAMBE_URL: 'http://from-shell:4001' };
+    assert.equal(loadProjectEnv({ cwd: directory, env }), join(directory, '.env'));
+    assert.deepEqual(env, {
+      FLAMBE_URL: 'http://from-shell:4001',
+      FLAMBE_API_TOKEN: 'flb_from_dotenv',
+      FLAMBE_TRACE_ID: '27',
+    });
+    assert.deepEqual(configFromEnv(env), {
+      baseUrl: 'http://from-shell:4001',
+      token: 'flb_from_dotenv',
+      traceId: 27,
+    });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('loadProjectEnv is a no-op when the project has no .env', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'flambe-no-env-'));
+
+  try {
+    const env = { KEEP_ME: 'yes' };
+    assert.equal(loadProjectEnv({ cwd: directory, env }), null);
+    assert.deepEqual(env, { KEEP_ME: 'yes' });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('start discovers the default thread and posts an authenticated begin event', async () => {
