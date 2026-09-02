@@ -184,6 +184,24 @@ test('end posts an authenticated end event with the completion message', async (
   });
 });
 
+test('suspend and resume post lifecycle events', async () => {
+  const requests = [];
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3, now: () => 456,
+    fetchImpl: async (_url, options = {}) => {
+      requests.push(JSON.parse(options.body));
+      return jsonResponse({ data: { id: requests.length, phase: requests.length === 1 ? 'S' : 'R' } }, 201);
+    },
+  });
+
+  assert.equal(await client.suspend({ activityId: 42, message: 'Waiting' }), 1);
+  assert.equal(await client.resume({ activityId: 42, message: 'Back to it' }), 2);
+  assert.deepEqual(requests, [
+    { trace_id: 3, activity_id: 42, event: { timestamp_integer: 456, phase: 'S', message: 'Waiting' } },
+    { trace_id: 3, activity_id: 42, event: { timestamp_integer: 456, phase: 'R', message: 'Back to it' } },
+  ]);
+});
+
 test('queues offline start and end operations, then flushes them in order', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'flambe-queue-'));
   const queuePath = join(directory, 'queue.json');
@@ -236,7 +254,7 @@ test('queues offline start and end operations, then flushes them in order', asyn
   }
 });
 
-test('status identifies activities whose latest event is a begin event', async () => {
+test('status identifies active and suspended activities by their latest lifecycle event', async () => {
   const client = new FlambeClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
@@ -249,6 +267,10 @@ test('status identifies activities whose latest event is a begin event', async (
           { id: 3, timestamp: '2026-09-02T12:00:00Z', phase: 'E', message: 'Done', activity: { id: 10, name: 'Closed work', thread: { id: 2 }, categories: [7] } },
           { id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', message: null, activity: { id: 10, name: 'Closed work', thread: { id: 2 }, categories: [7] } },
           { id: 2, timestamp: '2026-09-02T11:00:00Z', phase: 'B', message: null, activity: { id: 11, name: 'Open work', thread: { id: 4 }, categories: [5] } },
+          { id: 4, timestamp: '2026-09-02T13:00:00Z', phase: 'S', message: 'Waiting', activity: { id: 12, name: 'Paused work', thread: { id: 4 }, categories: [] } },
+          { id: 5, timestamp: '2026-09-02T12:30:00Z', phase: 'B', message: null, activity: { id: 12, name: 'Paused work', thread: { id: 4 }, categories: [] } },
+          { id: 6, timestamp: '2026-09-02T14:00:00Z', phase: 'R', message: null, activity: { id: 13, name: 'Resumed work', thread: { id: 4 }, categories: [] } },
+          { id: 7, timestamp: '2026-09-02T12:15:00Z', phase: 'B', message: null, activity: { id: 13, name: 'Resumed work', thread: { id: 4 }, categories: [] } },
         ],
         threads: [{ id: 2, name: 'Closed' }, { id: 4, name: 'Open' }],
       },
@@ -265,8 +287,26 @@ test('status identifies activities whose latest event is a begin event', async (
       categoryIds: [5],
       startedAt: '2026-09-02T11:00:00Z',
       latestEvent: { id: 2, phase: 'B', timestamp: '2026-09-02T11:00:00Z' },
+    }, {
+      id: 13,
+      name: 'Resumed work',
+      threadId: 4,
+      threadName: 'Open',
+      categoryIds: [],
+      startedAt: '2026-09-02T12:15:00Z',
+      latestEvent: { id: 6, phase: 'R', timestamp: '2026-09-02T14:00:00Z' },
     }],
   });
+
+  assert.deepEqual((await client.status({ suspendedOnly: true })).activities, [{
+    id: 12,
+    name: 'Paused work',
+    threadId: 4,
+    threadName: 'Open',
+    categoryIds: [],
+    startedAt: '2026-09-02T12:30:00Z',
+    latestEvent: { id: 4, phase: 'S', timestamp: '2026-09-02T13:00:00Z', message: 'Waiting' },
+  }]);
 });
 
 test('threads sorts by rank and identifies the default thread', async () => {
@@ -315,6 +355,8 @@ test('CLI commands print machine-friendly output', async () => {
     async flushQueue() { calls.push(['flushQueue']); },
     async start(input) { calls.push(['start', input]); return 123; },
     async end(input) { calls.push(['end', input]); return 456; },
+    async suspend(input) { calls.push(['suspend', input]); return 457; },
+    async resume(input) { calls.push(['resume', input]); return 458; },
     async status(input) {
       calls.push(['status', input]);
       return { trace: { id: 1, name: 'Work' }, activities: [{ id: 9, name: 'Open work', threadId: 2, threadName: 'Main', categoryIds: [5], latestEvent: { id: 3, phase: 'B', timestamp: '2026-09-02T11:00:00Z' } }] };
@@ -325,18 +367,24 @@ test('CLI commands print machine-friendly output', async () => {
 
   await run(['start', 'Inspect', 'auth', '--description', 'Agent work', '--category', '5', '--started-at', '2026-09-01T20:00:00-06:00'], { stdout, client });
   await run(['end', '123', 'Done'], { stdout, client });
+  await run(['suspend', '123', 'Waiting'], { stdout, client });
+  await run(['resume', '123', 'Continue'], { stdout, client });
   await run(['status', '--active', '--json'], { stdout, client });
   await run(['threads'], { stdout, client });
   await run(['categories', '--json'], { stdout, client });
 
-  assert.deepEqual(output, ['123\n', '456\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"threadName":"Main","categoryIds":[5],"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n', '2\t0\tMain\tdefault\n', '[{"id":5,"name":"Work","color_background":"#fff","color_text":"#000"}]\n']);
+  assert.deepEqual(output, ['123\n', '456\n', '457\n', '458\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"threadName":"Main","categoryIds":[5],"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n', '2\t0\tMain\tdefault\n', '[{"id":5,"name":"Work","color_background":"#fff","color_text":"#000"}]\n']);
   assert.deepEqual(calls, [
     ['flushQueue'],
     ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined, categoryIds: ['5'], startedAt: '2026-09-01T20:00:00-06:00' }],
     ['flushQueue'],
     ['end', { activityId: '123', message: 'Done' }],
     ['flushQueue'],
-    ['status', { activeOnly: true }],
+    ['suspend', { activityId: '123', message: 'Waiting' }],
+    ['flushQueue'],
+    ['resume', { activityId: '123', message: 'Continue' }],
+    ['flushQueue'],
+    ['status', { activeOnly: true, suspendedOnly: false }],
     ['flushQueue'],
     ['threads'],
     ['flushQueue'],

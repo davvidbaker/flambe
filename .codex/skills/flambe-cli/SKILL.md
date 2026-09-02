@@ -13,16 +13,20 @@ The CLI requires Node.js 22 or newer. If the current shell uses an older
 runtime, switch to a compatible project runtime before invoking it (for
 example, `nvm exec 22 flambe …`).
 
-1. Run `flambe status --active --json` before beginning work.
-2. Inspect its `activities` array. An entry represents work whose latest event
-   is a begin event; it includes the activity `id`, `name`, `threadId`,
+1. Run `flambe status --active --json` and `flambe status --suspended --json`
+   before beginning work.
+2. Inspect both `activities` arrays. An active entry has a latest begin or
+   resume event; a suspended entry has a latest suspend event. Look for a
+   suspended activity whose scope clearly matches the requested work and resume
+   it instead of starting duplicate work. Each entry includes the activity `id`, `name`, `threadId`,
    `threadName`, `categoryIds`, and latest event details.
 3. Use `flambe threads --json` to inspect the available threads. `start`
    defaults to the row marked `default`; pass `--thread ID` whenever the work
    belongs on another thread. Use `flambe categories --json` to discover
    category IDs, when categories help organize the work.
-4. Continue a matching activity when its scope clearly matches the requested
-   work. Otherwise create one:
+4. Continue an active matching activity, or resume a suspended matching
+   activity, when its scope clearly matches the requested work. Otherwise
+   create one:
 
 ```sh
 flambe start "Implement activity status" --thread 14 --category 3
@@ -37,6 +41,10 @@ Save the numeric activity ID printed by `start`.
 The `start` command prints only its numeric activity ID so it can safely be
 captured by scripts. `end` only needs that ID: the activity already belongs to
 its original thread.
+
+Pause work awaiting input or an external dependency with `flambe suspend ID
+"reason"`, then continue it with `flambe resume ID "reason"`. Both commands
+print the event ID and support the same offline recovery as `start` and `end`.
 
 ## Complete work
 

@@ -97,13 +97,20 @@ export class FlambeClient {
     return payload.data;
   }
 
-  async status({ activeOnly = false } = {}) {
+  async status({ activeOnly = false, suspendedOnly = false } = {}) {
+    if (activeOnly && suspendedOnly) throw new Error('--active and --suspended cannot be used together');
     const trace = await this.getTrace();
     const threadNames = new Map((trace.threads ?? []).map(thread => [thread.id, thread.name]));
     const latestByActivity = new Map();
+    const startedAtByActivity = new Map();
 
     for (const event of trace.events ?? []) {
       if (!event.activity) continue;
+
+      if (event.phase === 'B') {
+        const startedAt = startedAtByActivity.get(event.activity.id);
+        if (!startedAt || compareEvents(event, startedAt) < 0) startedAtByActivity.set(event.activity.id, event);
+      }
 
       const current = latestByActivity.get(event.activity.id);
       if (!current || compareEvents(event, current) > 0) {
@@ -112,7 +119,8 @@ export class FlambeClient {
     }
 
     const activities = [...latestByActivity.values()]
-      .filter(event => !activeOnly || event.phase === 'B')
+      .filter(event => !activeOnly || event.phase === 'B' || event.phase === 'R')
+      .filter(event => !suspendedOnly || event.phase === 'S')
       .sort(compareEvents)
       .map(event => ({
         id: event.activity.id,
@@ -120,7 +128,7 @@ export class FlambeClient {
         threadId: event.activity.thread.id,
         threadName: threadNames.get(event.activity.thread.id) ?? null,
         categoryIds: event.activity.categories ?? [],
-        startedAt: event.phase === 'B' ? event.timestamp : null,
+        startedAt: startedAtByActivity.get(event.activity.id)?.timestamp ?? null,
         latestEvent: {
           id: event.id,
           phase: event.phase,
@@ -215,6 +223,18 @@ export class FlambeClient {
   }
 
   async end({ activityId, message }) {
+    return this.lifecycleEvent({ activityId, message, phase: 'E', queueType: 'end' });
+  }
+
+  async suspend({ activityId, message }) {
+    return this.lifecycleEvent({ activityId, message, phase: 'S', queueType: 'suspend' });
+  }
+
+  async resume({ activityId, message }) {
+    return this.lifecycleEvent({ activityId, message, phase: 'R', queueType: 'resume' });
+  }
+
+  async lifecycleEvent({ activityId, message, phase, queueType }) {
     if (!String(activityId).startsWith('offline-')) {
       const id = Number(activityId);
       if (!Number.isInteger(id) || id <= 0) throw new Error('Activity id must be a positive integer');
@@ -225,17 +245,17 @@ export class FlambeClient {
 
     try {
       const id = await this.queue.resolveActivityId(activityId);
-      const eventId = await this.postEnd({ ...input, activityId: id });
-      await this.queue.removeAlias(activityId);
+      const eventId = await this.postLifecycleEvent({ ...input, activityId: id, phase });
+      if (phase === 'E') await this.queue.removeAlias(activityId);
       return eventId;
     } catch (error) {
       if (!error?.retryable) throw error;
-      await this.queue.enqueue('end', input);
+      await this.queue.enqueue(queueType, input);
       return 'queued';
     }
   }
 
-  async postEnd({ activityId, message, timestamp }) {
+  async postLifecycleEvent({ activityId, message, timestamp, phase }) {
     const payload = await this.request('/api/events', {
       method: 'POST',
       body: {
@@ -243,7 +263,7 @@ export class FlambeClient {
         activity_id: Number(activityId),
         event: {
           timestamp_integer: timestamp,
-          phase: 'E',
+          phase,
           ...(message ? { message } : {}),
         },
       },
@@ -255,7 +275,9 @@ export class FlambeClient {
   async flushQueue() {
     return this.queue.flush({
       start: input => this.postStart(input),
-      end: input => this.postEnd(input),
+      end: input => this.postLifecycleEvent({ ...input, phase: 'E' }),
+      suspend: input => this.postLifecycleEvent({ ...input, phase: 'S' }),
+      resume: input => this.postLifecycleEvent({ ...input, phase: 'R' }),
     });
   }
 }
