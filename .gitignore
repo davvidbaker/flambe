@@ -1,6 +1,9 @@
 node_modules
 npm-debug.log
 
+# Local environment/secrets
+.env
+
 # App artifacts
 **/_build
 **/_build/**
