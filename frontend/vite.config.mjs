@@ -127,14 +127,19 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (!id.includes('/node_modules/')) return undefined;
-            if (/\/(react|react-dom|react-router|react-redux|redux|redux-saga|scheduler|use-sync-external-store)\//.test(id)) {
+            // Vite/Rollup module IDs can contain native Windows separators.
+            // Normalize them before applying dependency path matching so the
+            // production chunk layout is identical on Windows, macOS, Linux.
+            const normalizedId = id.replaceAll('\\', '/');
+
+            if (!normalizedId.includes('/node_modules/')) return undefined;
+            if (/\/(react|react-dom|react-router|react-redux|redux|redux-saga|scheduler|use-sync-external-store)\//.test(normalizedId)) {
               return 'framework';
             }
-            if (/\/(downshift|react-modal|react-select|styled-components|polished|tinycolor2)\//.test(id)) {
+            if (/\/(downshift|react-modal|react-select|styled-components|polished|tinycolor2)\//.test(normalizedId)) {
               return 'ui';
             }
-            if (/\/(phoenix|xstate)\//.test(id)) return 'services';
+            if (/\/(phoenix|xstate)\//.test(normalizedId)) return 'services';
             return 'vendor';
           },
         },
