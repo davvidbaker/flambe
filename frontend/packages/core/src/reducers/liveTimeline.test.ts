@@ -73,6 +73,24 @@ describe('live timeline events', () => {
     expect(replayed.blocks).toHaveLength(1);
   });
 
+  it('materializes a thread that arrives with the first streamed event', () => {
+    const initial = liveTimeline(undefined, { type: '@@INIT' });
+    const state: TimelineState = {
+      ...initial,
+      trace: { id: 99, name: 'Open trace', filterExcludes: [] },
+    };
+
+    const next = liveTimeline(state, {
+      type: TIMELINE_EVENT_RECEIVED,
+      trace_id: 99,
+      event: beginEvent,
+    });
+
+    expect(next.threads[String(thread.id)]).toMatchObject(thread);
+    expect(next.blocks).toHaveLength(1);
+    expect(next.blocks[0].activity_id).toBe(activity.id);
+  });
+
   it('ignores events for a trace that is not currently open', () => {
     const initial = liveTimeline(undefined, { type: '@@INIT' });
     const state: TimelineState = {
