@@ -53,6 +53,10 @@ export default function liveTimeline(
 
   const events = upsertTraceEvent(nextState.events, action.event);
   const threads = mergeIncomingThread(nextState.threads, action.event);
+
+  // TODO(perf): Each live event currently reprocesses the entire trace. If agent
+  // telemetry becomes high-volume, update only the affected activity/block/thread
+  // incrementally while preserving idempotent event upserts and reconnect resync.
   const processed = processTrace(events, Object.values(threads));
 
   return {
