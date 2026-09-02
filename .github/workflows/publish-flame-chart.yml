@@ -23,8 +23,7 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: npm
-          cache-dependency-path: frontend/packages/flame-chart/package-lock.json
+      - run: npm install --package-lock-only
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
