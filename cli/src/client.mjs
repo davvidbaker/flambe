@@ -68,6 +68,41 @@ export class FlambeClient {
     return payload.data;
   }
 
+  async status({ activeOnly = false } = {}) {
+    const trace = await this.getTrace();
+    const latestByActivity = new Map();
+
+    for (const event of trace.events ?? []) {
+      if (!event.activity) continue;
+
+      const current = latestByActivity.get(event.activity.id);
+      if (!current || compareEvents(event, current) > 0) {
+        latestByActivity.set(event.activity.id, event);
+      }
+    }
+
+    const activities = [...latestByActivity.values()]
+      .filter(event => !activeOnly || event.phase === 'B')
+      .sort(compareEvents)
+      .map(event => ({
+        id: event.activity.id,
+        name: event.activity.name,
+        threadId: event.activity.thread.id,
+        startedAt: event.phase === 'B' ? event.timestamp : null,
+        latestEvent: {
+          id: event.id,
+          phase: event.phase,
+          timestamp: event.timestamp,
+          ...(event.message ? { message: event.message } : {}),
+        },
+      }));
+
+    return {
+      trace: { id: trace.id, name: trace.name },
+      activities,
+    };
+  }
+
   async resolveThreadId(explicitThreadId) {
     if (explicitThreadId !== undefined && explicitThreadId !== null) {
       const id = Number(explicitThreadId);
@@ -128,4 +163,9 @@ export class FlambeClient {
 
 export function clientFromEnv(env = process.env, overrides = {}) {
   return new FlambeClient({ ...configFromEnv(env), ...overrides });
+}
+
+function compareEvents(a, b) {
+  const timestampDifference = Date.parse(a.timestamp) - Date.parse(b.timestamp);
+  return timestampDifference || (a.id - b.id);
 }
