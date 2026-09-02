@@ -4,19 +4,24 @@ The active frontend is the React/Vite SPA in `packages/core`. It is served by
 Vite on port 5173 during development and proxies API, auth, and WebSocket
 requests to Phoenix 1.8 on port 4001.
 
-```sh
-nvm exec 22 npm ci
-nvm exec 22 npm run dev
+Use Node 22 on Windows, macOS, or Linux, then run:
+
+```text
+npm ci
+npm run dev
 ```
 
-Use `nvm exec 22 npm run build` to place the production bundle in
+Use `npm run build` to place the production bundle in
 `../backend/priv/static/assets`, then visit http://localhost:4001.
 
-```sh
-nvm exec 22 npm run typecheck
-nvm exec 22 npm run test:unit
-nvm exec 22 npm run test:smoke
+```text
+npm run typecheck
+npm run test:unit
+npm run test:smoke
 ```
+
+These npm scripts intentionally avoid shell-specific syntax and are exercised
+by native Windows CI as well as Linux CI.
 
 ---
 
