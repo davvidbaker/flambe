@@ -3,7 +3,9 @@ import { clientFromEnv } from './client.mjs';
 const usage = `Usage:
   flambe start <activity name> [--description <text>] [--thread <id>] [--category <id>...] [--started-at <ISO-8601>]
   flambe end <activity-id> [message]
-  flambe status [--active] [--json]
+  flambe suspend <activity-id> [message]
+  flambe resume <activity-id> [message]
+  flambe status [--active | --suspended] [--json]
   flambe threads [--json]
   flambe categories [--json]
   flambe ping
@@ -58,15 +60,18 @@ function parseStart(args) {
 
 function parseStatus(args) {
   let activeOnly = false;
+  let suspendedOnly = false;
   let json = false;
 
   for (const arg of args) {
     if (arg === '--active') activeOnly = true;
+    else if (arg === '--suspended') suspendedOnly = true;
     else if (arg === '--json') json = true;
     else throw new Error(`Unknown option: ${arg}`);
   }
 
-  return { activeOnly, json };
+  if (activeOnly && suspendedOnly) throw new Error('--active and --suspended cannot be used together');
+  return { activeOnly, suspendedOnly, json };
 }
 
 function parseJson(args) {
@@ -100,9 +105,17 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
     return;
   }
 
+  if (command === 'suspend' || command === 'resume') {
+    const [activityId, ...messageParts] = args;
+    if (!activityId) throw new Error(`Usage: flambe ${command} <activity-id> [message]`);
+    const eventId = await flambe[command]({ activityId, message: messageParts.join(' ') || undefined });
+    stdout.write(`${eventId}\n`);
+    return;
+  }
+
   if (command === 'status') {
-    const { activeOnly, json } = parseStatus(args);
-    const status = await flambe.status({ activeOnly });
+    const { activeOnly, suspendedOnly, json } = parseStatus(args);
+    const status = await flambe.status({ activeOnly, suspendedOnly });
 
     if (json) {
       stdout.write(`${JSON.stringify(status)}\n`);
