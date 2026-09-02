@@ -3,9 +3,8 @@ name: Publish flame chart
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths:
-      - '.github/workflows/publish-flame-chart.yml'
+    tags:
+      - 'flame-chart-v*'
 
 permissions:
   contents: read
@@ -18,17 +17,16 @@ jobs:
       run:
         working-directory: frontend/packages/flame-chart
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - run: npm install --package-lock-only
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
       - run: npm pack --dry-run
-      - name: Publish to npm
+      - name: Publish to npm with trusted publishing
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
