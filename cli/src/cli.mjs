@@ -15,7 +15,10 @@ Configuration:
 Required values:
   FLAMBE_URL
   FLAMBE_API_TOKEN
-  FLAMBE_TRACE_ID`;
+  FLAMBE_TRACE_ID
+
+Optional:
+  FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)`;
 
 function parseStart(args) {
   const nameParts = [];
@@ -81,6 +84,7 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
   }
 
   const flambe = client ?? clientFromEnv(env);
+  await flambe.flushQueue?.();
 
   if (command === 'start') {
     const activityId = await flambe.start(parseStart(args));
