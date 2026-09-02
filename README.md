@@ -57,22 +57,26 @@ cd ../cli
 npm link
 ```
 
-Configure the agent environment. The CLI discovers the trace's lowest-rank
-thread automatically, so these are the only required variables:
+Configure the project where the coding agent runs by adding a `.env` file in
+that project's working directory. You can copy Flambe's checked-in template:
 
 ```sh
-export FLAMBE_URL=http://localhost:4001
-export FLAMBE_API_TOKEN=flb_...
-export FLAMBE_TRACE_ID=1
+cp /path/to/flambe/.env.example .env
 ```
 
-PowerShell uses the same values:
+Then set the three values:
 
-```powershell
-$env:FLAMBE_URL = "http://localhost:4001"
-$env:FLAMBE_API_TOKEN = "flb_..."
-$env:FLAMBE_TRACE_ID = "1"
+```dotenv
+FLAMBE_URL=http://localhost:4001
+FLAMBE_API_TOKEN=flb_...
+FLAMBE_TRACE_ID=1
 ```
+
+The CLI loads `.env` from its current working directory automatically and
+discovers the trace's lowest-rank thread. Existing shell environment variables
+take precedence over values in `.env`, which makes one-off overrides and CI
+configuration predictable. `.env` is ignored by this repository and should not
+be committed because it contains the bearer token.
 
 An agent records a meaningful unit of work with a begin/end pair:
 
