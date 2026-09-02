@@ -9,6 +9,10 @@ Record semantic work units, not individual shell commands or hidden reasoning.
 
 ## Resume or start work
 
+Activities may stack: more than one activity can be active at once. Starting
+a newly discovered prerequisite does **not** require suspending the activity
+that surfaced it.
+
 The CLI requires Node.js 22 or newer. If the current shell uses an older
 runtime, switch to a compatible project runtime before invoking it (for
 example, `nvm exec 22 flambe …`).
@@ -24,9 +28,21 @@ example, `nvm exec 22 flambe …`).
    defaults to the row marked `default`; pass `--thread ID` whenever the work
    belongs on another thread. Use `flambe categories --json` to discover
    category IDs, when categories help organize the work.
-4. Continue an active matching activity, or resume a suspended matching
-   activity, when its scope clearly matches the requested work. Otherwise
-   create one:
+4. Choose the action that describes the work's actual state:
+   - Continue an active matching activity when its scope clearly matches the
+     requested work.
+   - Resume a suspended matching activity only when the agent is returning to
+     work that was explicitly tabled.
+   - Start a new activity when newly discovered work must be completed before
+     the current activity can continue. Leave the current activity active so
+     the work stacks up; do not suspend it merely because attention has moved
+     to its prerequisite.
+   - Suspend an activity only to explicitly table it: the agent is setting that
+     work aside rather than continuing it or its prerequisites now. Include the
+     reason. Do not suspend merely because its next step depends on other work,
+     user input, or an external dependency.
+
+   For new work, create an activity:
 
 ```sh
 flambe start "Implement activity status" --thread 14 --category 3
@@ -42,9 +58,13 @@ The `start` command prints only its numeric activity ID so it can safely be
 captured by scripts. `end` only needs that ID: the activity already belongs to
 its original thread.
 
-Pause work awaiting input or an external dependency with `flambe suspend ID
-"reason"`, then continue it with `flambe resume ID "reason"`. Both commands
-print the event ID and support the same offline recovery as `start` and `end`.
+For example, if implementation uncovers a missing migration that must be added
+before implementation can continue, the agent starts an `Add migration …`
+activity and leaves the implementation activity active.
+
+Table work with `flambe suspend ID "reason"`, then use `flambe resume ID
+"reason"` when returning to it. Both commands print the event ID and support
+the same offline recovery as `start` and `end`.
 
 ## Complete work
 
