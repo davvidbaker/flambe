@@ -1,5 +1,5 @@
 import { Socket } from 'phoenix';
-import { put, takeLatest, select, take, cancelled } from 'redux-saga/effects';
+import { put, takeLatest, select, take, cancelled, delay, race } from 'redux-saga/effects';
 import { eventChannel as sagaEventChannel } from 'redux-saga';
 import type { EventChannel, SagaIterator } from 'redux-saga';
 
@@ -19,6 +19,8 @@ interface TimelineEventPayload {
   event?: Omit<TraceEvent, 'timestamp'> & { timestamp: number | string };
   trace_id?: EntityId;
 }
+
+const TRACE_REFRESH_FALLBACK_MS = 2_000;
 
 function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<SocketAction> {
   const socketEventChannel = sagaEventChannel<SocketAction>(emit => {
@@ -111,7 +113,19 @@ function* initSocket(): SagaIterator {
 
   try {
     while (true) {
-      const myAction = yield take(socketEventChannel);
+      const { myAction, refresh } = yield race({
+        myAction: take(socketEventChannel),
+        refresh: delay(TRACE_REFRESH_FALLBACK_MS),
+      });
+
+      if (refresh) {
+        // The WebSocket is the fast path. Polling the open trace is the
+        // reliability path for a stale or silently failed browser socket.
+        yield* refreshOpenTrace();
+        continue;
+      }
+
+      if (!myAction) continue;
       yield put(myAction);
 
       if (myAction.type === 'EVENTS_CHANNEL_JOINED') {
