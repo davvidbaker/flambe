@@ -1,7 +1,7 @@
 {
   "name": "@davvidbaker/flame-chart",
   "version": "0.1.1",
-  "description": "Standalone React flame chart component extracted from Flambe",
+  "description": "Standalone React flame chart component extracted from Flambe.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
