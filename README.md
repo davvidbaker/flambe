@@ -85,9 +85,18 @@ ACTIVITY_ID=$(flambe start "Inspect authentication flow")
 flambe end "$ACTIVITY_ID" "Confirmed bearer-token path"
 ```
 
-Use `flambe start ... --description "..."` for optional detail or `--thread ID`
-to target a specific thread. Use `flambe status --active --json` at the start
-of an agent session to inspect work that has started but has not ended.
+Use `flambe threads` to list threads; the `default` row is the thread selected
+when `start` has no `--thread ID`. Use `--thread ID` to target another thread.
+Use `flambe categories` to list category IDs, then repeat `--category ID` to
+associate categories with a new activity:
+
+```sh
+flambe start "Investigate authentication" --thread 14 --category 3 --category 8
+```
+
+Use `flambe status --active --json` at the start of an agent session to inspect
+work that has started but has not ended; it includes each activity's thread name
+and category IDs.
 `flambe ping` verifies connectivity. The commands print machine-friendly IDs
 or JSON on stdout so agents can capture them easily.
 The server persists each event first and then broadcasts it over Phoenix

@@ -68,8 +68,27 @@ export class FlambeClient {
     return payload.data;
   }
 
+  async threads() {
+    const trace = await this.getTrace();
+    const threads = [...(trace.threads ?? [])]
+      .sort((a, b) => (a.rank - b.rank) || (a.id - b.id));
+
+    return threads.map((thread, index) => ({
+      id: thread.id,
+      name: thread.name,
+      rank: thread.rank,
+      default: index === 0,
+    }));
+  }
+
+  async categories() {
+    const payload = await this.request('/api/categories');
+    return payload.data;
+  }
+
   async status({ activeOnly = false } = {}) {
     const trace = await this.getTrace();
+    const threadNames = new Map((trace.threads ?? []).map(thread => [thread.id, thread.name]));
     const latestByActivity = new Map();
 
     for (const event of trace.events ?? []) {
@@ -88,6 +107,8 @@ export class FlambeClient {
         id: event.activity.id,
         name: event.activity.name,
         threadId: event.activity.thread.id,
+        threadName: threadNames.get(event.activity.thread.id) ?? null,
+        categoryIds: event.activity.categories ?? [],
         startedAt: event.phase === 'B' ? event.timestamp : null,
         latestEvent: {
           id: event.id,
@@ -116,9 +137,18 @@ export class FlambeClient {
     return threads[0].id;
   }
 
-  async start({ name, description, threadId }) {
+  resolveCategoryIds(categoryIds = []) {
+    const resolved = categoryIds.map(categoryId => Number(categoryId));
+    if (resolved.some(id => !Number.isInteger(id) || id <= 0)) {
+      throw new Error('--category must be a positive integer');
+    }
+    return [...new Set(resolved)];
+  }
+
+  async start({ name, description, threadId, categoryIds }) {
     if (!name?.trim()) throw new Error('Activity name is required');
     const resolvedThreadId = await this.resolveThreadId(threadId);
+    const resolvedCategoryIds = this.resolveCategoryIds(categoryIds);
 
     const payload = await this.request('/api/activities', {
       method: 'POST',
@@ -128,7 +158,7 @@ export class FlambeClient {
         activity: {
           name: name.trim(),
           ...(description ? { description } : {}),
-          categories: [],
+          categories: resolvedCategoryIds,
         },
         event: {
           timestamp_integer: this.now(),

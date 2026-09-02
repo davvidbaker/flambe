@@ -1,9 +1,11 @@
 import { clientFromEnv } from './client.mjs';
 
 const usage = `Usage:
-  flambe start <activity name> [--description <text>] [--thread <id>]
+  flambe start <activity name> [--description <text>] [--thread <id>] [--category <id>...]
   flambe end <activity-id> [message]
   flambe status [--active] [--json]
+  flambe threads [--json]
+  flambe categories [--json]
   flambe ping
 
 Configuration:
@@ -19,6 +21,7 @@ function parseStart(args) {
   const nameParts = [];
   let description;
   let threadId;
+  const categoryIds = [];
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -30,6 +33,11 @@ function parseStart(args) {
       threadId = args[index + 1];
       if (threadId === undefined) throw new Error('--thread requires a value');
       index += 1;
+    } else if (arg === '--category') {
+      const categoryId = args[index + 1];
+      if (categoryId === undefined) throw new Error('--category requires a value');
+      categoryIds.push(categoryId);
+      index += 1;
     } else if (arg.startsWith('--')) {
       throw new Error(`Unknown option: ${arg}`);
     } else {
@@ -37,7 +45,7 @@ function parseStart(args) {
     }
   }
 
-  return { name: nameParts.join(' '), description, threadId };
+  return { name: nameParts.join(' '), description, threadId, categoryIds };
 }
 
 function parseStatus(args) {
@@ -51,6 +59,12 @@ function parseStatus(args) {
   }
 
   return { activeOnly, json };
+}
+
+function parseJson(args) {
+  if (args.length === 0) return false;
+  if (args.length === 1 && args[0] === '--json') return true;
+  throw new Error(`Unknown option: ${args[0]}`);
 }
 
 export async function run(argv, { env = process.env, stdout = process.stdout, client } = {}) {
@@ -85,10 +99,34 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
       stdout.write(`${JSON.stringify(status)}\n`);
     } else {
       for (const activity of status.activities) {
-        stdout.write(`${activity.id}\t${activity.name}\t${activity.threadId}\t${activity.latestEvent.phase}\t${activity.latestEvent.timestamp}\n`);
+        stdout.write(`${activity.id}\t${activity.name}\t${activity.threadId}\t${activity.threadName ?? ''}\t${activity.categoryIds.join(',')}\t${activity.latestEvent.phase}\t${activity.latestEvent.timestamp}\n`);
       }
     }
 
+    return;
+  }
+
+  if (command === 'threads') {
+    const json = parseJson(args);
+    const threads = await flambe.threads();
+    if (json) stdout.write(`${JSON.stringify(threads)}\n`);
+    else {
+      for (const thread of threads) {
+        stdout.write(`${thread.id}\t${thread.rank}\t${thread.name}${thread.default ? '\tdefault' : ''}\n`);
+      }
+    }
+    return;
+  }
+
+  if (command === 'categories') {
+    const json = parseJson(args);
+    const categories = await flambe.categories();
+    if (json) stdout.write(`${JSON.stringify(categories)}\n`);
+    else {
+      for (const category of categories) {
+        stdout.write(`${category.id}\t${category.name}\t${category.color_background}\t${category.color_text}\n`);
+      }
+    }
     return;
   }
 
