@@ -5,7 +5,7 @@ import type { Activity } from '../types/Activity';
 import type { Thread } from '../types/Thread';
 import type { TraceEvent } from '../types/TraceEvent';
 import processTrace from '../utilities/processTrace';
-import liveTimeline, { upsertTraceEvent } from './liveTimeline';
+import liveTimeline, { removeTraceEvent, upsertTraceEvent } from './liveTimeline';
 import type { TimelineState } from './timeline';
 
 const thread: Thread = { id: 3, name: 'Agent work', rank: 0 };
@@ -40,6 +40,10 @@ describe('live timeline events', () => {
 
     expect(events).toHaveLength(2);
     expect(events[1].message).toBe('Actually done');
+  });
+
+  it('removes a deleted socket event by id', () => {
+    expect(removeTraceEvent([beginEvent, endEvent], endEvent.id)).toEqual([beginEvent]);
   });
 
   it('reprocesses the open trace so an ending event closes the live flame block', () => {
@@ -105,5 +109,28 @@ describe('live timeline events', () => {
     });
 
     expect(next).toBe(state);
+  });
+
+  it('reprocesses the open trace when a socket event is deleted', () => {
+    const initial = liveTimeline(undefined, { type: '@@INIT' });
+    const processed = processTrace([beginEvent, endEvent], [thread]);
+    const state: TimelineState = {
+      ...initial,
+      ...processed,
+      trace: { id: 99, name: 'Open trace', filterExcludes: [] },
+      lastCategory_id: processed.lastCategory_id ?? null,
+      lastThread_id: processed.lastThread_id ?? null,
+      minTime: processed.min - 1000 * 60 * 10,
+      maxTime: processed.max,
+    };
+
+    const next = liveTimeline(state, {
+      type: 'TIMELINE_EVENT_DELETED',
+      trace_id: 99,
+      event_id: endEvent.id,
+    });
+
+    expect(next.events).toEqual([beginEvent]);
+    expect(next.blocks[0].endTime).toBeUndefined();
   });
 });

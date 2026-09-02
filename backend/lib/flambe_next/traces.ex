@@ -178,4 +178,6 @@ defmodule FlambeNext.Traces do
     |> Event.changeset(attrs)
     |> Repo.update()
   end
+
+  def delete_event(%Event{} = event), do: Repo.delete(event)
 end

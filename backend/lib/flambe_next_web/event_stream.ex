@@ -15,6 +15,13 @@ defmodule FlambeNextWeb.EventStream do
     })
   end
 
+  def broadcast_event_deleted(%User{id: user_id}, %Event{} = event) do
+    Endpoint.broadcast("events:#{user_id}", "timeline_event_deleted", %{
+      trace_id: event.trace_id,
+      event_id: event.id
+    })
+  end
+
   defp event_data(%Event{} = event) do
     %{
       id: event.id,

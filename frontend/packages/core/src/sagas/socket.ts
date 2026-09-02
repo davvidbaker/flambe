@@ -3,7 +3,7 @@ import { put, takeLatest, select, take, cancelled, delay, race } from 'redux-sag
 import { eventChannel as sagaEventChannel } from 'redux-saga';
 import type { EventChannel, SagaIterator } from 'redux-saga';
 
-import { TIMELINE_EVENT_RECEIVED } from '../constants/liveEvents';
+import { TIMELINE_EVENT_DELETED, TIMELINE_EVENT_RECEIVED } from '../constants/liveEvents';
 import { TRACE_FETCH } from '../actions';
 import { getTimeline, type TimelineState } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
@@ -76,6 +76,10 @@ function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<So
           timestamp,
         },
       });
+    });
+    phoenixChannel.on('timeline_event_deleted', (payload: { event_id?: EntityId; trace_id?: EntityId }) => {
+      if (payload.event_id === undefined || payload.trace_id === undefined) return;
+      emit({ type: TIMELINE_EVENT_DELETED, trace_id: payload.trace_id, event_id: payload.event_id });
     });
 
     return () => {

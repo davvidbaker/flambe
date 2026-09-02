@@ -21,6 +21,7 @@ import search from './search';
 import settings from './settings';
 import toaster from './toaster';
 import type { EntityId } from '../types/ids';
+import undo from './undo';
 
 interface RootAction {
   bool?: boolean;
@@ -126,6 +127,7 @@ export {
   timeline,
   todosVisible,
   toaster,
+  undo,
   user,
   view,
   viewThread,

@@ -40,6 +40,22 @@ defmodule FlambeNextWeb.EventController do
     end
   end
 
+  def delete(conn, %{"id" => id}) do
+    user = conn.assigns.current_user
+    event = Traces.get_user_event!(user, id)
+
+    case Traces.delete_event(event) do
+      {:ok, _event} ->
+        :ok = EventStream.broadcast_event_deleted(user, event)
+        send_resp(conn, :no_content, "")
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: errors(changeset)})
+    end
+  end
+
   defp errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, _options} -> message end)
   end
