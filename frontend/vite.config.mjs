@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
         '@davvidbaker/flame-chart': path.resolve(configDirectory, 'packages/flame-chart/src/index.ts'),
         components: path.resolve(configDirectory, 'packages/core/src/components'),
