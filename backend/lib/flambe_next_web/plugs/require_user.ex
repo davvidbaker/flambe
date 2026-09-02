@@ -8,15 +8,20 @@ defmodule FlambeNextWeb.Plugs.RequireUser do
   def init(options), do: options
 
   def call(conn, _options) do
-    case session_user(conn) || bearer_user(conn) do
+    case session_user(conn) || bearer_authentication(conn) do
       nil ->
         conn
         |> put_status(:unauthorized)
         |> json(%{error: "UNAUTHENTICATED"})
         |> halt()
 
-      user ->
+      %{} = user ->
         assign(conn, :current_user, user)
+
+      {user, api_token} ->
+        conn
+        |> assign(:current_user, user)
+        |> assign(:api_token, api_token)
     end
   end
 
@@ -27,11 +32,11 @@ defmodule FlambeNextWeb.Plugs.RequireUser do
     end
   end
 
-  defp bearer_user(conn) do
+  defp bearer_authentication(conn) do
     case get_req_header(conn, "authorization") do
       ["Bearer " <> raw_token] ->
-        case ApiTokens.authenticate(raw_token) do
-          {:ok, user} -> user
+        case ApiTokens.authenticate_with_token(raw_token) do
+          {:ok, user, api_token} -> {user, api_token}
           {:error, :invalid_token} -> nil
         end
 
