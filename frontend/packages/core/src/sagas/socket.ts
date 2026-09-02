@@ -3,12 +3,21 @@ import { put, takeLatest, select, take, cancelled } from 'redux-saga/effects';
 import { eventChannel as sagaEventChannel } from 'redux-saga';
 import type { EventChannel, SagaIterator } from 'redux-saga';
 
+import { TIMELINE_EVENT_RECEIVED } from '../constants/liveEvents';
+import { TRACE_FETCH } from '../actions';
+import { getTimeline, type TimelineState } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import type { EntityId } from '../types/ids';
+import type { TraceEvent } from '../types/TraceEvent';
 
 interface SocketAction {
   type: string;
   [key: string]: unknown;
+}
+
+interface TimelineEventPayload {
+  event?: Omit<TraceEvent, 'timestamp'> & { timestamp: number | string };
+  trace_id?: EntityId;
 }
 
 function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<SocketAction> {
@@ -26,7 +35,12 @@ function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<So
     const phoenixChannel = socket.channel(`events:${user_id}`, {});
     phoenixChannel
       .join()
-      .receive('ok', () => {})
+      .receive('ok', () => {
+        // Channel delivery is intentionally ephemeral. Re-fetching the current
+        // trace after every successful join/rejoin fills any gap that occurred
+        // while this browser was disconnected.
+        emit({ type: 'EVENTS_CHANNEL_JOINED' });
+      })
       .receive('error', () => {})
       .receive('timeout', () => {});
 
@@ -39,6 +53,29 @@ function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<So
     phoenixChannel.on('search_terms', (searchTerm: Record<string, unknown>) => {
       emit({ type: 'SEARCH_TERMS_EVENT', ...searchTerm });
     });
+    phoenixChannel.on('timeline_event', (payload: TimelineEventPayload) => {
+      const { event, trace_id } = payload;
+      if (!event || trace_id === undefined) return;
+
+      const timestamp = typeof event.timestamp === 'number'
+        ? event.timestamp
+        : new Date(event.timestamp).getTime();
+
+      if (!Number.isFinite(timestamp)) {
+        console.error('received timeline event with invalid timestamp', payload);
+        return;
+      }
+
+      emit({
+        type: TIMELINE_EVENT_RECEIVED,
+        trace_id,
+        event: {
+          ...event,
+          timestamp,
+        },
+      });
+    });
+
     return () => {
       phoenixChannel.leave();
       socket.disconnect();
@@ -46,6 +83,14 @@ function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<So
   });
 
   return socketEventChannel;
+}
+
+function* refreshOpenTrace(): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  const trace_id = timeline.trace?.id;
+  if (trace_id === null || trace_id === undefined) return;
+
+  yield put({ type: TRACE_FETCH, trace: trace_id });
 }
 
 function* initSocket(): SagaIterator {
@@ -68,6 +113,10 @@ function* initSocket(): SagaIterator {
     while (true) {
       const myAction = yield take(socketEventChannel);
       yield put(myAction);
+
+      if (myAction.type === 'EVENTS_CHANNEL_JOINED') {
+        yield* refreshOpenTrace();
+      }
     }
   } finally {
     if (yield cancelled()) socketEventChannel.close();
