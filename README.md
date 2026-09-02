@@ -82,6 +82,8 @@ An agent records a meaningful unit of work with a begin/end pair:
 
 ```sh
 ACTIVITY_ID=$(flambe start "Inspect authentication flow")
+flambe suspend "$ACTIVITY_ID" "Waiting for product decision"
+flambe resume "$ACTIVITY_ID" "Decision received"
 flambe end "$ACTIVITY_ID" "Confirmed bearer-token path"
 ```
 
@@ -102,8 +104,9 @@ flambe start "Agent logging" --thread 1 --started-at "2026-09-01T20:00:00-06:00"
 ```
 
 Use `flambe status --active --json` at the start of an agent session to inspect
-work that has started but has not ended; it includes each activity's thread name
-and category IDs.
+currently active work. Also use `flambe status --suspended --json` to find
+paused activities that may match the current request and should be resumed.
+Both include each activity's thread name and category IDs.
 `flambe ping` verifies connectivity. The commands print machine-friendly IDs
 or JSON on stdout so agents can capture them easily.
 The server persists each event first and then broadcasts it over Phoenix

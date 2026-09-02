@@ -74,7 +74,7 @@ export class FlambeQueue {
     await this.write(state);
   }
 
-  async flush({ start, end }) {
+  async flush({ start, end, suspend, resume }) {
     const state = await this.read();
 
     for (let index = 0; index < state.entries.length;) {
@@ -88,10 +88,11 @@ export class FlambeQueue {
         if (entry.type === 'start') {
           const activityId = await start(entry.input);
           state.aliases[entry.localId] = activityId;
-        } else if (entry.type === 'end') {
+        } else if (entry.type === 'end' || entry.type === 'suspend' || entry.type === 'resume') {
           const activityId = state.aliases[entry.activityId] ?? entry.activityId;
-          await end({ activityId, message: entry.message, timestamp: entry.timestamp });
-          delete state.aliases[entry.activityId];
+          const post = { end, suspend, resume }[entry.type];
+          await post({ activityId, message: entry.message, timestamp: entry.timestamp });
+          if (entry.type === 'end') delete state.aliases[entry.activityId];
         } else {
           throw new Error(`Invalid Flambe offline queue entry type: ${entry.type}`);
         }
