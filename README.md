@@ -38,6 +38,58 @@ Flambe uses local email/password accounts only. Create an account at
 `/register`, or seed the deterministic browser-test account with
 `mix flambe_next.seed_e2e` from `backend`.
 
+## Coding-agent CLI
+
+Flambe can accept user-scoped bearer tokens so coding agents can stream work
+into an open trace without knowing your account password. Raw tokens are shown
+once; the database stores only a SHA-256 hash.
+
+Create a token from `backend` after running migrations:
+
+```sh
+mix flambe_next.create_api_token you@example.com "Claude"
+```
+
+Install the zero-dependency Node 22 CLI from this checkout:
+
+```sh
+cd ../cli
+npm link
+```
+
+Configure the agent environment. The CLI discovers the trace's lowest-rank
+thread automatically, so these are the only required variables:
+
+```sh
+export FLAMBE_URL=http://localhost:4001
+export FLAMBE_API_TOKEN=flb_...
+export FLAMBE_TRACE_ID=1
+```
+
+PowerShell uses the same values:
+
+```powershell
+$env:FLAMBE_URL = "http://localhost:4001"
+$env:FLAMBE_API_TOKEN = "flb_..."
+$env:FLAMBE_TRACE_ID = "1"
+```
+
+An agent records a meaningful unit of work with a begin/end pair:
+
+```sh
+ACTIVITY_ID=$(flambe start "Inspect authentication flow")
+flambe end "$ACTIVITY_ID" "Confirmed bearer-token path"
+```
+
+Use `flambe start ... --description "..."` for optional detail or `--thread ID`
+to target a specific thread. `flambe ping` verifies connectivity. The commands
+print machine-friendly numeric IDs on stdout so agents can capture them easily.
+The server persists each event first and then broadcasts it over Phoenix
+Channels, so any open FlameChart updates live.
+
+Agent instructions should ask for semantic work units (investigate, implement,
+test, debug), not every shell command or hidden reasoning step.
+
 ## Verification
 
 With PostgreSQL available, run the checks that gate the active stack:
@@ -45,6 +97,9 @@ With PostgreSQL available, run the checks that gate the active stack:
 ```sh
 cd backend
 mix precommit
+
+cd ../cli
+npm test
 
 cd ../frontend
 nvm exec 22 npm run typecheck

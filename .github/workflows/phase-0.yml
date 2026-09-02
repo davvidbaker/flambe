@@ -35,6 +35,23 @@ jobs:
           MIX_ENV=test mix ecto.migrate
           MIX_ENV=test mix precommit
 
+  cli:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test agent CLI
+        working-directory: cli
+        run: npm test
+      - name: Verify CLI package contents
+        working-directory: cli
+        run: npm pack --dry-run
+
   browser-smoke:
     runs-on: ubuntu-latest
     services:
@@ -85,10 +102,16 @@ jobs:
       - name: Start Phoenix 1.8 with the built frontend
         working-directory: backend
         run: mix phx.server > /tmp/flambe-next-phoenix.log 2>&1 &
+      - name: Smoke test bearer-authenticated agent CLI against Phoenix
+        run: |
+          until curl --fail --silent http://localhost:4001/login; do sleep 1; done
+          TOKEN=$(cd backend && mix flambe_next.create_api_token e2e@flambe.local "CI agent" --raw | tail -n 1)
+          TRACE_ID=$(curl --fail --silent -H "Authorization: Bearer $TOKEN" http://localhost:4001/api/traces | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>process.stdout.write(String(JSON.parse(d).data[0].id)))")
+          ACTIVITY_ID=$(FLAMBE_URL=http://localhost:4001 FLAMBE_API_TOKEN="$TOKEN" FLAMBE_TRACE_ID="$TRACE_ID" node cli/bin/flambe.mjs start "CLI smoke activity")
+          FLAMBE_URL=http://localhost:4001 FLAMBE_API_TOKEN="$TOKEN" FLAMBE_TRACE_ID="$TRACE_ID" node cli/bin/flambe.mjs end "$ACTIVITY_ID" "CLI smoke complete"
       - name: Run Phoenix 1.8-served browser smoke test
         working-directory: frontend
         run: |
-          until curl --fail --silent http://localhost:4001/login; do sleep 1; done
           PLAYWRIGHT_BASE_URL=http://localhost:4001 npm run test:smoke
       - name: Upload Phoenix 1.8 server logs on failure
         if: failure()
