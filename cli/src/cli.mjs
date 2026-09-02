@@ -5,7 +5,11 @@ const usage = `Usage:
   flambe end <activity-id> [message]
   flambe ping
 
-Environment:
+Configuration:
+  Loads .env from the current working directory.
+  Existing shell environment variables take precedence.
+
+Required values:
   FLAMBE_URL
   FLAMBE_API_TOKEN
   FLAMBE_TRACE_ID`;
