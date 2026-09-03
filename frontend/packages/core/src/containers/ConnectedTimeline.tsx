@@ -34,6 +34,8 @@ export default connect(
       lastThread_id: timeline.lastThread_id,
       attentionShifts: getUser(state).attentionShifts,
       searchTerms: getUser(state).searchTerms,
+      absoluteTimeLabels: state.settings.absoluteTimeLabels,
+      twelveHourClock: state.settings.twelveHourClock,
       attentionDrivenThreadOrder: state.settings.attentionDrivenThreadOrder,
       tabs: getUser(state).tabs,
 

@@ -54,6 +54,19 @@ const SETTINGS: SettingDefinition[] = [
     copy: 'Uniform Block Height',
     description: 'In collapsed threads, all blocks are the same height.',
   },
+  {
+    setting: 'absoluteTimeLabels',
+    copy: 'Absolute Time Labels',
+    description:
+      'Show clock times on the timeline axis instead of time ago. Granularity follows the visible zoom level.',
+    subsettings: [
+      {
+        setting: 'twelveHourClock',
+        copy: '12-hour clock',
+        description: 'Use AM/PM instead of 24-hour time.',
+      },
+    ],
+  },
 ];
 
 const Setting = styled.div`

@@ -19,6 +19,8 @@ import {
 import { getShamefulColor } from '../utilities/timeline';
 import {
   actorAccentColor,
+  coalesceActorLaneChrome,
+  fitActorLaneLabel,
   projectActorLaneLayout,
   selectActorFlameSegments,
   type ActorLaneLayout,
@@ -30,6 +32,7 @@ import {
   constrain,
   trimTextMiddle,
   deepArrayIsEqual,
+  formatTimelineTickLabel,
   shortEnglishHumanizer,
 } from '../utilities';
 import { colors } from '../styles';
@@ -58,7 +61,10 @@ function activityByBlockIndex(blocks: TraceBlock[], index?: number | null): Enti
 }
 
 interface ChartThread extends Thread { suspendedActivityCount?: number }
-interface DividerData { offsets: Array<{ position: number }> }
+interface DividerData {
+  offsets: Array<{ position: number; time?: number }>;
+  gridSliceTime?: number;
+}
 interface Measurement { left: number | null; right: number | null }
 type BlockEntry = [string, TraceBlock];
 type ResizeDirection = 'left' | 'right';
@@ -88,6 +94,8 @@ interface OwnProps {
 }
 
 const connector = connect((state: RootState) => ({
+  absoluteTimeLabels: state.settings.absoluteTimeLabels,
+  twelveHourClock: state.settings.twelveHourClock,
   activityMute: state.settings.activityMute,
   activityMuteOpacity: state.settings.activityMuteOpacity,
   uniformBlockHeight: state.settings.uniformBlockHeight,
@@ -112,6 +120,12 @@ export class FlameChart extends Component<Props, State> {
   static foldedThreadHeight = 100;
 
   static threadHeaderHeight = 20;
+
+  /** Fixed gutter left of a flame's first block for rail + agent label. See ADR-005. */
+  static actorLaneGutter = 18;
+
+  /** Extra inset per nesting depth so delegated lanes tuck under parents. */
+  static actorLaneDepthInset = 6;
 
   state = {
     canvasHeight: 150,
@@ -892,36 +906,75 @@ export class FlameChart extends Component<Props, State> {
     const layout = this.actorLaneLayout;
     if (!layout) return;
 
+    const chromeBands = coalesceActorLaneChrome(
+      layout,
+      this.props.blocks,
+      this.dividersData.gridSliceTime ?? 0,
+    );
+
     this.ctx.save();
-    const lanes = layout.lanes.slice().sort((left, right) => left.depth - right.depth);
+    const gutter = FlameChart.actorLaneGutter;
 
-    lanes.forEach(lane => {
-      const threadId = String(lane.threadId);
-      if (this.threadCollapsed(lane.threadId)) return;
+    chromeBands.forEach(chrome => {
+      if (this.threadCollapsed(chrome.threadId)) return;
 
-      const threadOffset = this.offsets[threadId] ?? 0;
+      const contentLeft = this.timeToPixels(chrome.startTime);
+      const contentRight = this.timeToPixels(
+        chrome.endTime === null ? this.rightBoundaryTime : chrome.endTime,
+      );
+      const depthInset = chrome.depth * FlameChart.actorLaneDepthInset;
+      const railX = contentLeft - gutter + depthInset;
+      if (contentRight < 0 || railX > this.width) return;
+
+      const threadOffset = this.offsets[String(chrome.threadId)] ?? 0;
       const rowHeight = this.blockHeight + 1;
-      const inset = 6 + lane.depth * 10;
+      const rowCount = chrome.rowEnd - chrome.rowStart + 1;
       const top = threadOffset
         + FlameChart.threadHeaderHeight
         + this.scrollTop
-        + lane.rowStart * rowHeight
+        + chrome.rowStart * rowHeight
         - 2;
-      const height = (lane.rowEnd - lane.rowStart + 1) * rowHeight + 2;
-      const accent = actorAccentColor(lane.actorKey);
+      const height = rowCount * rowHeight + 2;
+      const accent = actorAccentColor(chrome.actorKey);
+      const washLeft = Math.max(railX, -2);
+      const washRight = Math.min(contentRight, this.width + 2);
+      const washWidth = Math.max(0, washRight - washLeft);
 
-      this.ctx.globalAlpha = 0.14;
-      this.ctx.fillStyle = accent;
-      this.ctx.fillRect(inset, top, this.width - inset - 4, height);
+      // Time-bounded wash behind the flame rows (ADR-005).
+      if (washWidth > 0) {
+        this.ctx.globalAlpha = 0.10;
+        this.ctx.fillStyle = accent;
+        this.ctx.fillRect(washLeft, top, washWidth, height);
+      }
 
-      this.ctx.globalAlpha = 0.9;
-      this.ctx.fillStyle = accent;
-      this.ctx.fillRect(inset, top, 3, height);
-
+      // Gutter rail left of the first block.
       this.ctx.globalAlpha = 0.95;
-      this.ctx.font = 'bold 10px sans-serif';
       this.ctx.fillStyle = accent;
-      this.ctx.fillText(lane.actorName, inset + 8, top + 12);
+      this.ctx.fillRect(railX, top, 3, height);
+
+      const label = chrome.actorName;
+      if (!label || height < 8) return;
+
+      // Single-row: stay rotated, use tiny type so more of the name fits.
+      const singleRow = rowCount === 1;
+      this.ctx.font = singleRow ? 'bold 7px sans-serif' : 'bold 10px sans-serif';
+      const maxVertical = Math.max(0, height - (singleRow ? 4 : 10));
+      const drawn = fitActorLaneLabel(
+        label,
+        maxVertical,
+        text => this.ctx.measureText(text).width,
+      );
+      if (!drawn) return;
+
+      this.ctx.save();
+      this.ctx.globalAlpha = 0.95;
+      this.ctx.fillStyle = accent;
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.translate(railX + gutter / 2 + 1, top + height - (singleRow ? 2 : 5));
+      this.ctx.rotate(-Math.PI / 2);
+      this.ctx.fillText(drawn, 0, 0);
+      this.ctx.restore();
     });
 
     this.ctx.restore();
@@ -965,6 +1018,9 @@ export class FlameChart extends Component<Props, State> {
       this.ctx.strokeStyle = accent;
       this.ctx.fillStyle = accent;
 
+      // Keep connectors/dots on the block edge, past the name gutter.
+      const joinX = rootTransform.blockX + 2;
+
       if (parentBlock && flame.parentActivityId !== null) {
         const parentActivity = this.props.activities[String(flame.parentActivityId)];
         if (
@@ -977,21 +1033,19 @@ export class FlameChart extends Component<Props, State> {
           );
           const parentLeft = parentTransform.blockX;
           const parentRight = parentTransform.blockX + parentTransform.blockWidth;
-          const parentX = constrain(rootTransform.blockX, parentLeft, parentRight);
+          const parentX = constrain(joinX, parentLeft, parentRight);
           const parentY = parentTransform.blockY + this.blockHeight / 2;
-          const forkX = Math.max(0, rootTransform.blockX - 7);
           const middleY = parentY + (rootY - parentY) / 2;
 
           this.ctx.beginPath();
           this.ctx.moveTo(parentX, parentY);
-          this.ctx.bezierCurveTo(parentX, middleY, forkX, middleY, forkX, rootY);
-          this.ctx.lineTo(rootTransform.blockX, rootY);
+          this.ctx.bezierCurveTo(parentX, middleY, joinX, middleY, joinX, rootY);
           this.ctx.stroke();
         }
       }
 
       this.ctx.beginPath();
-      this.ctx.arc(rootTransform.blockX, rootY, 3, 0, Math.PI * 2);
+      this.ctx.arc(joinX, rootY, 3, 0, Math.PI * 2);
       this.ctx.fill();
     });
 
@@ -1428,24 +1482,39 @@ export class FlameChart extends Component<Props, State> {
   drawGrid(ctx: CanvasRenderingContext2D, dividersData: DividerData): void {
     ctx.save();
     ctx.strokeStyle = '#e7e7e7';
-    ctx.fillStyle = '#e7e7e7';
+    ctx.fillStyle = '#a0a0a0';
     ctx.lineWidth = 1;
+    ctx.font = '10px sans-serif';
 
     const height = Math.floor(ctx.canvas.height / window.devicePixelRatio);
+    const visibleSpanMs = this.rightBoundaryTime - this.leftBoundaryTime;
+    const labelGap = 8;
+    let nextLabelX = -Infinity;
+    let previousLabeledTime: number | null = null;
 
     ctx.translate(0.5, 0.5);
     ctx.beginPath();
     dividersData.offsets.forEach(offsetInfo => {
       const x = offsetInfo.position;
-      const time = this.pixelsToTime(x);
+      const time = offsetInfo.time ?? this.pixelsToTime(x);
 
-      ctx.fillText(
-        shortEnglishHumanizer(Date.now() - time),
-        x + FlameChart.textPadding.x,
-        11,
-      );
       ctx.moveTo(offsetInfo.position, 0);
       ctx.lineTo(offsetInfo.position, height);
+
+      if (x < nextLabelX) return;
+
+      const label = formatTimelineTickLabel(time, {
+        absolute: this.props.absoluteTimeLabels,
+        twelveHour: this.props.twelveHourClock,
+        visibleSpanMs,
+        previousTimestamp: previousLabeledTime,
+      });
+      if (!label) return;
+
+      const labelWidth = ctx.measureText(label).width;
+      ctx.fillText(label, x + FlameChart.textPadding.x, 11);
+      nextLabelX = x + FlameChart.textPadding.x + labelWidth + labelGap;
+      previousLabeledTime = time;
     });
     ctx.stroke();
 

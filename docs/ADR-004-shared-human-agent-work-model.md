@@ -33,6 +33,10 @@ peer of that parent. A **fork curve** runs from the parent activity into the chi
 block so containment remains visible across lane boundaries. An agent activity with no parent is
 shown as an independent actor lane without an invented connector.
 
+Chrome terms for what is painted around those sublanes (**rail**, **wash**, **gutter**, and how
+they relate to **activity** blocks) are defined in
+[ADR-005](ADR-005-actor-lane-chrome.md).
+
 ## Rationale
 
 David chose one shared work model because Flambe is intentionally both a personal work system and
@@ -76,4 +80,4 @@ relationship. Bar fill stays category-based; actor color is reserved for lane ch
 - Avoid extending the shared lifecycle vocabulary for concerns that belong only to a human or
   agent overlay.
 - Implement nested actor sublanes + forks in the production chart / Storybook.
-- Keep category color as bar fill; actor color only on lane chrome and fork curves.
+- Keep category color as bar fill; see ADR-005 for rail/wash color vs agent label text.

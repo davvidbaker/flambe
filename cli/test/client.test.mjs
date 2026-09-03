@@ -15,6 +15,15 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+function emptyTrace(traceId = 3) {
+  return {
+    id: traceId,
+    name: 'Work',
+    threads: [{ id: 1, name: 'Main', rank: 0 }],
+    events: [],
+  };
+}
+
 test('configFromEnv requires exactly the agent-facing configuration', () => {
   assert.deepEqual(
     configFromEnv({
@@ -183,8 +192,11 @@ test('includes the stable agent instance ID when configured', async () => {
   let request;
   const client = new FlambeClient({
     baseUrl: 'http://flambe.test', token: 'secret', traceId: 3, agentId: 'agent-session-7',
-    fetchImpl: async (_url, options = {}) => {
+    fetchImpl: async (url, options = {}) => {
       request = options;
+      if (!options.method || options.method === 'GET') {
+        return jsonResponse({ data: emptyTrace(3) });
+      }
       return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
     },
   });
@@ -204,6 +216,9 @@ test('sends the agent display name only together with an instance ID', async () 
     agentName: 'Grok',
     fetchImpl: async (_url, options = {}) => {
       namedRequest = options;
+      if (!options.method || options.method === 'GET') {
+        return jsonResponse({ data: emptyTrace(3) });
+      }
       return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
     },
   });
@@ -220,6 +235,9 @@ test('sends the agent display name only together with an instance ID', async () 
     agentName: 'Grok',
     fetchImpl: async (_url, options = {}) => {
       namelessRequest = options;
+      if (!options.method || options.method === 'GET') {
+        return jsonResponse({ data: emptyTrace(3) });
+      }
       return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
     },
   });
@@ -347,6 +365,9 @@ test('start rejects invalid category IDs before posting an activity', async () =
 test('end posts an authenticated end event with the completion message', async () => {
   let request;
   const fetchImpl = async (url, options = {}) => {
+    if (!options.method || options.method === 'GET') {
+      return jsonResponse({ data: emptyTrace(3) });
+    }
     request = { url, options };
     return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
   };
@@ -366,6 +387,140 @@ test('end posts an authenticated end event with the completion message', async (
     activity_id: 42,
     event: { timestamp_integer: 456, phase: 'E', message: 'Found the issue' },
   });
+});
+
+test('end refuses when the activity still has open children', async () => {
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 3,
+    now: () => 456,
+    fetchImpl: async (url, options = {}) => {
+      if (!options.method || options.method === 'GET') {
+        return jsonResponse({
+          data: {
+            id: 3,
+            name: 'Work',
+            threads: [{ id: 1, name: 'Main', rank: 0 }],
+            events: [
+              {
+                id: 1,
+                timestamp: '2026-09-03T12:00:00Z',
+                phase: 'B',
+                activity: {
+                  id: 10,
+                  name: 'Parent work',
+                  parent_id: null,
+                  thread: { id: 1 },
+                  categories: [],
+                },
+              },
+              {
+                id: 2,
+                timestamp: '2026-09-03T12:01:00Z',
+                phase: 'B',
+                activity: {
+                  id: 11,
+                  name: 'Child work',
+                  parent_id: 10,
+                  thread: { id: 1 },
+                  categories: [],
+                },
+              },
+              {
+                id: 3,
+                timestamp: '2026-09-03T12:02:00Z',
+                phase: 'B',
+                activity: {
+                  id: 12,
+                  name: 'Other child',
+                  parent_id: 10,
+                  thread: { id: 1 },
+                  categories: [],
+                },
+              },
+            ],
+          },
+        });
+      }
+      throw new Error('should not post an end event');
+    },
+  });
+
+  await assert.rejects(
+    client.end({ activityId: 10, message: 'Too soon' }),
+    /Cannot end activity 10 while open children remain: 11 \(Child work\), 12 \(Other child\)\. End 11, 12 first/,
+  );
+});
+
+test('end --force closes a parent even when children are still open', async () => {
+  let posted;
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 3,
+    now: () => 456,
+    fetchImpl: async (_url, options = {}) => {
+      if (!options.method || options.method === 'GET') {
+        return jsonResponse({
+          data: {
+            id: 3,
+            name: 'Work',
+            threads: [{ id: 1, name: 'Main', rank: 0 }],
+            events: [
+              {
+                id: 1,
+                timestamp: '2026-09-03T12:00:00Z',
+                phase: 'B',
+                activity: {
+                  id: 10,
+                  name: 'Parent work',
+                  parent_id: null,
+                  thread: { id: 1 },
+                  categories: [],
+                },
+              },
+              {
+                id: 2,
+                timestamp: '2026-09-03T12:01:00Z',
+                phase: 'B',
+                activity: {
+                  id: 11,
+                  name: 'Child work',
+                  parent_id: 10,
+                  thread: { id: 1 },
+                  categories: [],
+                },
+              },
+            ],
+          },
+        });
+      }
+      posted = JSON.parse(options.body);
+      return jsonResponse({ data: { id: 99, phase: 'E' } }, 201);
+    },
+  });
+
+  assert.equal(await client.end({ activityId: 10, message: 'Forced', force: true }), 99);
+  assert.equal(posted.activity_id, 10);
+  assert.equal(posted.event.phase, 'E');
+});
+
+test('cli end --force passes through to the client', async () => {
+  const calls = [];
+  const output = [];
+  await run(['end', '10', 'Forced close', '--force'], {
+    client: {
+      flushQueue: async () => {},
+      end: async input => {
+        calls.push(input);
+        return 55;
+      },
+    },
+    stdout: { write: chunk => output.push(chunk) },
+  });
+  assert.deepEqual(calls, [{ activityId: '10', message: 'Forced close', force: true }]);
+  assert.deepEqual(output, ['55\n']);
 });
 
 test('suspend and resume post lifecycle events', async () => {
@@ -584,7 +739,7 @@ test('CLI commands print machine-friendly output', async () => {
     ['flushQueue'],
     ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined, categoryIds: ['5'], startedAt: '2026-09-01T20:00:00-06:00' }],
     ['flushQueue'],
-    ['end', { activityId: '123', message: 'Done' }],
+    ['end', { activityId: '123', message: 'Done', force: false }],
     ['flushQueue'],
     ['suspend', { activityId: '123', message: 'Waiting' }],
     ['flushQueue'],
