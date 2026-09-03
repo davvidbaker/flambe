@@ -230,6 +230,14 @@ function* updateActivity({ type, id, updates }: NetworkAction): SagaIterator {
       body: JSON.stringify({ activity: { ...updates } }),
     },
   });
+
+  // Thread moves cascade on the server; refetch so blocks/lanes recompute.
+  if (updates?.thread_id !== undefined) {
+    const timeline: TimelineState = yield select(getTimeline);
+    if (timeline.trace?.id !== null && timeline.trace?.id !== undefined) {
+      yield* fetchTrace({ type: TRACE_FETCH, trace: timeline.trace.id });
+    }
+  }
 }
 
 function* updateEvent({ type, id, updates }: NetworkAction): SagaIterator {
