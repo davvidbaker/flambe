@@ -8,6 +8,7 @@ defmodule FlambeNextWeb.Router do
 
   pipeline :authenticated_api do
     plug FlambeNextWeb.Plugs.RequireUser
+    plug FlambeNextWeb.Plugs.TrackAgentPresence
   end
 
   pipeline :spa do
@@ -41,6 +42,7 @@ defmodule FlambeNextWeb.Router do
     resources "/attentions", AttentionController, except: [:new, :edit]
     resources "/tabs", TabController, except: [:new, :edit]
     resources "/search_terms", SearchTermController, except: [:new, :edit]
+    get "/agent-status", AgentStatusController, :show
     get "/users/:id", UserController, :show
   end
 
