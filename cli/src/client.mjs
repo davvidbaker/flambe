@@ -28,13 +28,34 @@ export function agentIdentityFromEnv(env = process.env) {
       : undefined)
     || (env.CURSOR_AGENT?.trim() && env.CURSOR_CONVERSATION_ID?.trim()
       ? `cursor:${env.CURSOR_CONVERSATION_ID.trim()}`
-      : undefined);
+      : undefined)
+    || claudeAgentId(env);
   const agentName = env.FLAMBE_AGENT_NAME?.trim() || undefined;
 
   return {
     ...(agentId ? { agentId } : {}),
     ...(agentName ? { agentName } : {}),
   };
+}
+
+function firstPresent(...values) {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+  }
+}
+
+function claudeAgentId(env) {
+  const inClaude = env.CLAUDECODE?.trim() || env.CLAUDE_CODE_CHILD_SESSION?.trim();
+  if (!inClaude) return undefined;
+
+  const sessionId = firstPresent(
+    env.CLAUDE_CODE_SESSION_ID,
+    env.CLAUDE_SESSION_ID,
+    env.CLAUDE_CODE_REMOTE_SESSION_ID,
+    env.CLAUDE_CODE_BRIDGE_SESSION_ID,
+  );
+  return sessionId ? `claude:${sessionId}` : undefined;
 }
 
 function errorDetail(payload) {

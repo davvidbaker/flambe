@@ -21,7 +21,7 @@ Required values:
 
 Optional:
   FLAMBE_AGENT_ID    Stable ID for this running agent; enables named flame lanes.
-                     Derived from Codex or Cursor session env when unset.
+                     Derived from Codex, Cursor, or Claude Code session env when unset.
   FLAMBE_AGENT_NAME  Display name for this agent's lane. Do not put this in .env.
   FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)`;
 
