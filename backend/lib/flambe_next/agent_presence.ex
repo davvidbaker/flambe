@@ -19,6 +19,10 @@ defmodule FlambeNext.AgentPresence do
     GenServer.call(__MODULE__, {:count, user_id, System.monotonic_time(:millisecond)})
   end
 
+  def subscribe(user_id) do
+    Phoenix.PubSub.subscribe(FlambeNext.PubSub, topic(user_id))
+  end
+
   defp ensure_started do
     case Process.whereis(__MODULE__) do
       nil ->
@@ -37,7 +41,14 @@ defmodule FlambeNext.AgentPresence do
 
   @impl true
   def handle_cast({:record, user_id, token_id, now}, presences) do
-    {:noreply, Map.put(presences, {user_id, token_id}, now)}
+    old_count = count_presences(presences, user_id, now)
+    updated_presences = Map.put(presences, {user_id, token_id}, now)
+    new_count = count_presences(updated_presences, user_id, now)
+
+    if old_count != new_count, do: broadcast_count(user_id, new_count)
+
+    Process.send_after(self(), {:expire, user_id, token_id, now}, @freshness_ms)
+    {:noreply, updated_presences}
   end
 
   @impl true
@@ -45,11 +56,37 @@ defmodule FlambeNext.AgentPresence do
     fresh_presences =
       Map.filter(presences, fn {_key, seen_at} -> now - seen_at <= @freshness_ms end)
 
-    count =
-      fresh_presences
-      |> Map.keys()
-      |> Enum.count(fn {presence_user_id, _token_id} -> presence_user_id == user_id end)
-
-    {:reply, count, fresh_presences}
+    {:reply, count_presences(fresh_presences, user_id, now), fresh_presences}
   end
+
+  @impl true
+  def handle_info({:expire, user_id, token_id, seen_at}, presences) do
+    case Map.get(presences, {user_id, token_id}) do
+      ^seen_at ->
+        updated_presences = Map.delete(presences, {user_id, token_id})
+
+        broadcast_count(
+          user_id,
+          count_presences(updated_presences, user_id, seen_at + @freshness_ms)
+        )
+
+        {:noreply, updated_presences}
+
+      _ ->
+        {:noreply, presences}
+    end
+  end
+
+  defp count_presences(presences, user_id, now) do
+    presences
+    |> Enum.count(fn {{presence_user_id, _token_id}, seen_at} ->
+      presence_user_id == user_id and now - seen_at <= @freshness_ms
+    end)
+  end
+
+  defp broadcast_count(user_id, count) do
+    Phoenix.PubSub.broadcast(FlambeNext.PubSub, topic(user_id), {:agent_presence, user_id, count})
+  end
+
+  defp topic(user_id), do: "agent_presence:#{user_id}"
 end

@@ -5,7 +5,9 @@ defmodule FlambeNextWeb.Plugs.TrackAgentPresence do
 
   def init(options), do: options
 
-  def call(%{request_path: "/api/agent-status"} = conn, _options), do: conn
+  def call(%{request_path: request_path} = conn, _options)
+      when request_path in ["/api/agent-status", "/api/agent-status/stream"],
+      do: conn
 
   def call(conn, _options) do
     case Map.get(conn.assigns, :api_token) do

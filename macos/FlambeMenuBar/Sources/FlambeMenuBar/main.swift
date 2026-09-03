@@ -1,15 +1,14 @@
 import AppKit
 import Foundation
 
-private let pollInterval: TimeInterval = 5
-
 @main
 final class FlambeMenuBarApp: NSObject, NSApplicationDelegate {
   private let endpoint = Endpoint.fromProcess()
   private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
   private let connectionMenuItem = NSMenuItem(title: "Checking Flambe…", action: nil, keyEquivalent: "")
   private let previewMenuItem = NSMenuItem(title: "Preview Disconnected Flame", action: nil, keyEquivalent: "")
-  private var timer: Timer?
+  private var statusStream: AgentStatusStream?
+  private var reconnectWorkItem: DispatchWorkItem?
   private var activeAgentCount: Int?
   private var previewingDisconnected = false
 
@@ -23,12 +22,12 @@ final class FlambeMenuBarApp: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     configureMenu()
-    checkConnection()
-    timer = Timer.scheduledTimer(timeInterval: pollInterval, target: self, selector: #selector(checkConnection), userInfo: nil, repeats: true)
+    connectStatusStream()
   }
 
   func applicationWillTerminate(_ notification: Notification) {
-    timer?.invalidate()
+    reconnectWorkItem?.cancel()
+    statusStream?.stop()
   }
 
   private func configureMenu() {
@@ -40,9 +39,9 @@ final class FlambeMenuBarApp: NSObject, NSApplicationDelegate {
     menu.addItem(connectionMenuItem)
     menu.addItem(NSMenuItem.separator())
 
-    let checkNow = NSMenuItem(title: "Check Now", action: #selector(checkConnection), keyEquivalent: "r")
-    checkNow.target = self
-    menu.addItem(checkNow)
+    let reconnect = NSMenuItem(title: "Reconnect", action: #selector(reconnectStatusStream), keyEquivalent: "r")
+    reconnect.target = self
+    menu.addItem(reconnect)
 
     previewMenuItem.action = #selector(toggleDisconnectedPreview)
     previewMenuItem.target = self
@@ -54,18 +53,35 @@ final class FlambeMenuBarApp: NSObject, NSApplicationDelegate {
     statusItem.menu = menu
   }
 
-  @objc private func checkConnection() {
-    var request = URLRequest(url: endpoint.statusURL)
-    request.timeoutInterval = 3
-    request.cachePolicy = .reloadIgnoringLocalCacheData
-    request.setValue("Bearer \(endpoint.token)", forHTTPHeaderField: "Authorization")
+  private func connectStatusStream() {
+    reconnectWorkItem?.cancel()
+    statusStream?.stop()
 
-    URLSession.shared.dataTask(with: request) { [weak self] data, response, _ in
-      let activeAgentCount = parseActiveAgentCount(response, data)
+    let stream = AgentStatusStream(endpoint: endpoint, onCount: { [weak self] count in
       DispatchQueue.main.async {
-        self?.setConnectionStatus(activeAgentCount: activeAgentCount)
+        self?.setConnectionStatus(activeAgentCount: count)
       }
-    }.resume()
+    }, onDisconnect: { [weak self] in
+      DispatchQueue.main.async {
+        self?.setConnectionStatus(activeAgentCount: nil)
+        self?.scheduleReconnect()
+      }
+    })
+
+    statusStream = stream
+    stream.start()
+  }
+
+  private func scheduleReconnect() {
+    reconnectWorkItem?.cancel()
+    let workItem = DispatchWorkItem { [weak self] in self?.connectStatusStream() }
+    reconnectWorkItem = workItem
+    DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: workItem)
+  }
+
+  @objc private func reconnectStatusStream() {
+    setConnectionStatus(activeAgentCount: nil)
+    connectStatusStream()
   }
 
   private func setConnectionStatus(activeAgentCount: Int?) {
@@ -172,8 +188,8 @@ private struct Endpoint {
   let baseURL: URL
   let token: String
 
-  var statusURL: URL {
-    baseURL.appendingPathComponent("api/agent-status")
+  var statusStreamURL: URL {
+    baseURL.appendingPathComponent("api/agent-status/stream")
   }
 
   static func fromProcess() -> Endpoint {
@@ -193,11 +209,83 @@ private struct Endpoint {
   }
 }
 
-private func parseActiveAgentCount(_ response: URLResponse?, _ data: Data?) -> Int? {
-  guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode), let data else {
-    return nil
+private final class AgentStatusStream: NSObject, URLSessionDataDelegate {
+  private let endpoint: Endpoint
+  private let onCount: (Int) -> Void
+  private let onDisconnect: () -> Void
+  private var session: URLSession?
+  private var task: URLSessionDataTask?
+  private var buffer = ""
+  private var stopped = false
+
+  init(endpoint: Endpoint, onCount: @escaping (Int) -> Void, onDisconnect: @escaping () -> Void) {
+    self.endpoint = endpoint
+    self.onCount = onCount
+    self.onDisconnect = onDisconnect
   }
 
-  let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-  return payload?["active_agents"] as? Int
+  func start() {
+    var request = URLRequest(url: endpoint.statusStreamURL)
+    request.timeoutInterval = 24 * 60 * 60
+    request.cachePolicy = .reloadIgnoringLocalCacheData
+    request.setValue("Bearer \(endpoint.token)", forHTTPHeaderField: "Authorization")
+
+    let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+    self.session = session
+    let task = session.dataTask(with: request)
+    self.task = task
+    task.resume()
+  }
+
+  func stop() {
+    stopped = true
+    task?.cancel()
+    session?.invalidateAndCancel()
+  }
+
+  func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+    guard let response = response as? HTTPURLResponse, (200..<300).contains(response.statusCode) else {
+      completionHandler(.cancel)
+      notifyDisconnect()
+      return
+    }
+
+    completionHandler(.allow)
+  }
+
+  func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+    guard let text = String(data: data, encoding: .utf8) else { return }
+    buffer += text
+
+    while let eventRange = buffer.range(of: "\n\n") {
+      let event = String(buffer[..<eventRange.lowerBound])
+      buffer.removeSubrange(..<eventRange.upperBound)
+      parse(event: event)
+    }
+  }
+
+  func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+    notifyDisconnect()
+  }
+
+  private func parse(event: String) {
+    let data = event
+      .split(separator: "\n")
+      .first(where: { $0.hasPrefix("data: ") })
+      .map { String($0.dropFirst(6)) }
+
+    guard let data,
+          let payload = try? JSONSerialization.jsonObject(with: Data(data.utf8)) as? [String: Any],
+          let count = payload["active_agents"] as? Int else {
+      return
+    }
+
+    onCount(count)
+  }
+
+  private func notifyDisconnect() {
+    guard !stopped else { return }
+    stopped = true
+    onDisconnect()
+  }
 }
