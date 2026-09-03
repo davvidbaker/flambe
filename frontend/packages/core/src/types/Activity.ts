@@ -16,6 +16,7 @@ export interface Activity {
   id: EntityId;
   level?: number;
   name?: string;
+  parent_id?: EntityId | null;
   startTime?: number;
   status?: ActivityStatus;
   suspendedChildren?: EntityId[];

@@ -60,6 +60,7 @@ defmodule FlambeNextWeb.LiveEventStreamTest do
       Traces.create_activity(
         trace,
         thread,
+        nil,
         %{"name" => "Agent step"},
         %{"timestamp_integer" => 1_723_465_600_123, "phase" => "B"}
       )

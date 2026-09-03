@@ -66,6 +66,7 @@ defmodule Mix.Tasks.FlambeNext.SeedE2e do
         Traces.create_activity(
           trace,
           thread,
+          nil,
           %{description: "Created by the browser smoke seed", name: "Smoke activity", weight: 1},
           %{
             message: "Smoke activity started",

@@ -89,6 +89,9 @@ flambe end "$ACTIVITY_ID" "Confirmed bearer-token path"
 
 Use `flambe threads` to list threads; the `default` row is the thread selected
 when `start` has no `--thread ID`. Use `--thread ID` to target another thread.
+By default, `start` makes the newest active activity in that thread its parent,
+so an agent records a nested work tree. Use `--parent ID` to choose a parent
+explicitly, or `--root` to deliberately begin a top-level workstream.
 Use `flambe categories` to list category IDs, then repeat `--category ID` to
 associate categories with a new activity:
 
@@ -106,7 +109,8 @@ flambe start "Agent logging" --thread 1 --started-at "2026-09-01T20:00:00-06:00"
 Use `flambe status --active --json` at the start of an agent session to inspect
 currently active work. Also use `flambe status --suspended --json` to find
 paused activities that may match the current request and should be resumed.
-Both include each activity's thread name and category IDs.
+Both include each activity's thread name, category IDs, and its root-to-activity
+path.
 `flambe ping` verifies connectivity. The commands print machine-friendly IDs
 or JSON on stdout so agents can capture them easily.
 The server persists each event first and then broadcasts it over Phoenix

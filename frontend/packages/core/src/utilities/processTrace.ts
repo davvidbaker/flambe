@@ -66,23 +66,35 @@ function decrementThreadLevel(level: number): number {
   return Math.max(0, level - 1);
 }
 
-function isChildActivity(
+function isDescendantActivity(
   activity_id: EntityId,
-  blocks: TraceBlock[],
-  event: TraceEvent,
+  ancestor_id: EntityId,
+  activities: Record<string, ProcessedActivity>,
 ): boolean {
-  const activityBlock = lastActivityBlock(blocks, activity_id);
-  const parentId = event.activity?.id;
-  const parentBlock = parentId === undefined
-    ? undefined
-    : lastActivityBlock(blocks, parentId);
+  const seen = new Set<EntityId>();
+  let parentId = activities[keyFor(activity_id)]?.parent_id;
 
-  return Boolean(
-    activityBlock &&
-      parentBlock &&
-      activityBlock.startTime >= parentBlock.startTime &&
-      activityBlock.level > parentBlock.level,
-  );
+  while (parentId !== undefined && parentId !== null && !seen.has(parentId)) {
+    if (parentId === ancestor_id) return true;
+    seen.add(parentId);
+    parentId = activities[keyFor(parentId)]?.parent_id;
+  }
+
+  return false;
+}
+
+function activityLevel(activity: Activity, activities: Record<string, ProcessedActivity>): number {
+  const seen = new Set<EntityId>([activity.id]);
+  let depth = 0;
+  let parentId = activity.parent_id;
+
+  while (parentId !== undefined && parentId !== null && !seen.has(parentId)) {
+    depth += 1;
+    seen.add(parentId);
+    parentId = activities[keyFor(parentId)]?.parent_id;
+  }
+
+  return depth;
 }
 
 /** A block can have at most a beginning and an ending event. */
@@ -154,6 +166,7 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
     activities[activityKey] = activity;
     activity.events.push(event.id);
     activity.description ??= sourceActivity.description;
+    activity.parent_id ??= sourceActivity.parent_id;
     activity.categories = uniq([...activity.categories, ...sourceActivity.categories]);
 
     switch (event.phase) {
@@ -166,7 +179,7 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
         threadOpenActivities[threadKey] = remaining[threadKey];
 
         [...threadOpenActivities[threadKey]].forEach(childId => {
-          if (!isChildActivity(childId, blocks, event)) return;
+          if (!isDescendantActivity(childId, sourceActivity.id, activities)) return;
           activity.suspendedChildren.push(childId);
           const child = activities[keyFor(childId)];
           if (child) child.status = 'parent_suspended';
@@ -179,16 +192,18 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
       case 'X':
       case 'R': {
         if (event.phase === 'R' && (activity.status === 'parent_suspended' || activity.status === 'active')) break;
-        blocks.push({ activity_id: sourceActivity.id, beginning: event.phase, events: [event.id], level: threadLevel.current, startMessage: event.message, startTime: event.timestamp });
+        const level = activityLevel(activity, activities);
+        blocks.push({ activity_id: sourceActivity.id, beginning: event.phase, events: [event.id], level, startMessage: event.message, startTime: event.timestamp });
         threadLevel.current += 1;
-        threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
+        threadLevel.max = Math.max(level + 1, threadLevel.max);
         if (event.phase === 'R') {
           activity.suspendedChildren.forEach(childId => {
             const child = activities[keyFor(childId)];
             if (child) child.status = 'active';
-            blocks.push({ activity_id: childId, beginning: event.phase, events: [event.id], level: threadLevel.current, startTime: event.timestamp });
+            const childLevel = activityLevel(child, activities);
+            blocks.push({ activity_id: childId, beginning: event.phase, events: [event.id], level: childLevel, startTime: event.timestamp });
             threadLevel.current += 1;
-            threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
+            threadLevel.max = Math.max(childLevel + 1, threadLevel.max);
             threadOpenActivities[threadKey].push(childId);
           });
           activity.suspendedChildren = [];
@@ -206,10 +221,11 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
         activity.description = sourceActivity.description;
         activity.thread_id = thread_id;
         activity.flavor = event.phase === 'Q' ? 'question' : 'task';
-        blocks.push({ activity_id: sourceActivity.id, beginning: event.phase, events: [event.id], level: threadLevel.current, startMessage: event.message, startTime: event.timestamp });
+        const level = activityLevel(activity, activities);
+        blocks.push({ activity_id: sourceActivity.id, beginning: event.phase, events: [event.id], level, startMessage: event.message, startTime: event.timestamp });
         threadOpenActivities[threadKey].push(sourceActivity.id);
         threadLevel.current += 1;
-        threadLevel.max = Math.max(threadLevel.current, threadLevel.max);
+        threadLevel.max = Math.max(level + 1, threadLevel.max);
         break;
       case 'E':
       case 'J':
@@ -222,7 +238,7 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
         activity.status = 'complete';
         [...threadOpenActivities[threadKey]].forEach(childId => {
           const child = activities[keyFor(childId)];
-          if (!child || !isChildActivity(childId, blocks, event)) return;
+          if (!child || !isDescendantActivity(childId, sourceActivity.id, activities)) return;
           terminateBlock(blocks, childId, event.timestamp, event.phase, event.message, event.id);
           threadLevel.current = decrementThreadLevel(threadLevel.current);
           child.status = 'complete';
