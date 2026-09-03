@@ -118,6 +118,42 @@ the work.
 Before beginning a meaningful new concern, update Flambe so the chart reflects the change as it
 happens. Do not reconstruct a polished trace after the work is finished.
 
+## Identify this agent
+
+Flambe shows agent work on named actor lanes. Human work has no `agent_id`. If
+this session's `flambe` commands do not send an agent identity, the bars look
+like the user's own work.
+
+The CLI sends identity on every request from the process environment:
+
+- `FLAMBE_AGENT_ID` — stable ID for this running instance (the lane identity)
+- `FLAMBE_AGENT_NAME` — short display name for that lane
+
+When `FLAMBE_AGENT_ID` is unset, the CLI derives one from the host session if it
+can:
+
+- Codex: `codex:$CODEX_SESSION_ID:$CODEX_THREAD_ID`
+- Cursor: `cursor:$CURSOR_CONVERSATION_ID` when `CURSOR_AGENT` is set
+
+It does not invent a display name. Before the first `flambe` command, if
+`FLAMBE_AGENT_NAME` is unset, export a short name a collaborator would
+recognize — the product or model, not a sentence:
+
+```sh
+export FLAMBE_AGENT_NAME="Grok"
+```
+
+If the name is omitted, Flambe still treats the work as this agent: it labels
+the lane with the API token name, or a generated instance name. A missing ID is
+the failure mode that makes the work look human.
+
+If this host does not inject a session ID, also export a stable
+`FLAMBE_AGENT_ID` and reuse it for every command in this session so nested
+activities stay on one lane.
+
+Do not put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`. That file is
+shared and would collapse every agent onto one identity.
+
 ## Start or resume work
 
 The CLI requires Node.js 22 or newer. If the current shell uses an older runtime, switch to a
@@ -229,7 +265,9 @@ names or completion messages.
 
 The CLI loads `.env` from the current working directory. It requires `FLAMBE_URL`,
 `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID`; never put the token in agent instructions or
-version-controlled files.
+version-controlled files. Identify the agent with `FLAMBE_AGENT_NAME` (and
+`FLAMBE_AGENT_ID` when the host does not already inject a session) in the shell
+environment, not in `.env`.
 
 ## Install the Codex queue-flush hook
 
