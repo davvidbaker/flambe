@@ -13,16 +13,27 @@ export function configFromEnv(env = process.env) {
     throw new Error('FLAMBE_TRACE_ID must be a positive integer');
   }
 
-  const agentId = env.FLAMBE_AGENT_ID?.trim()
-    || (env.CODEX_SESSION_ID && env.CODEX_THREAD_ID
-      ? `codex:${env.CODEX_SESSION_ID}:${env.CODEX_THREAD_ID}`
-      : undefined);
-
   return {
     baseUrl: env.FLAMBE_URL.replace(/\/+$/, ''),
-    ...(agentId ? { agentId } : {}),
+    ...agentIdentityFromEnv(env),
     token: env.FLAMBE_API_TOKEN,
     traceId,
+  };
+}
+
+export function agentIdentityFromEnv(env = process.env) {
+  const agentId = env.FLAMBE_AGENT_ID?.trim()
+    || (env.CODEX_SESSION_ID?.trim() && env.CODEX_THREAD_ID?.trim()
+      ? `codex:${env.CODEX_SESSION_ID.trim()}:${env.CODEX_THREAD_ID.trim()}`
+      : undefined)
+    || (env.CURSOR_AGENT?.trim() && env.CURSOR_CONVERSATION_ID?.trim()
+      ? `cursor:${env.CURSOR_CONVERSATION_ID.trim()}`
+      : undefined);
+  const agentName = env.FLAMBE_AGENT_NAME?.trim() || undefined;
+
+  return {
+    ...(agentId ? { agentId } : {}),
+    ...(agentName ? { agentName } : {}),
   };
 }
 
@@ -34,10 +45,11 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, agentId, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue }) {
+  constructor({ baseUrl, token, traceId, agentId, agentName, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue }) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.token = token;
     this.agentId = agentId;
+    this.agentName = agentName;
     this.traceId = Number(traceId);
     this.fetch = fetchImpl;
     this.now = now;
@@ -52,6 +64,7 @@ export class FlambeClient {
         headers: {
           authorization: `Bearer ${this.token}`,
           ...(this.agentId ? { 'x-flambe-agent-id': this.agentId } : {}),
+          ...(this.agentId && this.agentName ? { 'x-flambe-agent-name': this.agentName } : {}),
           ...(body === undefined ? {} : { 'content-type': 'application/json' }),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),

@@ -40,21 +40,39 @@ defmodule FlambeNextWeb.ActivityController do
   end
 
   defp agent_identity(conn, activity_attrs) do
+    attrs = Map.drop(activity_attrs, ["agent_id", "agent_name"])
+
     case get_req_header(conn, "x-flambe-agent-id") do
       [instance_id] when byte_size(instance_id) in 1..200 ->
-        Map.merge(activity_attrs, %{
+        Map.merge(attrs, %{
           "agent_id" => instance_id,
-          "agent_name" => Agents.name_for(instance_id)
+          "agent_name" =>
+            Agents.display_name(instance_id, request_agent_name(conn), api_token_name(conn))
         })
 
       _ ->
-        activity_attrs
+        attrs
+    end
+  end
+
+  defp request_agent_name(conn) do
+    case get_req_header(conn, "x-flambe-agent-name") do
+      [name] -> name
+      _ -> nil
+    end
+  end
+
+  defp api_token_name(conn) do
+    case conn.assigns[:api_token] do
+      %{name: name} -> name
+      _ -> nil
     end
   end
 
   def update(conn, %{"id" => id, "activity" => attrs}) do
     user = conn.assigns.current_user
     activity = Traces.get_user_activity!(user, id)
+    attrs = Map.drop(attrs, ["agent_id", "agent_name"])
 
     with {:ok, categories} <- update_categories(user, activity, attrs),
          {:ok, activity} <- Traces.update_activity(activity, attrs, categories) do

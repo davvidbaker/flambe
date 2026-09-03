@@ -42,6 +42,7 @@ test('configFromEnv derives an agent identity from the Codex session when needed
   });
 
   assert.equal(config.agentId, 'codex:session-1:thread-2');
+  assert.equal(config.agentName, undefined);
   assert.equal(configFromEnv({
     FLAMBE_URL: 'http://localhost:4001',
     FLAMBE_API_TOKEN: 'flb_secret',
@@ -50,6 +51,26 @@ test('configFromEnv derives an agent identity from the Codex session when needed
     CODEX_THREAD_ID: 'thread-2',
     FLAMBE_AGENT_ID: 'steve',
   }).agentId, 'steve');
+});
+
+test('configFromEnv derives a Cursor agent identity and optional display name', () => {
+  const config = configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CURSOR_AGENT: '1',
+    CURSOR_CONVERSATION_ID: 'conv-99',
+    FLAMBE_AGENT_NAME: '  Grok  ',
+  });
+
+  assert.equal(config.agentId, 'cursor:conv-99');
+  assert.equal(config.agentName, 'Grok');
+  assert.equal(configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CURSOR_CONVERSATION_ID: 'conv-99',
+  }).agentId, undefined);
 });
 
 test('loadProjectEnv reads .env from cwd without overriding existing environment values', () => {
@@ -137,6 +158,42 @@ test('includes the stable agent instance ID when configured', async () => {
 
   await client.end({ activityId: 42 });
   assert.equal(request.headers['x-flambe-agent-id'], 'agent-session-7');
+  assert.equal(request.headers['x-flambe-agent-name'], undefined);
+});
+
+test('sends the agent display name only together with an instance ID', async () => {
+  let namedRequest;
+  const named = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 3,
+    agentId: 'agent-session-7',
+    agentName: 'Grok',
+    fetchImpl: async (_url, options = {}) => {
+      namedRequest = options;
+      return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
+    },
+  });
+
+  await named.end({ activityId: 42 });
+  assert.equal(namedRequest.headers['x-flambe-agent-id'], 'agent-session-7');
+  assert.equal(namedRequest.headers['x-flambe-agent-name'], 'Grok');
+
+  let namelessRequest;
+  const nameless = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 3,
+    agentName: 'Grok',
+    fetchImpl: async (_url, options = {}) => {
+      namelessRequest = options;
+      return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
+    },
+  });
+
+  await nameless.end({ activityId: 42 });
+  assert.equal(namelessRequest.headers['x-flambe-agent-id'], undefined);
+  assert.equal(namelessRequest.headers['x-flambe-agent-name'], undefined);
 });
 
 test('explicit thread still discovers an active parent in that thread', async () => {
