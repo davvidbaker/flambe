@@ -73,6 +73,39 @@ test('configFromEnv derives a Cursor agent identity and optional display name', 
   }).agentId, undefined);
 });
 
+test('configFromEnv derives a Claude Code agent identity from the session', () => {
+  const config = configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CLAUDECODE: '1',
+    CLAUDE_CODE_SESSION_ID: 'sess-42',
+    FLAMBE_AGENT_NAME: 'Claude',
+  });
+
+  assert.equal(config.agentId, 'claude:sess-42');
+  assert.equal(config.agentName, 'Claude');
+  assert.equal(configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CLAUDECODE: '1',
+  }).agentId, undefined);
+  assert.equal(configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CLAUDE_CODE_SESSION_ID: 'sess-42',
+  }).agentId, undefined);
+  assert.equal(configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CLAUDE_CODE_CHILD_SESSION: '1',
+    CLAUDE_SESSION_ID: 'hook-session',
+  }).agentId, 'claude:hook-session');
+});
+
 test('loadProjectEnv reads .env from cwd without overriding existing environment values', () => {
   const directory = mkdtempSync(join(tmpdir(), 'flambe-env-'));
 
