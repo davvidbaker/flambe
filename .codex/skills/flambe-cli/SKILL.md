@@ -223,6 +223,41 @@ The CLI loads `.env` from the current working directory. It requires `FLAMBE_URL
 `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID`; never put the token in agent instructions or
 version-controlled files.
 
+## Install the Codex queue-flush hook
+
+Install this once on each machine that runs Codex with Flambe. The hook is a
+**global Codex hook**, so configure it in `~/.codex/config.toml`, not in a
+project's `.codex/` directory. A global hook lets every Codex session flush the
+queue when it starts, while the command below does nothing outside a project
+that has Flambe configuration.
+
+Ensure `flambe` runs with Node.js 22, then add the following to
+`~/.codex/config.toml` (preserving any existing settings):
+
+```toml
+[features]
+hooks = true
+
+[[hooks.SessionStart]]
+matcher = "startup|resume|clear|compact"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "bash -lc 'if [ -f .env ] || [ -n \"${FLAMBE_URL:-}\" ]; then flambe ping >/dev/null 2>&1 || true; fi'"
+async = true
+timeout = 10
+statusMessage = "Flushing Flambe queue"
+```
+
+`flambe ping` invokes the CLI's normal pre-command queue flush before checking
+connectivity. If the machine's default `node` is older than 22, make the hook
+command invoke the Node 22 binary explicitly rather than relying on `flambe`'s
+shebang.
+
+After installing or changing the hook, open `/hooks` in Codex and trust the
+exact hook definition. Codex skips untrusted local hooks. A newly installed
+hook takes effect for the next session start.
+
 When Flambe is temporarily unreachable, `flambe start` and `flambe end` save their operations
 locally and print an `offline-…` activity ID (or `queued` for an end event) instead of losing the
 work. Use that offline ID with `flambe end` as usual. On the next successful CLI command, Flambe
