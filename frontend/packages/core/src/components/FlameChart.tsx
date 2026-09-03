@@ -17,6 +17,12 @@ import {
   visibleThreadLevels,
 } from '../utilities/timelineGeometry';
 import { getShamefulColor } from '../utilities/timeline';
+import {
+  actorAccentColor,
+  projectActorLaneLayout,
+  selectActorFlameSegments,
+  type ActorLaneLayout,
+} from '../utilities/actorFlames';
 
 /* 🔮  abstract into parts of react-flame-chart? */
 
@@ -155,6 +161,7 @@ export class FlameChart extends Component<Props, State> {
   threadCapture: ImageData | null = null;
   hoverActivity_id: EntityId | null = null;
   focusActivity_id: EntityId | null = null;
+  actorLaneLayout: ActorLaneLayout | null = null;
 
   constructor(props: Props) {
     super(props);
@@ -229,6 +236,15 @@ export class FlameChart extends Component<Props, State> {
     if (this.canvas && this.ctx) {
       this.minTextWidth = FlameChart.textPadding.x + this.ctx.measureText('\u2026').width;
     }
+    if (
+      this.ctx
+      && this.dividersData
+      && Number.isFinite(this.leftBoundaryTime)
+      && Number.isFinite(this.rightBoundaryTime)
+      && this.width > 0
+    ) {
+      this.draw(this.leftBoundaryTime, this.rightBoundaryTime, this.width, this.dividersData);
+    }
   };
 
   hitTest = (event: MouseEvent<HTMLCanvasElement>): Hit | null => {
@@ -237,17 +253,21 @@ export class FlameChart extends Component<Props, State> {
     // A user can click as soon as the trace request updates props, before the
     // next animation-frame draw has rebuilt the canvas geometry. Recreate the
     // header offsets here so the hit test always agrees with the current data.
+    this.ensureActorLaneLayout();
     const threadIds = Object.keys(this.props.threads || {});
     const hasLevelForEveryThread = (levels: Record<string, ThreadLevel>) =>
       Object.keys(levels || {}).length === threadIds.length;
     const currentThreadLevels = hasLevelForEveryThread(this.threadLevels)
       ? this.threadLevels
       : hasLevelForEveryThread(this.props.threadLevels)
-        ? this.props.threadLevels
-        : threadIds.reduce<Record<string, ThreadLevel>>(
-          (levels, threadId) => ({ ...levels, [threadId]: { current: 0, max: 0 } }),
-          {},
+        ? this.threadLevelsFromLayout(this.props.threadLevels)
+        : this.threadLevelsFromLayout(
+          threadIds.reduce<Record<string, ThreadLevel>>(
+            (levels, threadId) => ({ ...levels, [threadId]: { current: 0, max: 0 } }),
+            {},
+          ),
         );
+    this.threadLevels = currentThreadLevels;
     this.offsets = this.setOffsets(this.props.threads, currentThreadLevels);
     const ts = this.pixelsToTime(mouseX);
     const hitThread_id = this.pixelsToThreadId(mouseY);
@@ -276,7 +296,7 @@ export class FlameChart extends Component<Props, State> {
       .map((block, index): BlockEntry => [String(index), block])
       .filter(([, block]) => ts > block.startTime
         && (block.endTime === undefined || ts < block.endTime))
-      .filter(([, block]) => block.level === hitLevel)
+      .filter(([, block]) => this.displayRowForBlock(block) === hitLevel)
       .filter(([, block]) =>
         this.props.activities[String(block.activity_id)]?.thread_id === hitThread_id);
 
@@ -710,10 +730,11 @@ export class FlameChart extends Component<Props, State> {
       )
       : this.props.threadLevels;
 
+    this.ensureActorLaneLayout();
     // Collapsing a thread changes every following header's position without
     // changing `threadLevels`. Recompute offsets for each draw so hit testing
     // always uses the same geometry that was painted to the canvas.
-    this.threadLevels = threadLevels;
+    this.threadLevels = this.threadLevelsFromLayout(threadLevels);
     this.offsets = this.setOffsets(this.props.threads, this.threadLevels);
 
     if (this.canvas) {
@@ -748,15 +769,14 @@ export class FlameChart extends Component<Props, State> {
           this.props.blocks,
           this.props.focusedBlockIndex,
         );
-        // this.props.hoveredBlockIndex
-        //   ? this.props.blocks[Number(this.props.hoveredBlockIndex)].activity_id
-        //   : null;
 
         // draw vertical bars
         this.drawGrid(this.ctx, this.dividersData);
+        this.drawActorLaneChrome();
         if (this.props.blocks) {
           this.drawBlocks();
         }
+        this.drawActorForks();
         this.drawFutureWindow();
         this.drawThreadHeaders(this.ctx);
         this.drawAttention(this.ctx);
@@ -820,6 +840,164 @@ export class FlameChart extends Component<Props, State> {
     }
   }
 
+  ensureActorLaneLayout(): ActorLaneLayout {
+    this.actorLaneLayout = projectActorLaneLayout(
+      this.props.activities,
+      this.props.blocks,
+    );
+    return this.actorLaneLayout;
+  }
+
+  threadLevelsFromLayout(
+    base: Record<string, ThreadLevel>,
+  ): Record<string, ThreadLevel> {
+    const layout = this.actorLaneLayout;
+    const threadIds = Object.keys(this.props.threads || {});
+    return threadIds.reduce<Record<string, ThreadLevel>>((levels, threadId) => {
+      const baseLevel = base[threadId] ?? { current: 0, max: 0 };
+      const layoutMax = layout?.maxRowsByThread[threadId] ?? 0;
+      levels[threadId] = {
+        current: baseLevel.current,
+        max: Math.max(layoutMax, baseLevel.max, 1),
+      };
+      return levels;
+    }, {});
+  }
+
+  displayRowForActivity(activityId: EntityId): number {
+    return this.actorLaneLayout?.rowByActivity[String(activityId)] ?? 0;
+  }
+
+  displayRowForBlock(block: TraceBlock): number {
+    return this.displayRowForActivity(block.activity_id);
+  }
+
+  getRenderedBlockTransform(block: TraceBlock, activity: ProcessedActivity) {
+    const collapsed = activity.thread_id !== undefined
+      && this.threadCollapsed(activity.thread_id);
+    const row = this.displayRowForBlock(block);
+    return this.getBlockTransform(
+      block.startTime,
+      block.endTime,
+      collapsed ? -1 : row,
+      this.blockHeight,
+      (collapsed ? 1 : 0)
+        + this.scrollTop
+        + (this.offsets[String(activity.thread_id)] ?? 0)
+        + FlameChart.threadHeaderHeight,
+    );
+  }
+
+  drawActorLaneChrome(): void {
+    const layout = this.actorLaneLayout;
+    if (!layout) return;
+
+    this.ctx.save();
+    const lanes = layout.lanes.slice().sort((left, right) => left.depth - right.depth);
+
+    lanes.forEach(lane => {
+      const threadId = String(lane.threadId);
+      if (this.threadCollapsed(lane.threadId)) return;
+
+      const threadOffset = this.offsets[threadId] ?? 0;
+      const rowHeight = this.blockHeight + 1;
+      const inset = 6 + lane.depth * 10;
+      const top = threadOffset
+        + FlameChart.threadHeaderHeight
+        + this.scrollTop
+        + lane.rowStart * rowHeight
+        - 2;
+      const height = (lane.rowEnd - lane.rowStart + 1) * rowHeight + 2;
+      const accent = actorAccentColor(lane.actorKey);
+
+      this.ctx.globalAlpha = 0.14;
+      this.ctx.fillStyle = accent;
+      this.ctx.fillRect(inset, top, this.width - inset - 4, height);
+
+      this.ctx.globalAlpha = 0.9;
+      this.ctx.fillStyle = accent;
+      this.ctx.fillRect(inset, top, 3, height);
+
+      this.ctx.globalAlpha = 0.95;
+      this.ctx.font = 'bold 10px sans-serif';
+      this.ctx.fillStyle = accent;
+      this.ctx.fillText(lane.actorName, inset + 8, top + 12);
+    });
+
+    this.ctx.restore();
+  }
+
+  drawActorForks(): void {
+    const layout = this.actorLaneLayout;
+    if (!layout) return;
+
+    this.ctx.save();
+    this.ctx.globalCompositeOperation = 'source-over';
+    this.ctx.lineWidth = 2;
+    this.ctx.globalAlpha = 0.75;
+
+    layout.flames.forEach(flame => {
+      const rootActivity = this.props.activities[String(flame.rootActivityId)];
+      if (
+        !rootActivity
+        || rootActivity.thread_id === undefined
+        || this.threadCollapsed(rootActivity.thread_id)
+      ) {
+        return;
+      }
+
+      const { parentBlock, rootBlock } = selectActorFlameSegments(
+        flame,
+        this.props.blocks,
+      );
+      if (!rootBlock) return;
+
+      const rootTransform = this.getRenderedBlockTransform(rootBlock, rootActivity);
+      if (
+        rootTransform.blockX > this.width
+        || rootTransform.blockX + rootTransform.blockWidth < 0
+      ) {
+        return;
+      }
+
+      const accent = actorAccentColor(flame.actorKey);
+      const rootY = rootTransform.blockY + this.blockHeight / 2;
+      this.ctx.strokeStyle = accent;
+      this.ctx.fillStyle = accent;
+
+      if (parentBlock && flame.parentActivityId !== null) {
+        const parentActivity = this.props.activities[String(flame.parentActivityId)];
+        if (
+          parentActivity
+          && parentActivity.thread_id === rootActivity.thread_id
+        ) {
+          const parentTransform = this.getRenderedBlockTransform(
+            parentBlock,
+            parentActivity,
+          );
+          const parentLeft = parentTransform.blockX;
+          const parentRight = parentTransform.blockX + parentTransform.blockWidth;
+          const parentX = constrain(rootTransform.blockX, parentLeft, parentRight);
+          const parentY = parentTransform.blockY + this.blockHeight / 2;
+          const forkX = Math.max(0, rootTransform.blockX - 7);
+          const middleY = parentY + (rootY - parentY) / 2;
+
+          this.ctx.beginPath();
+          this.ctx.moveTo(parentX, parentY);
+          this.ctx.bezierCurveTo(parentX, middleY, forkX, middleY, forkX, rootY);
+          this.ctx.lineTo(rootTransform.blockX, rootY);
+          this.ctx.stroke();
+        }
+      }
+
+      this.ctx.beginPath();
+      this.ctx.arc(rootTransform.blockX, rootY, 3, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+
+    this.ctx.restore();
+  }
+
   isVisible(block: TraceBlock): boolean {
     return isVisible(block, this.leftBoundaryTime, this.rightBoundaryTime);
   }
@@ -870,7 +1048,7 @@ export class FlameChart extends Component<Props, State> {
 
         const x1 = this.timeToPixels(prevBlock.endTime ?? prevBlock.startTime);
         const y1 = getBlockY(
-          arrayOfBlocks[i - 1].level + 1,
+          this.displayRowForBlock(arrayOfBlocks[i - 1]) + 1,
           this.blockHeight,
           this.scrollTop,
         )
@@ -878,7 +1056,11 @@ export class FlameChart extends Component<Props, State> {
           + this.offsets[block.thread_id]
           - 1;
         const x2 = this.timeToPixels(block.startTime);
-        const y2 = getBlockY(block.level + 1, this.blockHeight, this.scrollTop)
+        const y2 = getBlockY(
+          this.displayRowForBlock(block) + 1,
+          this.blockHeight,
+          this.scrollTop,
+        )
           + this.offsets[block.thread_id]
           + this.scrollTop
           - 1;
@@ -938,16 +1120,9 @@ export class FlameChart extends Component<Props, State> {
     if (activity.thread_id === undefined) return;
     const collapsed = this.threadCollapsed(activity.thread_id);
 
-    const { startTime, endTime, level } = block;
-    const { blockX, blockY, blockWidth } = this.getBlockTransform(
-      startTime,
-      endTime,
-      collapsed ? -1 : level,
-      this.blockHeight,
-      (collapsed ? 1 : 0)
-        + this.scrollTop
-        + this.offsets[activity.thread_id]
-        + FlameChart.threadHeaderHeight,
+    const { blockX, blockY, blockWidth } = this.getRenderedBlockTransform(
+      block,
+      activity,
     );
 
     // don't draw bar if whole thing is this.left of view
@@ -987,10 +1162,16 @@ export class FlameChart extends Component<Props, State> {
         : (this.threadLevels[String(activity.thread_id)]?.max ?? 1));
     this.ctx.fillRect(
       blockX,
-      collapsed ? blockY + block.level * adjustedBlockHeight : blockY,
+      collapsed ? blockY + this.displayRowForBlock(block) * adjustedBlockHeight : blockY,
       blockWidth,
       collapsed ? adjustedBlockHeight : this.blockHeight,
     );
+
+    this.ctx.globalAlpha = collapsed
+      ? 0.4
+      : this.props.activityMute && !sameActivity
+        ? 0.1
+        : 1;
 
     // don't even think about drawing text if bar is too small
     if (blockWidth < this.minTextWidth) {
@@ -1029,8 +1210,8 @@ export class FlameChart extends Component<Props, State> {
       blockY + FlameChart.textPadding.y,
     );
 
-    // visually denote a resumed activity
-    if (block.beginning === 'R') {
+    // visually denote a resumed or resurrected activity
+    if (block.beginning === 'R' || block.beginning === 'X') {
       this.ctx.fillStyle = '#ffffff';
       this.ctx.beginPath();
       this.ctx.moveTo(blockX - 1, blockY);

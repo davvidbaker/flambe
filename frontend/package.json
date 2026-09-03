@@ -13,7 +13,9 @@
     "test": "npm run test:smoke",
     "test:unit": "vitest run",
     "typecheck": "tsc --noEmit",
-    "test:smoke": "playwright test"
+    "test:smoke": "playwright test",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "repository": {
     "type": "git",
@@ -45,6 +47,8 @@
     "redux": "^5.0.1",
     "typescript": "^7.0.2",
     "vite": "^8.2.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "@storybook/react-vite": "^10.3.6",
+    "storybook": "^10.3.6"
   }
 }

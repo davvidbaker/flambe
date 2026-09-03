@@ -86,4 +86,47 @@ describe('processTrace', () => {
     ]);
     expect(result.threadLevels[thread.id]).toEqual({ current: 0, max: 2 });
   });
+
+  it('keeps overlapping root activities in separate display lanes', () => {
+    const firstRoot: Activity = { ...activity, id: 10, name: 'First root' };
+    const secondRoot: Activity = { ...activity, id: 11, name: 'Second root' };
+
+    const result = processTrace([
+      { id: 1, timestamp: 100, phase: 'B', activity: firstRoot },
+      { id: 2, timestamp: 110, phase: 'B', activity: secondRoot },
+      { id: 3, timestamp: 120, phase: 'E', activity: secondRoot },
+      { id: 4, timestamp: 130, phase: 'E', activity: firstRoot },
+    ], [thread]);
+
+    expect(result.blocks.map(block => [block.activity_id, block.level])).toEqual([
+      [firstRoot.id, 0],
+      [secondRoot.id, 1],
+    ]);
+    expect(result.threadLevels[thread.id]).toEqual({ current: 0, max: 2 });
+  });
+
+  it('reuses display lanes across separate threads', () => {
+    const otherThread: Thread = { id: 2, name: 'Other' };
+    const firstRoot: Activity = { ...activity, id: 10, name: 'First root' };
+    const secondRoot: Activity = {
+      ...activity,
+      id: 11,
+      name: 'Second root',
+      thread: otherThread,
+    };
+
+    const result = processTrace([
+      { id: 1, timestamp: 100, phase: 'B', activity: firstRoot },
+      { id: 2, timestamp: 110, phase: 'B', activity: secondRoot },
+      { id: 3, timestamp: 120, phase: 'E', activity: secondRoot },
+      { id: 4, timestamp: 130, phase: 'E', activity: firstRoot },
+    ], [thread, otherThread]);
+
+    expect(result.blocks.map(block => [block.activity_id, block.level])).toEqual([
+      [firstRoot.id, 0],
+      [secondRoot.id, 0],
+    ]);
+    expect(result.threadLevels[thread.id]).toEqual({ current: 0, max: 1 });
+    expect(result.threadLevels[otherThread.id]).toEqual({ current: 0, max: 1 });
+  });
 });

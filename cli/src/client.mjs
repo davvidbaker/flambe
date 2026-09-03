@@ -13,8 +13,14 @@ export function configFromEnv(env = process.env) {
     throw new Error('FLAMBE_TRACE_ID must be a positive integer');
   }
 
+  const agentId = env.FLAMBE_AGENT_ID?.trim()
+    || (env.CODEX_SESSION_ID && env.CODEX_THREAD_ID
+      ? `codex:${env.CODEX_SESSION_ID}:${env.CODEX_THREAD_ID}`
+      : undefined);
+
   return {
     baseUrl: env.FLAMBE_URL.replace(/\/+$/, ''),
+    ...(agentId ? { agentId } : {}),
     token: env.FLAMBE_API_TOKEN,
     traceId,
   };
@@ -28,9 +34,10 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue }) {
+  constructor({ baseUrl, token, traceId, agentId, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue }) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.token = token;
+    this.agentId = agentId;
     this.traceId = Number(traceId);
     this.fetch = fetchImpl;
     this.now = now;
@@ -44,6 +51,7 @@ export class FlambeClient {
         method,
         headers: {
           authorization: `Bearer ${this.token}`,
+          ...(this.agentId ? { 'x-flambe-agent-id': this.agentId } : {}),
           ...(body === undefined ? {} : { 'content-type': 'application/json' }),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),

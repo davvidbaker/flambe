@@ -9,6 +9,8 @@ defmodule FlambeNext.Traces.Activity do
     field :name, :string
     field :description, :string
     field :weight, :integer
+    field :agent_id, :string
+    field :agent_name, :string
 
     belongs_to :thread, Thread
     belongs_to :parent, __MODULE__, foreign_key: :parent_id
@@ -21,7 +23,7 @@ defmodule FlambeNext.Traces.Activity do
 
   def changeset(activity, attrs) do
     activity
-    |> cast(attrs, [:name, :description, :weight])
+    |> cast(attrs, [:name, :description, :weight, :agent_id, :agent_name])
     |> validate_required([:name])
     |> assoc_constraint(:thread)
   end

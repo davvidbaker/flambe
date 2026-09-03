@@ -38,6 +38,8 @@ defmodule FlambeNextWeb.TraceJSON do
     %{
       id: activity.id,
       name: activity.name,
+      agent_id: activity.agent_id,
+      agent_name: activity.agent_name,
       parent_id: activity.parent_id,
       thread: %{id: activity.thread_id},
       categories: Enum.map(activity.categories, & &1.id),

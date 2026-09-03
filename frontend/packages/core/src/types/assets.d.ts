@@ -8,6 +8,8 @@ declare module '*.png' {
   export default source;
 }
 
+declare module '*.css';
+
 declare const SERVER: string;
 declare const SOCKET_SERVER: string;
 

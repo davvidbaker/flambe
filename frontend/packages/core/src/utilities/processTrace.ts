@@ -97,6 +97,25 @@ function activityLevel(activity: Activity, activities: Record<string, ProcessedA
   return depth;
 }
 
+function displayLevel(
+  activity: Activity,
+  activities: Record<string, ProcessedActivity>,
+  blocks: TraceBlock[],
+): number {
+  const minimumLevel = activityLevel(activity, activities);
+  const occupiedLevels = new Set(
+    blocks
+      .filter(block =>
+        block.endTime === undefined
+        && activities[keyFor(block.activity_id)]?.thread_id === activity.thread_id)
+      .map(block => block.level),
+  );
+
+  let level = minimumLevel;
+  while (occupiedLevels.has(level)) level += 1;
+  return level;
+}
+
 /** A block can have at most a beginning and an ending event. */
 export function terminateBlock(
   blocks: TraceBlock[],
@@ -192,7 +211,7 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
       case 'X':
       case 'R': {
         if (event.phase === 'R' && (activity.status === 'parent_suspended' || activity.status === 'active')) break;
-        const level = activityLevel(activity, activities);
+        const level = displayLevel(activity, activities, blocks);
         blocks.push({ activity_id: sourceActivity.id, beginning: event.phase, events: [event.id], level, startMessage: event.message, startTime: event.timestamp });
         threadLevel.current += 1;
         threadLevel.max = Math.max(level + 1, threadLevel.max);
@@ -200,7 +219,7 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
           activity.suspendedChildren.forEach(childId => {
             const child = activities[keyFor(childId)];
             if (child) child.status = 'active';
-            const childLevel = activityLevel(child, activities);
+            const childLevel = displayLevel(child, activities, blocks);
             blocks.push({ activity_id: childId, beginning: event.phase, events: [event.id], level: childLevel, startTime: event.timestamp });
             threadLevel.current += 1;
             threadLevel.max = Math.max(childLevel + 1, threadLevel.max);
@@ -221,7 +240,7 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
         activity.description = sourceActivity.description;
         activity.thread_id = thread_id;
         activity.flavor = event.phase === 'Q' ? 'question' : 'task';
-        const level = activityLevel(activity, activities);
+        const level = displayLevel(activity, activities, blocks);
         blocks.push({ activity_id: sourceActivity.id, beginning: event.phase, events: [event.id], level, startMessage: event.message, startTime: event.timestamp });
         threadOpenActivities[threadKey].push(sourceActivity.id);
         threadLevel.current += 1;

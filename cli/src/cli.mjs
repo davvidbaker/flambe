@@ -20,6 +20,7 @@ Required values:
   FLAMBE_TRACE_ID
 
 Optional:
+  FLAMBE_AGENT_ID    Stable ID for this running agent; enables named flame lanes
   FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)`;
 
 function parseStart(args) {

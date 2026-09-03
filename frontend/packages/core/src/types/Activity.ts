@@ -8,6 +8,8 @@ export type ActivityStatus =
   | 'suspended';
 
 export interface Activity {
+  agent_id?: string | null;
+  agent_name?: string | null;
   categories: EntityId[];
   description?: string | null;
   endTime?: number;

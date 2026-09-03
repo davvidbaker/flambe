@@ -32,6 +32,26 @@ test('configFromEnv requires exactly the agent-facing configuration', () => {
   );
 });
 
+test('configFromEnv derives an agent identity from the Codex session when needed', () => {
+  const config = configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CODEX_SESSION_ID: 'session-1',
+    CODEX_THREAD_ID: 'thread-2',
+  });
+
+  assert.equal(config.agentId, 'codex:session-1:thread-2');
+  assert.equal(configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CODEX_SESSION_ID: 'session-1',
+    CODEX_THREAD_ID: 'thread-2',
+    FLAMBE_AGENT_ID: 'steve',
+  }).agentId, 'steve');
+});
+
 test('loadProjectEnv reads .env from cwd without overriding existing environment values', () => {
   const directory = mkdtempSync(join(tmpdir(), 'flambe-env-'));
 
@@ -103,6 +123,20 @@ test('start discovers the default thread and posts an authenticated begin event'
     activity: { name: 'Inspect authentication flow', categories: [5, 8] },
     event: { timestamp_integer: 1_788_360_000_123, phase: 'B' },
   });
+});
+
+test('includes the stable agent instance ID when configured', async () => {
+  let request;
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3, agentId: 'agent-session-7',
+    fetchImpl: async (_url, options = {}) => {
+      request = options;
+      return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
+    },
+  });
+
+  await client.end({ activityId: 42 });
+  assert.equal(request.headers['x-flambe-agent-id'], 'agent-session-7');
 });
 
 test('explicit thread still discovers an active parent in that thread', async () => {
