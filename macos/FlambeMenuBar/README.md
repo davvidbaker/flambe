@@ -19,5 +19,7 @@ bash run.sh --url http://localhost:4001
 `http://localhost:4001`.
 
 `run.sh` creates a local `.app` bundle under `.build/` and launches it with
-macOS, so it remains open after the terminal command completes. Use the
-menu-bar icon to check immediately or quit the helper.
+macOS, so it remains open after the terminal command completes. The helper
+holds one authenticated Server-Sent Events connection to Flambe; it does not
+poll. If that connection drops, it reconnects after five seconds. Use the
+menu-bar icon to reconnect manually or quit the helper.
