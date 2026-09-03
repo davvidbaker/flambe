@@ -134,13 +134,17 @@ can:
 
 - Codex: `codex:$CODEX_SESSION_ID:$CODEX_THREAD_ID`
 - Cursor: `cursor:$CURSOR_CONVERSATION_ID` when `CURSOR_AGENT` is set
+- Claude Code: `claude:$CLAUDE_CODE_SESSION_ID` when `CLAUDECODE` or
+  `CLAUDE_CODE_CHILD_SESSION` is set. Also accepts `CLAUDE_SESSION_ID`,
+  `CLAUDE_CODE_REMOTE_SESSION_ID`, or `CLAUDE_CODE_BRIDGE_SESSION_ID` if the
+  native session variable is unset.
 
 It does not invent a display name. Before the first `flambe` command, if
 `FLAMBE_AGENT_NAME` is unset, export a short name a collaborator would
 recognize — the product or model, not a sentence:
 
 ```sh
-export FLAMBE_AGENT_NAME="Grok"
+export FLAMBE_AGENT_NAME="Claude"
 ```
 
 If the name is omitted, Flambe still treats the work as this agent: it labels
@@ -303,6 +307,40 @@ shebang.
 After installing or changing the hook, open `/hooks` in Codex and trust the
 exact hook definition. Codex skips untrusted local hooks. A newly installed
 hook takes effect for the next session start.
+
+## Install the Claude Code queue-flush hook
+
+Install this once on each machine that runs Claude Code with Flambe. The hook is
+a **global Claude Code hook**, so configure it in `~/.claude/settings.json`, not
+in a project's `.claude/` directory. A global hook lets every Claude Code
+session flush the queue when it starts, while the command below does nothing
+outside a project that has Flambe configuration.
+
+Ensure `flambe` runs with Node.js 22, then merge the following into
+`~/.claude/settings.json` (preserving any existing hooks):
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'if [ -f .env ] || [ -n \"${FLAMBE_URL:-}\" ]; then flambe ping >/dev/null 2>&1 || true; fi'",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+`flambe ping` is the same queue flush as the Codex hook. If the machine's
+default `node` is older than 22, invoke the Node 22 binary explicitly. A newly
+installed hook takes effect for the next session start.
 
 When Flambe is temporarily unreachable, `flambe start` and `flambe end` save their operations
 locally and print an `offline-…` activity ID (or `queued` for an end event) instead of losing the
