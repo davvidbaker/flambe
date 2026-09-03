@@ -16,6 +16,7 @@ import { blocksForActivity } from '../utilities/timeline';
 import type { Category as CategoryType } from '../types/Category';
 import type { EntityId } from '../types/ids';
 import type { TraceEvent } from '../types/TraceEvent';
+import type { Thread } from '../types/Thread';
 import type { ProcessedActivity, TraceBlock } from '../utilities/processTrace';
 import { activityCommandsByStatus, type Command } from '../constants/commands';
 
@@ -24,6 +25,7 @@ import ActivityEventFlow from './ActivityEventFlow';
 import AddCategory from './AddCategory';
 import DeleteButton from './DeleteButton';
 import Button, { InputFromButton } from './Button';
+import Fuzzy from './Fuzzy';
 
 const Actions = styled.div`
   display: flex;
@@ -31,6 +33,14 @@ const Actions = styled.div`
   & > button {
     margin: 0 5px;
   }
+`;
+
+const ThreadRow = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0;
+  flex-wrap: wrap;
 `;
 
 export interface ActivityDetailProps {
@@ -42,6 +52,7 @@ export interface ActivityDetailProps {
   deleteActivity: (id: EntityId, thread_id: EntityId) => unknown;
   events: TraceEvent[];
   submitCommand: (command: Command & { activity_id: EntityId; message?: string; thread_id: EntityId }) => unknown;
+  threads: Record<string, Thread>;
   updateActivity: (id: EntityId, updates: Record<string, unknown>) => unknown;
   updateCategory: (id: EntityId, updates: Record<string, unknown>) => unknown;
 }
@@ -56,6 +67,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     updateCategory,
     categories,
     submitCommand,
+    threads,
   } = props;
 
   if (activity_id === null) return <div>no activity</div>;
@@ -68,6 +80,10 @@ const ActivityDetail = (props: ActivityDetailProps) => {
   if (!activity) return <div>no activity</div>;
   if (activity.thread_id === undefined) return <div>activity has no thread</div>;
   const threadId = activity.thread_id;
+  const currentThread = threads[String(threadId)];
+  const threadChoices = Object.values(threads)
+    .filter(thread => String(thread.id) !== String(threadId))
+    .map(thread => ({ id: thread.id, name: thread.name }));
 
   const addNewCategory = (name: string, hexString: string) => {
     props.createCategory({
@@ -81,6 +97,11 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     props.updateActivity(activity_id, {
       category_ids: [category_id],
     });
+  };
+
+  const moveToThread = (thread: { id: EntityId; name: string }) => {
+    if (String(thread.id) === String(threadId)) return;
+    updateActivity(activity.id, { thread_id: thread.id });
   };
 
   const activityBlocks = blocksForActivity(activity_id, blocks);
@@ -105,10 +126,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       <InputFromButton
         placeholderIsDefaultValue
         submit={(value: string) => {
-          updateActivity(activity.id, {
-            name: value,
-            thread_id: threadId,
-          });
+          updateActivity(activity.id, { name: value });
         }}
       >
         {activity.name}
@@ -123,15 +141,27 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       >
         Delete Activity
       </DeleteButton>
+      <ThreadRow>
+        <span>
+          Thread:
+          {' '}
+          {currentThread?.name ?? threadId}
+        </span>
+        {threadChoices.length > 0 && (
+          <Fuzzy
+            itemStringKey="name"
+            onChange={moveToThread}
+            placeholder="Move to thread…"
+            items={threadChoices}
+          />
+        )}
+      </ThreadRow>
       <div>
         Weight:{' '}
         <InputFromButton
           placeholder={'🏋'}
           submit={(value: string) => {
-            updateActivity(activity.id, {
-              weight: Number(value),
-              thread_id: threadId,
-            });
+            updateActivity(activity.id, { weight: Number(value) });
           }}
         >
           {activity.weight || '🏋'}
@@ -169,10 +199,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
         <InputFromButton
           placeholderIsDefaultValue
           submit={(value: string) => {
-            updateActivity(activity.id, {
-              description: value,
-              thread_id: threadId,
-            });
+            updateActivity(activity.id, { description: value });
           }}
         >
           {activity.description || 'Add notes in here (you can type in `whoa`'}
@@ -228,6 +255,7 @@ export default connect(
     activity_id: getTimeline(state).focusedBlockActivity_id,
     categories: getUser(state).categories,
     events: getTimeline(state).events,
+    threads: getTimeline(state).threads,
   }),
   dispatch => ({
     createCategory: ({ activity_id, name, color_background }: { activity_id: EntityId; name: string; color_background: string }) =>

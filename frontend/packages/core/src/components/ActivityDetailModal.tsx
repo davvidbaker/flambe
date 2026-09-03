@@ -6,7 +6,7 @@ import DraggableModal from './DraggableModal';
 import { hideActivityDetailModal } from '../actions';
 import type { ActivityDetailProps } from './ActivityDetail';
 
-interface Props extends Omit<ActivityDetailProps, 'activity_id' | 'categories' | 'createCategory' | 'deleteActivity' | 'events' | 'updateActivity' | 'updateCategory'> {
+interface Props extends Omit<ActivityDetailProps, 'activity_id' | 'categories' | 'createCategory' | 'deleteActivity' | 'events' | 'threads' | 'updateActivity' | 'updateCategory'> {
   activityDetailModalVisible: boolean;
   hideActivityDetailModal: () => unknown;
 }

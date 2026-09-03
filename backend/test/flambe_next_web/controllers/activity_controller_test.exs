@@ -305,6 +305,7 @@ defmodule FlambeNextWeb.ActivityControllerTest do
                "id" => activity.id,
                "name" => "Final",
                "parent_id" => nil,
+               "thread_id" => thread.id,
                "weight" => 2
              }
            }
@@ -329,6 +330,85 @@ defmodule FlambeNextWeb.ActivityControllerTest do
 
     conn = conn |> recycle() |> delete(~p"/api/activities/#{activity}")
     assert response(conn, 204) == ""
+  end
+
+  test "moves an activity subtree onto another thread in the same trace", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Move User", username: "move-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Move trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, other} = Traces.create_thread(trace, %{name: "Other", rank: 1})
+
+    {:ok, parent, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Parent"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    {:ok, child, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        parent,
+        %{"name" => "Child"},
+        %{"timestamp_integer" => 2, "phase" => "B"}
+      )
+
+    {:ok, grand, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        child,
+        %{"name" => "Grand"},
+        %{"timestamp_integer" => 3, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{parent}", %{"activity" => %{"thread_id" => other.id}})
+
+    assert %{
+             "data" => %{
+               "id" => parent_id,
+               "thread_id" => moved_thread_id,
+               "parent_id" => nil
+             }
+           } = json_response(conn, 200)
+
+    assert parent_id == parent.id
+    assert moved_thread_id == other.id
+    assert Traces.get_user_activity!(user, child.id).thread_id == other.id
+    assert Traces.get_user_activity!(user, grand.id).thread_id == other.id
+    assert Traces.get_user_activity!(user, child.id).parent_id == parent.id
+    assert Traces.get_user_activity!(user, grand.id).parent_id == child.id
+  end
+
+  test "rejects moving an activity onto a thread from another trace", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Cross User", username: "cross-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Home"})
+    {:ok, other_trace} = Traces.create_trace(user, %{name: "Away"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    [foreign] = Traces.get_trace!(other_trace.id).threads
+
+    {:ok, activity, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Stay put"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{activity}", %{"activity" => %{"thread_id" => foreign.id}})
+
+    assert json_response(conn, 404) == %{"error" => "NOT_FOUND"}
+    assert Traces.get_user_activity!(user, activity.id).thread_id == thread.id
   end
 
   defp authenticated_as(conn, user) do

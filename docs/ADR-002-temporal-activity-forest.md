@@ -32,6 +32,9 @@ containment because multiple parents make a flame-chart position ambiguous.
 Parentage is durable and can drive rendering and agent-facing status. Existing activities remain
 roots. Dependency or relationship edges are deferred and must not determine containment.
 
+Moving an activity to another thread in the same trace cascades `thread_id` to its descendant
+subtree so parent and child stay on one thread; `parent_id` is unchanged.
+
 ## Follow-ups
 
 - Derive all flame-chart depth from parentage.

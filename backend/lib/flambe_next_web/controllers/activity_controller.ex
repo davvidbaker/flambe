@@ -75,7 +75,13 @@ defmodule FlambeNextWeb.ActivityController do
     attrs = Map.drop(attrs, ["agent_id", "agent_name"])
 
     with {:ok, categories} <- update_categories(user, activity, attrs),
-         {:ok, activity} <- Traces.update_activity(activity, attrs, categories) do
+         {:ok, activity} <- maybe_move_thread(user, activity, attrs),
+         {:ok, activity} <-
+           Traces.update_activity(
+             activity,
+             Map.drop(attrs, ["thread_id", "category_ids"]),
+             categories
+           ) do
       render(conn, :show, activity: activity)
     else
       {:error, :not_found} ->
@@ -87,6 +93,13 @@ defmodule FlambeNextWeb.ActivityController do
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{errors: errors(changeset)})
+    end
+  end
+
+  defp maybe_move_thread(user, activity, attrs) do
+    case Map.fetch(attrs, "thread_id") do
+      :error -> {:ok, activity}
+      {:ok, thread_id} -> Traces.move_activity_subtree(user, activity, thread_id)
     end
   end
 
