@@ -5,6 +5,7 @@ import { saveState, loadState } from './localStorage';
 import trimTextMiddle from './trimText';
 import deepArrayIsEqual from './deepArrayIsEqual';
 import shortEnglishHumanizer from './shortEnglishHumanizer';
+import formatTimelineTickLabel from './formatTimelineTickLabel';
 
 function findById<T extends { id: unknown }>(idToFind: unknown, arr?: T[]): T | Record<string, never> | undefined {
   return !arr ? {} : arr.find(({ id }) => id === idToFind);
@@ -13,6 +14,7 @@ function findById<T extends { id: unknown }>(idToFind: unknown, arr?: T[]): T | 
 export {
   deepArrayIsEqual,
   findById,
+  formatTimelineTickLabel,
   loadState,
   pan,
   processTrace,

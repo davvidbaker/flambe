@@ -17,6 +17,11 @@ import {
   MINUTE, DAY, WEEK, MONTH,
 } from '../utilities/time';
 import {
+  absoluteGridStepMs,
+  absoluteGridTimes,
+  chooseAbsoluteGridStep,
+} from '../utilities/absoluteTimelineGrid';
+import {
   loadSuspendedActivityCount,
 } from '../utilities/timeline';
 import type { Command } from '../constants/commands';
@@ -37,6 +42,7 @@ import FocusedBlock from './FocusedBlock';
 
 
 const MIN_GRID_SLICE_PX = 60;
+const ABSOLUTE_MIN_GRID_SLICE_PX = 100;
 const isValidTime = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
@@ -53,11 +59,15 @@ const threadsCollapsedChecksum = (threads: Record<string, Thread> = {}) => Objec
 interface DividerData {
   offsets: Array<{ position: number; time: number }>;
   precision: number;
+  /** Current axis step in ms — ADR-005 same-agent chrome coalesce threshold. */
+  gridSliceTime: number;
 }
 
 type ZoomPeriod = 'now' | 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';
 
 export interface TimelineProps {
+  absoluteTimeLabels: boolean;
+  twelveHourClock: boolean;
   activities: Record<string, ProcessedActivity>;
   addCommand: (command: Command) => unknown;
   attentionDrivenThreadOrder: boolean;
@@ -100,6 +110,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     dividersData: {
       offsets: [],
       precision: 0,
+      gridSliceTime: 0,
     },
     composingZoomChord: false,
     height: 0,
@@ -117,7 +128,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   leftBoundaryTime = 0;
   rightBoundaryTime = 0;
   topOffset = 0;
-  dividersData: DividerData = { offsets: [], precision: 0 };
+  dividersData: DividerData = { offsets: [], precision: 0, gridSliceTime: 0 };
 
   constructor(props: TimelineProps) {
     super(props);
@@ -333,17 +344,46 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     const clientWidth = this.state.width;
     if (!isValidTime(leftBoundaryTime) || !isValidTime(rightBoundaryTime)
       || !Number.isFinite(clientWidth) || clientWidth <= 0) {
-      return { offsets: [], precision: 0 };
+      return { offsets: [], precision: 0, gridSliceTime: 0 };
+    }
+
+    const boundarySpan = rightBoundaryTime - leftBoundaryTime;
+    const pixelsPerTime = clientWidth / boundarySpan;
+
+    if (this.props.absoluteTimeLabels) {
+      const step = chooseAbsoluteGridStep(
+        boundarySpan,
+        clientWidth,
+        ABSOLUTE_MIN_GRID_SLICE_PX,
+      );
+      const lastDividerTime = rightBoundaryTime
+        + ABSOLUTE_MIN_GRID_SLICE_PX / pixelsPerTime;
+      const stepMs = absoluteGridStepMs(step);
+      const offsets = absoluteGridTimes(
+        leftBoundaryTime,
+        lastDividerTime,
+        step,
+      ).map(time => ({
+        position: Math.floor(this.timeToPixels(time)),
+        time,
+      }));
+
+      return {
+        offsets,
+        precision: Math.max(
+          0,
+          -Math.floor(Math.log(stepMs * 1.01) / Math.LN10),
+        ),
+        gridSliceTime: stepMs,
+      };
     }
 
     const zeroTime = 0;
-
-    const boundarySpan = rightBoundaryTime - leftBoundaryTime;
+    const minGridSlicePx = MIN_GRID_SLICE_PX;
 
     // calculator.computePosition(rightBoundaryTime);
-    let dividersCount = clientWidth / MIN_GRID_SLICE_PX;
+    let dividersCount = clientWidth / minGridSlicePx;
     let gridSliceTime = boundarySpan / dividersCount;
-    const pixelsPerTime = clientWidth / boundarySpan;
 
     // Align gridSliceTime to a nearest round value.
     // We allow spans that fit into the formula: span = (1|2|5)x10^n,
@@ -352,10 +392,10 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
     const logGridSliceTime = Math.ceil(Math.log(gridSliceTime) / Math.LN10);
     gridSliceTime = 10 ** logGridSliceTime;
-    if (gridSliceTime * pixelsPerTime >= 5 * MIN_GRID_SLICE_PX) {
+    if (gridSliceTime * pixelsPerTime >= 5 * minGridSlicePx) {
       gridSliceTime /= 5;
     }
-    if (gridSliceTime * pixelsPerTime >= 2 * MIN_GRID_SLICE_PX) {
+    if (gridSliceTime * pixelsPerTime >= 2 * minGridSlicePx) {
       gridSliceTime /= 2;
     }
 
@@ -364,7 +404,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     let lastDividerTime = rightBoundaryTime;
     // Add some extra space past the right boundary as the rightmost divider label text
     // may be partially shown rather than just pop up when a new rightmost divider gets into the view.
-    lastDividerTime += MIN_GRID_SLICE_PX / pixelsPerTime;
+    lastDividerTime += minGridSlicePx / pixelsPerTime;
     dividersCount = Math.ceil(
       (lastDividerTime - firstDividerTime) / gridSliceTime,
     );
@@ -386,6 +426,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
         0,
         -Math.floor(Math.log(gridSliceTime * 1.01) / Math.LN10),
       ),
+      gridSliceTime,
     };
   }
 

@@ -77,7 +77,7 @@ export function createAppChartFixture({
     id: 12,
     name: 'Add app Storybook with fixture store',
     parent_id: pointStorybook.id,
-    agent_id: 'cursor',
+    agent_id: 'cursor:storybook-session',
     agent_name: 'Cursor',
     categories: [1],
   });

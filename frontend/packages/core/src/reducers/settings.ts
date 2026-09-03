@@ -1,6 +1,8 @@
 import { SETTING_TOGGLE } from '../actions';
 
 export interface SettingsState {
+  absoluteTimeLabels: boolean;
+  twelveHourClock: boolean;
   activityMute: boolean;
   activityMuteOpacity: number;
   attentionDrivenThreadOrder: boolean;
@@ -12,6 +14,8 @@ export interface SettingsState {
 }
 
 const defaultState: SettingsState = {
+  absoluteTimeLabels: false,
+  twelveHourClock: false,
   attentionDrivenThreadOrder: true,
   attentionFlows: false,
   activityMuteOpacity: 0.1,

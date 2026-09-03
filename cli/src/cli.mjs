@@ -2,7 +2,7 @@ import { clientFromEnv } from './client.mjs';
 
 const usage = `Usage:
   flambe start <activity name> [--description <text>] [--thread <id>] [--parent <id> | --root] [--category <id>...] [--started-at <ISO-8601>]
-  flambe end <activity-id> [message]
+  flambe end <activity-id> [message] [--force]
   flambe suspend <activity-id> [message]
   flambe resume <activity-id> [message]
   flambe status [--active | --suspended] [--json]
@@ -77,6 +77,24 @@ function parseStart(args) {
   };
 }
 
+function parseEnd(args) {
+  let force = false;
+  const positional = [];
+
+  for (const arg of args) {
+    if (arg === '--force') force = true;
+    else if (arg.startsWith('--')) throw new Error(`Unknown option: ${arg}`);
+    else positional.push(arg);
+  }
+
+  const [activityId, ...messageParts] = positional;
+  return {
+    activityId,
+    message: messageParts.join(' ') || undefined,
+    force,
+  };
+}
+
 function parseStatus(args) {
   let activeOnly = false;
   let suspendedOnly = false;
@@ -117,9 +135,9 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
   }
 
   if (command === 'end') {
-    const [activityId, ...messageParts] = args;
-    if (!activityId) throw new Error('Usage: flambe end <activity-id> [message]');
-    const eventId = await flambe.end({ activityId, message: messageParts.join(' ') || undefined });
+    const { activityId, message, force } = parseEnd(args);
+    if (!activityId) throw new Error('Usage: flambe end <activity-id> [message] [--force]');
+    const eventId = await flambe.end({ activityId, message, force });
     stdout.write(`${eventId}\n`);
     return;
   }

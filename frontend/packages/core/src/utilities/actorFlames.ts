@@ -2,8 +2,27 @@ import type { Activity } from '../types/Activity';
 import type { EntityId } from '../types/ids';
 import type { TraceBlock } from './processTrace';
 
-const AGENT_ACCENTS = ['#2563eb', '#7c3aed', '#db2777', '#059669', '#d97706', '#0891b2'];
+/**
+ * Actor-flame projection and lane layout (presentation only).
+ *
+ * Chrome vocabulary — **activity block**, **rail**, **wash**, **gutter**, **fork** —
+ * and labeling rules (display name vs model-provider color, temporal merge) live in
+ * docs/ADR-005-actor-lane-chrome.md.
+ */
+
 const HUMAN_ACTOR_KEY = 'human';
+
+/** Stable hues for known model providers (ADR-005). */
+const PROVIDER_COLORS: Record<string, string> = {
+  claude: '#d97706',
+  cursor: '#2563eb',
+  codex: '#7c3aed',
+  gpt: '#059669',
+  openai: '#059669',
+  grok: '#db2777',
+};
+
+const FALLBACK_ACCENTS = ['#2563eb', '#7c3aed', '#db2777', '#059669', '#d97706', '#0891b2'];
 
 type ActivityRecord = Record<string, Pick<
   Activity,
@@ -53,6 +72,21 @@ export interface ActorLaneLayout {
   rowByActivity: Record<string, number>;
   rootIdByActivity: Record<string, EntityId | null>;
   maxRowsByThread: Record<string, number>;
+}
+
+/** Painted chrome envelope for one or more coalesced actor flames (ADR-005). */
+export interface ActorLaneChrome {
+  actorKey: string;
+  actorName: string;
+  depth: number;
+  endTime: number | null;
+  parentLaneRootId: EntityId | null;
+  providerKey: string;
+  rootActivityIds: EntityId[];
+  rowEnd: number;
+  rowStart: number;
+  startTime: number;
+  threadId: EntityId;
 }
 
 function keyFor(id: EntityId): string {
@@ -197,14 +231,179 @@ export function selectActorFlameSegments(
   };
 }
 
-export function actorAccentColor(key: string): string {
-  if (key === HUMAN_ACTOR_KEY) return '#6b7280';
+/**
+ * Pick a label that fits in `maxLengthPx` when drawn horizontally (which becomes
+ * the vertical budget after a 90° CCW rotation). Prefer full name, then
+ * initials, then ellipsis truncation.
+ */
+export function fitActorLaneLabel(
+  name: string,
+  maxLengthPx: number,
+  measureWidth: (text: string) => number,
+): string {
+  const trimmed = name.trim();
+  if (!trimmed || maxLengthPx <= 0) return '';
+  if (measureWidth(trimmed) <= maxLengthPx) return trimmed;
+
+  const initials = trimmed
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(part => part[0]!.toUpperCase())
+    .join('');
+  if (initials && measureWidth(initials) <= maxLengthPx) return initials;
+
+  let candidate = trimmed;
+  while (candidate.length > 1) {
+    candidate = candidate.slice(0, -1);
+    const withEllipsis = `${candidate}…`;
+    if (measureWidth(withEllipsis) <= maxLengthPx) return withEllipsis;
+  }
+
+  const single = trimmed[0] ?? '';
+  return measureWidth(single) <= maxLengthPx ? single : '';
+}
+
+/**
+ * Model provider token from an agent id or actor key (`agent:claude:session` → `claude`).
+ */
+export function modelProviderFromAgentId(agentId: string | null | undefined): string {
+  if (!agentId) return HUMAN_ACTOR_KEY;
+  const id = agentId.startsWith('agent:') ? agentId.slice('agent:'.length) : agentId;
+  const colon = id.indexOf(':');
+  if (colon > 0) return id.slice(0, colon).toLowerCase();
+  return 'unknown';
+}
+
+/** Rail/wash accent from model provider (ADR-005). */
+export function actorAccentColor(actorKeyOrAgentId: string): string {
+  if (actorKeyOrAgentId === HUMAN_ACTOR_KEY) return '#6b7280';
+  const provider = modelProviderFromAgentId(actorKeyOrAgentId);
+  if (PROVIDER_COLORS[provider]) return PROVIDER_COLORS[provider];
 
   let hash = 0;
-  for (let index = 0; index < key.length; index += 1) {
-    hash = ((hash << 5) - hash + key.charCodeAt(index)) | 0;
+  for (let index = 0; index < provider.length; index += 1) {
+    hash = ((hash << 5) - hash + provider.charCodeAt(index)) | 0;
   }
-  return AGENT_ACCENTS[Math.abs(hash) % AGENT_ACCENTS.length];
+  return FALLBACK_ACCENTS[Math.abs(hash) % FALLBACK_ACCENTS.length];
+}
+
+function laneTimeBoundsForRoots(
+  rootActivityIds: EntityId[],
+  rootIdByActivity: Record<string, EntityId | null>,
+  blocks: TraceBlock[],
+): { startTime: number; endTime: number | null } | null {
+  const rootSet = new Set(rootActivityIds.map(String));
+  const laneBlocks = blocks.filter(block => {
+    const root = rootIdByActivity[String(block.activity_id)];
+    return root !== null && root !== undefined && rootSet.has(String(root));
+  });
+  if (!laneBlocks.length) return null;
+
+  const startTime = Math.min(...laneBlocks.map(block => block.startTime));
+  const open = laneBlocks.some(block => block.endTime === undefined);
+  if (open) return { startTime, endTime: null };
+
+  return {
+    startTime,
+    endTime: Math.max(...laneBlocks.map(block => block.endTime as number)),
+  };
+}
+
+/** Horizontal time extent of an actor lane from its same-actor activity blocks. */
+export function actorLaneTimeBounds(
+  lane: Pick<ActorLaneBand, 'rootActivityId'>,
+  rootIdByActivity: Record<string, EntityId | null>,
+  blocks: TraceBlock[],
+): { startTime: number; endTime: number | null } | null {
+  return laneTimeBoundsForRoots([lane.rootActivityId], rootIdByActivity, blocks);
+}
+
+/**
+ * Coalesce lane chrome when same-agent flames are within one grid tick (ADR-005 S5).
+ */
+export function coalesceActorLaneChrome(
+  layout: ActorLaneLayout,
+  blocks: TraceBlock[],
+  gridTickMs: number,
+  nowMs: number = Date.now(),
+): ActorLaneChrome[] {
+  const tick = Number.isFinite(gridTickMs) && gridTickMs > 0 ? gridTickMs : 0;
+  const withBounds = layout.lanes.map(lane => {
+    const bounds = actorLaneTimeBounds(lane, layout.rootIdByActivity, blocks);
+    return {
+      lane,
+      startTime: bounds?.startTime ?? Number.POSITIVE_INFINITY,
+      endTime: bounds?.endTime === null ? null : (bounds?.endTime ?? Number.POSITIVE_INFINITY),
+    };
+  }).filter(entry => Number.isFinite(entry.startTime));
+
+  const groups = new Map<string, typeof withBounds>();
+  for (const entry of withBounds) {
+    const key = [
+      String(entry.lane.threadId),
+      entry.lane.actorKey,
+      String(entry.lane.parentLaneRootId ?? ''),
+      String(entry.lane.depth),
+    ].join('|');
+    const list = groups.get(key) ?? [];
+    list.push(entry);
+    groups.set(key, list);
+  }
+
+  const chrome: ActorLaneChrome[] = [];
+  for (const entries of groups.values()) {
+    entries.sort((left, right) => left.startTime - right.startTime
+      || Number(left.lane.rootActivityId) - Number(right.lane.rootActivityId));
+
+    let current = entries[0]!;
+    let roots = [current.lane.rootActivityId];
+    let rowStart = current.lane.rowStart;
+    let rowEnd = current.lane.rowEnd;
+    let endTime = current.endTime;
+
+    const flush = () => {
+      chrome.push({
+        actorKey: current.lane.actorKey,
+        actorName: current.lane.actorName,
+        depth: current.lane.depth,
+        endTime,
+        parentLaneRootId: current.lane.parentLaneRootId,
+        providerKey: modelProviderFromAgentId(current.lane.actorKey),
+        rootActivityIds: roots.slice(),
+        rowEnd,
+        rowStart,
+        startTime: current.startTime,
+        threadId: current.lane.threadId,
+      });
+    };
+
+    for (let index = 1; index < entries.length; index += 1) {
+      const next = entries[index]!;
+      const currentEnd = endTime === null ? nowMs : endTime;
+      const gap = next.startTime - currentEnd;
+      if (tick > 0 && gap <= tick) {
+        roots.push(next.lane.rootActivityId);
+        rowStart = Math.min(rowStart, next.lane.rowStart);
+        rowEnd = Math.max(rowEnd, next.lane.rowEnd);
+        if (endTime === null || next.endTime === null) {
+          endTime = null;
+        } else {
+          endTime = Math.max(endTime, next.endTime);
+        }
+        continue;
+      }
+      flush();
+      current = next;
+      roots = [next.lane.rootActivityId];
+      rowStart = next.lane.rowStart;
+      rowEnd = next.lane.rowEnd;
+      endTime = next.endTime;
+    }
+    flush();
+  }
+
+  return chrome.sort((left, right) => left.depth - right.depth
+    || left.startTime - right.startTime);
 }
 
 function parentLaneRootId(
@@ -215,10 +414,44 @@ function parentLaneRootId(
   return rootIdByActivity[String(flame.parentActivityId)] ?? null;
 }
 
+type TimeInterval = { start: number; end: number };
+
+function activityInterval(
+  activityId: EntityId,
+  blocks: TraceBlock[],
+): TimeInterval {
+  const mine = blocks.filter(block => String(block.activity_id) === String(activityId));
+  if (!mine.length) {
+    return { start: Number.POSITIVE_INFINITY, end: Number.POSITIVE_INFINITY };
+  }
+  return {
+    start: Math.min(...mine.map(block => block.startTime)),
+    end: Math.max(...mine.map(block => block.endTime ?? Number.POSITIVE_INFINITY)),
+  };
+}
+
+function intervalsOverlap(left: TimeInterval, right: TimeInterval): boolean {
+  return left.start < right.end && right.start < left.end;
+}
+
+function unionIntervals(intervals: TimeInterval[]): TimeInterval {
+  const finite = intervals.filter(interval => Number.isFinite(interval.start));
+  if (!finite.length) {
+    return { start: Number.POSITIVE_INFINITY, end: Number.POSITIVE_INFINITY };
+  }
+  return {
+    start: Math.min(...finite.map(interval => interval.start)),
+    end: Math.max(...finite.map(interval => interval.end)),
+  };
+}
+
 /**
  * Nested actor-sublane layout (Variant 1): each agent boundary opens a labeled
  * vertical lane; same-actor work nests inside; delegated agents nest inside the
  * parent actor's band. Human work stays in the thread's primary stack.
+ *
+ * Rows are packed by time occupancy (flame-chart style): non-overlapping
+ * siblings/roots reuse vertical space instead of stacking into a waterfall.
  */
 export function projectActorLaneLayout(
   activities: ActivityRecord,
@@ -275,22 +508,93 @@ export function projectActorLaneLayout(
     return depth;
   };
 
+  const occupiedByThread = new Map<string, Map<number, TimeInterval[]>>();
+
+  const occupiedRows = (threadId: EntityId) => {
+    const threadKey = keyFor(threadId);
+    let rows = occupiedByThread.get(threadKey);
+    if (!rows) {
+      rows = new Map();
+      occupiedByThread.set(threadKey, rows);
+    }
+    return rows;
+  };
+
+  const firstFreeRow = (
+    threadId: EntityId,
+    minRow: number,
+    interval: TimeInterval,
+    rowCount = 1,
+  ): number => {
+    const occupied = occupiedRows(threadId);
+    let row = Math.max(0, minRow);
+    for (;;) {
+      let fits = true;
+      for (let offset = 0; offset < rowCount; offset += 1) {
+        const existing = occupied.get(row + offset) ?? [];
+        if (existing.some(entry => intervalsOverlap(entry, interval))) {
+          fits = false;
+          break;
+        }
+      }
+      if (fits) return row;
+      row += 1;
+    }
+  };
+
+  const occupyRows = (
+    threadId: EntityId,
+    rowStart: number,
+    rowEnd: number,
+    interval: TimeInterval,
+  ) => {
+    if (!Number.isFinite(interval.start)) return;
+    const occupied = occupiedRows(threadId);
+    for (let row = rowStart; row <= rowEnd; row += 1) {
+      const entries = occupied.get(row) ?? [];
+      entries.push(interval);
+      occupied.set(row, entries);
+    }
+  };
+
   const layoutLane = (
     flame: ActorFlame,
-    startRow: number,
+    minRow: number,
     threadId: EntityId,
     depth: number,
   ): number => {
-    const sameActorIds = Object.values(activities)
+    const sameActorIds = sortByStart(Object.values(activities)
       .filter(activity =>
         String(activity.thread_id) === String(threadId)
         && rootIdByActivity[keyFor(activity.id)] === flame.rootActivityId)
-      .map(activity => activity.id);
+      .map(activity => activity.id));
 
-    let maxSameRow = startRow;
+    const relativeOccupied = new Map<number, TimeInterval[]>();
+    const relativeFirstFree = (minRelative: number, span: TimeInterval) => {
+      let row = Math.max(0, minRelative);
+      for (;;) {
+        const existing = relativeOccupied.get(row) ?? [];
+        if (!existing.some(entry => intervalsOverlap(entry, span))) return row;
+        row += 1;
+      }
+    };
+    const relativeOccupy = (row: number, span: TimeInterval) => {
+      if (!Number.isFinite(span.start)) return;
+      const entries = relativeOccupied.get(row) ?? [];
+      entries.push(span);
+      relativeOccupied.set(row, entries);
+    };
+
+    const provisional: Record<string, number> = {};
+    let maxSameRow = 0;
     for (const activityId of sameActorIds) {
-      const row = startRow + sameActorLocalDepth(activityId, flame.rootActivityId);
-      rowByActivity[keyFor(activityId)] = row;
+      const span = activityInterval(activityId, blocks);
+      const row = relativeFirstFree(
+        sameActorLocalDepth(activityId, flame.rootActivityId),
+        span,
+      );
+      provisional[keyFor(activityId)] = row;
+      relativeOccupy(row, span);
       maxSameRow = Math.max(maxSameRow, row);
     }
 
@@ -301,32 +605,45 @@ export function projectActorLaneLayout(
         activityStartTime(left.rootActivityId, blocks)
         - activityStartTime(right.rootActivityId, blocks));
 
-    let cursor = maxSameRow + 1;
-    let bandEnd = maxSameRow;
+    const humanChildren = sameActorIds.flatMap(activityId =>
+      sortByStart(childrenByParent.get(keyFor(activityId)) ?? [])
+        .filter(childId => actorKey(activities[keyFor(childId)] ?? { agent_id: null }) === HUMAN_ACTOR_KEY));
+
+    const baseInterval = unionIntervals(
+      sameActorIds.map(id => activityInterval(id, blocks)),
+    );
+    const baseHeight = maxSameRow + 1;
+    const startRow = firstFreeRow(threadId, minRow, baseInterval, baseHeight);
+
+    for (const [activityKey, relativeRow] of Object.entries(provisional)) {
+      rowByActivity[activityKey] = startRow + relativeRow;
+    }
+    for (const activityId of sameActorIds) {
+      const absoluteRow = rowByActivity[keyFor(activityId)];
+      occupyRows(
+        threadId,
+        absoluteRow,
+        absoluteRow,
+        activityInterval(activityId, blocks),
+      );
+    }
+
+    let bandEnd = startRow + maxSameRow;
 
     for (const nested of nestedFlames) {
       const parentRow = nested.parentActivityId === null
         ? startRow
         : (rowByActivity[keyFor(nested.parentActivityId)] ?? startRow);
-      const nestStart = Math.max(cursor, parentRow + 1);
-      const nestEnd = layoutLane(nested, nestStart, threadId, depth + 1);
-      cursor = nestEnd + 1;
+      const nestEnd = layoutLane(nested, parentRow + 1, threadId, depth + 1);
       bandEnd = Math.max(bandEnd, nestEnd);
     }
-
-    // Human children that hang directly under this lane's activities (actor boundary back to human).
-    const humanChildren = sameActorIds.flatMap(activityId =>
-      sortByStart(childrenByParent.get(keyFor(activityId)) ?? [])
-        .filter(childId => actorKey(activities[keyFor(childId)] ?? { agent_id: null }) === HUMAN_ACTOR_KEY));
 
     for (const humanId of humanChildren) {
       const parent = activities[keyFor(humanId)]?.parent_id;
       const parentRow = parent === undefined || parent === null
-        ? maxSameRow
-        : (rowByActivity[keyFor(parent)] ?? maxSameRow);
-      const humanStart = Math.max(cursor, parentRow + 1);
-      const humanEnd = layoutHumanSubtree(humanId, humanStart, threadId);
-      cursor = humanEnd + 1;
+        ? bandEnd
+        : (rowByActivity[keyFor(parent)] ?? bandEnd);
+      const humanEnd = layoutHumanSubtree(humanId, parentRow + 1, threadId);
       bandEnd = Math.max(bandEnd, humanEnd);
     }
 
@@ -342,18 +659,40 @@ export function projectActorLaneLayout(
       threadId,
     });
 
+    // Leave one empty row under top-level agent bands so sibling agents don't
+    // stack flush; nested (depth > 0) lanes stay tight inside the parent.
+    if (depth === 0) {
+      const bandInterval = unionIntervals(
+        Object.values(activities)
+          .filter(activity => {
+            const row = rowByActivity[keyFor(activity.id)];
+            return row !== undefined
+              && row >= startRow
+              && row <= bandEnd
+              && String(activity.thread_id) === String(threadId);
+          })
+          .map(activity => activityInterval(activity.id, blocks)),
+      );
+      if (Number.isFinite(bandInterval.start)) {
+        occupyRows(threadId, bandEnd + 1, bandEnd + 1, bandInterval);
+      }
+    }
+
     return bandEnd;
   };
 
   const layoutHumanSubtree = (
     activityId: EntityId,
-    startRow: number,
+    minRow: number,
     threadId: EntityId,
   ): number => {
-    rowByActivity[keyFor(activityId)] = startRow;
+    const interval = activityInterval(activityId, blocks);
+    const row = firstFreeRow(threadId, minRow, interval, 1);
+    rowByActivity[keyFor(activityId)] = row;
+    occupyRows(threadId, row, row, interval);
+
     const children = sortByStart(childrenByParent.get(keyFor(activityId)) ?? []);
-    let cursor = startRow + 1;
-    let maxEnd = startRow;
+    let maxEnd = row;
 
     for (const childId of children) {
       const child = activities[keyFor(childId)];
@@ -361,15 +700,13 @@ export function projectActorLaneLayout(
 
       const flame = flameByRoot[keyFor(childId)];
       if (flame) {
-        const end = layoutLane(flame, cursor, threadId, 0);
-        cursor = end + 1;
+        const end = layoutLane(flame, row + 1, threadId, 0);
         maxEnd = Math.max(maxEnd, end);
         continue;
       }
 
       if (actorKey(child) === HUMAN_ACTOR_KEY) {
-        const end = layoutHumanSubtree(childId, cursor, threadId);
-        cursor = end + 1;
+        const end = layoutHumanSubtree(childId, row + 1, threadId);
         maxEnd = Math.max(maxEnd, end);
       }
     }
@@ -381,7 +718,6 @@ export function projectActorLaneLayout(
     const threadId = activities[keyFor(roots[0])]?.thread_id;
     if (threadId === undefined || threadId === null) continue;
 
-    let cursor = 0;
     let maxEnd = -1;
 
     for (const rootId of sortByStart(roots)) {
@@ -389,14 +725,12 @@ export function projectActorLaneLayout(
       if (!root) continue;
       const flame = flameByRoot[keyFor(rootId)];
       if (flame) {
-        const end = layoutLane(flame, cursor, threadId, 0);
-        cursor = end + 1;
+        const end = layoutLane(flame, 0, threadId, 0);
         maxEnd = Math.max(maxEnd, end);
         continue;
       }
       if (actorKey(root) === HUMAN_ACTOR_KEY) {
-        const end = layoutHumanSubtree(rootId, cursor, threadId);
-        cursor = end + 1;
+        const end = layoutHumanSubtree(rootId, 0, threadId);
         maxEnd = Math.max(maxEnd, end);
       }
     }

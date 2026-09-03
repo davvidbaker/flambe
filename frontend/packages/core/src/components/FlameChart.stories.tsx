@@ -9,6 +9,7 @@ import {
   createParentSuspensionFixture,
   createQuestionOutcomesFixture,
   createResurrectionFixture,
+  createShortAgentFlamesFixture,
   createSparseTraceFixture,
   createStrangeSequenceFixture,
 } from '../storybook/scenarioFixtures';
@@ -64,6 +65,12 @@ export const QuestionsAndOutcomes: Story = {
 export const DenseShortWork: Story = {
   args: {
     fixture: createDenseTraceFixture(),
+  },
+};
+
+export const ShortAgentFlames: Story = {
+  args: {
+    fixture: createShortAgentFlamesFixture(),
   },
 };
 

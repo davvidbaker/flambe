@@ -46,12 +46,12 @@ describe('app chart Storybook fixture', () => {
     const layout = projectActorLaneLayout(processed.activities, processed.blocks);
 
     expect(new Set(Object.values(processed.activities).map(item => item.agent_name))).toEqual(
-      new Set(['Steve', 'Belinda', 'Claude', 'Nora', 'Deploy bot', undefined]),
+      new Set(['Steve', 'Belinda', 'Miles', 'Nora', 'Deploy bot', undefined]),
     );
     expect(projectActorFlames(processed.activities)).toMatchObject([
       { rootActivityId: 100, parentActivityId: 90, actorName: 'Steve' },
       { rootActivityId: 110, parentActivityId: 90, actorName: 'Belinda' },
-      { rootActivityId: 120, parentActivityId: 90, actorName: 'Claude' },
+      { rootActivityId: 120, parentActivityId: 90, actorName: 'Miles' },
       { rootActivityId: 121, parentActivityId: 111, actorName: 'Nora' },
       { rootActivityId: 140, parentActivityId: null, actorName: 'Deploy bot' },
     ]);

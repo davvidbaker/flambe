@@ -304,8 +304,36 @@ export class FlambeClient {
     return payload.data.activity.id;
   }
 
-  async end({ activityId, message }) {
+  async end({ activityId, message, force = false }) {
+    if (!force) await this.assertNoOpenChildren(activityId);
     return this.lifecycleEvent({ activityId, message, phase: 'E', queueType: 'end' });
+  }
+
+  /**
+   * Refuse ending a parent while any direct child is still active (B/R).
+   * Skipped for offline-* ids (no server truth yet) and when `force` is set.
+   */
+  async assertNoOpenChildren(activityId) {
+    if (String(activityId).startsWith('offline-')) return;
+
+    const id = Number(activityId);
+    if (!Number.isInteger(id) || id <= 0) return;
+
+    const { activities } = await this.status({ activeOnly: true });
+    const openChildren = activities
+      .filter(activity => Number(activity.parentId) === id)
+      .sort((left, right) => left.id - right.id);
+
+    if (openChildren.length === 0) return;
+
+    const list = openChildren
+      .map(activity => `${activity.id} (${activity.name})`)
+      .join(', ');
+    const ids = openChildren.map(activity => activity.id).join(', ');
+    throw new Error(
+      `Cannot end activity ${id} while open children remain: ${list}. `
+      + `End ${ids} first (or pass --force).`,
+    );
   }
 
   async suspend({ activityId, message }) {

@@ -29,10 +29,13 @@ function activity(
   name: string,
   options: {
     agentName?: string;
+    /** Model provider prefix for agent_id (`claude`, `cursor`, `codex`). */
+    agentProvider?: string;
     category?: EntityId;
     parentId?: EntityId;
   } = {},
 ): Activity {
+  const slug = options.agentName?.toLowerCase().replace(/\s+/g, '-');
   return {
     id,
     name,
@@ -40,9 +43,11 @@ function activity(
     thread_id: owner.id,
     parent_id: options.parentId,
     categories: [options.category ?? 1],
-    ...(options.agentName
+    ...(options.agentName && slug
       ? {
-          agent_id: options.agentName.toLowerCase().replace(/\s+/g, '-'),
+          agent_id: options.agentProvider
+            ? `${options.agentProvider}:${slug}`
+            : slug,
           agent_name: options.agentName,
         }
       : {}),
@@ -74,31 +79,37 @@ export function createConcurrentAgentsFixture(now = Date.now()): AppChartFixture
   const sharedRoot = activity(app, 90, 'Ship agent-aware trace view', { category: 3 });
   const steve = activity(app, 100, 'Add trace filters', {
     agentName: 'Steve',
+    agentProvider: 'cursor',
     category: 1,
     parentId: sharedRoot.id,
   });
   const steveInspect = activity(app, 101, 'Inspect reducers', {
     agentName: 'Steve',
+    agentProvider: 'cursor',
     category: 2,
     parentId: steve.id,
   });
   const belinda = activity(app, 110, 'Fix reconnect ordering', {
     agentName: 'Belinda',
+    agentProvider: 'claude',
     category: 5,
     parentId: sharedRoot.id,
   });
   const belindaTest = activity(app, 111, 'Exercise socket race', {
     agentName: 'Belinda',
+    agentProvider: 'claude',
     category: 2,
     parentId: belinda.id,
   });
-  const claude = activity(app, 120, 'Review activity API', {
-    agentName: 'Claude',
+  const miles = activity(app, 120, 'Review activity API', {
+    agentName: 'Miles',
+    agentProvider: 'claude',
     category: 3,
     parentId: sharedRoot.id,
   });
   const nora = activity(app, 121, 'Diagnose flaky assertion', {
     agentName: 'Nora',
+    agentProvider: 'codex',
     category: 2,
     parentId: belindaTest.id,
   });
@@ -108,6 +119,7 @@ export function createConcurrentAgentsFixture(now = Date.now()): AppChartFixture
   });
   const deploy = activity(release, 140, 'Publish preview', {
     agentName: 'Deploy bot',
+    agentProvider: 'codex',
     category: 4,
   });
 
@@ -117,14 +129,14 @@ export function createConcurrentAgentsFixture(now = Date.now()): AppChartFixture
     { id: 1002, timestamp: minutesAgo(now, 62), phase: 'B', activity: steveInspect },
     { id: 1003, timestamp: minutesAgo(now, 58), phase: 'B', activity: belinda },
     { id: 1004, timestamp: minutesAgo(now, 54), phase: 'B', activity: belindaTest },
-    { id: 1005, timestamp: minutesAgo(now, 48), phase: 'B', activity: claude },
+    { id: 1005, timestamp: minutesAgo(now, 48), phase: 'B', activity: miles },
     { id: 1006, timestamp: minutesAgo(now, 42), phase: 'E', activity: steveInspect },
     { id: 1007, timestamp: minutesAgo(now, 37), phase: 'S', activity: belindaTest, message: 'Race is intermittent' },
     { id: 1008, timestamp: minutesAgo(now, 40), phase: 'B', activity: nora },
     { id: 1009, timestamp: minutesAgo(now, 32), phase: 'E', activity: steve },
     { id: 1010, timestamp: minutesAgo(now, 28), phase: 'R', activity: belindaTest, message: 'Reproduced it' },
     { id: 1011, timestamp: minutesAgo(now, 23), phase: 'E', activity: nora },
-    { id: 1012, timestamp: minutesAgo(now, 22), phase: 'E', activity: claude },
+    { id: 1012, timestamp: minutesAgo(now, 22), phase: 'E', activity: miles },
     { id: 1013, timestamp: minutesAgo(now, 20), phase: 'B', activity: human },
     { id: 1014, timestamp: minutesAgo(now, 16), phase: 'E', activity: belindaTest },
     { id: 1015, timestamp: minutesAgo(now, 12), phase: 'E', activity: belinda },
@@ -137,14 +149,19 @@ export function createConcurrentAgentsFixture(now = Date.now()): AppChartFixture
 
 export function createParentSuspensionFixture(now = Date.now()): AppChartFixture {
   const app = thread(1, 'agent work 🤖');
-  const parent = activity(app, 200, 'Implement streaming', { agentName: 'Ada' });
+  const parent = activity(app, 200, 'Implement streaming', {
+    agentName: 'Ada',
+    agentProvider: 'cursor',
+  });
   const reader = activity(app, 201, 'Read channel code', {
     agentName: 'Ada',
+    agentProvider: 'cursor',
     category: 2,
     parentId: parent.id,
   });
   const tests = activity(app, 202, 'Write reconnect tests', {
     agentName: 'Ada',
+    agentProvider: 'cursor',
     parentId: parent.id,
   });
 
@@ -161,8 +178,16 @@ export function createParentSuspensionFixture(now = Date.now()): AppChartFixture
 
 export function createResurrectionFixture(now = Date.now()): AppChartFixture {
   const app = thread(1, 'returned work 🧟');
-  const migration = activity(app, 300, 'Remove legacy chart', { agentName: 'Mina', category: 5 });
-  const docs = activity(app, 301, 'Document package boundary', { agentName: 'Mina', category: 3 });
+  const migration = activity(app, 300, 'Remove legacy chart', {
+    agentName: 'Mina',
+    agentProvider: 'claude',
+    category: 5,
+  });
+  const docs = activity(app, 301, 'Document package boundary', {
+    agentName: 'Mina',
+    agentProvider: 'claude',
+    category: 3,
+  });
 
   return fixture(9300, 'Resurrection', [app], [
     { id: 3001, timestamp: minutesAgo(now, 75), phase: 'B', activity: migration },
@@ -179,11 +204,13 @@ export function createStrangeSequenceFixture(now = Date.now()): AppChartFixture 
   const edgeCases = thread(1, 'edge cases 🧪');
   const duplicated = activity(edgeCases, 400, 'Duplicate lifecycle delivery', {
     agentName: 'Retrying client',
+    agentProvider: 'cursor',
     category: 5,
   });
   const endBeforeBegin = activity(edgeCases, 401, 'End arrived before begin', { category: 2 });
   const resumeFirst = activity(edgeCases, 402, 'Resume without prior suspend', {
     agentName: 'Old client',
+    agentProvider: 'codex',
     category: 3,
   });
 
@@ -226,6 +253,7 @@ export function createDenseTraceFixture(now = Date.now()): AppChartFixture {
   for (let index = 0; index < 18; index += 1) {
     const item = activity(busy, 600 + index, `Tiny task ${index + 1}`, {
       agentName: ['Ari', 'Bo', 'Cy'][index % 3],
+      agentProvider: (['cursor', 'claude', 'codex'] as const)[index % 3],
       category: (index % 5) + 1,
     });
     const start = 75 - index * 4;
@@ -240,13 +268,70 @@ export function createDenseTraceFixture(now = Date.now()): AppChartFixture {
 
 export function createSparseTraceFixture(now = Date.now()): AppChartFixture {
   const sparse = thread(1, 'slow burn 🐢');
-  const long = activity(sparse, 700, 'Long-running migration', { agentName: 'Nora', category: 4 });
+  const long = activity(sparse, 700, 'Long-running migration', {
+    agentName: 'Nora',
+    agentProvider: 'codex',
+    category: 4,
+  });
   const recent = activity(sparse, 701, 'Quick verification', { category: 3 });
 
   return fixture(9700, 'Sparse long-running work', [sparse], [
     { id: 7001, timestamp: minutesAgo(now, 360), phase: 'B', activity: long },
     { id: 7002, timestamp: minutesAgo(now, 12), phase: 'B', activity: recent },
     { id: 7003, timestamp: minutesAgo(now, 7), phase: 'E', activity: recent },
+  ]);
+}
+
+/** Short same-agent flames — close bursts coalesce; distant ones stay separate. */
+export function createShortAgentFlamesFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'flambe🔥');
+  const root = activity(app, 800, 'Ship lane chrome', { category: 3 });
+  const early = activity(app, 801, 'Sketch gutter', {
+    agentName: 'Miles',
+    agentProvider: 'claude',
+    category: 1,
+    parentId: root.id,
+  });
+  // Ends early; mid starts 3 minutes later (within a typical grid tick → coalesce).
+  const mid = activity(app, 802, 'Tighten fork clearance', {
+    agentName: 'Miles',
+    agentProvider: 'claude',
+    category: 2,
+    parentId: root.id,
+  });
+  // Farther burst stays a separate flame.
+  const late = activity(app, 803, 'Check Storybook', {
+    agentName: 'Miles',
+    agentProvider: 'claude',
+    category: 1,
+    parentId: root.id,
+  });
+  const nested = activity(app, 810, 'Nested review', {
+    agentName: 'Belinda',
+    agentProvider: 'cursor',
+    category: 3,
+    parentId: root.id,
+  });
+  const nestedChild = activity(app, 811, 'Deep check', {
+    agentName: 'Nora',
+    agentProvider: 'codex',
+    category: 2,
+    parentId: nested.id,
+  });
+
+  return fixture(9900, 'Short agent flames', [app], [
+    { id: 8001, timestamp: minutesAgo(now, 90), phase: 'B', activity: root },
+    { id: 8002, timestamp: minutesAgo(now, 85), phase: 'B', activity: early },
+    { id: 8003, timestamp: minutesAgo(now, 80), phase: 'E', activity: early },
+    { id: 8004, timestamp: minutesAgo(now, 77), phase: 'B', activity: mid },
+    { id: 8005, timestamp: minutesAgo(now, 72), phase: 'E', activity: mid },
+    { id: 8006, timestamp: minutesAgo(now, 40), phase: 'B', activity: nested },
+    { id: 8007, timestamp: minutesAgo(now, 38), phase: 'B', activity: nestedChild },
+    { id: 8008, timestamp: minutesAgo(now, 32), phase: 'E', activity: nestedChild },
+    { id: 8009, timestamp: minutesAgo(now, 30), phase: 'E', activity: nested },
+    { id: 8010, timestamp: minutesAgo(now, 18), phase: 'B', activity: late },
+    { id: 8011, timestamp: minutesAgo(now, 14), phase: 'E', activity: late },
+    { id: 8012, timestamp: minutesAgo(now, 5), phase: 'E', activity: root },
   ]);
 }
 
