@@ -25,6 +25,14 @@ User-visible objective
 The broadest active activity explains **why** the work is happening. The narrowest active
 activity explains **what the agent is actually focused on now**.
 
+Do not collapse the middle tier. When several steps share one goal — e.g. design, implement,
+test, and document a single feature — they are the *subproblems of one workstream*, not
+independent children of the objective. Give that workstream its own activity, keep it active
+across all its steps, and nest the steps under it. Hanging `design`, `implement`, `test`,
+`document` directly off the top objective — as siblings of every other concern in the task —
+flattens the chart just as surely as omitting the steps would: the reader can no longer see
+that those four bars were one coherent sub-effort. A multi-step sub-effort **is** an activity.
+
 Do not do substantial unrepresented work. If meaningful time is being spent on something
 that is not accurately described by the active stack, either:
 

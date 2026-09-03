@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+
+if [ "${SKIP_FLAMBE_HOOKS:-}" = "1" ]; then
+  exit 0
+fi
+
+run() {
+  printf '\n> %s\n' "$*"
+  "$@"
+}
+
+(
+  cd backend
+  run mix precommit
+)
+
+(
+  cd cli
+  run npm test
+)
+
+(
+  cd frontend
+  run npm run typecheck
+  run npm run test:unit
+  run npm run build
+  run npm run test:smoke
+)

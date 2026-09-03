@@ -3,6 +3,7 @@ npm-debug.log
 
 # Local environment/secrets
 .env
+.flambe-event-queue.json
 
 # App artifacts
 **/_build
