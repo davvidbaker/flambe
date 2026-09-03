@@ -9,6 +9,18 @@ Log semantic work units as a live flame chart — not commands, file opens, or h
 
 Needs Node 22+. Before the first command, if `FLAMBE_AGENT_NAME` is unset, export a short product/model name (`export FLAMBE_AGENT_NAME="Grok"`). Do not put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`.
 
+## Think in a stack
+
+Always treat attention as a **call stack**, not a flat to-do list.
+
+You will often produce some progress on a parent goal, then go down a rabbit hole about one specific thing (a bug, a prerequisite, a design question, a test failure). That digression is a **push**: start a nested activity under the still-running parent. When the rabbit hole is done, **pop**: end the nested activity with the outcome, and continue the parent where you left off.
+
+- Leave parents running while you dig. Ending the parent when you dive deeper flattens the chart and loses the “come back up” story.
+- Nested steps belong under the workstream they serve — not as siblings of the top objective.
+- When attention moves to a true sibling of the current leaf, end the leaf first, then start the sibling under the same parent.
+- Use `--root` only for a genuinely new top-level workstream, not for every digression.
+- Keep the active stack truthful as work changes. Do not plan a detailed chart up front or reconstruct one afterward.
+
 ## Commands
 
 ```sh
@@ -27,9 +39,6 @@ Reuse this conversation's activity id when you already have one. Run `flambe sta
 
 ## What to record
 
-Keep the active stack truthful as work changes. Do not plan a detailed chart up front or reconstruct one afterward.
-
-- A multi-step sub-effort is one workstream with nested steps, not siblings of the top objective. Leave the parent running; end the leaf when that unit is done or attention moves to a sibling.
-- Start a new activity when the goal or scope meaningfully changes (a specific implementation, a discovered prerequisite, a concrete bug, focused tests, verification).
+- Start a new activity when the goal or scope meaningfully changes (a specific implementation, a discovered prerequisite, a concrete bug, focused tests, verification) — that is a stack push.
 - Name the concrete action and object (`Fix USERPROFILE config resolution`), not `Investigate` / `Implement` / `Work on tests`. Stay well under 255 characters; do not compensate with a long name or `--description`.
-- End-message: the outcome, not `done`. No secrets, tokens, or transcripts.
+- End-message: the outcome, not `done`. No secrets, tokens, or transcripts. Ending the leaf is the pop; then resume the parent mentally and in the log.
