@@ -59,6 +59,43 @@ defmodule FlambeNextWeb.ActivityControllerTest do
     assert thread_id == thread.id
   end
 
+  test "attributes an activity to the requesting agent instance", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Agent User", username: "agent-instance-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Agent trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put_req_header("x-flambe-agent-id", "codex-instance-42")
+      |> post(~p"/api/activities", %{
+        "trace_id" => trace.id,
+        "thread_id" => thread.id,
+        "activity" => %{"name" => "Investigate concurrent flames"},
+        "event" => %{"timestamp_integer" => 1_723_465_600_123, "phase" => "B"}
+      })
+
+    assert %{"data" => %{"activity" => %{"id" => activity_id}}} = json_response(conn, 201)
+
+    conn = conn |> recycle() |> get(~p"/api/traces/#{trace}")
+
+    assert %{
+             "data" => %{
+               "events" => [
+                 %{
+                   "activity" => %{
+                     "agent_id" => "codex-instance-42",
+                     "agent_name" => agent_name,
+                     "id" => ^activity_id
+                   }
+                 }
+               ]
+             }
+           } = json_response(conn, 200)
+
+    assert agent_name in ~w(Steve Belinda Juniper Marcel Priya Otis Nia Theo Carmen Felix Imani Rory Greta Miles Suki)
+  end
+
   test "adds an event only to an activity in the signed-in user's trace", %{conn: conn} do
     {:ok, user} = Accounts.create_user(%{name: "Event User", username: "event-user"})
     {:ok, trace} = Traces.create_trace(user, %{name: "Event trace"})

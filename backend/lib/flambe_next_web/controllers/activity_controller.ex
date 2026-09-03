@@ -1,7 +1,7 @@
 defmodule FlambeNextWeb.ActivityController do
   use FlambeNextWeb, :controller
 
-  alias FlambeNext.{Accounts, Traces}
+  alias FlambeNext.{Accounts, Agents, Traces}
   alias FlambeNextWeb.EventStream
 
   def create(conn, %{
@@ -13,6 +13,7 @@ defmodule FlambeNextWeb.ActivityController do
     user = conn.assigns.current_user
     trace = Traces.get_user_trace!(user, trace_id)
     thread = Traces.get_user_trace_thread!(user, trace.id, thread_id)
+    activity_attrs = agent_identity(conn, activity_attrs)
     category_ids = Map.get(activity_attrs, "categories", [])
 
     with {:ok, parent} <-
@@ -35,6 +36,19 @@ defmodule FlambeNextWeb.ActivityController do
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{errors: errors(changeset)})
+    end
+  end
+
+  defp agent_identity(conn, activity_attrs) do
+    case get_req_header(conn, "x-flambe-agent-id") do
+      [instance_id] when byte_size(instance_id) in 1..200 ->
+        Map.merge(activity_attrs, %{
+          "agent_id" => instance_id,
+          "agent_name" => Agents.name_for(instance_id)
+        })
+
+      _ ->
+        activity_attrs
     end
   end
 

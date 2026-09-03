@@ -97,6 +97,9 @@ jobs:
       - name: Run strict TypeScript checks
         working-directory: frontend
         run: npm run typecheck
+      - name: Build Storybook for the app chart
+        working-directory: frontend
+        run: npm run build-storybook
       - name: Install Playwright Chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium

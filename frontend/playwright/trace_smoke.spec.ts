@@ -98,6 +98,80 @@ test('registers a local account and opens its private Main trace', async ({ page
   ]);
 });
 
+test('renders overlapping root activities in separate flame-chart lanes', async ({ page }) => {
+  const suffix = `${Date.now().toString(36)}${Math.floor(Math.random() * 10_000).toString(36)}`;
+  const account = {
+    email: `lanes-${suffix}@flambe.local`,
+    name: `Lanes ${suffix}`,
+    password: 'lanes-password',
+    username: `lanes-${suffix}`,
+  };
+
+  await page.goto('/register');
+  await page.getByLabel('Name', { exact: true }).fill(account.name);
+  await page.getByLabel('Username').fill(account.username);
+  await page.getByLabel('Email').fill(account.email);
+  await page.getByLabel('Password').fill(account.password);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.getByLabel('Email').fill(account.email);
+  await page.getByLabel('Password').fill(account.password);
+  await page.getByRole('button', { name: 'Log In' }).click();
+  await expect(page).toHaveURL(new RegExp(`/${account.username}/traces/\\d+$`));
+
+  const traceMatch = page.url().match(/\/traces\/(\d+)$/);
+  if (!traceMatch) throw new Error(`Trace ID missing from ${page.url()}`);
+  const traceId = Number(traceMatch[1]);
+  const startTime = Date.now() - 30_000;
+
+  const created = await page.evaluate(async ({ id, timestamp }) => {
+    const traceResponse = await fetch(`/api/traces/${id}`, { credentials: 'include' });
+    const trace = await traceResponse.json();
+    const threadId = trace.data.threads[0].id;
+
+    return Promise.all(['First root', 'Second root'].map(name =>
+      fetch('/api/activities', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          trace_id: id,
+          thread_id: threadId,
+          activity: { name, categories: [] },
+          event: { timestamp_integer: timestamp, phase: 'B' },
+        }),
+      }).then(async response => ({ status: response.status, body: await response.json() })),
+    ));
+  }, { id: traceId, timestamp: startTime });
+
+  expect(created.map(result => result.status)).toEqual([201, 201]);
+  await page.reload();
+  const canvas = page.locator('#chart-wrapper canvas');
+  await expect(canvas).toBeVisible();
+
+  await expect.poll(() => page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('#chart-wrapper canvas');
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return 0;
+
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const flameRows: number[] = [];
+    for (let y = 0; y < canvas.height; y += 1) {
+      for (let x = 0; x < canvas.width; x += 1) {
+        const offset = (y * canvas.width + x) * 4;
+        if (pixels[offset] === 239 && pixels[offset + 1] === 195 && pixels[offset + 2] === 96) {
+          flameRows.push(y);
+          break;
+        }
+      }
+    }
+
+    return flameRows.reduce((bands, row, index) =>
+      index === 0 || row > flameRows[index - 1] + 1 ? bands + 1 : bands,
+    0);
+  })).toBeGreaterThanOrEqual(2);
+});
+
 test('creates, renames, and deletes a thread through the authenticated same-origin API', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);

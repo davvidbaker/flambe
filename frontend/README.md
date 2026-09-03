@@ -18,10 +18,14 @@ Use `npm run build` to place the production bundle in
 npm run typecheck
 npm run test:unit
 npm run test:smoke
+npm run storybook
 ```
 
 These npm scripts intentionally avoid shell-specific syntax and are exercised
 by native Windows CI as well as Linux CI.
+
+Storybook renders the production Timeline / FlameChart from fixture Redux
+state. It does not start Phoenix or run sagas.
 
 ---
 

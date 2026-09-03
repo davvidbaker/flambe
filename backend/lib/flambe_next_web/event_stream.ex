@@ -38,6 +38,8 @@ defmodule FlambeNextWeb.EventStream do
     %{
       id: activity.id,
       name: activity.name,
+      agent_id: activity.agent_id,
+      agent_name: activity.agent_name,
       description: activity.description,
       parent_id: activity.parent_id,
       thread: thread_data(activity.thread),
