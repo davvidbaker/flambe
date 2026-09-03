@@ -109,6 +109,14 @@ take precedence over values in `.env`, which makes one-off overrides and CI
 configuration predictable. `.env` is ignored by this repository and should not
 be committed because it contains the bearer token.
 
+Agent identity is separate from the token. The CLI sends a per-session
+`FLAMBE_AGENT_ID` automatically in Codex and Cursor agent shells, and a
+`FLAMBE_AGENT_NAME` when that variable is set in the process environment. If the
+agent omits a name, Flambe uses the API token name (the `"Claude"` argument
+above) and then a generated instance name. Do not put `FLAMBE_AGENT_ID` or
+`FLAMBE_AGENT_NAME` in `.env`; that would collapse concurrent agents onto one
+lane.
+
 An agent records a meaningful unit of work with a begin/end pair:
 
 ```sh

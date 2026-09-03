@@ -2,6 +2,7 @@ defmodule FlambeNextWeb.ActivityControllerTest do
   use FlambeNextWeb.ConnCase, async: true
 
   alias FlambeNext.{Accounts, Traces}
+  alias FlambeNext.Accounts.ApiTokens
 
   test "creates a timeline activity and returns it in the legacy trace payload", %{conn: conn} do
     {:ok, user} = Accounts.create_user(%{name: "Timeline User", username: "timeline-user"})
@@ -94,6 +95,116 @@ defmodule FlambeNextWeb.ActivityControllerTest do
            } = json_response(conn, 200)
 
     assert agent_name in ~w(Steve Belinda Juniper Marcel Priya Otis Nia Theo Carmen Felix Imani Rory Greta Miles Suki)
+  end
+
+  test "uses the agent display name from the request when present", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Named Agent User", username: "named-agent-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Named agent trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put_req_header("x-flambe-agent-id", "cursor:conv-1")
+      |> put_req_header("x-flambe-agent-name", "Grok")
+      |> post(~p"/api/activities", %{
+        "trace_id" => trace.id,
+        "thread_id" => thread.id,
+        "activity" => %{"name" => "Identify CLI agents by name"},
+        "event" => %{"timestamp_integer" => 1_723_465_600_123, "phase" => "B"}
+      })
+
+    assert %{"data" => %{"activity" => %{"id" => activity_id}}} = json_response(conn, 201)
+
+    conn = conn |> recycle() |> get(~p"/api/traces/#{trace}")
+
+    assert %{
+             "data" => %{
+               "events" => [
+                 %{
+                   "activity" => %{
+                     "agent_id" => "cursor:conv-1",
+                     "agent_name" => "Grok",
+                     "id" => ^activity_id
+                   }
+                 }
+               ]
+             }
+           } = json_response(conn, 200)
+  end
+
+  test "falls back to the API token name when the agent omits a display name", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Token Agent User", username: "token-agent-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Token agent trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, _api_token, raw_token} = ApiTokens.create(user, "Claude")
+
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer #{raw_token}")
+      |> put_req_header("x-flambe-agent-id", "cursor:conv-2")
+      |> post(~p"/api/activities", %{
+        "trace_id" => trace.id,
+        "thread_id" => thread.id,
+        "activity" => %{"name" => "Inspect auth"},
+        "event" => %{"timestamp_integer" => 1_723_465_600_123, "phase" => "B"}
+      })
+
+    assert %{"data" => %{"activity" => %{"id" => activity_id}}} = json_response(conn, 201)
+
+    conn = conn |> recycle() |> get(~p"/api/traces/#{trace}")
+
+    assert %{
+             "data" => %{
+               "events" => [
+                 %{
+                   "activity" => %{
+                     "agent_id" => "cursor:conv-2",
+                     "agent_name" => "Claude",
+                     "id" => ^activity_id
+                   }
+                 }
+               ]
+             }
+           } = json_response(conn, 200)
+  end
+
+  test "ignores agent identity fields in the activity body", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Body Agent User", username: "body-agent-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Body agent trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> post(~p"/api/activities", %{
+        "trace_id" => trace.id,
+        "thread_id" => thread.id,
+        "activity" => %{
+          "name" => "Spoofed identity",
+          "agent_id" => "evil",
+          "agent_name" => "Evil"
+        },
+        "event" => %{"timestamp_integer" => 1_723_465_600_123, "phase" => "B"}
+      })
+
+    assert %{"data" => %{"activity" => %{"id" => activity_id}}} = json_response(conn, 201)
+
+    conn = conn |> recycle() |> get(~p"/api/traces/#{trace}")
+
+    assert %{
+             "data" => %{
+               "events" => [
+                 %{
+                   "activity" => %{
+                     "agent_id" => nil,
+                     "agent_name" => nil,
+                     "id" => ^activity_id
+                   }
+                 }
+               ]
+             }
+           } = json_response(conn, 200)
   end
 
   test "adds an event only to an activity in the signed-in user's trace", %{conn: conn} do
