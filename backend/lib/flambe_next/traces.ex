@@ -186,6 +186,65 @@ defmodule FlambeNext.Traces do
     |> Repo.update()
   end
 
+  @doc """
+  Move an activity and its entire descendant subtree onto another thread in the
+  same trace. Parent links are preserved (ADR-002 same-thread parentage).
+  """
+  def move_activity_subtree(%User{} = user, %Activity{} = activity, thread_id) do
+    activity = Repo.preload(activity, :thread)
+
+    with {:ok, thread} <- same_trace_thread(user, activity, thread_id) do
+      if thread.id == activity.thread_id do
+        {:ok, activity}
+      else
+        ids = subtree_activity_ids(activity.id)
+        now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+        {_, _} =
+          from(a in Activity, where: a.id in ^ids)
+          |> Repo.update_all(set: [thread_id: thread.id, updated_at: now])
+
+        {:ok, get_user_activity!(user, activity.id)}
+      end
+    end
+  end
+
+  defp same_trace_thread(%User{} = user, %Activity{thread: %Thread{trace_id: trace_id}}, thread_id) do
+    thread_id = normalize_id(thread_id)
+
+    case thread_id && get_user_trace_thread(user, trace_id, thread_id) do
+      %Thread{} = thread -> {:ok, thread}
+      _ -> {:error, :not_found}
+    end
+  end
+
+  defp get_user_trace_thread(%User{} = user, trace_id, thread_id) do
+    from(thread in Thread,
+      join: trace in assoc(thread, :trace),
+      where: thread.id == ^thread_id and trace.id == ^trace_id and trace.user_id == ^user.id
+    )
+    |> Repo.one()
+  end
+
+  defp normalize_id(id) when is_integer(id) and id > 0, do: id
+
+  defp normalize_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {parsed, ""} when parsed > 0 -> parsed
+      _ -> nil
+    end
+  end
+
+  defp normalize_id(_), do: nil
+
+  defp subtree_activity_ids(root_id) do
+    child_ids =
+      from(a in Activity, where: a.parent_id == ^root_id, select: a.id)
+      |> Repo.all()
+
+    [root_id | Enum.flat_map(child_ids, &subtree_activity_ids/1)]
+  end
+
   def delete_activity(%Activity{} = activity), do: Repo.delete(activity)
 
   def update_event(%Event{} = event, attrs) do

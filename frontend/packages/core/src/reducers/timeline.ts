@@ -61,6 +61,27 @@ const omitRecord = (record: AnyRecord, keys: EntityId[]): AnyRecord => {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !omitted.has(key)));
 };
 
+/** Activity id plus all descendants via parent_id (same-thread forest). */
+function activitySubtreeIds(
+  rootId: EntityId,
+  activities: Record<string, ProcessedActivity>,
+): string[] {
+  const ids = [String(rootId)];
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const [key, activity] of Object.entries(activities)) {
+      if (ids.includes(key)) continue;
+      if (activity.parent_id !== null && activity.parent_id !== undefined
+        && ids.includes(String(activity.parent_id))) {
+        ids.push(key);
+        grew = true;
+      }
+    }
+  }
+  return ids;
+}
+
 export const getTimeline = (state: any): any => state.timeline;
 export const getFilterExcludes = (state: any): EntityId[] => state.timeline.trace?.filterExcludes ?? [];
 
@@ -543,34 +564,48 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         ),
       };
     /** ⚠️ need to handle network failures */
-    case ACTIVITY_UPDATE:
+    case ACTIVITY_UPDATE: {
       const activity = state.activities[action.id];
+      if (!activity) return state;
+
+      const nextThreadId = action.updates.thread_id;
+      const subtreeIds = nextThreadId === undefined
+        ? [String(action.id)]
+        : activitySubtreeIds(action.id, state.activities);
+
+      const activities = { ...state.activities };
+      for (const key of subtreeIds) {
+        const current = activities[key];
+        if (!current) continue;
+        activities[key] = {
+          ...current,
+          name: key === String(action.id) && action.updates.name
+            ? action.updates.name
+            : current.name,
+          categories: key === String(action.id) && action.updates.category_ids
+            ? action.updates.category_ids.length > 0
+              ? [...current.categories, ...action.updates.category_ids]
+              : current.categories
+            : current.categories,
+          startTime: key === String(action.id) && action.updates.startTime
+            ? action.updates.startTime
+            : current.startTime,
+          endTime: key === String(action.id) && action.updates.endTime
+            ? action.updates.endTime
+            : current.endTime,
+          weight: key === String(action.id) && action.updates.weight
+            ? action.updates.weight
+            : current.weight,
+          ...(nextThreadId === undefined ? {} : { thread_id: nextThreadId }),
+        };
+      }
+
       return {
         ...state,
         lastThread_id: action.thread_id,
-        activities: {
-          ...state.activities,
-          /* ⚠️ ugly */
-          [action.id]: {
-            ...state.activities[action.id],
-            name: action.updates.name ? action.updates.name : activity.name,
-            categories: action.updates.category_ids
-              ? action.updates.category_ids.length > 0
-                ? [...activity.categories, ...action.updates.category_ids]
-                : activity.categories
-              : activity.categories,
-            startTime: action.updates.startTime
-              ? action.updates.startTime
-              : activity.startTime,
-            endTime: action.updates.endTime
-              ? action.updates.endTime
-              : activity.endTime,
-            weight: action.updates.weight
-              ? action.updates.weight
-              : activity.weight,
-          },
-        },
+        activities,
       };
+    }
     /** 😃 optimism */
     case CATEGORY_CREATE:
       return {
