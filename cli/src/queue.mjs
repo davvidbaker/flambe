@@ -7,6 +7,19 @@ export function defaultQueuePath() {
   return join(homedir(), '.flambe', 'event-queue.json');
 }
 
+// How many times a server-*rejected* entry is retried before it is dropped. Only
+// HTTP-status failures count toward this; a server that is simply unreachable
+// never does, so a long offline stretch cannot age out a legitimate event.
+export const MAX_FLUSH_ATTEMPTS = 5;
+
+function describeEntry(entry) {
+  return `${entry.type} (activity ${entry.activityId ?? entry.localId ?? '?'})`;
+}
+
+function warnToStderr(message) {
+  process.stderr.write(`${message}\n`);
+}
+
 function emptyState() {
   return { version: 1, entries: [], aliases: {} };
 }
@@ -74,7 +87,7 @@ export class FlambeQueue {
     await this.write(state);
   }
 
-  async flush({ start, end, suspend, resume }) {
+  async flush({ start, end, suspend, resume }, { warn = warnToStderr } = {}) {
     const state = await this.read();
 
     for (let index = 0; index < state.entries.length;) {
@@ -94,11 +107,45 @@ export class FlambeQueue {
           await post({ activityId, message: entry.message, timestamp: entry.timestamp });
           if (entry.type === 'end') delete state.aliases[entry.activityId];
         } else {
-          throw new Error(`Invalid Flambe offline queue entry type: ${entry.type}`);
+          // An entry type this build does not understand can never succeed, so
+          // dropping it is the only way to stop it wedging everything behind it.
+          warn(`Flambe: dropping unrecognized offline queue entry type "${entry.type}".`);
+          state.entries.splice(index, 1);
+          continue;
         }
       } catch (error) {
-        if (error?.retryable) break;
-        throw error;
+        // Flushing is best-effort and must never abort the command that triggered
+        // it. The three cases below differ only in whether the entry is worth
+        // keeping -- but none of them is ever silent, which is the bug this fixes.
+        const label = describeEntry(entry);
+        const serverResponded = typeof error?.status === 'number';
+
+        if (error?.retryable && !serverResponded) {
+          // Can't reach the server at all -- not this entry's fault. Keep the
+          // whole queue in order and try again when connectivity returns.
+          const pending = state.entries.length - index;
+          warn(`Flambe: offline queue not flushed, server unreachable `
+            + `(${pending} pending, first is ${label}): ${error.message}`);
+          break;
+        }
+
+        const attempts = (entry.attempts ?? 0) + 1;
+        if (error?.retryable && attempts < MAX_FLUSH_ATTEMPTS) {
+          // Server reachable but erroring on this entry. Could be a transient
+          // 5xx, so keep it and preserve order -- but say so, and bound it.
+          entry.attempts = attempts;
+          warn(`Flambe: offline queue stalled on ${label} `
+            + `(server error, attempt ${attempts}/${MAX_FLUSH_ATTEMPTS}): ${error.message}`);
+          break;
+        }
+
+        // A client-side rejection (4xx), or a server error that has recurred too
+        // many times to be transient (e.g. a permanently-malformed entry): drop
+        // it, loudly and with its payload, so one bad row cannot block the rest.
+        warn(`Flambe: dropping offline queue entry ${label} after ${attempts} `
+          + `attempt(s): ${error.message}\n  payload: ${JSON.stringify(entry)}`);
+        state.entries.splice(index, 1);
+        continue;
       }
 
       state.entries.splice(index, 1);
