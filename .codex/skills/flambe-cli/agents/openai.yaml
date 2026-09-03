@@ -1,4 +1,4 @@
 interface:
   display_name: "Flambe CLI"
   short_description: "Track and resume Flambe agent work"
-  default_prompt: "Use $flambe-cli to frame and execute this task as a live Flambe flame chart."
+  default_prompt: "Log this task in Flambe with the flambe CLI."
