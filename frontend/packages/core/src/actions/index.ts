@@ -47,6 +47,11 @@ export const CATEGORY_MANAGER_HIDE = 'CATEGORY_MANAGER_HIDE';
 export const COMMAND_RUN = 'COMMAND_RUN';
 
 export const EVENT_UPDATE = 'EVENT_UPDATE';
+export const EVENT_DELETE = 'EVENT_DELETE';
+
+export const UNDO_LAST_COMMAND = 'UNDO_LAST_COMMAND';
+export const UNDO_RECORD = 'UNDO_RECORD';
+export const UNDO_CLEAR = 'UNDO_CLEAR';
 
 export const LOG_IN = 'LOG_IN';
 export const LOG_OUT = 'LOG_OUT';
@@ -394,6 +399,25 @@ export function updateEvent(id: EntityId, updates: Updates) {
     id,
     updates,
   };
+}
+
+export function deleteEvent(id: EntityId) {
+  return {
+    type: EVENT_DELETE,
+    id,
+  };
+}
+
+export function undoLastCommand() {
+  return { type: UNDO_LAST_COMMAND };
+}
+
+export function recordUndo(target: unknown) {
+  return { type: UNDO_RECORD, target };
+}
+
+export function clearUndo() {
+  return { type: UNDO_CLEAR };
 }
 
 export function showActivityDetails() {

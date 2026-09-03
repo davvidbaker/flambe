@@ -128,6 +128,12 @@ defmodule FlambeNextWeb.ActivityControllerTest do
     assert %{"data" => %{"events" => [%{"message" => "Done", "phase" => "E"}]}} =
              json_response(conn, 200)
 
+    conn = conn |> recycle() |> delete(~p"/api/events/#{event}")
+    assert response(conn, 204) == ""
+
+    conn = conn |> recycle() |> get(~p"/api/traces/#{trace}")
+    assert %{"data" => %{"events" => []}} = json_response(conn, 200)
+
     conn = conn |> recycle() |> delete(~p"/api/activities/#{activity}")
     assert response(conn, 204) == ""
   end

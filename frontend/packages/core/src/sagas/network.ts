@@ -2,6 +2,7 @@ import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
 
 import {
   createToast,
+  recordUndo,
   processTimelineTrace,
   updateActivity as updateActivityAction,
   ACTIVITY_CREATE_B,
@@ -16,6 +17,7 @@ import {
   CATEGORY_CREATE,
   CATEGORY_UPDATE,
   EVENT_UPDATE,
+  EVENT_DELETE,
   MANTRA_CREATE,
   THREAD_CREATE,
   THREAD_DELETE,
@@ -104,6 +106,7 @@ function* fetchResource(actionType: string, { resource, params }: ResourceReques
     const json: NetworkResponse = yield call(hitNetwork, { resource, params });
     const { data } = json;
     yield put({ type: `${actionType}_SUCCEEDED`, data });
+    return data;
   } catch (error: unknown) {
     if (error instanceof Response && error.status === 401) {
       yield call(navigate, '/login');
@@ -136,7 +139,7 @@ function* createActivity({
 }: NetworkAction): SagaIterator {
   const timeline: TimelineState = yield select(getTimeline);
 
-  yield* fetchResource(type, {
+  const data = yield* fetchResource(type, {
     resource: { path: 'activities' },
     params: {
       method: 'POST',
@@ -153,11 +156,14 @@ function* createActivity({
       }),
     },
   });
+  if (data?.activity?.id !== undefined) {
+    yield put(recordUndo({ kind: 'activity', id: data.activity.id, thread_id }));
+  }
 }
 
 function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }: NetworkAction): SagaIterator {
   const timeline: TimelineState = yield select(getTimeline);
-  yield* fetchResource(type, {
+  const data = yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
     resource: { path: 'events' },
     params: {
@@ -173,11 +179,12 @@ function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }: Netwo
       }),
     },
   });
+  if (data?.id !== undefined) yield put(recordUndo({ kind: 'event', id: data.id }));
 }
 
 function* suspendActivity({ type, id, timestamp, message, weight }: NetworkAction): SagaIterator {
   const timeline: TimelineState = yield select(getTimeline);
-  yield* fetchResource(type, {
+  const data = yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
     resource: { path: 'events' },
     params: {
@@ -193,6 +200,8 @@ function* suspendActivity({ type, id, timestamp, message, weight }: NetworkActio
       }),
     },
   });
+
+  if (data?.id !== undefined) yield put(recordUndo({ kind: 'event', id: data.id }));
 
   if (weight && id !== undefined) {
     yield put(updateActivityAction(id, { weight }));
@@ -236,6 +245,19 @@ function* updateEvent({ type, id, updates }: NetworkAction): SagaIterator {
   const trace = timeline.trace;
   /* ⚠️ This is bad. Shouldn't need to use the network!! */
   if (trace && trace.id !== null) yield* fetchTrace({ type: TRACE_FETCH, trace: trace.id });
+}
+
+function* deleteEvent({ type, id }: NetworkAction): SagaIterator {
+  if (id === undefined) return;
+  const timeline: TimelineState = yield select(getTimeline);
+  const data = yield* fetchResource(type, {
+    resource: { path: 'events', id },
+    params: { method: 'DELETE' },
+  });
+
+  if (data !== undefined && timeline.trace?.id !== null && timeline.trace?.id !== undefined) {
+    yield* fetchTrace({ type: TRACE_FETCH, trace: timeline.trace.id });
+  }
 }
 
 function* createCategory({ type, activity_id, name, color_background }: NetworkAction): SagaIterator {
@@ -419,7 +441,7 @@ function* createThread({ type, name, rank }: NetworkAction): SagaIterator {
 /* ⚠️ Soooo resumeActivity and resurrectActivity are almost identical. Some refactoring is in ofder. */
 function* resumeActivity({ type, id, timestamp, message }: NetworkAction): SagaIterator {
   const timeline: TimelineState = yield select(getTimeline);
-  yield* fetchResource(type, {
+  const data = yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
     resource: { path: 'events' },
     params: {
@@ -435,11 +457,12 @@ function* resumeActivity({ type, id, timestamp, message }: NetworkAction): SagaI
       }),
     },
   });
+  if (data?.id !== undefined) yield put(recordUndo({ kind: 'event', id: data.id }));
 }
 
 function* resurrectActivity({ type, id, timestamp, message }: NetworkAction): SagaIterator {
   const timeline: TimelineState = yield select(getTimeline);
-  yield* fetchResource(type, {
+  const data = yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
     resource: { path: 'events' },
     params: {
@@ -455,6 +478,7 @@ function* resurrectActivity({ type, id, timestamp, message }: NetworkAction): Sa
       }),
     },
   });
+  if (data?.id !== undefined) yield put(recordUndo({ kind: 'event', id: data.id }));
 }
 // // // // // // // // // // // // // // // // // // // // // // // //
 
@@ -472,6 +496,7 @@ function* networkSaga(): SagaIterator {
   yield takeEvery(CATEGORY_UPDATE, updateCategory);
 
   yield takeEvery(EVENT_UPDATE, updateEvent);
+  yield takeEvery(EVENT_DELETE, deleteEvent);
 
   yield takeEvery(MANTRA_CREATE, createMantra);
 
