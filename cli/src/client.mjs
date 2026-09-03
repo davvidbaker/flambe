@@ -67,6 +67,7 @@ export class FlambeClient {
     if (!response.ok) {
       const detail = errorDetail(payload);
       const error = new Error(`Flambe API request failed (${response.status})${detail ? `: ${detail}` : ''}`);
+      error.status = response.status;
       error.retryable = response.status >= 500;
       throw error;
     }
