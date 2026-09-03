@@ -1,0 +1,41 @@
+#!/bin/sh
+set -eu
+
+if [ "${SKIP_FLAMBE_HOOKS:-}" = "1" ]; then
+  exit 0
+fi
+
+changed_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+has_changed_file() {
+  printf '%s\n' "$changed_files" | grep -Eq "$1"
+}
+
+run() {
+  printf '\n> %s\n' "$*"
+  "$@"
+}
+
+if has_changed_file '^(backend/.*\.(ex|exs)|backend/mix\.(exs|lock))$'; then
+  (
+    cd backend
+    run mix format --check-formatted
+    run mix compile --warnings-as-errors
+    run mix test
+  )
+fi
+
+if has_changed_file '^cli/.*\.(mjs|js|json)$'; then
+  (
+    cd cli
+    run npm test
+  )
+fi
+
+if has_changed_file '^frontend/.*\.(ts|tsx|js|jsx|json|mjs|css|html)$'; then
+  (
+    cd frontend
+    run npm run typecheck
+    run npm run test:unit
+  )
+fi
