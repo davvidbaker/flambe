@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -120,3 +124,144 @@ jobs:
           name: phoenix-1-8-server-logs
           path: |
             /tmp/flambe-next-phoenix.log
+
+  windows:
+    name: Native Windows
+    runs-on: windows-latest
+    env:
+      PGUSER: postgres
+      PGPASSWORD: root
+      PGHOST: localhost
+      PGPORT: '5432'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18.3'
+          otp-version: '27.3'
+
+      - name: Start PostgreSQL
+        shell: pwsh
+        run: |
+          $postgres = Get-Service -Name 'postgresql*' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $postgres) {
+            throw 'The windows-latest runner does not expose a PostgreSQL service.'
+          }
+
+          # GitHub's Windows image installs PostgreSQL with the service disabled.
+          # Enable it for this job before attempting to start it.
+          Set-Service -Name $postgres.Name -StartupType Manual
+          if ($postgres.Status -ne 'Running') {
+            Start-Service -Name $postgres.Name
+          }
+
+          $pgIsReady = Join-Path $env:PGBIN 'pg_isready.exe'
+          $deadline = (Get-Date).AddSeconds(30)
+          do {
+            & $pgIsReady -h $env:PGHOST -p $env:PGPORT -U $env:PGUSER
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds 1
+          } while ((Get-Date) -lt $deadline)
+
+          if ($LASTEXITCODE -ne 0) {
+            throw 'PostgreSQL did not become ready within 30 seconds.'
+          }
+
+      - name: Prepare Windows backend
+        working-directory: backend
+        shell: cmd
+        run: scripts\windows_setup.cmd
+
+      - name: Run Phoenix checks on Windows
+        working-directory: backend
+        shell: cmd
+        run: scripts\windows_check.cmd
+
+      - name: Seed Windows browser-smoke data
+        working-directory: backend
+        run: mix flambe_next.seed_e2e
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run frontend unit tests on Windows
+        working-directory: frontend
+        run: npm run test:unit
+      - name: Run strict TypeScript checks on Windows
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Build Vite frontend on Windows
+        working-directory: frontend
+        run: npm run build
+      - name: Install Playwright Chromium on Windows
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run browser smoke test on Windows
+        shell: pwsh
+        run: |
+          $backend = Join-Path $env:GITHUB_WORKSPACE 'backend'
+          $frontend = Join-Path $env:GITHUB_WORKSPACE 'frontend'
+          $stdout = Join-Path $env:RUNNER_TEMP 'flambe-next-phoenix-windows.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'flambe-next-phoenix-windows-error.log'
+          $server = Start-Process -FilePath 'cmd.exe' `
+            -ArgumentList '/d', '/s', '/c', 'mix phx.server' `
+            -WorkingDirectory $backend `
+            -RedirectStandardOutput $stdout `
+            -RedirectStandardError $stderr `
+            -PassThru
+
+          try {
+            $ready = $false
+            $deadline = (Get-Date).AddSeconds(120)
+            do {
+              if ($server.HasExited) {
+                Get-Content $stdout -ErrorAction SilentlyContinue
+                Get-Content $stderr -ErrorAction SilentlyContinue
+                throw "Phoenix exited before becoming ready (exit code $($server.ExitCode))."
+              }
+
+              try {
+                $response = Invoke-WebRequest -Uri 'http://localhost:4001/login' -UseBasicParsing -TimeoutSec 2
+                if ($response.StatusCode -lt 500) {
+                  $ready = $true
+                  break
+                }
+              } catch {
+                Start-Sleep -Seconds 1
+              }
+            } while ((Get-Date) -lt $deadline)
+
+            if (-not $ready) {
+              Get-Content $stdout -ErrorAction SilentlyContinue
+              Get-Content $stderr -ErrorAction SilentlyContinue
+              throw 'Phoenix did not become ready within 120 seconds.'
+            }
+
+            $env:PLAYWRIGHT_BASE_URL = 'http://localhost:4001'
+            Push-Location $frontend
+            try {
+              npm run test:smoke
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } finally {
+              Pop-Location
+            }
+          } finally {
+            if (-not $server.HasExited) {
+              Stop-Process -Id $server.Id -Force
+            }
+          }
+
+      - name: Upload Windows Phoenix logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phoenix-windows-server-logs
+          path: |
+            ${{ runner.temp }}/flambe-next-phoenix-windows.log
+            ${{ runner.temp }}/flambe-next-phoenix-windows-error.log
