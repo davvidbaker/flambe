@@ -2,6 +2,8 @@
 
 A standalone React flame chart component extracted from Flambe. It renders generic time spans and deliberately has no dependency on Flambe Redux state, Phoenix, backend trace types, or application routing.
 
+The Flambe app does not render this package as its chart. Flambe Storybook lives in `frontend/` and demonstrates the production Timeline / FlameChart with fixture data.
+
 ## Install
 
 ```bash
@@ -57,17 +59,6 @@ Use `lane` for independent tracks such as `agent`, `tools`, or `reasoning`. Use 
 />
 ```
 
-## Storybook
-
-Storybook is the primary component development and example surface:
-
-```bash
-npm install
-npm run storybook
-```
-
-The included stories demonstrate nested agent execution, multiple lanes, selection, and compact rendering.
-
 ## Relationship to Flambe
 
-The existing Flambe application has a feature-rich legacy `FlameChart` tightly coupled to application state and Flambe-specific trace types. This package defines the reusable boundary: callers normalize their own data into `FlameSpan[]`, while the component owns rendering and interaction. Flambe can migrate onto this boundary incrementally without exposing its internal state model to npm consumers.
+The Flambe application chart is a feature-rich canvas tightly coupled to application state and Flambe-specific trace types. This package is a generic span renderer for npm consumers. Develop and review the product chart in the app Storybook, not here.
