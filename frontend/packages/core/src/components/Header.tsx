@@ -11,6 +11,7 @@ import type { Trace } from '../types/Trace';
 import type { EntityId } from '../types/ids';
 
 const StyledHeader = styled.header`
+  position: relative;
   width: 100%;
   padding: 5px;
   background: #eee;
@@ -20,8 +21,9 @@ const StyledHeader = styled.header`
   height: ${layout.headerHeight};
   box-sizing: border-box;
 
-  input,
-  button {
+  /* Only header chrome — not the traces dropdown nested inside ToggleButton. */
+  > button,
+  > textarea {
     font-weight: bold;
     font-size: large;
   }
