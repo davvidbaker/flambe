@@ -152,7 +152,6 @@ jobs:
       PHX_URL_PORT: '4001'
       PORT: '4001'
       ECTO_SSL: 'false'
-      PHX_SERVER: 'true'
       PLAYWRIGHT_INVITE_CODE: test-invite
       FLAMBE_ALLOW_E2E_SEED: 'true'
     steps:
@@ -173,6 +172,11 @@ jobs:
           mix ecto.create
           mix ecto.migrate
           mix flambe_next.seed_e2e
+      - name: Mint a CI agent token before the server binds the port
+        working-directory: backend
+        run: |
+          TOKEN=$(mix flambe_next.create_api_token e2e@flambe.local "CI agent" --raw | tail -n 1)
+          echo "FLAMBE_API_TOKEN=$TOKEN" >> "$GITHUB_ENV"
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -184,14 +188,15 @@ jobs:
         run: npm run build
       - name: Start Phoenix 1.8 in MIX_ENV=prod
         working-directory: backend
+        env:
+          PHX_SERVER: 'true'
         run: mix phx.server > /tmp/flambe-next-phoenix-prod.log 2>&1 &
       - name: Wait for prod health and smoke the agent CLI
         run: |
-          until curl --fail --silent http://localhost:4001/api/health; do sleep 1; done
-          TOKEN=$(cd backend && mix flambe_next.create_api_token e2e@flambe.local "CI agent" --raw | tail -n 1)
-          TRACE_ID=$(curl --fail --silent -H "Authorization: Bearer $TOKEN" http://localhost:4001/api/traces | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>process.stdout.write(String(JSON.parse(d).data[0].id)))")
-          ACTIVITY_ID=$(FLAMBE_URL=http://localhost:4001 FLAMBE_API_TOKEN="$TOKEN" FLAMBE_TRACE_ID="$TRACE_ID" node cli/bin/flambe.mjs start "CLI prod smoke")
-          FLAMBE_URL=http://localhost:4001 FLAMBE_API_TOKEN="$TOKEN" FLAMBE_TRACE_ID="$TRACE_ID" node cli/bin/flambe.mjs end "$ACTIVITY_ID" "CLI prod smoke complete"
+          until curl --fail --silent --output /dev/null http://localhost:4001/api/health; do sleep 1; done
+          TRACE_ID=$(curl --fail --silent -H "Authorization: Bearer $FLAMBE_API_TOKEN" http://localhost:4001/api/traces | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>process.stdout.write(String(JSON.parse(d).data[0].id)))")
+          ACTIVITY_ID=$(FLAMBE_URL=http://localhost:4001 FLAMBE_TRACE_ID="$TRACE_ID" node cli/bin/flambe.mjs start "CLI prod smoke")
+          FLAMBE_URL=http://localhost:4001 FLAMBE_TRACE_ID="$TRACE_ID" node cli/bin/flambe.mjs end "$ACTIVITY_ID" "CLI prod smoke complete"
       - name: Run browser smoke against MIX_ENV=prod
         working-directory: frontend
         run: PLAYWRIGHT_BASE_URL=http://localhost:4001 npm run test:smoke
