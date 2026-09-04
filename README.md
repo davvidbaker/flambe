@@ -202,9 +202,8 @@ npm run build
 npm run test:smoke
 ```
 
-CI runs the complete backend and frontend stack on a native Windows runner,
-including starting Phoenix and exercising the Playwright browser smoke test, so
-platform-specific regressions are caught continuously.
+CI runs backend checks, the agent CLI, Phoenix-served browser smoke, and a
+MIX_ENV=prod smoke job.
 
 The retired Phoenix 1.3 source remains available in Git history. Legacy data
 imports read directly from the isolated `flambe_legacy_restored` database; the

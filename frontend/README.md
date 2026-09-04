@@ -21,8 +21,8 @@ npm run test:smoke
 npm run storybook
 ```
 
-These npm scripts intentionally avoid shell-specific syntax and are exercised
-by native Windows CI as well as Linux CI.
+These npm scripts intentionally avoid shell-specific syntax so they run the
+same way on macOS, Linux, and Windows.
 
 Storybook renders the production Timeline / FlameChart from fixture Redux
 state. It does not start Phoenix or run sagas.
