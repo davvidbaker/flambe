@@ -34,9 +34,10 @@ if config_env() == :prod do
       """
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+  ecto_ssl? = System.get_env("ECTO_SSL", "true") not in ~w(false 0)
 
   config :flambe_next, FlambeNext.Repo,
-    # ssl: true,
+    ssl: ecto_ssl?,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     # For machines with several cores, consider starting multiple pools of `pool_size`
@@ -55,12 +56,28 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host =
+    System.get_env("PHX_HOST") ||
+      case System.get_env("FLY_APP_NAME") do
+        nil -> "example.com"
+        app -> app <> ".fly.dev"
+      end
 
+  url_port = String.to_integer(System.get_env("PHX_URL_PORT") || "443")
+  url_scheme = System.get_env("PHX_URL_SCHEME") || "https"
+
+  invite_code =
+    System.get_env("FLAMBE_INVITE_CODE") ||
+      raise """
+      environment variable FLAMBE_INVITE_CODE is missing.
+      Set a shared invite secret before starting production.
+      """
+
+  config :flambe_next, invite_code: invite_code
   config :flambe_next, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :flambe_next, FlambeNextWeb.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
+    url: [host: host, port: url_port, scheme: url_scheme],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.

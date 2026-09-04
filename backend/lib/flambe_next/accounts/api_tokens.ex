@@ -25,6 +25,37 @@ defmodule FlambeNext.Accounts.ApiTokens do
     end
   end
 
+  def list(%User{} = user) do
+    from(api_token in ApiToken,
+      where: api_token.user_id == ^user.id,
+      order_by: [desc: api_token.inserted_at, desc: api_token.id]
+    )
+    |> Repo.all()
+  end
+
+  def get_user_token!(%User{} = user, id) do
+    from(api_token in ApiToken,
+      where: api_token.id == ^id and api_token.user_id == ^user.id
+    )
+    |> Repo.one!()
+  end
+
+  def revoke(%User{} = user, id) do
+    api_token = get_user_token!(user, id)
+    Repo.delete(api_token)
+  end
+
+  def touch_last_used(%ApiToken{id: id}) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    from(api_token in ApiToken, where: api_token.id == ^id)
+    |> Repo.update_all(set: [last_used_at: now, updated_at: now])
+
+    :ok
+  rescue
+    _ -> :ok
+  end
+
   def authenticate(raw_token) when is_binary(raw_token) do
     case authenticate_with_token(raw_token) do
       {:ok, user, _api_token} -> {:ok, user}

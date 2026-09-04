@@ -34,3 +34,5 @@ config :phoenix, :plug_init_mode, :runtime
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+config :flambe_next, invite_code: System.get_env("FLAMBE_INVITE_CODE") || "test-invite"

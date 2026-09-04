@@ -46,6 +46,7 @@ defmodule FlambeNextWeb.Router do
     get "/agent-status", AgentStatusController, :show
     get "/agent-status/stream", AgentStatusStreamController, :show
     get "/users/:id", UserController, :show
+    resources "/api-tokens", ApiTokenController, only: [:index, :create, :delete]
   end
 
   scope "/", FlambeNextWeb do

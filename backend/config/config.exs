@@ -10,7 +10,8 @@ import Config
 config :flambe_next,
   ecto_repos: [FlambeNext.Repo],
   generators: [timestamp_type: :utc_datetime],
-  session_cookie_secure: false
+  session_cookie_secure: false,
+  invite_code: nil
 
 # Configure the endpoint
 config :flambe_next, FlambeNextWeb.Endpoint,

@@ -66,8 +66,14 @@ To build the Phoenix-served production frontend, run `npm run build` from
 client-side routes at http://localhost:4001.
 
 Flambe uses local email/password accounts only. Create an account at
-`/register`, or seed the deterministic browser-test account with
+`/register`. Production requires the shared `FLAMBE_INVITE_CODE` (see
+[ADR-007](docs/ADR-007-private-fly-instance.md)); local development omits it
+unless that variable is set. Seed the deterministic browser-test account with
 `mix flambe_next.seed_e2e` from `backend`.
+
+Private hosting is a single Fly.io Machine. Follow
+[the Phoenix 1.8 release checklist](docs/RELEASE_CHECKLIST.md). Keep `fly scale
+count` at 1; agent presence is in-memory.
 
 ## Coding-agent CLI
 
@@ -75,11 +81,14 @@ Flambe can accept user-scoped bearer tokens so coding agents can stream work
 into an open trace without knowing your account password. Raw tokens are shown
 once; the database stores only a SHA-256 hash.
 
-Create a token from `backend` after running migrations:
+Create a token from Settings → API tokens in the logged-in app, or from
+`backend` after running migrations (local Mix only):
 
 ```sh
 mix flambe_next.create_api_token you@example.com "Claude"
 ```
+
+Revoke tokens from the same Settings panel. The raw secret is shown once.
 
 Install the zero-dependency Node 22 CLI from this checkout:
 
@@ -102,6 +111,8 @@ FLAMBE_URL=http://localhost:4001
 FLAMBE_API_TOKEN=flb_...
 FLAMBE_TRACE_ID=1
 ```
+
+On the Fly instance, set `FLAMBE_URL` to `https://your-app.fly.dev`.
 
 The CLI loads `.env` from its current working directory automatically and
 discovers the trace's lowest-rank thread. Existing shell environment variables
@@ -204,5 +215,5 @@ old application does not need to be running.
 See [the local database workflow](docs/LOCAL_DATABASE.md) before backing up,
 restoring, or resetting a database.
 
-For a deployment or rollback, follow the
+For a Fly deployment or rollback, follow the
 [Phoenix 1.8 release checklist](docs/RELEASE_CHECKLIST.md).

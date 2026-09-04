@@ -4,6 +4,7 @@ defmodule FlambeNextWeb.RegistrationControllerTest do
   test "registers a local user with a Main trace that can be logged into", %{conn: conn} do
     conn =
       post(conn, ~p"/api/register", %{
+        "invite_code" => "test-invite",
         "user" => %{
           "name" => "New User",
           "username" => "new-user",
@@ -33,6 +34,7 @@ defmodule FlambeNextWeb.RegistrationControllerTest do
       conn
       |> recycle()
       |> post(~p"/api/register", %{
+        "invite_code" => "test-invite",
         "user" => %{
           "name" => "Second User",
           "username" => "second-user",
@@ -47,5 +49,24 @@ defmodule FlambeNextWeb.RegistrationControllerTest do
 
     conn = conn |> recycle() |> get(~p"/api/users/#{user_id}")
     assert json_response(conn, 401) == %{"error" => "UNAUTHENTICATED"}
+  end
+
+  test "rejects registration without a valid invite code", %{conn: conn} do
+    params = %{
+      "user" => %{
+        "name" => "Blocked User",
+        "username" => "blocked-user",
+        "credentials" => [%{"email" => "blocked@example.com", "password" => "password123"}]
+      }
+    }
+
+    conn = post(conn, ~p"/api/register", params)
+    assert json_response(conn, 422) == %{"errors" => %{"invite_code" => ["is invalid"]}}
+
+    conn =
+      build_conn()
+      |> post(~p"/api/register", Map.put(params, "invite_code", "wrong-invite"))
+
+    assert json_response(conn, 422) == %{"errors" => %{"invite_code" => ["is invalid"]}}
   end
 end

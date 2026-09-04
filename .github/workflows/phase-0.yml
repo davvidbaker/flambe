@@ -128,6 +128,80 @@ jobs:
           path: |
             /tmp/flambe-next-phoenix.log
 
+  prod-mode-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      MIX_ENV: prod
+      DATABASE_URL: ecto://postgres:postgres@localhost/flambe_next_prod_ci
+      SECRET_KEY_BASE: CI-prod-secret-key-base-that-is-at-least-sixty-four-bytes-long!!
+      FLAMBE_INVITE_CODE: test-invite
+      PHX_HOST: localhost
+      PHX_URL_SCHEME: http
+      PHX_URL_PORT: '4001'
+      PORT: '4001'
+      ECTO_SSL: 'false'
+      PHX_SERVER: 'true'
+      PLAYWRIGHT_INVITE_CODE: test-invite
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18.3'
+          otp-version: '27.3'
+      - name: Install Phoenix 1.8 dependencies and prepare prod database
+        working-directory: backend
+        run: |
+          mix deps.get
+          mix ecto.create
+          mix ecto.migrate
+          mix flambe_next.seed_e2e
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Build Vite frontend for Phoenix 1.8
+        working-directory: frontend
+        run: npm run build
+      - name: Start Phoenix 1.8 in MIX_ENV=prod
+        working-directory: backend
+        run: mix phx.server > /tmp/flambe-next-phoenix-prod.log 2>&1 &
+      - name: Wait for prod health and smoke the agent CLI
+        run: |
+          until curl --fail --silent http://localhost:4001/api/health; do sleep 1; done
+          TOKEN=$(cd backend && mix flambe_next.create_api_token e2e@flambe.local "CI agent" --raw | tail -n 1)
+          TRACE_ID=$(curl --fail --silent -H "Authorization: Bearer $TOKEN" http://localhost:4001/api/traces | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>process.stdout.write(String(JSON.parse(d).data[0].id)))")
+          ACTIVITY_ID=$(FLAMBE_URL=http://localhost:4001 FLAMBE_API_TOKEN="$TOKEN" FLAMBE_TRACE_ID="$TRACE_ID" node cli/bin/flambe.mjs start "CLI prod smoke")
+          FLAMBE_URL=http://localhost:4001 FLAMBE_API_TOKEN="$TOKEN" FLAMBE_TRACE_ID="$TRACE_ID" node cli/bin/flambe.mjs end "$ACTIVITY_ID" "CLI prod smoke complete"
+      - name: Run browser smoke against MIX_ENV=prod
+        working-directory: frontend
+        run: PLAYWRIGHT_BASE_URL=http://localhost:4001 npm run test:smoke
+      - name: Upload MIX_ENV=prod server logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phoenix-prod-server-logs
+          path: |
+            /tmp/flambe-next-phoenix-prod.log
+
   windows:
     name: Native Windows
     runs-on: windows-latest

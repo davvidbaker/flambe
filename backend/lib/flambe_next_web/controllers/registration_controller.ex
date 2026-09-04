@@ -1,9 +1,19 @@
 defmodule FlambeNextWeb.RegistrationController do
   use FlambeNextWeb, :controller
 
-  alias FlambeNext.{Accounts, Traces}
+  alias FlambeNext.{Accounts, InviteCode, Traces}
 
-  def create(conn, %{"user" => attrs}) do
+  def create(conn, params) do
+    if InviteCode.valid?(invite_code(params)) do
+      register(conn, params)
+    else
+      conn
+      |> put_status(:unprocessable_entity)
+      |> json(%{errors: %{invite_code: ["is invalid"]}})
+    end
+  end
+
+  defp register(conn, %{"user" => attrs}) do
     with {:ok, user} <- Accounts.register_user(attrs),
          {:ok, trace} <- Traces.create_trace(user, %{name: "Main"}) do
       conn
@@ -25,4 +35,13 @@ defmodule FlambeNextWeb.RegistrationController do
         })
     end
   end
+
+  defp register(conn, _params) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{errors: %{user: ["is invalid"]}})
+  end
+
+  defp invite_code(%{"invite_code" => code}), do: code
+  defp invite_code(_params), do: nil
 end

@@ -19,6 +19,8 @@ defmodule FlambeNextWeb.Plugs.RequireUser do
         assign(conn, :current_user, user)
 
       {user, api_token} ->
+        ApiTokens.touch_last_used(api_token)
+
         conn
         |> assign(:current_user, user)
         |> assign(:api_token, api_token)

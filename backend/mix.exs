@@ -10,7 +10,12 @@ defmodule FlambeNext.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      releases: [
+        flambe_next: [
+          include_executables_for: [:unix]
+        ]
+      ]
     ]
   end
 
@@ -20,7 +25,7 @@ defmodule FlambeNext.MixProject do
   def application do
     [
       mod: {FlambeNext.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :ssl]
     ]
   end
 
