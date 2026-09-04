@@ -1,13 +1,22 @@
 import processTrace from '../utilities/processTrace';
-import { projectActorFlames, projectActorLaneLayout } from '../utilities/actorFlames';
+import {
+  blockLayoutKey,
+  coalesceActorLaneChrome,
+  projectActorFlames,
+  projectActorLaneLayout,
+} from '../utilities/actorFlames';
 import { viewportForFixture } from './createChartStore';
 import { createAppChartFixture } from './fixtureTrace';
+import { createFrontiersFixture } from './frontiersFixture';
+import { createWinterStormUriFixture } from './winterStormUriFixture';
 import {
   createConcurrentAgentsFixture,
   createDenseTraceFixture,
   createEmptyTraceFixture,
   createParentSuspensionFixture,
   createQuestionOutcomesFixture,
+  createResumeDuringConcurrentWorkFixture,
+  createHumanResumeDuringConcurrentWorkFixture,
   createResurrectionFixture,
   createSparseTraceFixture,
   createStrangeSequenceFixture,
@@ -82,6 +91,63 @@ describe('app chart Storybook fixture', () => {
     ]);
   });
 
+  it('keeps gap work as a sibling when a suspended root resumes over it', () => {
+    const fixture = createResumeDuringConcurrentWorkFixture(1_700_000_000_000);
+    const processed = processTrace(fixture.events, fixture.threads);
+    const layout = projectActorLaneLayout(processed.activities, processed.blocks);
+
+    expect(processed.activities[250]?.parent_id).toBeUndefined();
+    expect(processed.activities[251]?.parent_id).toBeUndefined();
+    expect(processed.activities[252]?.parent_id).toBe(251);
+    expect(processed.blocks.filter(block => block.activity_id === 250)).toMatchObject([
+      { beginning: 'B', ending: 'S' },
+      { beginning: 'R', ending: 'E' },
+    ]);
+
+    // Independent root flames — Composer is not nested under Claude.
+    const claude = layout.lanes.find(lane => lane.rootActivityId === 250);
+    const composer = layout.lanes.find(lane => lane.rootActivityId === 251);
+    expect(claude).toMatchObject({ parentActivityId: null, parentLaneRootId: null, depth: 0 });
+    expect(composer).toMatchObject({ parentActivityId: null, parentLaneRootId: null, depth: 0 });
+
+    const claudeResume = processed.blocks.find(
+      block => block.activity_id === 250 && block.beginning === 'R',
+    );
+    const composerBlock = processed.blocks.find(block => block.activity_id === 251);
+    expect(claudeResume && composerBlock).toBeTruthy();
+    expect(layout.rowByBlock[blockLayoutKey(claudeResume!)]).toBe(
+      layout.rowByBlock[blockLayoutKey(composerBlock!)] + 1,
+    );
+  });
+
+  it('keeps human gap work as a sibling when a suspended root resumes over it', () => {
+    const fixture = createHumanResumeDuringConcurrentWorkFixture(1_700_000_000_000);
+    const processed = processTrace(fixture.events, fixture.threads);
+    const layout = projectActorLaneLayout(processed.activities, processed.blocks);
+
+    expect(Object.values(processed.activities).every(item => !item.agent_id)).toBe(true);
+    expect(processed.activities[260]?.parent_id).toBeUndefined();
+    expect(processed.activities[261]?.parent_id).toBeUndefined();
+    expect(processed.activities[262]?.parent_id).toBe(261);
+    expect(processed.blocks.filter(block => block.activity_id === 260)).toMatchObject([
+      { beginning: 'B', ending: 'S' },
+      { beginning: 'R', ending: 'E' },
+    ]);
+    expect(layout.flames).toEqual([]);
+    // Both are thread roots; gap triage is not a child of the notes.
+    expect(layout.rowByActivity['260']).toBeDefined();
+    expect(layout.rowByActivity['261']).toBeDefined();
+
+    const notesResume = processed.blocks.find(
+      block => block.activity_id === 260 && block.beginning === 'R',
+    );
+    const triage = processed.blocks.find(block => block.activity_id === 261);
+    expect(notesResume && triage).toBeTruthy();
+    expect(layout.rowByBlock[blockLayoutKey(notesResume!)]).toBe(
+      layout.rowByBlock[blockLayoutKey(triage!)] + 1,
+    );
+  });
+
   it('shows each completed-to-active resurrection as another block', () => {
     const fixture = createResurrectionFixture(1_700_000_000_000);
     const processed = processTrace(fixture.events, fixture.threads);
@@ -120,5 +186,113 @@ describe('app chart Storybook fixture', () => {
       minTime: now - 60 * 60 * 1000,
       maxTime: now + 10 * 60 * 1000,
     });
+  });
+
+  it('answers one research question by nested rabbit holes', () => {
+    const fixture = createFrontiersFixture(1_700_000_000_000);
+    const processed = processTrace(fixture.events, fixture.threads);
+
+    expect(fixture.threads.map(item => item.name)).toEqual([
+      'mission 🚀',
+      'energy ⚡',
+      'fuels 🔥',
+      'materials 🧱',
+      'navigation 📡',
+    ]);
+    expect(fixture.traceName).toBe('How do we get to the Moon and back?');
+    expect(processed.activities[100]).toMatchObject({
+      flavor: 'question',
+      status: 'complete',
+      name: 'How do we get to the Moon and back?',
+    });
+    expect(processed.activities[200]).toMatchObject({
+      flavor: 'question',
+      status: 'complete',
+      name: 'What is energy?',
+    });
+    expect(processed.activities[300]).toMatchObject({
+      flavor: 'question',
+      status: 'complete',
+      name: 'How do fuels actually store energy?',
+    });
+    expect(processed.blocks.find(block => block.activity_id === 100)).toMatchObject({
+      beginning: 'Q', ending: 'V',
+    });
+    expect(processed.blocks.find(block => block.activity_id === 110)).toMatchObject({
+      beginning: 'Q', ending: 'J',
+    });
+    expect(processed.blocks.find(block => block.activity_id === 120)).toMatchObject({
+      beginning: 'Q', ending: 'V',
+    });
+    expect(processed.blocks.find(block => block.activity_id === 130)).toMatchObject({
+      beginning: 'Q', ending: 'V',
+    });
+    expect(new Set(Object.values(processed.activities).map(item => item.agent_name))).toEqual(
+      new Set(['Athena', 'Kepler', 'Maxwell', undefined]),
+    );
+
+    const layout = projectActorLaneLayout(processed.activities, processed.blocks);
+    expect(layout.rowByActivity['100']).toBe(0);
+    expect(layout.rowByActivity['110']).toBe(1);
+    expect(layout.rowByActivity['120']).toBe(1);
+    expect(layout.rowByActivity['130']).toBe(1);
+    expect(layout.rowByActivity['111']).toBe(2);
+    expect(layout.rowByActivity['131']).toBe(2);
+    expect(layout.rowByActivity['200']).toBe(0);
+    expect(layout.rowByActivity['300']).toBe(0);
+    expect(layout.rowByActivity['400']).toBe(0);
+    expect(layout.rowByActivity['500']).toBe(0);
+  });
+
+  it('covers ERCOT during Winter Storm Uri across six threads', () => {
+    const fixture = createWinterStormUriFixture(1_700_000_000_000);
+    const processed = processTrace(fixture.events, fixture.threads);
+    const layout = projectActorLaneLayout(processed.activities, processed.blocks);
+
+    expect(fixture.threads.map(item => item.name)).toEqual([
+      'ERCOT ⚡',
+      'generation 🏭',
+      'natural gas 🔥',
+      'utilities 🏠',
+      'weather ❄️',
+      'Austin 🏛️',
+    ]);
+    expect(new Set(Object.values(processed.activities).map(item => item.agent_name))).toEqual(
+      new Set([
+        'Vistra',
+        'Pattern',
+        'STPNOC',
+        'Atmos',
+        'Kinder Morgan',
+        'Oncor',
+        'CenterPoint',
+        'Austin Energy',
+        'NWS',
+        undefined,
+      ]),
+    );
+    expect(processed.activities[610]).toMatchObject({ flavor: 'question', status: 'active' });
+    expect(processed.activities[611]).toMatchObject({ status: 'active' });
+    expect(processed.activities[103]).toMatchObject({ flavor: 'question' });
+    expect(processed.blocks.filter(block => block.activity_id === 211).map(block => block.beginning))
+      .toEqual(['B', 'X', 'X']);
+    expect(processed.blocks.filter(block => block.activity_id === 440)).toMatchObject([
+      { beginning: 'B', ending: 'S' },
+      { beginning: 'R', ending: 'E' },
+    ]);
+    expect(processed.blocks.filter(block => block.activity_id === 250)).toMatchObject([
+      { beginning: 'B', ending: 'S' },
+      { beginning: 'R', ending: 'E' },
+    ]);
+
+    const oncor = layout.lanes.find(lane => lane.rootActivityId === 410);
+    const centerpoint = layout.lanes.find(lane => lane.rootActivityId === 420);
+    const austin = layout.lanes.find(lane => lane.rootActivityId === 430);
+    expect(oncor).toMatchObject({ depth: 0, parentLaneRootId: null });
+    expect(centerpoint).toMatchObject({ depth: 0, parentLaneRootId: null });
+    expect(austin).toMatchObject({ depth: 0, parentLaneRootId: null });
+    expect(oncor && centerpoint && oncor.rowStart < centerpoint.rowStart).toBe(true);
+    expect(projectActorFlames(processed.activities).length).toBeGreaterThan(8);
+    expect(() => coalesceActorLaneChrome(layout, processed.blocks, 60 * 60 * 1000)).not.toThrow();
   });
 });

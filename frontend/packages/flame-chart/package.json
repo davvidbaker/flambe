@@ -1,7 +1,7 @@
 {
   "name": "@davvidbaker/flame-chart",
-  "version": "0.1.1",
-  "description": "Standalone React flame chart component extracted from Flambe.",
+  "version": "0.2.0",
+  "description": "Standalone React flame chart, plus Flambe's production chart embed (ChartHarness).",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -10,27 +10,54 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./flambe": {
+      "types": "./dist/flambe.d.ts",
+      "import": "./dist/flambe.js"
     }
   },
   "files": ["dist", "README.md"],
   "sideEffects": false,
   "scripts": {
-    "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "build": "vite build && rm -rf dist/core dist/flame-chart && cp src/index-api.d.ts dist/index.d.ts && cp src/flambe-api.d.ts dist/flambe.d.ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build"
   },
   "peerDependencies": {
     "react": ">=18",
-    "react-dom": ">=18"
+    "react-dom": ">=18",
+    "styled-components": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "styled-components": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@types/fuzzaldrin-plus": "^0.6.5",
+    "@types/humanize-duration": "^3.27.4",
+    "@types/lodash": "^4.17.25",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@types/react-modal": "^3.16.3",
+    "@types/tinycolor2": "^1.4.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "dayjs": "^1.8.8",
+    "downshift": "^9.4.0",
+    "emoji-regex": "^10.6.0",
+    "fuzzaldrin-plus": "^0.6.0",
+    "humanize-duration": "^3.17.0",
+    "lodash": "^4.17.11",
+    "polished": "^4.3.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-modal": "^3.8.1",
+    "react-redux": "9.3.0",
+    "redux": "5.0.1",
+    "styled-components": "^6.5.2",
+    "tinycolor2": "^1.4.1",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7",
-    "vite-plugin-dts": "^4.5.4"
+    "vite": "^7.1.7"
   },
   "repository": {
     "type": "git",

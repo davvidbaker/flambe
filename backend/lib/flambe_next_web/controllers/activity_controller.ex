@@ -79,7 +79,7 @@ defmodule FlambeNextWeb.ActivityController do
          {:ok, activity} <-
            Traces.update_activity(
              activity,
-             Map.drop(attrs, ["thread_id", "category_ids"]),
+             Map.drop(attrs, ["thread_id", "category_ids", "move_child_ids"]),
              categories
            ) do
       render(conn, :show, activity: activity)
@@ -98,8 +98,22 @@ defmodule FlambeNextWeb.ActivityController do
 
   defp maybe_move_thread(user, activity, attrs) do
     case Map.fetch(attrs, "thread_id") do
-      :error -> {:ok, activity}
-      {:ok, thread_id} -> Traces.move_activity_subtree(user, activity, thread_id)
+      :error ->
+        {:ok, activity}
+
+      {:ok, thread_id} ->
+        move_child_ids =
+          case Map.fetch(attrs, "move_child_ids") do
+            :error -> :all
+            {:ok, ids} when is_list(ids) -> ids
+            {:ok, _} -> :invalid
+          end
+
+        if move_child_ids == :invalid do
+          {:error, :not_found}
+        else
+          Traces.move_activity_subtree(user, activity, thread_id, move_child_ids)
+        end
     end
   end
 

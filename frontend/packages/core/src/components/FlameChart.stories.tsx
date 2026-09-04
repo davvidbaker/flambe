@@ -8,11 +8,15 @@ import {
   createEmptyTraceFixture,
   createParentSuspensionFixture,
   createQuestionOutcomesFixture,
+  createResumeDuringConcurrentWorkFixture,
+  createHumanResumeDuringConcurrentWorkFixture,
   createResurrectionFixture,
   createShortAgentFlamesFixture,
   createSparseTraceFixture,
   createStrangeSequenceFixture,
 } from '../storybook/scenarioFixtures';
+import { createFrontiersFixture } from '../storybook/frontiersFixture';
+import { createWinterStormUriFixture } from '../storybook/winterStormUriFixture';
 
 const meta = {
   title: 'App/FlameChart',
@@ -25,6 +29,18 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const Frontiers: Story = {
+  args: {
+    fixture: createFrontiersFixture(),
+  },
+};
+
+export const WinterStormUri: Story = {
+  args: {
+    fixture: createWinterStormUriFixture(),
+  },
+};
 
 export const NestedWork: Story = {
   args: {
@@ -41,6 +57,18 @@ export const ConcurrentAgents: Story = {
 export const ParentSuspensionAndResume: Story = {
   args: {
     fixture: createParentSuspensionFixture(),
+  },
+};
+
+export const ResumeDuringConcurrentWork: Story = {
+  args: {
+    fixture: createResumeDuringConcurrentWorkFixture(),
+  },
+};
+
+export const HumanResumeDuringConcurrentWork: Story = {
+  args: {
+    fixture: createHumanResumeDuringConcurrentWorkFixture(),
   },
 };
 

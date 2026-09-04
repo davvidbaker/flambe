@@ -4,6 +4,7 @@ import {
   actorAccentColor,
   actorKey,
   actorLaneTimeBounds,
+  blockLayoutKey,
   coalesceActorLaneChrome,
   fitActorLaneLabel,
   modelProviderFromAgentId,
@@ -195,6 +196,61 @@ describe('nested actor sublane layout', () => {
     expect(layout.rowByActivity['121'] - layout.rowByActivity['111']).toBe(1);
   });
 
+  it('packs a leftover same-actor child under the remaining ancestor without a spacer row', () => {
+    const activities = {
+      212: activity({ id: 212 }),
+      321: activity({
+        id: 321, parent_id: 212, agent_id: 'claude:x', agent_name: 'Claude',
+      }),
+      325: activity({
+        id: 325, parent_id: 321, agent_id: 'claude:x', agent_name: 'Claude',
+      }),
+    };
+    const blocks = [
+      block(212, 0, 100),
+      block(321, 10, 90),
+      block(325, 20, 70),
+    ];
+
+    const layout = projectActorLaneLayout(activities, blocks);
+
+    expect(layout.rowByActivity).toMatchObject({
+      212: 0,
+      321: 1,
+      325: 2,
+    });
+    expect(layout.lanes).toMatchObject([
+      { rootActivityId: 321, rowStart: 1, rowEnd: 2, depth: 0 },
+    ]);
+  });
+
+  it('does not park a later child under a parent that already ended', () => {
+    // 268 parented to 95, which ended weeks earlier — occupancy, not 95's row.
+    const activities = {
+      1: activity({ id: 1 }),
+      62: activity({ id: 62 }),
+      95: activity({ id: 95, name: 'accommodate on frontend' }),
+      268: activity({ id: 268, name: 'Implement nested actor sublanes', parent_id: 95 }),
+      269: activity({ id: 269, parent_id: 268 }),
+      270: activity({ id: 270, parent_id: 268 }),
+    };
+    const blocks = [
+      block(1, 0, 50),
+      block(62, 10, 45),
+      block(95, 20, 40),
+      block(268, 80, 120),
+      block(269, 85, 90),
+      block(270, 90, 115),
+    ];
+
+    const layout = projectActorLaneLayout(activities, blocks);
+
+    expect(layout.rowByActivity['95']).toBe(2);
+    expect(layout.rowByActivity['268']).toBe(0);
+    expect(layout.rowByActivity['269']).toBe(1);
+    expect(layout.rowByActivity['270']).toBe(1);
+  });
+
   it('reuses rows for sequential non-overlapping roots like a flame chart', () => {
     const activities = {
       1: activity({ id: 1, name: 'Morning' }),
@@ -217,6 +273,35 @@ describe('nested actor sublane layout', () => {
     expect(layout.maxRowsByThread['1']).toBe(1);
   });
 
+  it('reuses a row for sequential siblings under an overlapping parent', () => {
+    // 1 / 62 / 63 / 67 / 69 / 70: 63 then 67 do not overlap, 69 then 70 do not.
+    const activities = {
+      1: activity({ id: 1 }),
+      62: activity({ id: 62 }),
+      63: activity({ id: 63 }),
+      67: activity({ id: 67 }),
+      69: activity({ id: 69 }),
+      70: activity({ id: 70 }),
+    };
+    const blocks = [
+      block(1, 0, 100),
+      block(62, 10, 90),
+      block(63, 20, 40),
+      block(67, 40, 80),
+      block(69, 45, 50),
+      block(70, 50, 70),
+    ];
+
+    const layout = projectActorLaneLayout(activities, blocks);
+
+    expect(layout.rowByActivity['1']).toBe(0);
+    expect(layout.rowByActivity['62']).toBe(1);
+    expect(layout.rowByActivity['63']).toBe(2);
+    expect(layout.rowByActivity['67']).toBe(2);
+    expect(layout.rowByActivity['69']).toBe(3);
+    expect(layout.rowByActivity['70']).toBe(3);
+  });
+
   it('bounds an actor lane to its activity time range', () => {
     const activities = {
       1: activity({ id: 1 }),
@@ -235,6 +320,74 @@ describe('nested actor sublane layout', () => {
       startTime: 10,
       endTime: 40,
     });
+  });
+
+  it('does not nest gap work under a resumed activity', () => {
+    // A: begin→suspend, then resume. B runs only during the suspend gap and is
+    // not a child of A — packing must not treat A's hull as continuous occupancy.
+    const activities = {
+      1: activity({ id: 1, name: 'Suspended then resumed' }),
+      2: activity({ id: 2, name: 'Work during the gap' }),
+    };
+    const blocks = [
+      { ...block(1, 0, 10), beginning: 'B' as const, ending: 'S' as const },
+      block(2, 20, 40),
+      { ...block(1, 50), beginning: 'R' as const },
+    ];
+
+    const layout = projectActorLaneLayout(activities, blocks);
+
+    expect(layout.rowByActivity).toMatchObject({
+      1: 0,
+      2: 0,
+    });
+  });
+
+  it('stacks a resume below concurrent sibling work that holds attention', () => {
+    const begin = { ...block(1, 0, 10), beginning: 'B' as const, ending: 'S' as const };
+    const triage = block(2, 15, 70);
+    const reply = block(3, 20, 40);
+    const resume = { ...block(1, 50, 80), beginning: 'R' as const, ending: 'E' as const };
+    const activities = {
+      1: activity({ id: 1, name: 'Draft release notes' }),
+      2: activity({ id: 2, name: 'Triage support inbox' }),
+      3: activity({ id: 3, name: 'Reply to billing question', parent_id: 2 }),
+    };
+
+    const layout = projectActorLaneLayout(activities, [begin, triage, reply, resume]);
+
+    expect(layout.rowByBlock[blockLayoutKey(begin)]).toBe(0);
+    expect(layout.rowByActivity['2']).toBe(0);
+    expect(layout.rowByActivity['3']).toBe(1);
+    // Directly under the overlapping sibling (Triage), not under Reply.
+    expect(layout.rowByBlock[blockLayoutKey(resume)]).toBe(layout.rowByActivity['2'] + 1);
+    expect(layout.rowByBlock[blockLayoutKey(resume)]).toBe(layout.rowByActivity['3']);
+  });
+
+  it('stacks a resumed agent root below concurrent sibling agent work', () => {
+    const begin = { ...block(1, 0, 10), beginning: 'B' as const, ending: 'S' as const };
+    const gap = block(2, 15, 70);
+    const child = block(3, 20, 40);
+    const resume = { ...block(1, 50, 80), beginning: 'R' as const, ending: 'E' as const };
+    const activities = {
+      1: activity({
+        id: 1, name: 'Land SNL orbits', agent_id: 'claude:a', agent_name: 'Claude',
+      }),
+      2: activity({
+        id: 2, name: 'Fix selected block offset', agent_id: 'cursor:b', agent_name: 'Composer',
+      }),
+      3: activity({
+        id: 3, name: 'Align FocusedBlock Y', parent_id: 2,
+        agent_id: 'cursor:b', agent_name: 'Composer',
+      }),
+    };
+
+    const layout = projectActorLaneLayout(activities, [begin, gap, child, resume]);
+
+    expect(layout.rowByBlock[blockLayoutKey(begin)]).toBe(0);
+    expect(layout.rowByBlock[blockLayoutKey(resume)]).toBe(
+      layout.rowByBlock[blockLayoutKey(gap)] + 1,
+    );
   });
 });
 
@@ -286,6 +439,49 @@ describe('coalesceActorLaneChrome', () => {
     const layout = projectActorLaneLayout(activities, blocks);
     expect(coalesceActorLaneChrome(layout, blocks, 10)).toHaveLength(2);
     expect(coalesceActorLaneChrome(layout, blocks, 30)).toHaveLength(1);
+  });
+
+  it('does not coalesce parentless same-agent roots even when the gap is small', () => {
+    const activities = {
+      339: activity({ id: 339, agent_id: 'cursor:a', agent_name: 'Grok' }),
+      340: activity({ id: 340, agent_id: 'cursor:a', agent_name: 'Grok' }),
+    };
+    const blocks = [
+      block(339, 0, 10),
+      block(340, 12, 22),
+    ];
+    const chrome = coalesceActorLaneChrome(projectActorLaneLayout(activities, blocks), blocks, 10);
+    expect(chrome).toHaveLength(2);
+    expect(chrome.map(band => band.rootActivityIds)).toEqual([[339], [340]]);
+  });
+
+  it('does not paint a hull wash across rows between a suspend and a later resume', () => {
+    const begin = { ...block(2, 0, 10), beginning: 'B' as const, ending: 'S' as const };
+    const gap = block(3, 15, 70);
+    const resume = { ...block(2, 50, 80), beginning: 'R' as const, ending: 'E' as const };
+    const activities = {
+      1: activity({ id: 1 }),
+      2: activity({
+        id: 2, parent_id: 1, agent_id: 'claude:a', agent_name: 'Claude',
+      }),
+      3: activity({
+        id: 3, parent_id: 1, agent_id: 'cursor:b', agent_name: 'Composer',
+      }),
+    };
+    const blocks = [block(1, 0, 100), begin, gap, resume];
+    const layout = projectActorLaneLayout(activities, blocks);
+    const chrome = coalesceActorLaneChrome(layout, blocks, 1);
+
+    const claude = chrome.filter(band => band.rootActivityIds.some(id => Number(id) === 2));
+    expect(claude.length).toBeGreaterThanOrEqual(2);
+    const rows = claude.flatMap(band => [band.rowStart, band.rowEnd]);
+    const beginRow = layout.rowByBlock[blockLayoutKey(begin)];
+    const resumeRow = layout.rowByBlock[blockLayoutKey(resume)];
+    expect(resumeRow).toBeGreaterThan(beginRow);
+    expect(Math.max(...rows) - Math.min(...rows)).toBeGreaterThanOrEqual(resumeRow - beginRow);
+    claude.forEach(band => {
+      expect(band.rowEnd - band.rowStart).toBeLessThan(resumeRow - beginRow);
+    });
   });
 });
 

@@ -2,6 +2,7 @@ import type { Trace } from '../types/Trace';
 import type { EntityId } from '../types/ids';
 import type { Thread } from '../types/Thread';
 import type { TraceEvent, EventPhase } from '../types/TraceEvent';
+import { getHiddenThreadIds } from '../utilities/threadHiddenState';
 
 type Updates = Record<string, unknown>;
 interface ActivityLifecycleInput { id: EntityId; timestamp: number; message?: string; thread_id: EntityId }
@@ -68,6 +69,7 @@ export const SEARCH_BLOCK_INCREMENT_RESULT = 'SEARCH_BLOCK_INCREMENT_RESULT';
 export const ADVANCED_SEARCH_SHOW = 'ADVANCED_SEARCH_SHOW';
 export const ADVANCED_SEARCH_HIDE = 'ADVANCED_SEARCH_HIDE';
 
+export const SETTING_SET = 'SETTING_SET';
 export const SETTING_TOGGLE = 'SETTING_TOGGLE';
 
 export const SETTINGS_SHOW = 'SETTINGS_SHOW';
@@ -78,8 +80,10 @@ export const THREAD_DELETE = 'THREAD_DELETE';
 export const THREAD_COLLAPSE = 'THREAD_COLLAPSE';
 export const THREAD_EXPAND = 'THREAD_EXPAND';
 export const THREAD_UPDATE = 'THREAD_UPDATE';
+export const THREAD_HIDE = 'THREAD_HIDE';
 
 export const THREADS_COLLAPSE_ALL = 'THREADS_COLLAPSE_ALL';
+export const THREADS_REORDER = 'THREADS_REORDER';
 export const THREADS_EXPAND_ALL = 'THREADS_EXPAND_ALL';
 
 export const TODO_BEGIN = 'TODO_BEGIN';
@@ -156,6 +160,20 @@ export function collapseThread(id: EntityId) {
   return {
     type: THREAD_COLLAPSE,
     id,
+  };
+}
+
+export function hideThread(id: EntityId) {
+  return {
+    type: THREAD_HIDE,
+    id,
+  };
+}
+
+export function reorderThreads(orderedIds: EntityId[]) {
+  return {
+    type: THREADS_REORDER,
+    orderedIds,
   };
 }
 
@@ -507,7 +525,10 @@ export function keyUp(key: string) {
 export function selectTrace(trace: Trace) {
   return {
     type: TRACE_SELECT,
-    trace,
+    trace: {
+      ...trace,
+      filterExcludes: trace.filterExcludes ?? getHiddenThreadIds(trace.id),
+    },
   };
 }
 
@@ -547,6 +568,14 @@ export function toggleSetting(setting: string) {
   return {
     type: SETTING_TOGGLE,
     setting,
+  };
+}
+
+export function setSetting(setting: string, value: boolean) {
+  return {
+    type: SETTING_SET,
+    setting,
+    value,
   };
 }
 
@@ -593,10 +622,10 @@ export function setThreadExcludeList(thread_ids: number[], inputValue: string) {
   };
 }
 
-export function filterTrace(selectedThreads: Array<{ value: EntityId }>) {
+export function setHiddenThreads(filterExcludes: EntityId[]) {
   return {
     type: TRACE_FILTER,
-    selectedThreads,
+    filterExcludes,
   };
 }
 

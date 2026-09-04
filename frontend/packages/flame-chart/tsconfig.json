@@ -14,7 +14,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "@davvidbaker/flame-chart": ["./src/index.ts"]
+    }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src/index.ts", "src/FlameChart.tsx", "src/types.ts", "src/zoom.ts", "src/index-api.d.ts", "src/flambe-api.d.ts", "vite.config.ts"]
 }

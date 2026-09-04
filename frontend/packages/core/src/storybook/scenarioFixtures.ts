@@ -176,6 +176,68 @@ export function createParentSuspensionFixture(now = Date.now()): AppChartFixture
   ]);
 }
 
+/**
+ * Suspend a **root** → unrelated root work during the gap → resume while that
+ * work is still open. Gap work must not appear nested under the resumed root
+ * (they stay sibling roots). The resume stacks below concurrent work — current
+ * attention sits at the bottom of the stack.
+ */
+export function createResumeDuringConcurrentWorkFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'flambe🔥');
+  // Thread root that suspends/resumes — the case that looked parental before.
+  const suspended = activity(app, 250, 'Land SNL orbits', {
+    agentName: 'Claude',
+    agentProvider: 'claude',
+    category: 1,
+  });
+  // Another root (not a child of Claude) — runs while Claude is suspended.
+  const gapWork = activity(app, 251, 'Fix selected block offset', {
+    agentName: 'Composer',
+    agentProvider: 'cursor',
+    category: 2,
+  });
+  const gapChild = activity(app, 252, 'Align FocusedBlock Y', {
+    agentName: 'Composer',
+    agentProvider: 'cursor',
+    category: 2,
+    parentId: gapWork.id,
+  });
+
+  return fixture(9250, 'Resume during concurrent work', [app], [
+    { id: 2501, timestamp: minutesAgo(now, 75), phase: 'B', activity: suspended },
+    { id: 2502, timestamp: minutesAgo(now, 55), phase: 'S', activity: suspended, message: 'Waiting on product' },
+    { id: 2503, timestamp: minutesAgo(now, 50), phase: 'B', activity: gapWork },
+    { id: 2504, timestamp: minutesAgo(now, 45), phase: 'B', activity: gapChild },
+    { id: 2505, timestamp: minutesAgo(now, 30), phase: 'E', activity: gapChild },
+    { id: 2506, timestamp: minutesAgo(now, 25), phase: 'R', activity: suspended, message: 'Back to orbits' },
+    { id: 2507, timestamp: minutesAgo(now, 12), phase: 'E', activity: gapWork },
+    { id: 2508, timestamp: minutesAgo(now, 8), phase: 'E', activity: suspended },
+  ]);
+}
+
+/** Same root suspend→gap→resume shape, all human. Resume stacks below the gap work. */
+export function createHumanResumeDuringConcurrentWorkFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'planning 📋');
+  const suspended = activity(app, 260, 'Draft release notes', { category: 1 });
+  // Another root — runs while notes are suspended.
+  const gapWork = activity(app, 261, 'Triage support inbox', { category: 2 });
+  const gapChild = activity(app, 262, 'Reply to billing question', {
+    category: 4,
+    parentId: gapWork.id,
+  });
+
+  return fixture(9260, 'Human resume during concurrent work', [app], [
+    { id: 2601, timestamp: minutesAgo(now, 75), phase: 'B', activity: suspended },
+    { id: 2602, timestamp: minutesAgo(now, 55), phase: 'S', activity: suspended, message: 'Waiting on screenshots' },
+    { id: 2603, timestamp: minutesAgo(now, 50), phase: 'B', activity: gapWork },
+    { id: 2604, timestamp: minutesAgo(now, 45), phase: 'B', activity: gapChild },
+    { id: 2605, timestamp: minutesAgo(now, 30), phase: 'E', activity: gapChild },
+    { id: 2606, timestamp: minutesAgo(now, 25), phase: 'R', activity: suspended, message: 'Screenshots arrived' },
+    { id: 2607, timestamp: minutesAgo(now, 12), phase: 'E', activity: gapWork },
+    { id: 2608, timestamp: minutesAgo(now, 8), phase: 'E', activity: suspended },
+  ]);
+}
+
 export function createResurrectionFixture(now = Date.now()): AppChartFixture {
   const app = thread(1, 'returned work 🧟');
   const migration = activity(app, 300, 'Remove legacy chart', {
