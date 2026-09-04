@@ -45,6 +45,7 @@ const Register = () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        invite_code: form.get('invite_code'),
         user: {
           name: form.get('name'),
           username: form.get('username'),
@@ -77,6 +78,8 @@ const Register = () => {
         <input id="register-email" name="email" type="email" required />
         <label htmlFor="register-password">Password</label>
         <input id="register-password" name="password" type="password" required minLength={6} />
+        <label htmlFor="register-invite">Invite code</label>
+        <input id="register-invite" name="invite_code" autoComplete="off" />
         <button type="submit">Create account</button>
       </Form>
       {error && <p>{error}</p>}

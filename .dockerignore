@@ -1,0 +1,17 @@
+.git
+**/.elixir_ls
+**/.DS_Store
+**/_build
+**/deps
+**/node_modules
+**/erl_crash.dump
+frontend/storybook-static
+frontend/playwright-report
+frontend/test-results
+frontend/dist
+backend/priv/static/assets
+macos
+cli
+docs
+*.tgz
+.env

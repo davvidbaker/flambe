@@ -9,6 +9,7 @@ defmodule FlambeNext.Accounts.ApiToken do
   schema "api_tokens" do
     field :name, :string
     field :token_hash, :string
+    field :last_used_at, :utc_datetime
 
     belongs_to :user, User
 
