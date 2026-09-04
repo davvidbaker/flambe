@@ -233,13 +233,20 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
       }
       case 'Q':
       case 'B':
-        activity.startTime = event.timestamp;
-        activity.status = 'active';
+        activity.startTime ??= event.timestamp;
         activity.name = sourceActivity.name;
         activity.weight = sourceActivity.weight;
         activity.description = sourceActivity.description;
         activity.thread_id = thread_id;
         activity.flavor = event.phase === 'Q' ? 'question' : 'task';
+        // Duplicate begin while already open (e.g. 199 has two B events at the
+        // same timestamp) must not leave a ghost block with no endTime.
+        if (activity.status === 'active') {
+          const open = lastActivityBlock(blocks, sourceActivity.id);
+          if (open && open.endTime === undefined) break;
+        }
+        activity.status = 'active';
+        activity.startTime = event.timestamp;
         const level = displayLevel(activity, activities, blocks);
         blocks.push({ activity_id: sourceActivity.id, beginning: event.phase, events: [event.id], level, startMessage: event.message, startTime: event.timestamp });
         threadOpenActivities[threadKey].push(sourceActivity.id);

@@ -2,7 +2,7 @@ import React from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
 
-import DraggableModal from '../components/DraggableModal';
+import AppModal from '../components/AppModal';
 import { hideSettings as hideSettingsAction, toggleSetting } from '../actions';
 import type { SettingsState } from '../reducers/settings';
 
@@ -30,6 +30,7 @@ const SETTINGS: SettingDefinition[] = [
   {
     setting: 'activityMute',
     copy: 'Mute Activities',
+    description: 'Dim every activity except the focused one (⌘M / Ctrl+M).',
   },
   {
     setting: 'reactiveThreadHeight',
@@ -69,6 +70,15 @@ const SETTINGS: SettingDefinition[] = [
   },
 ];
 
+const DEVELOPER_SETTINGS: SettingDefinition[] = [
+  {
+    setting: 'showActivityIds',
+    copy: 'Show Activity IDs',
+    description:
+      'Label flame-chart blocks with activity id instead of name, for matching what you see to database events.',
+  },
+];
+
 const Setting = styled.div`
   span {
     display: block;
@@ -92,9 +102,31 @@ const Wrapper = styled.div`
   ul {
     list-style: none;
     padding: 0;
+    margin: 0;
   }
   li {
     margin-bottom: 5px;
+  }
+`;
+
+const DeveloperPanel = styled.div`
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+
+  h2 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #777;
+  }
+
+  li:last-child {
+    margin-bottom: 0;
   }
 `;
 
@@ -105,54 +137,68 @@ interface Props {
   toggleSetting: (setting: BooleanSettingKey) => unknown;
 }
 
+function renderSetting(
+  { setting, copy, description, subsettings }: SettingDefinition,
+  settings: SettingsState,
+  toggleSetting: (setting: BooleanSettingKey) => unknown,
+) {
+  return (
+    <li key={setting}>
+      <Setting>
+        <input
+          checked={Boolean(settings[setting])}
+          onChange={() => toggleSetting(setting)}
+          type="checkbox"
+          id={setting}
+        />
+        <label htmlFor={setting}>{copy}</label>
+        <span>{description}</span>
+        {subsettings &&
+          subsettings.map(
+            ({ copy: subCopy, description: subDescription, setting: subsetting }) => (
+              <Setting key={subsetting}>
+                <Subsetting $disabled={!settings[setting]}>
+                  <input
+                    checked={Boolean(settings[subsetting])}
+                    onChange={() => toggleSetting(subsetting)}
+                    type="checkbox"
+                    id={subsetting}
+                    disabled={!settings[setting]}
+                  />
+                  <label htmlFor={subsetting}>{subCopy}</label>
+                  <span>{subDescription}</span>
+                </Subsetting>
+              </Setting>
+            ),
+          )}
+      </Setting>
+    </li>
+  );
+}
+
 const Settings = ({
   settingsVisible,
   hideSettings,
   settings,
   toggleSetting,
 }: Props) => (
-  <DraggableModal
+  <AppModal
     isOpen={settingsVisible}
     onRequestClose={hideSettings}
   >
     <Wrapper>
       <h1 style={{ marginTop: 0 }}>Settings</h1>
       <ul>
-        {SETTINGS.map(({ setting, copy, description, subsettings }) => (
-          <li key={setting}>
-            <Setting>
-              <input
-                checked={settings[setting]}
-                onChange={() => toggleSetting(setting)}
-                type="checkbox"
-                id={setting}
-              />
-              <label htmlFor={setting}>{copy}</label>
-              <span>{description}</span>
-              {subsettings &&
-                subsettings.map(
-                  ({ copy, description, setting: subsetting }) => (
-                    <Setting key={subsetting}>
-                      <Subsetting $disabled={!settings[setting]}>
-                        <input
-                          checked={settings[subsetting]}
-                          onChange={() => toggleSetting(subsetting)}
-                          type="checkbox"
-                          id={subsetting}
-                          disabled={!settings[setting]}
-                        />
-                        <label htmlFor={subsetting}>{copy}</label>
-                        <span>{description}</span>
-                      </Subsetting>
-                    </Setting>
-                  ),
-                )}
-            </Setting>
-          </li>
-        ))}
+        {SETTINGS.map(item => renderSetting(item, settings, toggleSetting))}
       </ul>
+      <DeveloperPanel>
+        <h2>Developer</h2>
+        <ul>
+          {DEVELOPER_SETTINGS.map(item => renderSetting(item, settings, toggleSetting))}
+        </ul>
+      </DeveloperPanel>
     </Wrapper>
-  </DraggableModal>
+  </AppModal>
 );
 
 export default connect(

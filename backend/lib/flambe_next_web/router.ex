@@ -33,6 +33,7 @@ defmodule FlambeNextWeb.Router do
     pipe_through [:api, :authenticated_api]
 
     resources "/traces", TraceController, only: [:index, :create, :show, :update, :delete]
+    put "/traces/:id/thread_order", TraceController, :reorder_threads
     resources "/threads", ThreadController, only: [:create, :show, :update, :delete]
     resources "/categories", CategoryController, except: [:new, :edit]
     resources "/activities", ActivityController, only: [:create, :show, :update, :delete]

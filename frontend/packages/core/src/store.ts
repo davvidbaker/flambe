@@ -1,17 +1,13 @@
-import { createStore, applyMiddleware, compose, combineReducers } from 'redux';
+import { createStore, applyMiddleware, compose } from 'redux';
 import createSagaMiddleware from 'redux-saga';
 import { throttle } from 'lodash/fp';
 
-import * as reducers from './reducers';
-import { getTimeline } from './reducers/timeline';
 import { getUser } from './reducers/user';
+import { rootReducer, type RootState } from './rootReducer';
 import { loadState, saveState } from './utilities';
 import sagas from './sagas';
 
-const rootReducer = combineReducers({
-  ...reducers,
-});
-export type RootState = ReturnType<typeof rootReducer>;
+export type { RootState };
 
 type DevtoolsCompose = (options: {
   actionsBlacklist: string[];
@@ -76,14 +72,11 @@ sagaMiddleware.run(sagas);
 const stateSaver = () => {
   const state = store.getState();
   saveState({
-    activityDetailModalVisible: state.activityDetailModalVisible,
     advancedSearchVisible: state.advancedSearchVisible,
-    categoryManagerVisible: state.categoryManagerVisible,
     loggedIn: state.loggedIn,
     operand: state.operand,
     search: state.search,
     settings: state.settings,
-    settingsVisible: state.settingsVisible,
     // This kind of state should not be saved to local storage. Should probably instead be a cached response?
     // timeline: getTimeline(state),
     user: getUser(state),

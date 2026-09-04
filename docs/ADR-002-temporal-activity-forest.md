@@ -12,9 +12,10 @@ another activity.
 
 ## Decision
 
-Activities have an optional, immutable `parent_id`. A parent and child must belong to the same
+Activities have an optional `parent_id`. A parent and child must belong to the same
 trace thread. Activities without a parent are roots, so a trace is a forest across its threads.
-Lifecycle events remain the record of an activity's timing and state.
+Lifecycle events remain the record of an activity's timing and state. Thread moves may rewrite
+`parent_id` so that invariant still holds.
 
 ## Rationale
 
@@ -33,7 +34,17 @@ Parentage is durable and can drive rendering and agent-facing status. Existing a
 roots. Dependency or relationship edges are deferred and must not determine containment.
 
 Moving an activity to another thread in the same trace cascades `thread_id` to its descendant
-subtree so parent and child stay on one thread; `parent_id` is unchanged.
+subtree so parent and child stay on one thread. A move may take only a subset of direct
+children (each selected child brings its subtree). Left-behind children stay on the source
+thread and are reparented to the nearest ancestor that also stayed on that thread (the moved
+activity's parent, walking up if needed). If no such ancestor exists, they become roots.
+Parent links *inside* the moved subtree are unchanged. If the moved root had a parent that
+stays on the source thread, the moved root's `parent_id` is cleared — otherwise the forest
+would violate same-thread parentage.
+
+David chose reparent-to-remaining-ancestor over detach-to-root so leftover work keeps the
+containment that is still on the thread (e.g. 325 under 321 after 322 moves away) instead of
+becoming a sibling root of that ancestor.
 
 ## Follow-ups
 

@@ -19,6 +19,7 @@ import {
 import { getShamefulColor } from '../utilities/timeline';
 import {
   actorAccentColor,
+  blockLayoutKey,
   coalesceActorLaneChrome,
   fitActorLaneLabel,
   projectActorLaneLayout,
@@ -36,7 +37,7 @@ import {
   shortEnglishHumanizer,
 } from '../utilities';
 import { colors } from '../styles';
-import type { RootState } from '../store';
+import type { RootState } from '../rootReducer';
 import type { EntityId } from '../types/ids';
 import type { Category } from '../types/Category';
 import type { Thread } from '../types/Thread';
@@ -100,6 +101,7 @@ const connector = connect((state: RootState) => ({
   activityMuteOpacity: state.settings.activityMuteOpacity,
   uniformBlockHeight: state.settings.uniformBlockHeight,
   reactiveThreadHeight: state.settings.reactiveThreadHeight,
+  showActivityIds: state.settings.showActivityIds,
   showAttentionFlows: state.settings.attentionFlows,
   showSuspendResumeFlows: state.settings.suspendResumeFlows,
   showSuspendResumeFlowsOnlyForFocusedActivity:
@@ -126,6 +128,9 @@ export class FlameChart extends Component<Props, State> {
 
   /** Extra inset per nesting depth so delegated lanes tuck under parents. */
   static actorLaneDepthInset = 6;
+
+  /** Vertical inset for nested lane chrome so it doesn't sit flush on the parent row. */
+  static actorLaneNestedPad = 2;
 
   state = {
     canvasHeight: 150,
@@ -503,15 +508,12 @@ export class FlameChart extends Component<Props, State> {
         return false;
       }
 
-      const { startTime, endTime, level } = block;
-      const { blockX, blockY, blockWidth } = this.getBlockTransform(
-        startTime,
-        endTime,
-        level,
-        this.blockHeight,
-        this.scrollTop
-          + this.offsets[activity.thread_id]
-          + FlameChart.threadHeaderHeight,
+      // Use display-row geometry (same as draw/hitTest), not block.level —
+      // actor-lane packing remaps Y independently of nesting depth.
+      this.ensureActorLaneLayout();
+      const { blockX, blockY, blockWidth } = this.getRenderedBlockTransform(
+        block,
+        activity,
       );
 
       const { startMessage, endMessage, ending } = block;
@@ -883,14 +885,28 @@ export class FlameChart extends Component<Props, State> {
   }
 
   displayRowForBlock(block: TraceBlock): number {
+    const layout = this.actorLaneLayout;
+    if (!layout) return 0;
+    const keyed = layout.rowByBlock[blockLayoutKey(block)];
+    if (keyed !== undefined) return keyed;
     return this.displayRowForActivity(block.activity_id);
+  }
+
+  nestedPadForActivity(activityId: EntityId): number {
+    const layout = this.actorLaneLayout;
+    if (!layout) return 0;
+    const rootId = layout.rootIdByActivity[String(activityId)];
+    if (rootId === null || rootId === undefined) return 0;
+    const lane = layout.lanes.find(entry => String(entry.rootActivityId) === String(rootId));
+    return lane !== undefined && lane.depth > 0 ? FlameChart.actorLaneNestedPad : 0;
   }
 
   getRenderedBlockTransform(block: TraceBlock, activity: ProcessedActivity) {
     const collapsed = activity.thread_id !== undefined
       && this.threadCollapsed(activity.thread_id);
     const row = this.displayRowForBlock(block);
-    return this.getBlockTransform(
+    const pad = collapsed ? 0 : this.nestedPadForActivity(activity.id);
+    const { blockX, blockY, blockWidth } = this.getBlockTransform(
       block.startTime,
       block.endTime,
       collapsed ? -1 : row,
@@ -898,8 +914,15 @@ export class FlameChart extends Component<Props, State> {
       (collapsed ? 1 : 0)
         + this.scrollTop
         + (this.offsets[String(activity.thread_id)] ?? 0)
-        + FlameChart.threadHeaderHeight,
+        + FlameChart.threadHeaderHeight
+        + pad,
     );
+    return {
+      blockX,
+      blockY,
+      blockWidth,
+      blockHeight: Math.max(4, this.blockHeight - pad * 2),
+    };
   }
 
   drawActorLaneChrome(): void {
@@ -927,14 +950,26 @@ export class FlameChart extends Component<Props, State> {
       if (contentRight < 0 || railX > this.width) return;
 
       const threadOffset = this.offsets[String(chrome.threadId)] ?? 0;
+      const threadIds = Object.keys(this.offsets).sort(
+        (left, right) => (this.offsets[left] ?? 0) - (this.offsets[right] ?? 0),
+      );
+      const threadIndex = threadIds.findIndex(id => String(id) === String(chrome.threadId));
+      const nextOffset = threadIndex >= 0 && threadIds[threadIndex + 1]
+        ? (this.offsets[threadIds[threadIndex + 1]!] ?? this.state.canvasHeight)
+        : this.state.canvasHeight;
       const rowHeight = this.blockHeight + 1;
       const rowCount = chrome.rowEnd - chrome.rowStart + 1;
+      const nestedPad = chrome.depth > 0 ? FlameChart.actorLaneNestedPad : 0;
+      const topBleed = nestedPad > 0 ? 0 : 2;
       const top = threadOffset
         + FlameChart.threadHeaderHeight
         + this.scrollTop
         + chrome.rowStart * rowHeight
-        - 2;
-      const height = rowCount * rowHeight + 2;
+        - topBleed
+        + nestedPad;
+      const unclampedHeight = Math.max(4, rowCount * rowHeight + topBleed - nestedPad * 2);
+      const height = Math.max(0, Math.min(unclampedHeight, nextOffset - top));
+      if (height <= 0) return;
       const accent = actorAccentColor(chrome.actorKey);
       const washLeft = Math.max(railX, -2);
       const washRight = Math.min(contentRight, this.width + 2);
@@ -1014,7 +1049,7 @@ export class FlameChart extends Component<Props, State> {
       }
 
       const accent = actorAccentColor(flame.actorKey);
-      const rootY = rootTransform.blockY + this.blockHeight / 2;
+      const rootY = rootTransform.blockY + rootTransform.blockHeight / 2;
       this.ctx.strokeStyle = accent;
       this.ctx.fillStyle = accent;
 
@@ -1034,19 +1069,19 @@ export class FlameChart extends Component<Props, State> {
           const parentLeft = parentTransform.blockX;
           const parentRight = parentTransform.blockX + parentTransform.blockWidth;
           const parentX = constrain(joinX, parentLeft, parentRight);
-          const parentY = parentTransform.blockY + this.blockHeight / 2;
+          const parentY = parentTransform.blockY + parentTransform.blockHeight / 2;
           const middleY = parentY + (rootY - parentY) / 2;
 
           this.ctx.beginPath();
           this.ctx.moveTo(parentX, parentY);
           this.ctx.bezierCurveTo(parentX, middleY, joinX, middleY, joinX, rootY);
           this.ctx.stroke();
+
+          this.ctx.beginPath();
+          this.ctx.arc(joinX, rootY, 3, 0, Math.PI * 2);
+          this.ctx.fill();
         }
       }
-
-      this.ctx.beginPath();
-      this.ctx.arc(joinX, rootY, 3, 0, Math.PI * 2);
-      this.ctx.fill();
     });
 
     this.ctx.restore();
@@ -1057,6 +1092,7 @@ export class FlameChart extends Component<Props, State> {
   }
 
   drawSuspendResumeFlows(onlyForFocusedActivity: boolean): void {
+    this.ctx.save();
     this.ctx.globalCompositeOperation = 'source-over';
 
     /* ⚠️ terrible code ahead */
@@ -1100,9 +1136,11 @@ export class FlameChart extends Component<Props, State> {
         const block2Width = this.timeToPixels(block.endTime || Date.now())
           - this.timeToPixels(block.startTime);
 
+        const prevRow = this.displayRowForBlock(arrayOfBlocks[i - 1]);
+        const nextRow = this.displayRowForBlock(block);
         const x1 = this.timeToPixels(prevBlock.endTime ?? prevBlock.startTime);
         const y1 = getBlockY(
-          this.displayRowForBlock(arrayOfBlocks[i - 1]) + 1,
+          prevRow + 1,
           this.blockHeight,
           this.scrollTop,
         )
@@ -1111,7 +1149,7 @@ export class FlameChart extends Component<Props, State> {
           - 1;
         const x2 = this.timeToPixels(block.startTime);
         const y2 = getBlockY(
-          this.displayRowForBlock(block) + 1,
+          nextRow + 1,
           this.blockHeight,
           this.scrollTop,
         )
@@ -1129,7 +1167,9 @@ export class FlameChart extends Component<Props, State> {
         this.ctx.strokeStyle = block.cat
           ? block.cat.color_background
           : colors.flames.main;
-        this.ctx.lineWidth = this.blockHeight;
+        // Same-row resume: thick ribbon bridging the gap. Cross-row: a thin
+        // connector — a blockHeight stroke would paint a translucent sheet.
+        this.ctx.lineWidth = prevRow === nextRow ? this.blockHeight : 2;
 
         this.ctx.beginPath();
         this.ctx.moveTo(
@@ -1149,6 +1189,7 @@ export class FlameChart extends Component<Props, State> {
         this.ctx.stroke();
       });
     });
+    this.ctx.restore();
   }
 
   getBlockTransform(
@@ -1174,7 +1215,7 @@ export class FlameChart extends Component<Props, State> {
     if (activity.thread_id === undefined) return;
     const collapsed = this.threadCollapsed(activity.thread_id);
 
-    const { blockX, blockY, blockWidth } = this.getRenderedBlockTransform(
+    const { blockX, blockY, blockWidth, blockHeight } = this.getRenderedBlockTransform(
       block,
       activity,
     );
@@ -1218,7 +1259,7 @@ export class FlameChart extends Component<Props, State> {
       blockX,
       collapsed ? blockY + this.displayRowForBlock(block) * adjustedBlockHeight : blockY,
       blockWidth,
-      collapsed ? adjustedBlockHeight : this.blockHeight,
+      collapsed ? adjustedBlockHeight : blockHeight,
     );
 
     this.ctx.globalAlpha = collapsed
@@ -1231,7 +1272,10 @@ export class FlameChart extends Component<Props, State> {
     if (blockWidth < this.minTextWidth) {
       return;
     }
-    const { width: textWidth } = this.ctx.measureText(activity.name ?? '');
+    const label = this.props.showActivityIds
+      ? String(activity.id)
+      : (activity.name || '');
+    const { width: textWidth } = this.ctx.measureText(label);
 
     if (textWidth + FlameChart.textPadding.x > blockWidth) {
     }
@@ -1241,7 +1285,7 @@ export class FlameChart extends Component<Props, State> {
     /** ⚠️ Emoji's need fixing in here. */
     const text = trimTextMiddle(
       this.ctx,
-      activity.name || '',
+      label,
       blockWidth - 2 * FlameChart.textPadding.x,
     );
 
@@ -1261,7 +1305,7 @@ export class FlameChart extends Component<Props, State> {
     this.ctx.fillText(
       text,
       blockX + FlameChart.textPadding.x,
-      blockY + FlameChart.textPadding.y,
+      blockY + Math.min(FlameChart.textPadding.y, blockHeight - 4),
     );
 
     // visually denote a resumed or resurrected activity
@@ -1273,10 +1317,10 @@ export class FlameChart extends Component<Props, State> {
       for (let j = 0; j < 6; j++) {
         this.ctx.lineTo(
           blockX + (j % 2 ? jagDepth : -1),
-          blockY + (j * this.blockHeight) / 6,
+          blockY + (j * blockHeight) / 6,
         );
       }
-      this.ctx.lineTo(blockX - 1, blockY + this.blockHeight);
+      this.ctx.lineTo(blockX - 1, blockY + blockHeight);
       this.ctx.fill();
     }
 
@@ -1289,10 +1333,10 @@ export class FlameChart extends Component<Props, State> {
       for (let j = 0; j < 6; j++) {
         this.ctx.lineTo(
           blockX + blockWidth - (j % 2 ? jagDepth : -1),
-          blockY + (j * this.blockHeight) / 6,
+          blockY + (j * blockHeight) / 6,
         );
       }
-      this.ctx.lineTo(blockX + blockWidth + 1, blockY + this.blockHeight);
+      this.ctx.lineTo(blockX + blockWidth + 1, blockY + blockHeight);
       this.ctx.fill();
     }
   }

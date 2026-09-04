@@ -452,6 +452,23 @@ class App extends React.Component<AppProps, AppState> {
                 </div>
               </main>
 
+              {this.props.settings.activityMute && (
+                <div
+                  style={{
+                    position: 'fixed',
+                    bottom: 8,
+                    right: 8,
+                    zIndex: 20,
+                    background: '#111',
+                    color: '#fff',
+                    padding: '6px 10px',
+                    borderRadius: 4,
+                    fontSize: 12,
+                  }}
+                >
+                  Activities muted — ⌘M / Ctrl+M to unmute
+                </div>
+              )}
               <CategoryManager categories={this.props.categories} />
               <Settings />
               <Commander

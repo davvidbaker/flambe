@@ -61,6 +61,24 @@ describe('processTrace', () => {
     expect(result.threadLevels[thread.id]).toEqual({ current: 0, max: 1 });
   });
 
+  it('ignores a duplicate begin while the activity is already open', () => {
+    const result = processTrace([
+      { id: 1, timestamp: 100, phase: 'B', activity },
+      { id: 2, timestamp: 100, phase: 'B', activity },
+      { id: 3, timestamp: 200, phase: 'E', message: 'Finished', activity },
+    ], [thread]);
+
+    expect(result.blocks).toHaveLength(1);
+    expect(result.blocks[0]).toMatchObject({
+      activity_id: activity.id,
+      beginning: 'B',
+      ending: 'E',
+      startTime: 100,
+      endTime: 200,
+    });
+    expect(result.activities[activity.id]?.status).toBe('complete');
+  });
+
   it('returns an empty timeline safely when a trace has no events', () => {
     const result = processTrace([], [thread]);
 
