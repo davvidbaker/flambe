@@ -1,6 +1,6 @@
 # Replace `app` with `fly apps create` output if this name is taken.
 app = "flambe"
-primary_region = "den"
+primary_region = "dfw"
 
 [build]
   dockerfile = "Dockerfile"
@@ -9,7 +9,9 @@ primary_region = "den"
   release_command = "/app/bin/migrate"
 
 [env]
-  ECTO_SSL = "true"
+  ECTO_IPV6 = "true"
+  ECTO_SSL = "false"
+  POOL_SIZE = "5"
   PORT = "4000"
 
 [http_service]
