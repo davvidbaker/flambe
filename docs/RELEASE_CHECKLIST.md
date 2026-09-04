@@ -41,17 +41,23 @@ one Fly Machine, Fly Postgres, invite-code registration.
    - `FLAMBE_INVITE_CODE` — shared signup secret
    - `PHX_HOST` — `your-app.fly.dev` (optional if `FLY_APP_NAME` is set)
 
-   `ECTO_SSL=true` is set in `fly.toml`. Keep Machine count at 1.
+   `ECTO_IPV6=true` and `ECTO_SSL=false` are set in `fly.toml` for Fly
+   Postgres over the private network. Keep Machine count at 1.
 
 ## Deploy
 
-1. From the repository root: `fly deploy`.
-2. The release command runs `/app/bin/migrate`.
-3. Verify `GET https://$PHX_HOST/api/health` returns `{"status":"ok"}`.
-4. Create an account at `/register` with `FLAMBE_INVITE_CODE`.
-5. In Settings → API tokens, mint a CLI token. Point project `.env` at
+A push to `main` deploys after the Modernization validation workflow is green
+(`backend`, `cli`, `browser-smoke`, and `prod-mode-smoke`). That job needs the
+GitHub Actions secret `FLY_API_TOKEN` (a Fly deploy token for app `flambe`).
+
+To deploy by hand from the repository root: `fly deploy`.
+
+1. The release command runs `/app/bin/migrate`.
+2. Verify `GET https://$PHX_HOST/api/health` returns `{"status":"ok"}`.
+3. Create an account at `/register` with `FLAMBE_INVITE_CODE`.
+4. In Settings → API tokens, mint a CLI token. Point project `.env` at
    `FLAMBE_URL=https://$PHX_HOST`.
-6. Optionally run
+5. Optionally run
    `PLAYWRIGHT_BASE_URL=https://$PHX_HOST PLAYWRIGHT_INVITE_CODE=... nvm exec 22 npm run test:smoke`
    against a disposable account.
 

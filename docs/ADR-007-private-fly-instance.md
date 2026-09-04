@@ -39,5 +39,6 @@ custom domains, and a published CLI are out of scope.
 
 ## Follow-ups
 
-- Deploy after MIX_ENV=prod CI is green.
+- Deploy after MIX_ENV=prod CI is green. A push to `main` runs `fly deploy`
+  from GitHub Actions when that workflow succeeds.
 - Custom domain later if needed; `*.fly.dev` is enough for this instance.
