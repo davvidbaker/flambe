@@ -7,7 +7,6 @@ import {
   remove,
   filter,
   omitBy,
-  difference,
   memoize,
 } from 'lodash/fp';
 
@@ -20,7 +19,6 @@ import {
   ACTIVITY_RESURRECT,
   ACTIVITY_SUSPEND,
   ACTIVITY_UPDATE,
-  ATTENTION_SHIFT,
   BLOCK_FOCUS,
   BLOCK_HOVER,
   CATEGORY_CREATE,
@@ -31,9 +29,11 @@ import {
   THREAD_DELETE,
   THREAD_COLLAPSE,
   THREAD_EXPAND,
+  THREAD_HIDE,
   THREAD_UPDATE,
   THREADS_COLLAPSE_ALL,
   THREADS_EXPAND_ALL,
+  THREADS_REORDER,
   TIMELINE_ZOOM,
   TIMELINE_PAN,
   TIMELINE_SET,
@@ -61,6 +61,26 @@ const omitRecord = (record: AnyRecord, keys: EntityId[]): AnyRecord => {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !omitted.has(key)));
 };
 
+function numericIds(ids: unknown): EntityId[] {
+  if (!Array.isArray(ids)) return [];
+  return ids.map(id => Number(id)).filter(id => Number.isFinite(id));
+}
+
+function knownThreadIds(threads: Record<string, Thread>): EntityId[] {
+  return Object.keys(threads).map(Number).filter(id => Number.isFinite(id));
+}
+
+function nextHiddenThreadIds(
+  requested: unknown,
+  threads: Record<string, Thread>,
+  current: EntityId[],
+): EntityId[] {
+  const known = new Set(knownThreadIds(threads).map(String));
+  const next = numericIds(requested).filter(id => known.has(String(id)));
+  if (known.size > 0 && next.length >= known.size) return current;
+  return next;
+}
+
 /** Activity id plus all descendants via parent_id (same-thread forest). */
 function activitySubtreeIds(
   rootId: EntityId,
@@ -82,14 +102,33 @@ function activitySubtreeIds(
   return ids;
 }
 
+/** Nearest ancestor of `moved` that remains on `moved`'s thread (ADR-002). */
+function remainingSameThreadParent(
+  moved: ProcessedActivity,
+  activities: Record<string, ProcessedActivity>,
+): EntityId | null {
+  const sourceThread = String(moved.thread_id);
+  let parentId = moved.parent_id ?? null;
+  const seen = new Set<string>();
+  while (parentId !== null && parentId !== undefined && !seen.has(String(parentId))) {
+    seen.add(String(parentId));
+    const parent = activities[String(parentId)];
+    if (!parent) return null;
+    if (String(parent.thread_id) === sourceThread) return parent.id;
+    parentId = parent.parent_id ?? null;
+  }
+  return null;
+}
+
 export const getTimeline = (state: any): any => state.timeline;
 export const getFilterExcludes = (state: any): EntityId[] => state.timeline.trace?.filterExcludes ?? [];
 
 export const getTimelineWithFiltersApplied = (state: any): any => {
   const filterExcludes = getFilterExcludes(state) || [];
   const timeline = getTimeline(state);
+  const excluded = new Set(filterExcludes.map(String));
 
-  const activities = Object.fromEntries(Object.entries(timeline.activities).filter(([, activity]: [string, any]) => !filterExcludes.includes(activity.thread_id)));
+  const activities = Object.fromEntries(Object.entries(timeline.activities).filter(([, activity]: [string, any]) => !excluded.has(String(activity.thread_id))));
 
   return {
     ...timeline,
@@ -100,7 +139,7 @@ export const getTimelineWithFiltersApplied = (state: any): any => {
         .includes(b.activity_id),
     ),
     threads: getFilteredThreads(filterExcludes, timeline.threads),
-    lastThread_id: filterExcludes.includes(state.lastThread_id)
+    lastThread_id: excluded.has(String(state.lastThread_id))
       ? state.lastThread_id
       : null,
     threadLevels: getFilteredThreads(filterExcludes, timeline.threadLevels),
@@ -257,35 +296,59 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         events,
       };
 
-    /* ⚠️ this is optimistic, need to handle failure */
-    case ATTENTION_SHIFT:
-      return {
-        ...state,
-        threads: {
-          ...mapRecord(state.threads, thread => ({ ...thread, rank: thread.rank + 1 })),
-          [action.thread_id]: { ...state.threads[action.thread_id], rank: 0 },
-        },
-      };
-
+    /* Attention-driven order is a display projection; it must not rewrite persisted rank. */
     case TRACE_SELECT:
       return {
         ...state,
-        trace: { id: action.trace.id ?? null, name: action.trace.name ?? null, filterExcludes: action.trace.filterExcludes ?? [] },
+        trace: {
+          id: action.trace.id ?? null,
+          name: action.trace.name ?? null,
+          filterExcludes: numericIds(action.trace.filterExcludes),
+        },
       };
 
     case TRACE_FILTER:
-      const allThread_ids = Object.keys(state.threads).map(key => Number(key));
       return {
         ...state,
         trace: {
           id: state.trace?.id ?? null,
           name: state.trace?.name ?? null,
-          filterExcludes: difference(
-            allThread_ids,
-            action.selectedThreads.map(({ value }: { value: EntityId }) => Number(value)),
+          filterExcludes: nextHiddenThreadIds(
+            action.filterExcludes,
+            state.threads,
+            state.trace?.filterExcludes ?? [],
           ),
         },
       };
+
+    case THREAD_HIDE: {
+      const hidden = new Set((state.trace?.filterExcludes ?? []).map(String));
+      hidden.add(String(action.id));
+      return {
+        ...state,
+        trace: {
+          id: state.trace?.id ?? null,
+          name: state.trace?.name ?? null,
+          filterExcludes: nextHiddenThreadIds(
+            [...hidden],
+            state.threads,
+            state.trace?.filterExcludes ?? [],
+          ),
+        },
+      };
+    }
+
+    case THREADS_REORDER: {
+      const ranks = Object.fromEntries(
+        numericIds(action.orderedIds).map((id, index) => [String(id), index]),
+      );
+      return {
+        ...state,
+        threads: mapRecord(state.threads, (thread, key) => (
+          ranks[key] === undefined ? thread : { ...thread, rank: ranks[key] }
+        )),
+      };
+    }
 
     case DELETE_CURRENT_TRACE:
       return {
@@ -569,9 +632,36 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
       if (!activity) return state;
 
       const nextThreadId = action.updates.thread_id;
-      const subtreeIds = nextThreadId === undefined
-        ? [String(action.id)]
-        : activitySubtreeIds(action.id, state.activities);
+      const moveChildIds = action.updates.move_child_ids as EntityId[] | undefined;
+      let subtreeIds: string[];
+      let detachChildIds: string[] = [];
+
+      if (nextThreadId === undefined) {
+        subtreeIds = [String(action.id)];
+      } else if (moveChildIds !== undefined) {
+        const selected = new Set(moveChildIds.map(String));
+        const directChildIds = Object.entries(state.activities)
+          .filter(([, candidate]) =>
+            candidate.parent_id !== null
+            && candidate.parent_id !== undefined
+            && String(candidate.parent_id) === String(action.id))
+          .map(([key]) => key);
+        detachChildIds = directChildIds.filter(id => !selected.has(id));
+        subtreeIds = [String(action.id)];
+        for (const childId of directChildIds) {
+          if (!selected.has(childId)) continue;
+          subtreeIds.push(...activitySubtreeIds(childId, state.activities));
+        }
+        subtreeIds = [...new Set(subtreeIds)];
+      } else {
+        subtreeIds = activitySubtreeIds(action.id, state.activities);
+      }
+
+      const subtreeSet = new Set(subtreeIds);
+      const detachMovedRoot = nextThreadId !== undefined
+        && activity.parent_id !== null
+        && activity.parent_id !== undefined
+        && !subtreeSet.has(String(activity.parent_id));
 
       const activities = { ...state.activities };
       for (const key of subtreeIds) {
@@ -597,7 +687,16 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
             ? action.updates.weight
             : current.weight,
           ...(nextThreadId === undefined ? {} : { thread_id: nextThreadId }),
+          ...(detachMovedRoot && key === String(action.id) ? { parent_id: null } : {}),
         };
+      }
+
+      const remainingParentId = remainingSameThreadParent(activity, state.activities);
+
+      for (const key of detachChildIds) {
+        const current = activities[key];
+        if (!current) continue;
+        activities[key] = { ...current, parent_id: remainingParentId };
       }
 
       return {
@@ -691,6 +790,13 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         threads: omitRecord(state.threads, [action.id]),
         activities: activs,
         threadLevels: omitRecord(state.threadLevels, [action.id]),
+        trace: state.trace
+          ? {
+              ...state.trace,
+              filterExcludes: (state.trace.filterExcludes ?? [])
+                .filter(id => String(id) !== String(action.id)),
+            }
+          : state.trace,
       };
 
     case THREAD_COLLAPSE:

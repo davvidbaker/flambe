@@ -1,4 +1,4 @@
-import { SETTING_TOGGLE } from '../actions';
+import { SETTING_SET, SETTING_TOGGLE } from '../actions';
 
 export interface SettingsState {
   absoluteTimeLabels: boolean;
@@ -8,6 +8,8 @@ export interface SettingsState {
   attentionDrivenThreadOrder: boolean;
   attentionFlows: boolean;
   reactiveThreadHeight: boolean;
+  /** Dev: paint activity ids on blocks instead of names. */
+  showActivityIds: boolean;
   suspendResumeFlows: boolean;
   suspendResumeFlowsOnlyForFocusedActivity: boolean;
   uniformBlockHeight: boolean;
@@ -21,18 +23,23 @@ const defaultState: SettingsState = {
   activityMuteOpacity: 0.1,
   activityMute: false,
   reactiveThreadHeight: true,
+  showActivityIds: false,
   suspendResumeFlows: true,
   suspendResumeFlowsOnlyForFocusedActivity: false,
   uniformBlockHeight: false,
 };
 
-type ToggleAction = { setting?: keyof SettingsState; type: string };
+type SettingsAction = { setting?: keyof SettingsState; type: string; value?: boolean };
 
-function settings(state: SettingsState = defaultState, action: ToggleAction): SettingsState {
-  if (action.type !== SETTING_TOGGLE) return state;
+function settings(state: SettingsState = defaultState, action: SettingsAction): SettingsState {
   const setting = action.setting;
-  if (!setting) return state;
-  if (typeof state[setting] !== 'boolean') return state;
+  if (!setting || typeof state[setting] !== 'boolean') return state;
+
+  if (action.type === SETTING_SET) {
+    return { ...state, [setting]: Boolean(action.value) } as SettingsState;
+  }
+
+  if (action.type !== SETTING_TOGGLE) return state;
   return { ...state, [setting]: !state[setting] } as SettingsState;
 }
 

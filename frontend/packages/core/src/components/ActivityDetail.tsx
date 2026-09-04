@@ -26,6 +26,7 @@ import AddCategory from './AddCategory';
 import DeleteButton from './DeleteButton';
 import Button, { InputFromButton } from './Button';
 import Fuzzy from './Fuzzy';
+import AppModal from './AppModal';
 
 const Actions = styled.div`
   display: flex;
@@ -41,6 +42,51 @@ const ThreadRow = styled.div`
   gap: 8px;
   margin: 8px 0;
   flex-wrap: wrap;
+`;
+
+const MoveDialog = styled.div`
+  min-width: 260px;
+  font-size: 12px;
+
+  h2 {
+    margin: 0 0 8px;
+    font-size: 14px;
+  }
+
+  p {
+    margin: 0 0 10px;
+    color: #555;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px;
+    max-height: 200px;
+    overflow: auto;
+  }
+
+  li {
+    margin-bottom: 6px;
+  }
+
+  label {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    cursor: pointer;
+  }
+
+  .child-meta {
+    color: #888;
+    font-size: 0.9em;
+  }
+`;
+
+const MoveActions = styled.div`
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 `;
 
 export interface ActivityDetailProps {
@@ -70,6 +116,11 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     threads,
   } = props;
 
+  const [pendingMove, setPendingMove] = React.useState<{
+    thread: { id: EntityId; name: string };
+    selectedChildIds: EntityId[];
+  } | null>(null);
+
   if (activity_id === null) return <div>no activity</div>;
   const baseActivity = activities[String(activity_id)];
   const activity = baseActivity ? {
@@ -84,6 +135,14 @@ const ActivityDetail = (props: ActivityDetailProps) => {
   const threadChoices = Object.values(threads)
     .filter(thread => String(thread.id) !== String(threadId))
     .map(thread => ({ id: thread.id, name: thread.name }));
+
+  const directChildren = Object.values(activities)
+    .filter(candidate =>
+      candidate.parent_id !== null
+      && candidate.parent_id !== undefined
+      && String(candidate.parent_id) === String(activity.id)
+      && String(candidate.thread_id) === String(threadId))
+    .sort((left, right) => Number(left.id) - Number(right.id));
 
   const addNewCategory = (name: string, hexString: string) => {
     props.createCategory({
@@ -101,7 +160,36 @@ const ActivityDetail = (props: ActivityDetailProps) => {
 
   const moveToThread = (thread: { id: EntityId; name: string }) => {
     if (String(thread.id) === String(threadId)) return;
-    updateActivity(activity.id, { thread_id: thread.id });
+    if (directChildren.length === 0) {
+      updateActivity(activity.id, { thread_id: thread.id });
+      return;
+    }
+    setPendingMove({
+      thread,
+      selectedChildIds: directChildren.map(child => child.id),
+    });
+  };
+
+  const togglePendingChild = (childId: EntityId) => {
+    setPendingMove(current => {
+      if (!current) return current;
+      const selected = current.selectedChildIds.some(id => String(id) === String(childId));
+      return {
+        ...current,
+        selectedChildIds: selected
+          ? current.selectedChildIds.filter(id => String(id) !== String(childId))
+          : [...current.selectedChildIds, childId],
+      };
+    });
+  };
+
+  const confirmPendingMove = () => {
+    if (!pendingMove) return;
+    updateActivity(activity.id, {
+      thread_id: pendingMove.thread.id,
+      move_child_ids: pendingMove.selectedChildIds,
+    });
+    setPendingMove(null);
   };
 
   const activityBlocks = blocksForActivity(activity_id, blocks);
@@ -246,6 +334,61 @@ const ActivityDetail = (props: ActivityDetailProps) => {
               ),
           )}
       </Actions>
+      <AppModal
+        isOpen={pendingMove !== null}
+        onRequestClose={() => setPendingMove(null)}
+      >
+        {pendingMove && (
+          <MoveDialog>
+            <h2>Move children too?</h2>
+            <p>
+              Moving
+              {' '}
+              <strong>{activity.name}</strong>
+              {' '}
+              to
+              {' '}
+              <strong>{pendingMove.thread.name}</strong>
+              . Choose which direct children come along (each brings its subtree).
+              Unchecked children stay on this thread under the remaining ancestor.
+            </p>
+            <ul>
+              {directChildren.map(child => {
+                const checked = pendingMove.selectedChildIds.some(
+                  id => String(id) === String(child.id),
+                );
+                return (
+                  <li key={String(child.id)}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => togglePendingChild(child.id)}
+                      />
+                      <span>
+                        {child.name || '(unnamed)'}
+                        <span className="child-meta">
+                          {' '}
+                          #
+                          {child.id}
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+            <MoveActions>
+              <Button looksLikeButton onClick={() => setPendingMove(null)}>
+                Cancel
+              </Button>
+              <Button looksLikeButton onClick={confirmPendingMove}>
+                Move
+              </Button>
+            </MoveActions>
+          </MoveDialog>
+        )}
+      </AppModal>
     </>
   );
 };

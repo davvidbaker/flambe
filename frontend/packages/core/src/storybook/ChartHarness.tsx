@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+'use client';
+
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Provider } from 'react-redux';
 
 import { setTimeline } from '../actions';
@@ -7,17 +9,30 @@ import { colors } from '../styles';
 import { createChartStore, seedChartViewport, viewportForFixture } from './createChartStore';
 import type { AppChartFixture } from './fixtureTrace';
 
-type ChartHarnessProps = {
+export type ChartHarnessProps = {
   fixture: AppChartFixture;
+  className?: string;
+  style?: CSSProperties;
+  /** CSS height of the chart shell. Storybook fullscreen uses the default `100vh`. */
+  height?: number | string;
 };
 
-export function ChartHarness({ fixture }: ChartHarnessProps) {
-  const [store] = useState(() => {
-    seedChartViewport(fixture);
-    return createChartStore(fixture);
-  });
+export function ChartHarness({
+  fixture,
+  className,
+  style,
+  height = '100vh',
+}: ChartHarnessProps) {
+  const [store] = useState(() => createChartStore(fixture));
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    seedChartViewport(fixture);
+    setMounted(true);
+  }, [fixture]);
+
+  useEffect(() => {
+    if (!mounted) return undefined;
     let cancelled = false;
     const frame = window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
@@ -30,11 +45,21 @@ export function ChartHarness({ fixture }: ChartHarnessProps) {
       cancelled = true;
       window.cancelAnimationFrame(frame);
     };
-  }, [fixture, store]);
+  }, [fixture, mounted, store]);
+
+  const shellStyle: CSSProperties = {
+    background: colors.background,
+    height,
+    ...style,
+  };
+
+  if (!mounted) {
+    return <div className={className} style={shellStyle} />;
+  }
 
   return (
     <Provider store={store}>
-      <div style={{ background: colors.background, height: '100vh' }}>
+      <div className={className} style={shellStyle}>
         <ConnectedTimeline
           addCommand={() => undefined}
           submitCommand={() => undefined}

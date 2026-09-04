@@ -7,7 +7,8 @@ const styleOverrides: Styles = {
   overlay: {
     display: "flex",
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
+    backgroundColor: "transparent",
   },
   content: {
     bottom: "unset",
@@ -26,20 +27,11 @@ const ActualContent = styled.div`
   background: white;
   border: 1px solid rgb(204, 204, 204);
   padding: 10px;
-  /* 👇 because of the drag handle */
-  padding-top: 0px; 
   pointer-events: all;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-
-  .handle {
-    height: 10px;
-    background: #ddd;
-    border-bottom: 5px solid white;
-    cursor: move;
-    width: 200%;
-    margin-left: -50%;
-  }
+  overflow: auto;
+  max-height: min(80vh, 640px);
+  max-width: min(90vw, 420px);
 `;
 
 interface Props {
@@ -48,7 +40,7 @@ interface Props {
   onRequestClose: () => unknown;
 }
 
-const DraggableModal = ({
+const AppModal = ({
   isOpen,
   children,
   onRequestClose,
@@ -59,21 +51,11 @@ const DraggableModal = ({
       isOpen={isOpen}
       style={styleOverrides}
     >
-      {/* <Draggable
-        handle=".handle"
-        defaultPosition={defaultPosition}
-        onStop={onDragStop}
-        bounds="body"
-      > */}
-        <ActualContent>
-          <>
-            <div className="handle" />
-            {children}
-          </>
-        </ActualContent>
-      {/* </Draggable> */}
+      <ActualContent>
+        {children}
+      </ActualContent>
     </Modal>
   );
 };
 
-export default DraggableModal;
+export default AppModal;

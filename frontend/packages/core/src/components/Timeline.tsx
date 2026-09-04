@@ -47,6 +47,15 @@ const isValidTime = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
 
+function readLocalStorage(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 // minTime is smallest timestamp in the entire timeline
 // maxTime is largest timestamp in the entire timeline
 // leftBoundaryTime is timestamp of left bound of current view
@@ -134,10 +143,10 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     super(props);
 
     const savedTimes = {
-      lbt: localStorage.getItem('lbt'),
-      rbt: localStorage.getItem('rbt'),
+      lbt: readLocalStorage('lbt'),
+      rbt: readLocalStorage('rbt'),
     };
-    this.viewportTraceId = localStorage.getItem(viewportTraceStorageKey);
+    this.viewportTraceId = readLocalStorage(viewportTraceStorageKey);
     const leftBoundaryTime = savedTimes.lbt && Number.parseFloat(savedTimes.lbt);
     const rightBoundaryTime = savedTimes.rbt && Number.parseFloat(savedTimes.rbt);
     const dividersData = this.calculateGridOffsets();

@@ -2,7 +2,7 @@ import React from 'react';
 import { connect } from 'react-redux';
 
 import ActivityDetail from './ActivityDetail';
-import DraggableModal from './DraggableModal';
+import AppModal from './AppModal';
 import { hideActivityDetailModal } from '../actions';
 import type { ActivityDetailProps } from './ActivityDetail';
 
@@ -19,12 +19,12 @@ const ActivityDetailModal = (props: Props) => {
   } = props;
 
   return (
-    <DraggableModal
+    <AppModal
       isOpen={activityDetailModalVisible}
       onRequestClose={hideActivityDetailModal}
     >
       <ActivityDetail {...passedThroughProps} />
-    </DraggableModal>
+    </AppModal>
   );
 };
 

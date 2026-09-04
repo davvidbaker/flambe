@@ -1,6 +1,5 @@
-import { combineReducers, createStore } from 'redux';
+import { createStore } from 'redux';
 
-import * as reducers from '../reducers';
 import {
   processTimelineTrace,
   selectTrace,
@@ -8,9 +7,8 @@ import {
   USER_FETCH,
 } from '../actions';
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
+import { rootReducer } from '../rootReducer';
 import type { AppChartFixture } from './fixtureTrace';
-
-const rootReducer = combineReducers({ ...reducers });
 
 export function viewportForFixture(fixture: AppChartFixture, now = Date.now()) {
   const timestamps = fixture.events.map(event => event.timestamp);
@@ -22,6 +20,7 @@ export function viewportForFixture(fixture: AppChartFixture, now = Date.now()) {
 }
 
 export function seedChartViewport(fixture: AppChartFixture, now = Date.now()) {
+  if (typeof window === 'undefined') return;
   const { minTime, maxTime } = viewportForFixture(fixture, now);
   window.localStorage.setItem('lbt', String(minTime));
   window.localStorage.setItem('rbt', String(maxTime));

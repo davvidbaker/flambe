@@ -5,6 +5,7 @@ import { connect } from 'react-redux';
 import ActivityBlockDetails from './ActivityBlockDetails';
 import { getTimeline } from '../reducers/timeline';
 import { colors } from '../styles';
+import type { SettingsState } from '../reducers/settings';
 import type { TimelineState } from '../reducers/timeline';
 import type { FlameChartHandle } from '../types/FlameChartHandle';
 import type { ProcessedActivity, TraceBlock } from '../utilities/processTrace';
@@ -38,6 +39,7 @@ interface Props {
   focusedBlockActivity_id: number | string | null;
   focusedBlockIndex: number | null;
   hoveredBlockIndex?: number | null;
+  showActivityIds: boolean;
   yOffset: number;
 }
 
@@ -48,6 +50,7 @@ const Tooltip = ({
   hoveredBlockIndex,
   focusedBlockIndex,
   focusedBlockActivity_id,
+  showActivityIds,
   yOffset,
 }: Props) => {
   const hoveredBlock =
@@ -63,7 +66,9 @@ const Tooltip = ({
   const ending = hoveredBlock ? hoveredBlock.ending : undefined;
   const endMessage = hoveredBlock ? hoveredBlock.endMessage : undefined;
 
-  const name = hoveredActivity ? hoveredActivity.name : null;
+  const name = hoveredActivity
+    ? (showActivityIds ? String(hoveredActivity.id) : hoveredActivity.name)
+    : null;
   const startMessage = hoveredBlock ? hoveredBlock.startMessage : undefined;
 
   // ref={this.tooltip}
@@ -97,11 +102,12 @@ const Tooltip = ({
     </Div>
   );
 };
-export default connect((state: { timeline: TimelineState }) => {
+export default connect((state: { timeline: TimelineState; settings: SettingsState }) => {
   const timeline = getTimeline(state);
   return {
     focusedBlockActivity_id: timeline.focusedBlockActivity_id,
     focusedBlockIndex: timeline.focusedBlockIndex,
     hoveredBlockIndex: timeline.hoveredBlockIndex,
+    showActivityIds: state.settings.showActivityIds,
   };
 })(Tooltip);

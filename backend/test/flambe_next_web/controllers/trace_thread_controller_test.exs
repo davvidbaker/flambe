@@ -67,6 +67,51 @@ defmodule FlambeNextWeb.TraceThreadControllerTest do
     assert response(conn, 204) == ""
   end
 
+  test "reorders threads owned by the current user", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Order User", username: "order-user"})
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> post(~p"/api/traces", %{"trace" => %{"name" => "Order trace"}})
+
+    trace_id = json_response(conn, 201)["data"]["id"]
+    main_id = json_response(conn, 201)["data"]["threads"] |> List.first() |> Map.fetch!("id")
+
+    conn =
+      conn
+      |> recycle()
+      |> post(~p"/api/threads", %{
+        "trace_id" => trace_id,
+        "thread" => %{"name" => "Later", "rank" => 1}
+      })
+
+    later_id = json_response(conn, 201)["data"]["id"]
+
+    conn =
+      conn
+      |> recycle()
+      |> put(~p"/api/traces/#{trace_id}/thread_order", %{"thread_ids" => [later_id, main_id]})
+
+    assert json_response(conn, 200) == %{
+             "data" => %{
+               "threads" => [
+                 %{"id" => later_id, "name" => "Later", "rank" => 0},
+                 %{"id" => main_id, "name" => "Main", "rank" => 1}
+               ]
+             }
+           }
+
+    conn =
+      conn
+      |> recycle()
+      |> put(~p"/api/traces/#{trace_id}/thread_order", %{"thread_ids" => [later_id]})
+
+    assert json_response(conn, 422) == %{
+             "errors" => %{"thread_ids" => ["must include each thread in this trace exactly once"]}
+           }
+  end
+
   test "does not expose or mutate another user's trace", %{conn: conn} do
     {:ok, owner} = Accounts.create_user(%{name: "Owner", username: "trace-owner"})
     {:ok, other_user} = Accounts.create_user(%{name: "Other", username: "trace-other"})

@@ -2,7 +2,7 @@ import { connect } from 'react-redux';
 
 import Timeline from '../components/Timeline';
 import type { TimelineProps } from '../components/Timeline';
-import type { RootState } from '../store';
+import type { RootState } from '../rootReducer';
 import type { EntityId } from '../types/ids';
 import {
   getTimeline,

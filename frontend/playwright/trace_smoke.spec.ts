@@ -319,6 +319,78 @@ test('starts a new activity through the command palette', async ({ page }) => {
   expect(pageErrors).toEqual([]);
 });
 
+test('hides threads across reload and persists a manual thread order', async ({ page }) => {
+  const hiddenStorageKey = 'flambe.thread-hidden-state.v1';
+
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+
+  const traceResponse = page.waitForResponse(response =>
+    response.request().method() === 'GET' && /\/api\/traces\/\d+$/.test(new URL(response.url()).pathname),
+  );
+
+  await page.getByRole('button', { name: 'Log In' }).click();
+  await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
+
+  const trace = await (await traceResponse).json();
+  const traceId = Number(trace.data.id);
+  const laterName = `Later ${Date.now()}`;
+
+  const createdThread = await page.evaluate(async ({ id, name }) => {
+    const response = await fetch('/api/threads', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ trace_id: id, thread: { name, rank: 99 } }),
+    });
+    return { status: response.status, body: await response.json() };
+  }, { id: traceId, name: laterName });
+  expect(createdThread.status).toBe(201);
+
+  await page.reload();
+  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Manage threads' }).click();
+  const attentionOrder = page.getByRole('checkbox', { name: 'Order by recent attention' });
+  if (await attentionOrder.isChecked()) {
+    await attentionOrder.uncheck();
+  }
+  await page.getByRole('checkbox', { name: `Show ${laterName}` }).uncheck();
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        ({ storageKey, id }) => JSON.parse(localStorage.getItem(storageKey) || '{}')[id],
+        { storageKey: hiddenStorageKey, id: String(traceId) },
+      ),
+    )
+    .toEqual(expect.arrayContaining([createdThread.body.data.id]));
+
+  await page.reload();
+  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+  await page.getByRole('button', { name: 'Manage threads' }).click();
+  await expect(page.getByRole('checkbox', { name: `Show ${laterName}` })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: `Show ${laterName}` }).check();
+  const attentionOrderAfterReload = page.getByRole('checkbox', { name: 'Order by recent attention' });
+  if (await attentionOrderAfterReload.isChecked()) {
+    await attentionOrderAfterReload.uncheck();
+  }
+
+  const orderResponse = page.waitForResponse(response =>
+    response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === `/api/traces/${traceId}/thread_order`,
+  );
+  await page.getByRole('button', { name: `Reorder ${laterName}` }).dragTo(
+    page.getByRole('button', { name: 'Reorder Main' }),
+  );
+  const ordered = await orderResponse;
+  expect(ordered.ok()).toBe(true);
+
+  const afterOrder = await ordered.json();
+  expect(afterOrder.data.threads[0]).toMatchObject({ name: laterName, rank: 0 });
+});
+
 test('logs out through the UI and clears the protected session', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);

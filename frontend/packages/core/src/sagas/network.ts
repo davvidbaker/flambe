@@ -4,6 +4,7 @@ import {
   createToast,
   recordUndo,
   processTimelineTrace,
+  setHiddenThreads,
   updateActivity as updateActivityAction,
   ACTIVITY_CREATE_B,
   ACTIVITY_CREATE_Q,
@@ -22,10 +23,13 @@ import {
   THREAD_CREATE,
   THREAD_DELETE,
   THREAD_UPDATE,
+  THREAD_HIDE,
+  THREADS_REORDER,
   TODO_CREATE,
   TODO_BEGIN,
   TRACE_CREATE,
   TRACE_FETCH,
+  TRACE_FILTER,
   TRACE_SELECT,
   TRACE_DELETE,
   USER_FETCH,
@@ -33,6 +37,7 @@ import {
 import { getUser, type UserState } from '../reducers/user';
 import { getTimeline, type TimelineState } from '../reducers/timeline';
 import { getCollapsedThreadState } from '../utilities/threadCollapseState';
+import { getHiddenThreadIds, persistHiddenThreadIds } from '../utilities/threadHiddenState';
 import { navigate } from '../utilities/navigation';
 import type { SagaIterator } from 'redux-saga';
 import type { EntityId } from '../types/ids';
@@ -70,6 +75,7 @@ interface NetworkAction {
   id?: EntityId;
   message?: string;
   name?: string;
+  orderedIds?: EntityId[];
   phase?: EventPhase;
   rank?: number;
   thread_id?: EntityId;
@@ -359,6 +365,25 @@ function* updateThread({ type, id, updates }: NetworkAction): SagaIterator {
   });
 }
 
+function* persistHiddenThreads(): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  persistHiddenThreadIds(timeline.trace?.id, timeline.trace?.filterExcludes ?? []);
+}
+
+function* reorderThreads({ type, orderedIds }: NetworkAction): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  const traceId = timeline.trace?.id;
+  if (!traceId || !orderedIds) return;
+
+  yield* fetchResource(type, {
+    resource: { path: 'traces', id: `${traceId}/thread_order` },
+    params: {
+      method: 'PUT',
+      body: JSON.stringify({ thread_ids: orderedIds }),
+    },
+  });
+}
+
 function* deleteThread({ type, id }: NetworkAction): SagaIterator {
   yield* fetchResource(type, {
     resource: { path: 'threads', id },
@@ -430,6 +455,7 @@ function* processFetchedTrace({ data }: NetworkAction): SagaIterator {
       })),
     ),
   );
+  yield put(setHiddenThreads(getHiddenThreadIds(data.id)));
 }
 
 function* createThread({ type, name, rank }: NetworkAction): SagaIterator {
@@ -523,7 +549,11 @@ function* networkSaga(): SagaIterator {
 
   yield takeEvery(THREAD_CREATE, createThread);
   yield takeEvery(THREAD_DELETE, deleteThread);
+  yield takeEvery(THREAD_DELETE, persistHiddenThreads);
   yield takeEvery(THREAD_UPDATE, updateThread);
+  yield takeEvery(THREAD_HIDE, persistHiddenThreads);
+  yield takeEvery(THREADS_REORDER, reorderThreads);
+  yield takeEvery(TRACE_FILTER, persistHiddenThreads);
 
   yield takeLatest(USER_FETCH, fetchUser);
 

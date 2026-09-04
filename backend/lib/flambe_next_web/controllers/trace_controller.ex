@@ -49,6 +49,28 @@ defmodule FlambeNextWeb.TraceController do
     send_resp(conn, :no_content, "")
   end
 
+  def reorder_threads(conn, %{"id" => id, "thread_ids" => thread_ids}) do
+    trace = Traces.get_user_trace!(conn.assigns.current_user, id)
+
+    case Traces.reorder_threads(trace, thread_ids) do
+      {:ok, trace} ->
+        json(conn, %{
+          data: %{
+            threads: Enum.map(trace.threads, &%{id: &1.id, name: &1.name, rank: &1.rank})
+          }
+        })
+
+      {:error, :invalid_thread_ids} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: %{thread_ids: ["must include each thread in this trace exactly once"]}})
+    end
+  end
+
+  def reorder_threads(conn, %{"id" => id}) do
+    reorder_threads(conn, %{"id" => id, "thread_ids" => []})
+  end
+
   defp errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, _options} -> message end)
   end

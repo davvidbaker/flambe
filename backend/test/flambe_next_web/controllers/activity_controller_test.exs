@@ -1,8 +1,11 @@
 defmodule FlambeNextWeb.ActivityControllerTest do
   use FlambeNextWeb.ConnCase, async: true
 
-  alias FlambeNext.{Accounts, Traces}
+  import Ecto.Query
+
+  alias FlambeNext.{Accounts, Repo, Traces}
   alias FlambeNext.Accounts.ApiTokens
+  alias FlambeNext.Traces.Activity
 
   test "creates a timeline activity and returns it in the legacy trace payload", %{conn: conn} do
     {:ok, user} = Accounts.create_user(%{name: "Timeline User", username: "timeline-user"})
@@ -384,6 +387,251 @@ defmodule FlambeNextWeb.ActivityControllerTest do
     assert Traces.get_user_activity!(user, grand.id).thread_id == other.id
     assert Traces.get_user_activity!(user, child.id).parent_id == parent.id
     assert Traces.get_user_activity!(user, grand.id).parent_id == child.id
+  end
+
+  test "moves only selected direct children when move_child_ids is sent", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Select User", username: "select-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Select trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, other} = Traces.create_thread(trace, %{name: "Other", rank: 1})
+
+    {:ok, parent, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Parent"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    {:ok, keep, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        parent,
+        %{"name" => "Stays"},
+        %{"timestamp_integer" => 2, "phase" => "B"}
+      )
+
+    {:ok, take, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        parent,
+        %{"name" => "Comes along"},
+        %{"timestamp_integer" => 3, "phase" => "B"}
+      )
+
+    {:ok, grand, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        take,
+        %{"name" => "Grand comes too"},
+        %{"timestamp_integer" => 4, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{parent}", %{
+        "activity" => %{"thread_id" => other.id, "move_child_ids" => [take.id]}
+      })
+
+    assert %{"data" => %{"id" => parent_id, "thread_id" => moved_thread_id}} =
+             json_response(conn, 200)
+
+    assert parent_id == parent.id
+    assert moved_thread_id == other.id
+    assert Traces.get_user_activity!(user, take.id).thread_id == other.id
+    assert Traces.get_user_activity!(user, grand.id).thread_id == other.id
+    assert Traces.get_user_activity!(user, take.id).parent_id == parent.id
+    assert Traces.get_user_activity!(user, grand.id).parent_id == take.id
+    assert Traces.get_user_activity!(user, keep.id).thread_id == thread.id
+    assert Traces.get_user_activity!(user, keep.id).parent_id == nil
+  end
+
+  test "reparents leftover children to the remaining same-thread ancestor", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Reparent User", username: "reparent-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Reparent trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, other} = Traces.create_thread(trace, %{name: "Other", rank: 1})
+
+    {:ok, ancestor, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Stays as ancestor"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    {:ok, moved, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        ancestor,
+        %{"name" => "Moves away"},
+        %{"timestamp_integer" => 2, "phase" => "B"}
+      )
+
+    {:ok, leftover, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        moved,
+        %{"name" => "Stays behind"},
+        %{"timestamp_integer" => 3, "phase" => "B"}
+      )
+
+    {:ok, leftover_child, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        leftover,
+        %{"name" => "Stays with leftover"},
+        %{"timestamp_integer" => 4, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{moved}", %{
+        "activity" => %{"thread_id" => other.id, "move_child_ids" => []}
+      })
+
+    assert %{"data" => %{"id" => moved_id, "thread_id" => moved_thread_id, "parent_id" => nil}} =
+             json_response(conn, 200)
+
+    assert moved_id == moved.id
+    assert moved_thread_id == other.id
+    assert Traces.get_user_activity!(user, leftover.id).thread_id == thread.id
+    assert Traces.get_user_activity!(user, leftover.id).parent_id == ancestor.id
+    assert Traces.get_user_activity!(user, leftover_child.id).thread_id == thread.id
+    assert Traces.get_user_activity!(user, leftover_child.id).parent_id == leftover.id
+  end
+
+  test "move_child_ids empty list moves only the activity", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Solo Move", username: "solo-move"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Solo trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, other} = Traces.create_thread(trace, %{name: "Other", rank: 1})
+
+    {:ok, parent, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Parent"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    {:ok, child, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        parent,
+        %{"name" => "Child"},
+        %{"timestamp_integer" => 2, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{parent}", %{
+        "activity" => %{"thread_id" => other.id, "move_child_ids" => []}
+      })
+
+    assert %{"data" => %{"thread_id" => moved_thread_id}} = json_response(conn, 200)
+    assert moved_thread_id == other.id
+    assert Traces.get_user_activity!(user, child.id).thread_id == thread.id
+    assert Traces.get_user_activity!(user, child.id).parent_id == nil
+  end
+
+  test "clears parent_id when a child subtree moves without its parent", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Detach User", username: "detach-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Detach trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, other} = Traces.create_thread(trace, %{name: "Other", rank: 1})
+
+    {:ok, parent, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Stays put"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    {:ok, child, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        parent,
+        %{"name" => "Moves away"},
+        %{"timestamp_integer" => 2, "phase" => "B"}
+      )
+
+    {:ok, grand, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        child,
+        %{"name" => "Moves with child"},
+        %{"timestamp_integer" => 3, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{child}", %{"activity" => %{"thread_id" => other.id}})
+
+    assert %{
+             "data" => %{
+               "id" => child_id,
+               "thread_id" => moved_thread_id,
+               "parent_id" => nil
+             }
+           } = json_response(conn, 200)
+
+    assert child_id == child.id
+    assert moved_thread_id == other.id
+    assert Traces.get_user_activity!(user, parent.id).thread_id == thread.id
+    assert Traces.get_user_activity!(user, grand.id).thread_id == other.id
+    assert Traces.get_user_activity!(user, grand.id).parent_id == child.id
+  end
+
+  test "detach_cross_thread_parents clears orphaned parent links", %{conn: _conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Repair User", username: "repair-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Repair trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, other} = Traces.create_thread(trace, %{name: "Other", rank: 1})
+
+    {:ok, parent, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Parent"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    {:ok, child, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        parent,
+        %{"name" => "Child"},
+        %{"timestamp_integer" => 2, "phase" => "B"}
+      )
+
+    # Simulate the pre-fix broken state: child on other thread, parent_id still set.
+    Repo.update_all(from(a in Activity, where: a.id == ^child.id), set: [thread_id: other.id])
+
+    assert Traces.get_user_activity!(user, child.id).parent_id == parent.id
+    assert {1, _} = Traces.detach_cross_thread_parents()
+    assert Traces.get_user_activity!(user, child.id).parent_id == nil
+    assert Traces.get_user_activity!(user, parent.id).thread_id == thread.id
   end
 
   test "rejects moving an activity onto a thread from another trace", %{conn: conn} do
