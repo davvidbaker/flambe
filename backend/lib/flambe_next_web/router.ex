@@ -46,6 +46,7 @@ defmodule FlambeNextWeb.Router do
     resources "/observations", ObservationController, except: [:new, :edit]
     get "/agent-status", AgentStatusController, :show
     get "/agent-status/stream", AgentStatusStreamController, :show
+    post "/imports", ImportController, :create
     get "/users/:id", UserController, :show
     resources "/api-tokens", ApiTokenController, only: [:index, :create, :delete]
   end

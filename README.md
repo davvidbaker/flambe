@@ -3,6 +3,9 @@
 The Flambe timeline application lives in `frontend/packages/core` and is backed
 by the Phoenix 1.8 app in `backend`.
 
+**Unfinished work, uncommitted local piles, and follow-ups in other repos:**
+[docs/OPEN_WORK.md](docs/OPEN_WORK.md). Docs index: [docs/README.md](docs/README.md).
+
 ## Run locally
 
 Requirements: Node 22 LTS, Elixir 1.18/OTP 27, and PostgreSQL. Native Windows,
@@ -74,6 +77,38 @@ unless that variable is set. Seed the deterministic browser-test account with
 Private hosting is a single Fly.io Machine. Follow
 [the Phoenix 1.8 release checklist](docs/RELEASE_CHECKLIST.md). Keep `fly scale
 count` at 1; agent presence is in-memory.
+
+## Local mode (SQLite, no Elixir)
+
+To keep traces on one machine (for example a work laptop) instead of the Fly
+database, run the Node server from `cli`:
+
+```sh
+cd cli
+flambe serve
+```
+
+It binds `127.0.0.1:4001`, creates `~/.flambe/local.sqlite` if needed, and
+prints `FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID`. Put those in
+the project `.env` the CLI and agents use. Login in the browser accepts any
+password and opens the local user.
+
+The chart still lives in the Vite/Phoenix SPA. Point Vite at this process
+(`VITE_API_URL=http://127.0.0.1:4001`) or pass `--static` to `backend/priv/static`
+after `npm run build` in `frontend`. Live updates use the SPA’s existing 2s
+trace poll when the Phoenix socket is absent.
+
+Copy selected history onto production later:
+
+```sh
+flambe export work.json
+flambe import work.json --url https://your-app.fly.dev --token flb_...
+```
+
+Import creates a **new** trace on that account (or skips if that export was
+already imported). It does not upload tokens or credentials.
+
+See [ADR-009](docs/ADR-009-local-node-sqlite-and-on-demand-import.md).
 
 ## Coding-agent CLI
 
