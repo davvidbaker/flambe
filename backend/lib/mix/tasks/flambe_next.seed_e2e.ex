@@ -12,7 +12,8 @@ defmodule Mix.Tasks.FlambeNext.SeedE2e do
 
   @impl Mix.Task
   def run(_args) do
-    unless Mix.env() in [:dev, :test] do
+    unless Mix.env() in [:dev, :test] or
+             System.get_env("FLAMBE_ALLOW_E2E_SEED") in ~w(true 1) do
       Mix.raise("flambe_next.seed_e2e is available only in development and test")
     end
 
