@@ -41,7 +41,7 @@ class SplitPane extends Component<Props, State> {
     const children = React.Children.toArray(this.props.children);
     if (children.length !== 2) return null;
     const primary = this.props.primary ?? 'first'; const size = this.getSize(); const horizontal = this.props.split === 'horizontal';
-    const paneStyle: React.CSSProperties = { flex: '1 1 0', minHeight: 0, minWidth: 0, overflow: 'hidden' };
+    const paneStyle: React.CSSProperties = { flex: '1 1 0', minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' };
     const primaryPaneStyle: React.CSSProperties = { ...paneStyle, flex: `0 0 ${size}px`, ...(horizontal ? { height: size } : { width: size }) };
     return <div ref={this.setRoot} style={{ display: 'flex', flexDirection: horizontal ? 'column' : 'row', height: '100%', overflow: 'hidden', width: '100%' }}>
       <div style={primary === 'first' ? primaryPaneStyle : paneStyle}>{children[0]}</div>
