@@ -6,6 +6,7 @@ final class FlambeMenuBarApp: NSObject, NSApplicationDelegate {
   private let endpoint = Endpoint.fromProcess()
   private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
   private let connectionMenuItem = NSMenuItem(title: "Checking Flambe…", action: nil, keyEquivalent: "")
+  private let urlMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
   private let previewMenuItem = NSMenuItem(title: "Preview Disconnected Flame", action: nil, keyEquivalent: "")
   private var statusStream: AgentStatusStream?
   private var reconnectWorkItem: DispatchWorkItem?
@@ -36,7 +37,10 @@ final class FlambeMenuBarApp: NSObject, NSApplicationDelegate {
     button.image = icon(activeAgentCount: nil)
 
     let menu = NSMenu()
+    urlMenuItem.title = endpoint.statusStreamURL.absoluteString
+    urlMenuItem.isEnabled = false
     menu.addItem(connectionMenuItem)
+    menu.addItem(urlMenuItem)
     menu.addItem(NSMenuItem.separator())
 
     let reconnect = NSMenuItem(title: "Reconnect", action: #selector(reconnectStatusStream), keyEquivalent: "r")
