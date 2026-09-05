@@ -14,7 +14,8 @@ defmodule FlambeNextWeb.UserController do
       mantras: Accounts.list_user_mantras(user),
       attentions: Accounts.list_user_attentions(user),
       tabs: Accounts.list_user_tabs(user),
-      search_terms: Accounts.list_user_search_terms(user)
+      search_terms: Accounts.list_user_search_terms(user),
+      observations: Accounts.list_user_observations(user)
     )
   end
 end

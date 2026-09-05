@@ -724,6 +724,7 @@ test('CLI commands print machine-friendly output', async () => {
     },
     async threads() { calls.push(['threads']); return [{ id: 2, name: 'Main', rank: 0, default: true }]; },
     async categories() { calls.push(['categories']); return [{ id: 5, name: 'Work', color_background: '#fff', color_text: '#000' }]; },
+    async observe(input) { calls.push(['observe', input]); return 88; },
   };
 
   await run(['start', 'Inspect', 'auth', '--description', 'Agent work', '--category', '5', '--started-at', '2026-09-01T20:00:00-06:00'], { stdout, client });
@@ -733,8 +734,9 @@ test('CLI commands print machine-friendly output', async () => {
   await run(['status', '--active', '--json'], { stdout, client });
   await run(['threads'], { stdout, client });
   await run(['categories', '--json'], { stdout, client });
+  await run(['observe', 'carbon', '312.4', '--unit', 'gCO2eq/kWh', '--on', '2026-09-04', '--payload', '{"source":"us-ba-mean"}'], { stdout, client });
 
-  assert.deepEqual(output, ['123\n', '456\n', '457\n', '458\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"threadName":"Main","categoryIds":[5],"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n', '2\t0\tMain\tdefault\n', '[{"id":5,"name":"Work","color_background":"#fff","color_text":"#000"}]\n']);
+  assert.deepEqual(output, ['123\n', '456\n', '457\n', '458\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"threadName":"Main","categoryIds":[5],"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n', '2\t0\tMain\tdefault\n', '[{"id":5,"name":"Work","color_background":"#fff","color_text":"#000"}]\n', '88\n']);
   assert.deepEqual(calls, [
     ['flushQueue'],
     ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined, categoryIds: ['5'], startedAt: '2026-09-01T20:00:00-06:00' }],
@@ -750,5 +752,7 @@ test('CLI commands print machine-friendly output', async () => {
     ['threads'],
     ['flushQueue'],
     ['categories'],
+    ['flushQueue'],
+    ['observe', { kind: 'carbon', value: 312.4, unit: 'gCO2eq/kWh', observedOn: '2026-09-04', payload: { source: 'us-ba-mean' }, at: undefined }],
   ]);
 });

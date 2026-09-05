@@ -9,6 +9,7 @@ const usage = `Usage:
   flambe threads [--json]
   flambe categories [--json]
   flambe ping
+  flambe observe <kind> <value> [--unit <unit>] [--on <YYYY-MM-DD>] [--payload <json>] [--at <ISO-8601>]
 
 Configuration:
   Loads .env from the current working directory.
@@ -111,6 +112,67 @@ function parseStatus(args) {
   return { activeOnly, suspendedOnly, json };
 }
 
+function parseObserve(args) {
+  const positional = [];
+  let unit;
+  let observedOn;
+  let payload;
+  let at;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--unit') {
+      unit = args[index + 1];
+      if (unit === undefined) throw new Error('--unit requires a value');
+      index += 1;
+    } else if (arg === '--on') {
+      observedOn = args[index + 1];
+      if (observedOn === undefined) throw new Error('--on requires a value');
+      index += 1;
+    } else if (arg === '--payload') {
+      const raw = args[index + 1];
+      if (raw === undefined) throw new Error('--payload requires a JSON object');
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        throw new Error('--payload must be valid JSON');
+      }
+      if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
+        throw new Error('--payload must be a JSON object');
+      }
+      index += 1;
+    } else if (arg === '--at') {
+      at = args[index + 1];
+      if (at === undefined) throw new Error('--at requires a value');
+      index += 1;
+    } else if (arg.startsWith('--')) {
+      throw new Error(`Unknown option: ${arg}`);
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  const [kind, valueText, ...rest] = positional;
+  if (!kind || valueText === undefined || rest.length > 0) {
+    throw new Error('Usage: flambe observe <kind> <value> [--unit <unit>] [--on <YYYY-MM-DD>] [--payload <json>] [--at <ISO-8601>]');
+  }
+
+  const value = Number(valueText);
+  if (!Number.isFinite(value)) throw new Error('value must be a finite number');
+  if (observedOn !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(observedOn)) {
+    throw new Error('--on must be YYYY-MM-DD');
+  }
+
+  return {
+    kind,
+    value,
+    unit,
+    observedOn,
+    payload,
+    at,
+  };
+}
+
 function parseJson(args) {
   if (args.length === 0) return false;
   if (args.length === 1 && args[0] === '--json') return true;
@@ -192,6 +254,12 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
   if (command === 'ping') {
     const trace = await flambe.getTrace();
     stdout.write(`${trace.id}\t${trace.name}\n`);
+    return;
+  }
+
+  if (command === 'observe') {
+    const observationId = await flambe.observe(parseObserve(args));
+    stdout.write(`${observationId}\n`);
     return;
   }
 

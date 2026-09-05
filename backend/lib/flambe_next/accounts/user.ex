@@ -2,7 +2,17 @@ defmodule FlambeNext.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias FlambeNext.Accounts.{Attention, Category, Credential, Mantra, SearchTerm, Tab, Todo}
+  alias FlambeNext.Accounts.{
+    Attention,
+    Category,
+    Credential,
+    Mantra,
+    Observation,
+    SearchTerm,
+    Tab,
+    Todo
+  }
+
   alias FlambeNext.Traces.Trace
 
   schema "users" do
@@ -17,6 +27,7 @@ defmodule FlambeNext.Accounts.User do
     has_many :attentions, Attention
     has_many :tabs, Tab
     has_many :search_terms, SearchTerm
+    has_many :observations, Observation
 
     timestamps(type: :utc_datetime)
   end

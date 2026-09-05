@@ -163,6 +163,17 @@ Both include each activity's thread name, category IDs, and its root-to-activity
 path.
 `flambe ping` verifies connectivity. The commands print machine-friendly IDs
 or JSON on stdout so agents can capture them easily.
+
+Generic overlays (carbon intensity, moods, and similar) are observations, not
+activities. Record them with:
+
+```sh
+flambe observe carbon 312.4 --unit gCO2eq/kWh --on 2026-09-04 --payload '{"source":"us-ba-mean"}'
+```
+
+The same `kind` + `--on` date upserts and merges `payload` keys, so a later
+Pulse job can attach kWh and forecast error without replacing the intensity
+fields. Omit `--on` to always insert (point-in-time moods).
 The server persists each event first and then broadcasts it over Phoenix
 Channels, so any open FlameChart updates live.
 

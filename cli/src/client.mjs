@@ -392,7 +392,45 @@ export class FlambeClient {
       end: input => this.postLifecycleEvent({ ...input, phase: 'E' }),
       suspend: input => this.postLifecycleEvent({ ...input, phase: 'S' }),
       resume: input => this.postLifecycleEvent({ ...input, phase: 'R' }),
+      observe: input => this.postObservation(input),
     });
+  }
+
+  async observe({ kind, value, unit, observedOn, payload, at }) {
+    if (!kind?.trim()) throw new Error('Observation kind is required');
+    const timestamp = this.resolveStartTimestamp(at);
+    const input = {
+      kind: kind.trim(),
+      value,
+      unit,
+      observedOn,
+      payload,
+      timestamp,
+    };
+
+    try {
+      return await this.postObservation(input);
+    } catch (error) {
+      if (!error?.retryable) throw error;
+      await this.queue.enqueue('observe', { input });
+      return 'queued';
+    }
+  }
+
+  async postObservation({ kind, value, unit, observedOn, payload, timestamp }) {
+    const body = {
+      observation: {
+        kind,
+        value,
+        timestamp_integer: timestamp,
+        ...(unit ? { unit } : {}),
+        ...(observedOn ? { observed_on: observedOn } : {}),
+        ...(payload ? { payload } : {}),
+      },
+    };
+
+    const response = await this.request('/api/observations', { method: 'POST', body });
+    return response.data.id;
   }
 }
 

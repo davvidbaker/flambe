@@ -43,6 +43,7 @@ defmodule FlambeNextWeb.Router do
     resources "/attentions", AttentionController, except: [:new, :edit]
     resources "/tabs", TabController, except: [:new, :edit]
     resources "/search_terms", SearchTermController, except: [:new, :edit]
+    resources "/observations", ObservationController, except: [:new, :edit]
     get "/agent-status", AgentStatusController, :show
     get "/agent-status/stream", AgentStatusStreamController, :show
     get "/users/:id", UserController, :show
