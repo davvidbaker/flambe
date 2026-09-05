@@ -1,27 +1,27 @@
 # Phoenix 1.8 release and rollback checklist
 
-Use this checklist when promoting the Phoenix 1.8/Vite stack beyond local
-development. It deliberately keeps the restored legacy database out of the
-deployment target.
+Use this checklist when promoting the Phoenix 1.8/Vite stack to the private
+Fly.io instance. Do not run these commands against `flambe_legacy_restored`.
+
+The deploy shape is recorded in [ADR-007](ADR-007-private-fly-instance.md):
+one Fly Machine, Fly Postgres, invite-code registration.
 
 ## Before release
 
-1. Confirm the target PostgreSQL database name and host. Do not run these
-   commands against `flambe_legacy_restored`.
+1. Confirm the target PostgreSQL database. Do not use `flambe_legacy_restored`.
 2. Use `pg_dump` and `pg_restore` from the PostgreSQL server's major version
-   or newer.
-3. Create a custom-format backup outside the repository and inspect it:
+   or newer. On Fly, also take a Postgres snapshot before deploy.
+3. Create a custom-format backup of local data if you still keep a laptop copy:
 
    ```sh
-   export FLAMBE_BACKUP_DIR=/absolute/path/outside/the/repository
+   export FLAMBE_BACKUP_DIR=/absolute/path/outside/the-repository
    pg_dump --format=custom \
      --file="$FLAMBE_BACKUP_DIR/flambe-next-pre-release.dump" \
      flambe_next_dev
    pg_restore --list "$FLAMBE_BACKUP_DIR/flambe-next-pre-release.dump"
    ```
 
-4. Run the release gates against a disposable database and the production
-   bundle:
+4. Run the release gates (includes MIX_ENV=prod CI via `prod-mode-smoke`):
 
    ```sh
    cd backend
@@ -34,32 +34,35 @@ deployment target.
    nvm exec 22 npm run test:smoke
    ```
 
-5. If a staging environment is introduced, verify local registration, login,
-   logout, timeline rendering, a thread rename, activity begin/end/delete, and
-   persisted thread collapse there. This project currently has local
-   environments only.
+5. Confirm these Fly secrets exist (`fly secrets list`):
+
+   - `SECRET_KEY_BASE` — `mix phx.gen.secret`
+   - `DATABASE_URL` — attached by `fly postgres attach`
+   - `FLAMBE_INVITE_CODE` — shared signup secret
+   - `PHX_HOST` — `your-app.fly.dev` (optional if `FLY_APP_NAME` is set)
+
+   `ECTO_SSL=true` is set in `fly.toml`. Keep Machine count at 1.
 
 ## Deploy
 
-1. Build the frontend with `nvm exec 22 npm run build`.
-2. Run `mix ecto.migrate` from `backend` against the intended target.
-3. Start Phoenix 1.8 and verify `GET /api/health` returns `{"status":"ok"}`.
-4. Run the browser smoke suite against the deployed origin with
-   `PLAYWRIGHT_BASE_URL=https://your-host nvm exec 22 npm run test:smoke`.
+1. From the repository root: `fly deploy`.
+2. The release command runs `/app/bin/migrate`.
+3. Verify `GET https://$PHX_HOST/api/health` returns `{"status":"ok"}`.
+4. Create an account at `/register` with `FLAMBE_INVITE_CODE`.
+5. In Settings → API tokens, mint a CLI token. Point project `.env` at
+   `FLAMBE_URL=https://$PHX_HOST`.
+6. Optionally run
+   `PLAYWRIGHT_BASE_URL=https://$PHX_HOST PLAYWRIGHT_INVITE_CODE=... nvm exec 22 npm run test:smoke`
+   against a disposable account.
 
 ## Roll back
 
-1. Stop the new application revision before restoring data.
-2. Restore only to the confirmed release target, never the legacy source:
-
-   ```sh
-   pg_restore --clean --if-exists --exit-on-error \
-     --dbname=flambe_next_dev \
-     /absolute/path/flambe-next-pre-release.dump
-   ```
-
-3. Start the previous application revision and check `/api/health` and login.
-4. Record the reason for rollback before attempting another release.
+1. Deploy the previous image (`fly releases` / `fly deploy --image`) before
+   restoring data if the schema moved.
+2. Restore Postgres from the pre-deploy snapshot or a `pg_restore` into the
+   Fly database only — never into `flambe_legacy_restored`.
+3. Check `/api/health` and login.
+4. Record the reason for rollback before another release.
 
 The retired Phoenix 1.3 source is available in Git history. Its database is not
 a deployment target and remains usable as a read-only import source.

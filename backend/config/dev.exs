@@ -56,6 +56,9 @@ config :flambe_next, FlambeNextWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :flambe_next, dev_routes: true
 
+# Local registration stays open unless FLAMBE_INVITE_CODE is set.
+config :flambe_next, invite_code: System.get_env("FLAMBE_INVITE_CODE")
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 

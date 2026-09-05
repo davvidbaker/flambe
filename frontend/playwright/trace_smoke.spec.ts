@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 const collapseStorageKey = 'flambe.thread-collapse-state.v1';
 const email = process.env.PLAYWRIGHT_EMAIL || 'e2e@flambe.local';
 const password = process.env.PLAYWRIGHT_PASSWORD || 'e2e-password';
+const inviteCode = process.env.PLAYWRIGHT_INVITE_CODE || 'test-invite';
 
 test('logs in, renders a trace, and persists thread collapse', async ({ page }) => {
   const pageErrors: string[] = [];
@@ -79,6 +80,7 @@ test('registers a local account and opens its private Main trace', async ({ page
   await page.getByLabel('Username').fill(account.username);
   await page.getByLabel('Email').fill(account.email);
   await page.getByLabel('Password').fill(account.password);
+  await page.getByLabel('Invite code').fill(inviteCode);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page).toHaveURL(/\/login$/);
 
@@ -112,6 +114,7 @@ test('renders overlapping root activities in separate flame-chart lanes', async 
   await page.getByLabel('Username').fill(account.username);
   await page.getByLabel('Email').fill(account.email);
   await page.getByLabel('Password').fill(account.password);
+  await page.getByLabel('Invite code').fill(inviteCode);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.getByLabel('Email').fill(account.email);

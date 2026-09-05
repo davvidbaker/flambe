@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import styled from 'styled-components';
 
 import AppModal from '../components/AppModal';
+import ApiTokensPanel from './ApiTokensPanel';
 import { hideSettings as hideSettingsAction, toggleSetting } from '../actions';
 import type { SettingsState } from '../reducers/settings';
 
@@ -197,6 +198,7 @@ const Settings = ({
           {DEVELOPER_SETTINGS.map(item => renderSetting(item, settings, toggleSetting))}
         </ul>
       </DeveloperPanel>
+      <ApiTokensPanel />
     </Wrapper>
   </AppModal>
 );
