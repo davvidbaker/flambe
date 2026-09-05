@@ -13,6 +13,9 @@ export function defaultQueuePath() {
 export const MAX_FLUSH_ATTEMPTS = 5;
 
 function describeEntry(entry) {
+  if (entry.type === 'observe') {
+    return `${entry.type} (${entry.input?.kind ?? '?'})`;
+  }
   return `${entry.type} (activity ${entry.activityId ?? entry.localId ?? '?'})`;
 }
 
@@ -87,7 +90,7 @@ export class FlambeQueue {
     await this.write(state);
   }
 
-  async flush({ start, end, suspend, resume }, { warn = warnToStderr } = {}) {
+  async flush({ start, end, suspend, resume, observe }, { warn = warnToStderr } = {}) {
     const state = await this.read();
 
     for (let index = 0; index < state.entries.length;) {
@@ -106,6 +109,8 @@ export class FlambeQueue {
           const post = { end, suspend, resume }[entry.type];
           await post({ activityId, message: entry.message, timestamp: entry.timestamp });
           if (entry.type === 'end') delete state.aliases[entry.activityId];
+        } else if (entry.type === 'observe') {
+          await observe(entry.input);
         } else {
           // An entry type this build does not understand can never succeed, so
           // dropping it is the only way to stop it wedging everything behind it.

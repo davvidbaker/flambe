@@ -9,7 +9,8 @@ defmodule FlambeNextWeb.UserJSON do
         mantras: mantras,
         attentions: attentions,
         tabs: tabs,
-        search_terms: search_terms
+        search_terms: search_terms,
+        observations: observations
       }) do
     %{
       data: %{
@@ -22,7 +23,8 @@ defmodule FlambeNextWeb.UserJSON do
         mantras: Enum.map(mantras, &mantra_data/1),
         attentionShifts: Enum.map(attentions, &attention_data/1),
         tabs: Enum.map(tabs, &tab_data/1),
-        searchTerms: Enum.map(search_terms, &search_term_data/1)
+        searchTerms: Enum.map(search_terms, &search_term_data/1),
+        observations: Enum.map(observations, &FlambeNextWeb.ObservationJSON.data/1)
       }
     }
   end

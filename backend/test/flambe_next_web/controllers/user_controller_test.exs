@@ -25,6 +25,7 @@ defmodule FlambeNextWeb.UserControllerTest do
                ],
                "id" => user.id,
                "mantras" => [],
+               "observations" => [],
                "name" => "Dashboard User",
                "searchTerms" => [],
                "tabs" => [],
