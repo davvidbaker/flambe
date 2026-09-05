@@ -108,7 +108,9 @@ defmodule FlambeNextWeb.TraceThreadControllerTest do
       |> put(~p"/api/traces/#{trace_id}/thread_order", %{"thread_ids" => [later_id]})
 
     assert json_response(conn, 422) == %{
-             "errors" => %{"thread_ids" => ["must include each thread in this trace exactly once"]}
+             "errors" => %{
+               "thread_ids" => ["must include each thread in this trace exactly once"]
+             }
            }
   end
 

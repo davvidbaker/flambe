@@ -246,7 +246,12 @@ defmodule FlambeNext.Traces do
   Parent links among the moved set are preserved. If the moved root's parent
   stays on the source thread, the moved root's `parent_id` is cleared (ADR-002).
   """
-  def move_activity_subtree(%User{} = user, %Activity{} = activity, thread_id, move_child_ids \\ :all) do
+  def move_activity_subtree(
+        %User{} = user,
+        %Activity{} = activity,
+        thread_id,
+        move_child_ids \\ :all
+      ) do
     activity = Repo.preload(activity, :thread)
 
     with {:ok, thread} <- same_trace_thread(user, activity, thread_id),
@@ -351,7 +356,11 @@ defmodule FlambeNext.Traces do
     |> Repo.update_all(set: [parent_id: nil, updated_at: now])
   end
 
-  defp same_trace_thread(%User{} = user, %Activity{thread: %Thread{trace_id: trace_id}}, thread_id) do
+  defp same_trace_thread(
+         %User{} = user,
+         %Activity{thread: %Thread{trace_id: trace_id}},
+         thread_id
+       ) do
     thread_id = normalize_id(thread_id)
 
     case thread_id && get_user_trace_thread(user, trace_id, thread_id) do

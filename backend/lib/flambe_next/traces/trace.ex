@@ -7,6 +7,7 @@ defmodule FlambeNext.Traces.Trace do
 
   schema "traces" do
     field :name, :string
+    field :import_key, :string
 
     belongs_to :user, User
     has_many :threads, Thread, on_delete: :delete_all

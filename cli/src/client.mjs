@@ -1,5 +1,19 @@
 import { FlambeQueue } from './queue.mjs';
 
+export function hostConfigFromEnv(env = process.env) {
+  const required = ['FLAMBE_URL', 'FLAMBE_API_TOKEN'];
+  const missing = required.filter(key => !env[key]?.trim());
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variable${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}`);
+  }
+
+  return {
+    baseUrl: env.FLAMBE_URL.replace(/\/+$/, ''),
+    token: env.FLAMBE_API_TOKEN,
+  };
+}
+
 export function configFromEnv(env = process.env) {
   const required = ['FLAMBE_URL', 'FLAMBE_API_TOKEN', 'FLAMBE_TRACE_ID'];
   const missing = required.filter(key => !env[key]?.trim());
@@ -417,6 +431,10 @@ export class FlambeClient {
     }
   }
 
+  async importBundle(bundle) {
+    return this.request('/api/imports', { method: 'POST', body: bundle });
+  }
+
   async postObservation({ kind, value, unit, observedOn, payload, timestamp }) {
     const body = {
       observation: {
@@ -436,6 +454,16 @@ export class FlambeClient {
 
 export function clientFromEnv(env = process.env, overrides = {}) {
   return new FlambeClient({ ...configFromEnv(env), queuePath: env.FLAMBE_QUEUE_PATH, ...overrides });
+}
+
+export function clientFromHostEnv(env = process.env, overrides = {}) {
+  return new FlambeClient({
+    ...hostConfigFromEnv(env),
+    ...agentIdentityFromEnv(env),
+    traceId: 1,
+    queuePath: env.FLAMBE_QUEUE_PATH,
+    ...overrides,
+  });
 }
 
 function compareEvents(a, b) {
