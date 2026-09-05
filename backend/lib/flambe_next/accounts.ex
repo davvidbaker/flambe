@@ -1,7 +1,17 @@
 defmodule FlambeNext.Accounts do
   import Ecto.Query
 
-  alias FlambeNext.Accounts.{Attention, Category, Mantra, SearchTerm, Tab, Todo, User}
+  alias FlambeNext.Accounts.{
+    Attention,
+    Category,
+    Mantra,
+    Observation,
+    SearchTerm,
+    Tab,
+    Todo,
+    User
+  }
+
   alias FlambeNext.Repo
 
   def create_user(attrs) do
@@ -180,6 +190,105 @@ defmodule FlambeNext.Accounts do
     do: search_term |> SearchTerm.changeset(attrs) |> Repo.update()
 
   def delete_search_term(%SearchTerm{} = search_term), do: Repo.delete(search_term)
+
+  def list_user_observations(%User{} = user, opts \\ []) do
+    query =
+      from(observation in Observation,
+        where: observation.user_id == ^user.id,
+        order_by: [asc: observation.timestamp]
+      )
+
+    query =
+      case Keyword.get(opts, :kind) do
+        kind when is_binary(kind) and kind != "" ->
+          from(observation in query, where: observation.kind == ^String.downcase(kind))
+
+        _ ->
+          query
+      end
+
+    Repo.all(query)
+  end
+
+  def get_user_observation!(%User{} = user, id) do
+    from(observation in Observation,
+      where: observation.id == ^id and observation.user_id == ^user.id
+    )
+    |> Repo.one!()
+  end
+
+  def upsert_observation(%User{} = user, attrs) do
+    attrs = stringify_keys(attrs)
+    kind = Observation.changeset(%Observation{}, attrs) |> Ecto.Changeset.get_field(:kind)
+    observed_on = parse_observed_on(Map.get(attrs, "observed_on"))
+
+    existing =
+      if is_binary(kind) and match?(%Date{}, observed_on) do
+        Repo.one(
+          from(observation in Observation,
+            where:
+              observation.user_id == ^user.id and observation.kind == ^kind and
+                observation.observed_on == ^observed_on
+          )
+        )
+      end
+
+    case existing do
+      nil ->
+        with {:ok, observation} <- create_observation(user, attrs) do
+          {:ok, observation, :created}
+        end
+
+      observation ->
+        with {:ok, observation} <- update_observation(observation, attrs) do
+          {:ok, observation, :updated}
+        end
+    end
+  end
+
+  def create_observation(%User{} = user, attrs) do
+    %Observation{user_id: user.id}
+    |> Observation.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_observation(%Observation{} = observation, attrs) do
+    observation
+    |> Observation.changeset(merge_payload(observation, attrs))
+    |> Repo.update()
+  end
+
+  def delete_observation(%Observation{} = observation), do: Repo.delete(observation)
+
+  defp stringify_keys(attrs) when is_map(attrs) do
+    Map.new(attrs, fn
+      {key, value} when is_atom(key) -> {Atom.to_string(key), value}
+      {key, value} -> {key, value}
+    end)
+  end
+
+  defp parse_observed_on(%Date{} = date), do: date
+
+  defp parse_observed_on(value) when is_binary(value) do
+    case Date.from_iso8601(value) do
+      {:ok, date} -> date
+      _ -> nil
+    end
+  end
+
+  defp parse_observed_on(_), do: nil
+
+  defp merge_payload(%Observation{} = observation, attrs) do
+    attrs = stringify_keys(attrs)
+
+    case Map.get(attrs, "payload") do
+      incoming when is_map(incoming) ->
+        Map.put(attrs, "payload", Map.merge(observation.payload || %{}, incoming))
+
+      _ ->
+        attrs
+    end
+  end
 
   def authenticate_by_email_password(email, password) do
     user =

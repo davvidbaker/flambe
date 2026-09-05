@@ -11,6 +11,14 @@ import {
 interface TimedRecord { timestamp: number }
 export interface AttentionShift extends TimedRecord { thread_id: EntityId }
 export interface Mantra extends TimedRecord { name: string }
+export interface Observation extends TimedRecord {
+  id?: EntityId;
+  kind: string;
+  value: number;
+  unit?: string | null;
+  payload?: Record<string, unknown>;
+  observed_on?: string | null;
+}
 export interface SearchTerm extends TimedRecord { term: string }
 export interface TabCount extends TimedRecord { count: number; window_count: number }
 
@@ -22,6 +30,7 @@ export interface UserState {
   categories: Category[];
   todos: Todo[];
   mantras: Mantra[];
+  observations: Observation[];
   attentionShifts: AttentionShift[];
   searchTerms: SearchTerm[];
   tabs: TabCount[];
@@ -30,7 +39,7 @@ export interface UserState {
 
 const defaultState: UserState = {
   name: 'david', username: 'david', id: '1', traces: [], categories: [], todos: [],
-  mantras: [], attentionShifts: [], searchTerms: [], tabs: [],
+  mantras: [], observations: [], attentionShifts: [], searchTerms: [], tabs: [],
 };
 
 type IncomingTimedRecord<T extends TimedRecord> = Omit<T, 'timestamp'> & { timestamp: number | string };
@@ -85,6 +94,7 @@ function user(state: UserState = defaultState, action: UserAction): UserState {
         ...data,
         attentionShifts: (data.attentionShifts ?? []).map((record: IncomingTimedRecord<AttentionShift>) => normalizeTimestamp(record)),
         mantras: sortByTime<Mantra>(data.mantras),
+        observations: sortByTime<Observation>(data.observations ?? []),
         searchTerms: sortByTime<SearchTerm>(data.searchTerms),
         tabs: sortByTime<TabCount>(data.tabs),
       } as UserState;

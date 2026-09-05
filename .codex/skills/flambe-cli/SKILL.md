@@ -29,7 +29,10 @@ flambe start "Add Windows support" --root     # new top-level workstream
 flambe end "$ID" "Resolved USERPROFILE on Windows"
 flambe suspend "$ID" "Waiting for product decision"   # only when explicitly tabling work
 flambe resume "$ID" "Decision received"
+flambe observe carbon 312.4 --unit gCO2eq/kWh --on 2026-09-04 --payload '{"source":"us-ba-mean"}'
 ```
+
+`observe` writes a user overlay (carbon, mood, …), not an activity. Same `kind` + `--on` date upserts and merges payload keys. Omit `--on` to always insert.
 
 **255-character hard limit on activity names and `--description`.** The column is `varchar(255)`. A longer value returns a 500 and can wedge the offline queue. Count before `start`. Prefer a short concrete name; put detail in the end/suspend/resume message (those are unbounded).
 
