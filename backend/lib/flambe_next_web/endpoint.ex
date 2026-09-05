@@ -34,6 +34,7 @@ defmodule FlambeNextWeb.Endpoint do
     from: :flambe_next,
     gzip: not code_reloading?,
     only: FlambeNextWeb.static_paths(),
+    only_matching: ~w(favicon),
     raise_on_missing_only: code_reloading?
 
   # Code reloading can be explicitly enabled under the
