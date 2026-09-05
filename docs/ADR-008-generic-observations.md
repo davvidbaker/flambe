@@ -51,6 +51,6 @@ this decision.
 
 ## Follow-ups
 
-- CLI `observe` and HTTP CRUD
-- Dagster daily US intensity post
-- Pulse kgCO₂ and forecast-error payload merge
+Done in-repo: HTTP CRUD, `flambe observe`, dashboard user payload includes
+`observations`. Remaining work (Dagster+ deploy, Pulse kgCO₂ / forecast error,
+chart rendering, moods) lives in [OPEN_WORK.md](OPEN_WORK.md).
