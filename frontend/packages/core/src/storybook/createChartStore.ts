@@ -27,9 +27,17 @@ export function seedChartViewport(fixture: AppChartFixture, now = Date.now()) {
   window.localStorage.setItem('flambe.timeline.viewport-trace-id.v1', String(fixture.traceId));
 }
 
-export function createChartStore(fixture: AppChartFixture, now = Date.now()) {
+export function createChartStore(
+  fixture: AppChartFixture,
+  now = Date.now(),
+  extras: {
+    mantras?: { name: string; timestamp: number }[];
+    traces?: { id: AppChartFixture['traceId']; name: string }[];
+  } = {},
+) {
   const store = createStore(rootReducer);
   const { minTime, maxTime } = viewportForFixture(fixture, now);
+  const traces = extras.traces ?? [{ id: fixture.traceId, name: fixture.traceName }];
 
   store.dispatch({
     type: `${USER_FETCH}_SUCCEEDED`,
@@ -39,7 +47,8 @@ export function createChartStore(fixture: AppChartFixture, now = Date.now()) {
       username: 'storybook',
       categories: fixture.categories,
       attentionShifts: fixture.attentionShifts,
-      traces: [{ id: fixture.traceId, name: fixture.traceName }],
+      mantras: extras.mantras ?? [{ name: 'Ship the favicon', timestamp: now }],
+      traces,
     },
   });
   store.dispatch(selectTrace({ id: fixture.traceId, name: fixture.traceName }));
