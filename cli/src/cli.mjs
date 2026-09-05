@@ -1,4 +1,9 @@
-import { clientFromEnv } from './client.mjs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { clientFromEnv, clientFromHostEnv } from './client.mjs';
+import { listenLocal, printServeBanner, defaultDbPath } from './local/serve.mjs';
+import { LocalStore } from './local/store.mjs';
 
 const usage = `Usage:
   flambe start <activity name> [--description <text>] [--thread <id>] [--parent <id> | --root] [--category <id>...] [--started-at <ISO-8601>]
@@ -10,6 +15,9 @@ const usage = `Usage:
   flambe categories [--json]
   flambe ping
   flambe observe <kind> <value> [--unit <unit>] [--on <YYYY-MM-DD>] [--payload <json>] [--at <ISO-8601>]
+  flambe serve [--port <n>] [--db <path>] [--static <dir>]
+  flambe export [file] [--db <path>]
+  flambe import <file> [--url <url>] [--token <token>]
 
 Configuration:
   Loads .env from the current working directory.
@@ -24,7 +32,10 @@ Optional:
   FLAMBE_AGENT_ID    Stable ID for this running agent; enables named flame lanes.
                      Derived from Codex, Cursor, or Claude Code session env when unset.
   FLAMBE_AGENT_NAME  Display name for this agent's lane. Do not put this in .env.
-  FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)`;
+  FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)
+  FLAMBE_LOCAL_DB    SQLite path for flambe serve / export (default: ~/.flambe/local.sqlite)
+
+serve / export do not need FLAMBE_URL. import needs FLAMBE_URL and FLAMBE_API_TOKEN (the production instance).`;
 
 function parseStart(args) {
   const nameParts = [];
@@ -179,11 +190,100 @@ function parseJson(args) {
   throw new Error(`Unknown option: ${args[0]}`);
 }
 
+function takeOption(args, name) {
+  const index = args.indexOf(name);
+  if (index === -1) return { value: undefined, rest: args };
+  const value = args[index + 1];
+  if (value === undefined) throw new Error(`${name} requires a value`);
+  return { value, rest: [...args.slice(0, index), ...args.slice(index + 2)] };
+}
+
+function parseServe(args, env) {
+  let rest = args;
+  let port;
+  let dbPath;
+  let staticDir;
+  ({ value: port, rest } = takeOption(rest, '--port'));
+  ({ value: dbPath, rest } = takeOption(rest, '--db'));
+  ({ value: staticDir, rest } = takeOption(rest, '--static'));
+  if (rest.length > 0) throw new Error(`Unknown option: ${rest[0]}`);
+  return {
+    port: port ? Number(port) : 4001,
+    dbPath: dbPath ?? env.FLAMBE_LOCAL_DB ?? defaultDbPath(),
+    staticDir,
+  };
+}
+
+function parseExport(args, env) {
+  let rest = args;
+  let dbPath;
+  ({ value: dbPath, rest } = takeOption(rest, '--db'));
+  const positional = rest.filter(arg => !arg.startsWith('--'));
+  const unknown = rest.filter(arg => arg.startsWith('--'));
+  if (unknown.length > 0) throw new Error(`Unknown option: ${unknown[0]}`);
+  if (positional.length > 1) throw new Error('Usage: flambe export [file] [--db <path>]');
+  return {
+    file: positional[0] ?? 'flambe-export.json',
+    dbPath: dbPath ?? env.FLAMBE_LOCAL_DB ?? defaultDbPath(),
+  };
+}
+
+function parseImport(args) {
+  let rest = args;
+  let url;
+  let token;
+  ({ value: url, rest } = takeOption(rest, '--url'));
+  ({ value: token, rest } = takeOption(rest, '--token'));
+  const positional = rest.filter(arg => !arg.startsWith('--'));
+  const unknown = rest.filter(arg => arg.startsWith('--'));
+  if (unknown.length > 0) throw new Error(`Unknown option: ${unknown[0]}`);
+  if (positional.length !== 1) throw new Error('Usage: flambe import <file> [--url <url>] [--token <token>]');
+  return { file: positional[0], url, token };
+}
+
 export async function run(argv, { env = process.env, stdout = process.stdout, client } = {}) {
   const [command, ...args] = argv;
 
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     stdout.write(`${usage}\n`);
+    return;
+  }
+
+  if (command === 'serve') {
+    const options = parseServe(args, env);
+    const listening = await listenLocal(options);
+    printServeBanner(listening, stdout);
+    await new Promise((resolveClose, reject) => {
+      listening.server.on('close', resolveClose);
+      listening.server.on('error', reject);
+    });
+    return;
+  }
+
+  if (command === 'export') {
+    const { file, dbPath } = parseExport(args, env);
+    const store = new LocalStore(dbPath);
+    try {
+      const bundle = store.exportBundle();
+      const outPath = resolve(file);
+      writeFileSync(outPath, `${JSON.stringify(bundle, null, 2)}\n`);
+      stdout.write(`${outPath}\n`);
+    } finally {
+      store.close();
+    }
+    return;
+  }
+
+  if (command === 'import') {
+    const { file, url, token } = parseImport(args);
+    const bundle = JSON.parse(readFileSync(resolve(file), 'utf8'));
+    const flambe = client ?? clientFromHostEnv({
+      ...env,
+      ...(url ? { FLAMBE_URL: url } : {}),
+      ...(token ? { FLAMBE_API_TOKEN: token } : {}),
+    });
+    const result = await flambe.importBundle(bundle);
+    stdout.write(`${JSON.stringify(result.data ?? result)}\n`);
     return;
   }
 
