@@ -23,3 +23,6 @@ macOS, so it remains open after the terminal command completes. The helper
 holds one authenticated Server-Sent Events connection to Flambe; it does not
 poll. If that connection drops, it reconnects after five seconds. Use the
 menu-bar icon to reconnect manually or quit the helper.
+
+Windows has the same helper in the notification area:
+[`windows/FlambeTaskbar`](../../windows/FlambeTaskbar/README.md).
