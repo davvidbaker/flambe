@@ -1,6 +1,9 @@
 import Config
 
-config :flambe_next, session_cookie_secure: true
+# Match the public URL scheme. Fly builds default to https; MIX_ENV=prod CI sets
+# PHX_URL_SCHEME=http for localhost, and WebKit will not store Secure cookies on HTTP.
+config :flambe_next,
+  session_cookie_secure: System.get_env("PHX_URL_SCHEME", "https") != "http"
 
 # Force using SSL in production. This also sets the "strict-security-transport" header,
 # known as HSTS. If you have a health check endpoint, you may want to exclude it below.
