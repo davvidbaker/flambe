@@ -51,6 +51,14 @@ defmodule FlambeNextWeb.Router do
     resources "/api-tokens", ApiTokenController, only: [:index, :create, :delete]
   end
 
+  # MCP is agent-facing rather than part of the browser API namespace. Reuse the same
+  # bearer-token authentication Flambe already exposes for external agents.
+  scope "/", FlambeNextWeb do
+    pipe_through [:api, :authenticated_api]
+
+    post "/mcp", McpController, :handle
+  end
+
   scope "/", FlambeNextWeb do
     pipe_through :spa
 
