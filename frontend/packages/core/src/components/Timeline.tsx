@@ -24,6 +24,7 @@ import {
 import {
   loadSuspendedActivityCount,
 } from '../utilities/timeline';
+import { scheduleIdleCallback } from '../utilities/requestIdleCallback';
 import type { Command } from '../constants/commands';
 import type { EntityId } from '../types/ids';
 import type { Category } from '../types/Category';
@@ -564,7 +565,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     topOffset: number;
   }>): void => {
     Object.assign(this, state);
-    requestIdleCallback(this.setLocalStorage.bind(this));
+    scheduleIdleCallback(this.setLocalStorage.bind(this));
   };
 
   showThreadDetail = (id: EntityId): void => {
