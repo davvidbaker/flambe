@@ -255,7 +255,21 @@ function parseImport(args) {
   return { file: positional[0], url, token };
 }
 
-export async function run(argv, { env = process.env, stdout = process.stdout, client } = {}) {
+function formatAction(action) {
+  if (action.type === 'create_child') return `created child ${action.activity_id} under ${action.parent_activity_id}`;
+  if (action.type === 'update_activity') return `updated activity ${action.activity_id}`;
+  return JSON.stringify(action);
+}
+
+function formatReducerNote(note) {
+  if (note.type === 'closed_descendants') {
+    const list = note.closedDescendants.map(item => `${item.activityId} (${item.activityName})`).join(', ');
+    return `reducer closed open descendants of ${note.activityId}: ${list}\n`;
+  }
+  return `reducer: ${JSON.stringify(note)}\n`;
+}
+
+export async function run(argv, { env = process.env, stdout = process.stdout, stderr = process.stderr, client } = {}) {
   const [command, ...args] = argv;
 
   if (!command || command === 'help' || command === '--help' || command === '-h') {
@@ -301,7 +315,10 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
     return;
   }
 
-  const flambe = client ?? clientFromEnv(env);
+  // Reducer notes go to stderr so stdout stays a machine-friendly id.
+  const onReducerNote = note => stderr.write(formatReducerNote(note));
+  const flambe = client ?? clientFromEnv(env, { onReducerNote });
+  flambe.onReducerNote ??= onReducerNote;
   await flambe.flushQueue?.();
 
   if (command === 'start') {
@@ -387,6 +404,10 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
       stdout.write(`assessment\t${decision.assessment}\n`);
       stdout.write(`direction\t${decision.direction ?? '-'}\n`);
       stdout.write(`reply\t${decision.reply ?? '-'}\n`);
+      const applied = (decision.actions_applied ?? []).filter(action => action.type !== 'no_op');
+      if (applied.length > 0) {
+        stdout.write(`actions\t${applied.map(formatAction).join('; ')}\n`);
+      }
     }
     return;
   }
