@@ -506,6 +506,97 @@ test('end --force closes a parent even when children are still open', async () =
   assert.equal(posted.event.phase, 'E');
 });
 
+test('end reports descendants the reducer closed on its behalf', async () => {
+  const notes = [];
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 3,
+    now: () => 456,
+    onReducerNote: note => notes.push(note),
+    fetchImpl: async () => jsonResponse({
+      data: {
+        id: 99,
+        phase: 'E',
+        reducer: {
+          closed_descendants: [
+            { activity_id: 12, activity_name: 'Grandchild', event_id: 97 },
+            { activity_id: 11, activity_name: 'Child work', event_id: 98 },
+          ],
+        },
+      },
+    }, 201),
+  });
+
+  assert.equal(await client.end({ activityId: 10, message: 'Forced', force: true }), 99);
+  assert.deepEqual(notes, [{
+    type: 'closed_descendants',
+    activityId: 10,
+    closedDescendants: [
+      { activityId: 12, activityName: 'Grandchild', eventId: 97 },
+      { activityId: 11, activityName: 'Child work', eventId: 98 },
+    ],
+  }]);
+});
+
+test('cli end keeps the id on stdout and puts reducer closures on stderr', async () => {
+  const output = [];
+  const errors = [];
+  const client = {
+    flushQueue: async () => {},
+    async end() {
+      this.onReducerNote({
+        type: 'closed_descendants',
+        activityId: 10,
+        closedDescendants: [
+          { activityId: 12, activityName: 'Grandchild', eventId: 97 },
+          { activityId: 11, activityName: 'Child work', eventId: 98 },
+        ],
+      });
+      return 99;
+    },
+  };
+
+  await run(['end', '10', 'Forced close', '--force'], {
+    client,
+    stdout: { write: chunk => output.push(chunk) },
+    stderr: { write: chunk => errors.push(chunk) },
+  });
+
+  assert.deepEqual(output, ['99\n']);
+  assert.deepEqual(errors, ['reducer closed open descendants of 10: 12 (Grandchild), 11 (Child work)\n']);
+});
+
+test('cli message prints reducer actions when the reducer changed the stack', async () => {
+  const output = [];
+  await run(['message', 'Widening scope', '--activity', '9'], {
+    client: {
+      flushQueue: async () => {},
+      async message() {
+        return {
+          activityId: 9,
+          assessment: 'slightly_off_track',
+          direction: 'narrow_scope',
+          reply: 'Track the refactor separately.',
+          rationale: 'Refactor is its own unit.',
+          actions_applied: [{ type: 'create_child', activity_id: 31, parent_activity_id: 9 }],
+          reducer_model: 'gpt-5.6-terra',
+          escalated: true,
+        };
+      },
+    },
+    stdout: { write: chunk => output.push(chunk) },
+  });
+
+  assert.deepEqual(output, [
+    'activity\t9\n',
+    'assessment\tslightly_off_track\n',
+    'direction\tnarrow_scope\n',
+    'reply\tTrack the refactor separately.\n',
+    'actions\tcreated child 31 under 9\n',
+  ]);
+});
+
 test('cli end --force passes through to the client', async () => {
   const calls = [];
   const output = [];
@@ -736,7 +827,6 @@ test('message asks the reducer about this agent\'s newest active activity withou
         activity_id: 21,
         agent_id: 'cursor:conv-1',
         message: 'I want to refactor the whole session module while here.',
-        allow_stack_changes: false,
       },
     },
   });

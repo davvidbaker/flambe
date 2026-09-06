@@ -48,9 +48,9 @@ defmodule FlambeNext.ReducerAgent do
   end
 
   @doc """
-  Workers that maintain their own stack (the `flambe` CLI) ask the reducer for direction
-  only. Their decisions keep `assessment`/`direction`/`reply`, but any stack mutation the
-  model proposed is dropped so there is a single writer for that flame.
+  Callers that pass `allow_stack_changes: false` want advice only. Their decisions keep
+  `assessment`/`direction`/`reply`, but any stack mutation the model proposed is dropped.
+  The default (ADR-011) is that the reducer is the single writer and applies them.
   """
   def restrict_actions(actions, true), do: actions
 
