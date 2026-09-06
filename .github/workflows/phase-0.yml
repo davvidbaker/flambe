@@ -100,9 +100,9 @@ jobs:
       - name: Build Storybook for the app chart
         working-directory: frontend
         run: npm run build-storybook
-      - name: Install Playwright Chromium
+      - name: Install Playwright Chromium and WebKit
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
       - name: Build Vite frontend for Phoenix 1.8
         working-directory: frontend
         run: npm run build
@@ -180,9 +180,9 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
-      - name: Install Playwright Chromium
+      - name: Install Playwright Chromium and WebKit
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
       - name: Build Vite frontend for Phoenix 1.8
         working-directory: frontend
         run: npm run build

@@ -39,3 +39,38 @@ test('keeps the flame chart usable in a phone-sized viewport', async ({ page }) 
   }));
   expect(pageSize.scrollWidth).toBe(pageSize.clientWidth);
 });
+
+test('renders the post-login timeline on WebKit without requestIdleCallback', async ({ browserName, page }) => {
+  test.skip(browserName !== 'webkit', 'WebKit/Safari regression only');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  const pageErrors: string[] = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log In' }).click();
+  await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
+
+  await expect(page.getByRole('banner')).toBeVisible();
+  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+
+  const metrics = await page.evaluate(() => {
+    const canvas = document.querySelector('#chart-wrapper canvas');
+    const box = canvas?.getBoundingClientRect();
+    return {
+      hasIdle: typeof (window as Window & { requestIdleCallback?: unknown }).requestIdleCallback,
+      appHeight: Math.round(document.getElementById('app-root')?.getBoundingClientRect().height ?? 0),
+      canvasHeight: Math.round(box?.height ?? 0),
+      headerText: document.querySelector('header')?.textContent ?? '',
+    };
+  });
+
+  expect(metrics.hasIdle).toBe('undefined');
+  expect(metrics.appHeight).toBeGreaterThan(500);
+  expect(metrics.canvasHeight).toBeGreaterThan(500);
+  expect(metrics.headerText).toMatch(/Traces|Log out/);
+  expect(pageErrors.filter(message => /requestIdleCallback/i.test(message))).toEqual([]);
+});
