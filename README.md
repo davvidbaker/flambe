@@ -76,7 +76,9 @@ unless that variable is set. Seed the deterministic browser-test account with
 
 Private hosting is a single Fly.io Machine. Follow
 [the Phoenix 1.8 release checklist](docs/RELEASE_CHECKLIST.md). Keep `fly scale
-count` at 1; agent presence is in-memory.
+count` at 1; agent presence is in-memory. After a `main` deploy, `/api/health`
+returns that commit’s `git_sha`; the SPA logs it on load and lists it under
+Settings → Developer.
 
 ## Local mode (SQLite, no Elixir)
 

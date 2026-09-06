@@ -1,13 +1,19 @@
 # syntax=docker/dockerfile:1
 # Build from the repository root:
-#   docker build -t flambe .
+#   docker build -t flambe --build-arg GIT_SHA=$(git rev-parse HEAD) .
+
+ARG GIT_SHA=unknown
 
 FROM node:22-bookworm-slim AS assets
+ARG GIT_SHA=unknown
+ENV VITE_GIT_SHA=$GIT_SHA
 WORKDIR /app/frontend
 COPY frontend/ ./
 RUN npm ci && npm run build
 
 FROM elixir:1.18.3-otp-27 AS builder
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
 WORKDIR /app
 
 RUN apt-get update -y && apt-get install -y build-essential git \
@@ -31,6 +37,9 @@ RUN chmod +x rel/overlays/bin/server rel/overlays/bin/migrate \
   && mix release
 
 FROM debian:bookworm-slim
+
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
 
 RUN apt-get update -y && \
   apt-get install -y libstdc++6 openssl libncurses6 locales ca-certificates \
