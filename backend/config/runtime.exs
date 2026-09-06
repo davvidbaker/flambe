@@ -77,6 +77,9 @@ if config_env() == :prod do
       """
 
   config :flambe_next, invite_code: invite_code
+  # Keep the compile-time default in sync when the release is started with an
+  # explicit scheme (Endpoint reads this via Application.compile_env).
+  config :flambe_next, session_cookie_secure: url_scheme != "http"
   config :flambe_next, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :flambe_next, FlambeNextWeb.Endpoint,
