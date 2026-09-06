@@ -80,7 +80,7 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, agentId, agentName, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue }) {
+  constructor({ baseUrl, token, traceId, agentId, agentName, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.token = token;
     this.agentId = agentId;
@@ -88,6 +88,7 @@ export class FlambeClient {
     this.traceId = Number(traceId);
     this.fetch = fetchImpl;
     this.now = now;
+    this.onReducerNote = onReducerNote;
     this.queue = queue ?? new FlambeQueue({ baseUrl: this.baseUrl, traceId: this.traceId, path: queuePath });
   }
 
@@ -325,8 +326,10 @@ export class FlambeClient {
   }
 
   /**
-   * Refuse ending a parent while any direct child is still active (B/R).
-   * Skipped for offline-* ids (no server truth yet) and when `force` is set.
+   * Worker-side nudge to pop explicitly: refuse ending a parent while any direct child
+   * is still active (B/R). Nothing has been proposed yet, so nothing is dropped. With
+   * `force` the event is sent and the reducer closes the open descendants (ADR-011).
+   * Skipped for offline-* ids (no server truth yet).
    */
   async assertNoOpenChildren(activityId) {
     if (String(activityId).startsWith('offline-')) return;
@@ -398,6 +401,19 @@ export class FlambeClient {
       },
     });
 
+    const closed = payload.data.reducer?.closed_descendants ?? [];
+    if (closed.length > 0) {
+      this.onReducerNote?.({
+        type: 'closed_descendants',
+        activityId: Number(activityId),
+        closedDescendants: closed.map(item => ({
+          activityId: item.activity_id,
+          activityName: item.activity_name,
+          eventId: item.event_id,
+        })),
+      });
+    }
+
     return payload.data.id;
   }
 
@@ -437,9 +453,10 @@ export class FlambeClient {
   }
 
   /**
-   * Ask the Reducer Agent for direction. The CLI owns this worker's stack, so the
-   * reducer is told not to create or rename activities; it answers with
-   * assessment / direction / reply only. Never queued: a stale answer is useless.
+   * Send a free-text update to the Reducer Agent. It answers with assessment /
+   * direction / reply and, as the single writer for the stack (ADR-011), may apply at
+   * most one activity change, reported in `actions_applied`. Never queued: a stale
+   * answer is useless.
    */
   async message({ activityId, text }) {
     if (!text?.trim()) throw new Error('Message text is required');
@@ -468,7 +485,6 @@ export class FlambeClient {
             activity_id: id,
             ...(this.agentId ? { agent_id: this.agentId } : {}),
             message: text.trim(),
-            allow_stack_changes: false,
           },
         },
       },

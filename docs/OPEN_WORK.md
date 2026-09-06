@@ -27,7 +27,13 @@ Shipped on `main` the same day:
   without it the reducer could not reach OpenAI on Fly
 - `OPENAI_API_KEY` is set on Fly; a live `flambe_message` round-trip succeeded
 - `flambe message "<update>"` + [ADR-010](ADR-010-reducer-advises-worker-owned-stack.md):
-  the CLI asks the reducer for direction with `allow_stack_changes: false`
+  the CLI asks the reducer for direction
+- [ADR-011](ADR-011-reducer-owns-the-stack.md): the reducer owns the stack.
+  Deterministic path behind `POST /api/events` for agents (ending a parent
+  closes open descendants); `flambe message` allows stack changes again.
+  Not yet: model review when a structural rule fires, `direction` on lifecycle
+  events, server-side parent inference on `start`, deterministic reducer in
+  local `flambe serve`.
 
 Optional Fly secrets: `FLAMBE_REDUCER_PRIMARY_MODEL` / `FLAMBE_REDUCER_ESCALATION_MODEL`
 (defaults `gpt-5.6-luna` / `gpt-5.6-terra`). Local Phoenix needs `OPENAI_API_KEY`
@@ -35,7 +41,9 @@ in `.env`. Do not commit it.
 
 Reducer v1 explicitly stopped short of orchestration, worker spawning, and
 global-intent mutation. Open question from ADR-010: do agents actually obey a
-returned `direction`? The skill is the only enforcement.
+returned `direction`? The skill is the only enforcement. ADR-011's answer for
+structure is to enforce invariants server-side instead; `direction` stays
+advisory until the model path runs on lifecycle events.
 
 Untracked locally (do not treat as product work): root `package-lock.json`.
 

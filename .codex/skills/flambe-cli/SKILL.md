@@ -43,7 +43,7 @@ Reuse this conversation's activity id when you already have one. Run `flambe sta
 
 ## Ask the reducer before you drift
 
-You own the stack; the Reducer Agent owns global intent. `flambe message "<update>"` sends your update plus the whole flame to the reducer, which answers with `assessment`, `direction`, and `reply`. It never edits your activities.
+You propose stack transitions; the reducer owns the stack and global intent. `start`/`end` are proposals it records deterministically. If you end a parent with `--force` while descendants are open, the reducer ends them too and the CLI reports it on stderr. `flambe message "<update>"` sends your update plus the whole flame to the reducer, which answers with `assessment`, `direction`, and `reply`, and may make one change to the stack (a child under your activity, or a rename), listed in `actions_applied` and printed as `actions`. Treat that change as the new truth; do not undo it.
 
 Message the reducer when you are about to:
 
