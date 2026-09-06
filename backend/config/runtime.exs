@@ -25,6 +25,9 @@ default_port = if config_env() == :dev, do: "4001", else: "4000"
 config :flambe_next, FlambeNextWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", default_port))]
 
+# Fly/CI sets GIT_SHA at image build. Local Mix falls back to `git rev-parse`.
+config :flambe_next, git_sha: FlambeNext.BuildInfo.detect_git_sha()
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

@@ -5,6 +5,25 @@ const email = process.env.PLAYWRIGHT_EMAIL || 'e2e@flambe.local';
 const password = process.env.PLAYWRIGHT_PASSWORD || 'e2e-password';
 const inviteCode = process.env.PLAYWRIGHT_INVITE_CODE || 'test-invite';
 
+test('logs the server git SHA on load', async ({ page }) => {
+  const lines: string[] = [];
+  page.on('console', msg => {
+    if (msg.type() === 'info') lines.push(msg.text());
+  });
+
+  const health = await page.request.get('/api/health');
+  expect(health.ok()).toBeTruthy();
+  const body = (await health.json()) as { git_sha?: string; status?: string };
+  expect(body.status).toBe('ok');
+  expect(body.git_sha).toBeTruthy();
+
+  await page.goto('/login');
+  const short = body.git_sha!.slice(0, 7);
+  await expect
+    .poll(() => lines.some(line => line.includes('Flambe') && (line.includes(short) || line.includes('unavailable'))))
+    .toBe(true);
+});
+
 test('logs in, renders a trace, and persists thread collapse', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', error => pageErrors.push(error.message));

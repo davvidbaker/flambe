@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
 
@@ -6,6 +6,7 @@ import AppModal from '../components/AppModal';
 import ApiTokensPanel from './ApiTokensPanel';
 import { hideSettings as hideSettingsAction, toggleSetting } from '../actions';
 import type { SettingsState } from '../reducers/settings';
+import { commitUrl, fetchBuildInfo, shortSha, type BuildInfo } from '../utilities/buildInfo';
 
 type BooleanSettingKey = {
   [Key in keyof SettingsState]: SettingsState[Key] extends boolean ? Key : never;
@@ -131,6 +132,37 @@ const DeveloperPanel = styled.div`
   }
 `;
 
+const VersionBlock = styled.div`
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+
+  dt {
+    margin: 0 0 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #777;
+  }
+
+  dd {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    word-break: break-all;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  button {
+    margin-left: 8px;
+    font-size: 11px;
+  }
+`;
+
 interface Props {
   hideSettings: () => unknown;
   settings: SettingsState;
@@ -182,11 +214,32 @@ const Settings = ({
   hideSettings,
   settings,
   toggleSetting,
-}: Props) => (
-  <AppModal
-    isOpen={settingsVisible}
-    onRequestClose={hideSettings}
-  >
+}: Props) => {
+  const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
+
+  useEffect(() => {
+    if (!settingsVisible) return;
+    let cancelled = false;
+    fetchBuildInfo()
+      .then(info => {
+        if (!cancelled) setBuildInfo(info);
+      })
+      .catch(() => {
+        if (!cancelled) setBuildInfo({ git_sha: 'unknown' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settingsVisible]);
+
+  const sha = buildInfo?.git_sha ?? '…';
+  const url = buildInfo ? commitUrl(buildInfo.git_sha) : null;
+
+  return (
+    <AppModal
+      isOpen={settingsVisible}
+      onRequestClose={hideSettings}
+    >
     <Wrapper>
       <h1 style={{ marginTop: 0 }}>Settings</h1>
       <ul>
@@ -197,11 +250,34 @@ const Settings = ({
         <ul>
           {DEVELOPER_SETTINGS.map(item => renderSetting(item, settings, toggleSetting))}
         </ul>
+        <VersionBlock>
+          <dt>Deployed commit</dt>
+          <dd>
+            {url ? (
+              <a href={url} rel="noreferrer" target="_blank" title={sha}>
+                {shortSha(sha)}
+              </a>
+            ) : (
+              <span title={sha}>{shortSha(sha)}</span>
+            )}
+            {buildInfo && buildInfo.git_sha !== 'unknown' && (
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText(buildInfo.git_sha);
+                }}
+              >
+                Copy SHA
+              </button>
+            )}
+          </dd>
+        </VersionBlock>
       </DeveloperPanel>
       <ApiTokensPanel />
     </Wrapper>
-  </AppModal>
-);
+    </AppModal>
+  );
+};
 
 export default connect(
   (state: { settingsVisible: boolean; settings: SettingsState }) => ({

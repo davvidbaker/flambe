@@ -50,6 +50,9 @@ export default defineConfig(({ mode }) => {
       SERVER: JSON.stringify(useDevProxy ? '' : env.VITE_API_URL || ''),
       SOCKET_SERVER: JSON.stringify(useDevProxy ? '' : env.VITE_SOCKET_URL || ''),
       NODE_ENV: JSON.stringify(mode),
+      FLAMBE_ASSET_SHA: JSON.stringify(
+        process.env.VITE_GIT_SHA || process.env.GIT_SHA || env.VITE_GIT_SHA || 'unknown',
+      ),
     },
     // Phoenix serves the Vite output directory at /assets. Keep generated
     // files directly in that directory so URLs and on-disk paths match.

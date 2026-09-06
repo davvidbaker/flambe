@@ -4,6 +4,11 @@ defmodule FlambeNextWeb.HealthControllerTest do
   test "returns the API health status", %{conn: conn} do
     conn = get(conn, ~p"/api/health")
 
-    assert json_response(conn, 200) == %{"status" => "ok"}
+    response = json_response(conn, 200)
+
+    assert response == %{
+             "status" => "ok",
+             "git_sha" => FlambeNext.BuildInfo.git_sha()
+           }
   end
 end
