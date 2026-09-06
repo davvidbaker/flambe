@@ -5,6 +5,7 @@ import { throttle } from 'lodash/fp';
 import { getUser } from './reducers/user';
 import { rootReducer, type RootState } from './rootReducer';
 import { loadState, saveState } from './utilities';
+import { scheduleIdleCallback } from './utilities/requestIdleCallback';
 import sagas from './sagas';
 
 export type { RootState };
@@ -85,6 +86,6 @@ const stateSaver = () => {
   });
 };
 
-store.subscribe(throttle(1000, () => requestIdleCallback(stateSaver)));
+store.subscribe(throttle(1000, () => scheduleIdleCallback(stateSaver)));
 
 export default store;
