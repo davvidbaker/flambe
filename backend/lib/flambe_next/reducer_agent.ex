@@ -6,7 +6,10 @@ defmodule FlambeNext.ReducerAgent do
   The database is the source of truth. The reducer itself is stateless.
   """
 
+  import Ecto.Query
+
   alias FlambeNext.Accounts.User
+  alias FlambeNext.Repo
   alias FlambeNext.Traces
   alias FlambeNext.Traces.Activity
 
@@ -21,6 +24,8 @@ defmodule FlambeNext.ReducerAgent do
          {:ok, context} <- build_context(user, trace_id, activity_id),
          {:ok, decision} <- decide(context, agent_id, message),
          {:ok, applied} <- apply_actions(user, context, decision["actions"] || []) do
+      record_exchange(context, agent_id, message, decision)
+
       {:ok,
        %{
          assessment: decision["assessment"],
@@ -37,10 +42,17 @@ defmodule FlambeNext.ReducerAgent do
   defp build_context(user, trace_id, activity_id) do
     trace = Traces.get_user_trace!(user, trace_id)
     activity = Traces.get_user_trace_activity!(user, trace_id, activity_id)
-    activities = Traces.list_user_trace_activities(user, trace_id)
+
+    activities =
+      from(a in Activity,
+        join: thread in assoc(a, :thread),
+        join: trace in assoc(thread, :trace),
+        where: trace.id == ^trace_id and trace.user_id == ^user.id,
+        order_by: [asc: thread.rank, asc: a.id]
+      )
+      |> Repo.all()
 
     by_parent = Enum.group_by(activities, & &1.parent_id)
-
     ancestors = ancestors(activity, Map.new(activities, &{&1.id, &1}))
     children = Map.get(by_parent, activity.id, [])
 
@@ -96,6 +108,7 @@ defmodule FlambeNext.ReducerAgent do
     - A direction is authoritative when present. Workers are expected to obey it.
     - For routine on-track updates that need no guidance, direction and reply may be null.
     - Never create bookkeeping nodes for trivial progress messages.
+    - Return at most ONE action. Prefer no_op when a stack mutation is unnecessary.
     - Keep replies concise and operational.
 
     Allowed action types:
@@ -200,7 +213,7 @@ defmodule FlambeNext.ReducerAgent do
       not is_nil(direction) and direction not in @allowed_directions -> {:error, :invalid_model_response}
       not is_nil(reply) and not is_binary(reply) -> {:error, :invalid_model_response}
       not is_binary(rationale) -> {:error, :invalid_model_response}
-      not is_list(actions) -> {:error, :invalid_model_response}
+      not is_list(actions) or length(actions) > 1 -> {:error, :invalid_model_response}
       not valid_actions?(actions, context) -> {:error, :invalid_model_response}
       true -> :ok
     end
@@ -246,9 +259,7 @@ defmodule FlambeNext.ReducerAgent do
     end
   end
 
-  defp apply_action(_user, _context, %{"type" => "no_op"}) do
-    {:ok, %{type: "no_op"}}
-  end
+  defp apply_action(_user, _context, %{"type" => "no_op"}), do: {:ok, %{type: "no_op"}}
 
   defp apply_action(user, context, %{
          "type" => "create_child",
@@ -279,18 +290,50 @@ defmodule FlambeNext.ReducerAgent do
     end
   end
 
-  defp apply_action(user, context, %{"type" => "update_activity", "activity_id" => id} = action) do
-    activity = Traces.get_user_trace_activity!(user, context.trace.id, id)
+  defp apply_action(user, _context, %{"type" => "update_activity", "activity_id" => id} = action) do
+    activity = Traces.get_user_activity!(user, id)
 
     attrs =
       %{}
       |> maybe_put("name", action["name"])
       |> maybe_put("description", action["description"])
 
-    case Traces.update_activity(activity, attrs, activity.categories || []) do
+    case Traces.update_activity(activity, attrs, activity.categories) do
       {:ok, updated} -> {:ok, %{type: "update_activity", activity_id: updated.id}}
       {:error, changeset} -> {:error, {:invalid_action, changeset}}
     end
+  end
+
+  defp record_exchange(context, agent_id, message, decision) do
+    trace = Repo.get!(FlambeNext.Traces.Trace, context.trace.id)
+    activity = Repo.get!(Activity, context.current.id)
+    now = System.system_time(:millisecond)
+
+    _ =
+      Traces.create_event(trace, activity, %{
+        "phase" => "reducer_incoming",
+        "message" => "#{agent_id || "worker"}: #{message}",
+        "timestamp_integer" => now
+      })
+
+    summary =
+      [
+        "assessment=#{decision["assessment"]}",
+        decision["direction"] && "direction=#{decision["direction"]}",
+        decision["reply"] && "reply=#{decision["reply"]}",
+        "rationale=#{decision["rationale"]}"
+      ]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.join(" | ")
+
+    _ =
+      Traces.create_event(trace, activity, %{
+        "phase" => "reducer_decision",
+        "message" => summary,
+        "timestamp_integer" => now + 1
+      })
+
+    :ok
   end
 
   defp maybe_put(map, _key, nil), do: map
