@@ -110,6 +110,15 @@ already imported). It does not upload tokens or credentials.
 
 See [ADR-009](docs/ADR-009-local-node-sqlite-and-on-demand-import.md).
 
+## Desktop status flame
+
+A native helper shows whether agents have talked to Flambe in the last 30
+seconds (outlined / orange / blue sparkling flame). It uses one authenticated
+SSE connection to `/api/agent-status/stream`.
+
+- macOS: [`macos/FlambeMenuBar`](macos/FlambeMenuBar/README.md)
+- Windows: [`windows/FlambeTaskbar`](windows/FlambeTaskbar/README.md)
+
 ## Coding-agent CLI
 
 Flambe can accept user-scoped bearer tokens so coding agents can stream work
