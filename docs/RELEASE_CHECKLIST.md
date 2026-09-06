@@ -50,10 +50,13 @@ A push to `main` deploys after the Modernization validation workflow is green
 (`backend`, `cli`, `browser-smoke`, and `prod-mode-smoke`). That job needs the
 GitHub Actions secret `FLY_API_TOKEN` (a Fly deploy token for app `flambe`).
 
-To deploy by hand from the repository root: `fly deploy`.
+To deploy by hand from the repository root:
+`fly deploy --build-arg GIT_SHA=$(git rev-parse HEAD)`.
 
 1. The release command runs `/app/bin/migrate`.
-2. Verify `GET https://$PHX_HOST/api/health` returns `{"status":"ok"}`.
+2. Verify `GET https://$PHX_HOST/api/health` returns `status` and `git_sha`
+   matching that commit. The SPA logs the same SHA on load and shows it under
+   Settings → Developer.
 3. Create an account at `/register` with `FLAMBE_INVITE_CODE`.
 4. In Settings → API tokens, mint a CLI token. Point project `.env` at
    `FLAMBE_URL=https://$PHX_HOST`.
