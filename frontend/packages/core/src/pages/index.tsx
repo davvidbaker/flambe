@@ -18,7 +18,8 @@ const GlobalStyle = createGlobalStyle`
     box-sizing: border-box;
     font-family: sans-serif;
     overflow: hidden;
-
+    width: 100%;
+    height: 100%;
   }
 
   *::before, *::after {
@@ -31,7 +32,12 @@ const GlobalStyle = createGlobalStyle`
 
   body {
     position: relative;
+    width: 100%;
     height: 100vh;
+    height: 100dvh;
+    min-height: 100%;
+    margin: 0;
+    overflow: hidden;
     font-size: 12px;
   }
 
@@ -44,8 +50,24 @@ const GlobalStyle = createGlobalStyle`
   #app-root { 
     transition: transform 0.15s;
     background: ${colors.background};
-    height: 100%;
-    max-height:100vh;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* The trace page is a column: header + timeline. Let the timeline consume
+     the remaining viewport instead of asking it to be 100% tall in addition
+     to the header. min-height: 0 is required for nested measured flex panes. */
+  main {
+    flex: 1 1 auto !important;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto !important;
+    overflow: hidden;
   }
 
    .Resizer {

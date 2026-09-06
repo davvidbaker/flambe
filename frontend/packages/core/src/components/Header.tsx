@@ -18,8 +18,13 @@ const StyledHeader = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 4px;
   height: ${layout.headerHeight};
   box-sizing: border-box;
+
+  > * {
+    min-width: 0;
+  }
 
   /* Only header chrome — not the traces dropdown nested inside ToggleButton. */
   > button,
@@ -30,12 +35,48 @@ const StyledHeader = styled.header`
 
   h1 {
     margin: 0;
-    /* flex: 1; */
+    min-width: 0;
     text-align: center;
     font-size: 2em;
     color: ${tinycolor(colors.background)
       .darken(25)
       .toString()};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 640px) {
+    justify-content: flex-start;
+    gap: 4px;
+    height: 44px;
+    padding: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    > * {
+      flex: 0 0 auto;
+    }
+
+    > button,
+    > textarea {
+      min-height: 34px;
+      font-size: 12px;
+    }
+
+    h1 {
+      max-width: 40vw;
+      font-size: 14px;
+      line-height: 34px;
+      text-align: left;
+    }
   }
 `;
 
