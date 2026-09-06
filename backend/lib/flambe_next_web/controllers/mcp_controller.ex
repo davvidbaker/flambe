@@ -62,7 +62,7 @@ defmodule FlambeNextWeb.McpController do
          "params" => %{"name" => @tool_name, "arguments" => arguments}
        })
        when is_map(arguments) do
-    case ReducerAgent.handle(user, arguments) do
+    case call_reducer(user, arguments) do
       {:ok, result} ->
         {:ok,
          rpc_result(id, %{
@@ -96,6 +96,24 @@ defmodule FlambeNextWeb.McpController do
   end
 
   defp dispatch(_user, _params), do: {:error, :invalid_request}
+
+  # Keep the external-model runtime completely off the normal/local-only startup path.
+  # We only start OTP's HTTP client after an explicitly configured reducer is invoked.
+  defp call_reducer(user, arguments) do
+    case System.get_env("OPENAI_API_KEY") do
+      nil ->
+        {:error, :reducer_not_configured}
+
+      "" ->
+        {:error, :reducer_not_configured}
+
+      _api_key ->
+        case Application.ensure_all_started(:inets) do
+          {:ok, _apps} -> ReducerAgent.handle(user, arguments)
+          {:error, reason} -> {:error, {:reducer_http_runtime_failed, reason}}
+        end
+    end
+  end
 
   defp tool_definition do
     %{
