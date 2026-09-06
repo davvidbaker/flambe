@@ -2,23 +2,31 @@ defmodule FlambeNextWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :flambe_next
 
   # The browser session is encrypted, signed, HTTP-only, and scoped to the
-  # same site. Production deployments additionally require HTTPS transport.
+  # same site. Production HTTPS deployments also set Secure; HTTP prod CI
+  # (PHX_URL_SCHEME=http) must not, or WebKit drops the cookie.
   @session_options [
     store: :cookie,
     key: "_flambe_next_key",
     signing_salt: "wpvY4weL",
     encryption_salt: "eY8rV2mQ",
     http_only: true,
-    same_site: "Lax",
-    secure: Application.compile_env(:flambe_next, :session_cookie_secure, false)
+    same_site: "Lax"
   ]
+
+  def session_options do
+    Keyword.put(
+      @session_options,
+      :secure,
+      Application.get_env(:flambe_next, :session_cookie_secure, false)
+    )
+  end
 
   socket "/socket", FlambeNextWeb.UserSocket,
     # The SPA has no server-rendered CSRF token to include in the WebSocket
     # handshake. Authentication still comes exclusively from the encrypted,
     # same-site session cookie, and Phoenix validates the request origin.
     websocket: [
-      connect_info: [session: @session_options],
+      connect_info: [session: {__MODULE__, :session_options, []}],
       check_csrf: false,
       check_origin: true
     ],
@@ -54,6 +62,11 @@ defmodule FlambeNextWeb.Endpoint do
 
   plug Plug.MethodOverride
   plug Plug.Head
-  plug Plug.Session, @session_options
+  plug :session
   plug FlambeNextWeb.Router
+
+  defp session(conn, _opts) do
+    opts = Plug.Session.init(session_options())
+    Plug.Session.call(conn, opts)
+  end
 end
