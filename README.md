@@ -217,10 +217,14 @@ flambe message "Auth fix needs the session module refactored too; widening scope
 ```
 
 This posts the update and the current flame to `POST /mcp` (tool
-`flambe_message`) and prints `assessment`, `direction`, and `reply`. Because the
-CLI already owns this agent's stack, it sends `allow_stack_changes: false`, so
-the reducer steers but never creates or renames activities. A returned
-`direction` is meant to be followed. The server needs `OPENAI_API_KEY`; see
+`flambe_message`) and prints `assessment`, `direction`, and `reply`. The reducer
+is the single writer for the stack: it may apply one change (a child activity or
+a rename), printed as `actions`. A returned `direction` is meant to be followed.
+The server needs `OPENAI_API_KEY` for `message`; lifecycle events (`start`,
+`end`, `suspend`, `resume`) reduce deterministically and work without it. When
+an agent ends a parent with `--force` while descendants are still open, the
+reducer ends those too and the CLI reports it on stderr. See
+[ADR-011](docs/ADR-011-reducer-owns-the-stack.md) and
 [ADR-010](docs/ADR-010-reducer-advises-worker-owned-stack.md).
 
 Generic overlays (carbon intensity, moods, and similar) are observations, not
