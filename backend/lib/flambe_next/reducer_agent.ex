@@ -4,6 +4,8 @@ defmodule FlambeNext.ReducerAgent do
   and a direction back to the worker.
 
   The database is the source of truth. The reducer itself is stateless.
+  Routine reductions use a low-cost primary model; ambiguous or off-track cases
+  are automatically reviewed by a stronger escalation model before actions apply.
   """
 
   import Ecto.Query
@@ -15,6 +17,8 @@ defmodule FlambeNext.ReducerAgent do
 
   @allowed_assessments ~w(on_track slightly_off_track off_track blocked uncertain)
   @allowed_directions ~w(continue narrow_scope investigate change_approach pause stop escalate)
+  @escalating_assessments ~w(slightly_off_track off_track blocked uncertain)
+  @escalating_directions ~w(narrow_scope investigate change_approach pause stop escalate)
 
   def handle(%User{} = user, attrs) when is_map(attrs) do
     with {:ok, trace_id} <- positive_id(attrs["trace_id"] || attrs[:trace_id]),
@@ -22,9 +26,9 @@ defmodule FlambeNext.ReducerAgent do
          {:ok, message} <- required_string(attrs["message"] || attrs[:message]),
          agent_id <- optional_string(attrs["agent_id"] || attrs[:agent_id]),
          {:ok, context} <- build_context(user, trace_id, activity_id),
-         {:ok, decision} <- decide(context, agent_id, message),
+         {:ok, decision, model_info} <- decide(context, agent_id, message),
          {:ok, applied} <- apply_actions(user, context, decision["actions"] || []) do
-      record_exchange(context, agent_id, message, decision)
+      record_exchange(context, agent_id, message, decision, model_info)
 
       {:ok,
        %{
@@ -32,7 +36,9 @@ defmodule FlambeNext.ReducerAgent do
          direction: decision["direction"],
          reply: decision["reply"],
          rationale: decision["rationale"],
-         actions_applied: applied
+         actions_applied: applied,
+         reducer_model: model_info.final_model,
+         escalated: model_info.escalated
        }}
     end
   rescue
@@ -93,7 +99,84 @@ defmodule FlambeNext.ReducerAgent do
   end
 
   defp decide(context, agent_id, message) do
-    prompt = """
+    prompt = reducer_prompt(context, agent_id, message)
+    primary_model = primary_model()
+
+    case model_decision(primary_model, prompt, context) do
+      {:ok, primary_decision} ->
+        maybe_escalate(primary_decision, prompt, context, primary_model)
+
+      {:error, primary_error} ->
+        # Invalid or unavailable cheap-model output should fail safe by asking the
+        # stronger model rather than dropping a worker message or applying guesses.
+        escalation_model = escalation_model()
+
+        with {:ok, final_decision} <-
+               model_decision(
+                 escalation_model,
+                 escalation_prompt(prompt, nil, primary_error),
+                 context
+               ) do
+          {:ok, final_decision,
+           %{
+             primary_model: primary_model,
+             final_model: escalation_model,
+             escalated: true,
+             escalation_reason: "primary_model_error"
+           }}
+        end
+    end
+  end
+
+  defp maybe_escalate(primary_decision, prompt, context, primary_model) do
+    if escalation_needed?(primary_decision) do
+      escalation_model = escalation_model()
+
+      with {:ok, final_decision} <-
+             model_decision(
+               escalation_model,
+               escalation_prompt(prompt, primary_decision, nil),
+               context
+             ) do
+        {:ok, final_decision,
+         %{
+           primary_model: primary_model,
+           final_model: escalation_model,
+           escalated: true,
+           escalation_reason: escalation_reason(primary_decision)
+         }}
+      end
+    else
+      {:ok, primary_decision,
+       %{
+         primary_model: primary_model,
+         final_model: primary_model,
+         escalated: false,
+         escalation_reason: nil
+       }}
+    end
+  end
+
+  defp escalation_needed?(decision) do
+    decision["assessment"] in @escalating_assessments or
+      decision["direction"] in @escalating_directions
+  end
+
+  defp escalation_reason(decision) do
+    cond do
+      decision["assessment"] in @escalating_assessments ->
+        "assessment=#{decision["assessment"]}"
+
+      decision["direction"] in @escalating_directions ->
+        "direction=#{decision["direction"]}"
+
+      true ->
+        "policy"
+    end
+  end
+
+  defp reducer_prompt(context, agent_id, message) do
+    """
     You are Flambe's Reducer Agent. You preserve the global intent of the current flame.
 
     A flame is the CURRENT STACK represented below. Worker agents see local branches; you
@@ -135,8 +218,32 @@ defmodule FlambeNext.ReducerAgent do
     Incoming message:
     #{message}
     """
+  end
 
-    with {:ok, raw} <- llm(prompt),
+  defp escalation_prompt(original_prompt, primary_decision, primary_error) do
+    first_pass =
+      cond do
+        is_map(primary_decision) -> Jason.encode!(primary_decision)
+        not is_nil(primary_error) -> "primary model failed: #{inspect(primary_error)}"
+        true -> "unavailable"
+      end
+
+    """
+    #{original_prompt}
+
+    ESCALATION REVIEW:
+    A lower-cost model made the first pass below. This case was escalated because it may
+    affect global intent or because the first pass failed validation. Independently review
+    the worker message and flame state. Do not defer to the first pass. Return the corrected
+    final JSON decision using the exact same schema.
+
+    First pass:
+    #{first_pass}
+    """
+  end
+
+  defp model_decision(model, prompt, context) do
+    with {:ok, raw} <- llm(model, prompt),
          {:ok, decoded} <- Jason.decode(raw),
          :ok <- validate_decision(decoded, context) do
       {:ok, decoded}
@@ -146,17 +253,25 @@ defmodule FlambeNext.ReducerAgent do
     end
   end
 
-  defp llm(prompt) do
+  defp llm(model, prompt) do
     case System.get_env("OPENAI_API_KEY") do
       nil -> {:error, :reducer_not_configured}
       "" -> {:error, :reducer_not_configured}
-      api_key -> call_openai(api_key, prompt)
+      api_key -> call_openai(api_key, model, prompt)
     end
   end
 
-  defp call_openai(api_key, prompt) do
-    model = System.get_env("FLAMBE_REDUCER_MODEL") || "gpt-5.6-terra"
+  defp primary_model do
+    System.get_env("FLAMBE_REDUCER_PRIMARY_MODEL") ||
+      System.get_env("FLAMBE_REDUCER_MODEL") ||
+      "gpt-5.6-luna"
+  end
 
+  defp escalation_model do
+    System.get_env("FLAMBE_REDUCER_ESCALATION_MODEL") || "gpt-5.6-terra"
+  end
+
+  defp call_openai(api_key, model, prompt) do
     body =
       Jason.encode!(%{
         model: model,
@@ -304,7 +419,7 @@ defmodule FlambeNext.ReducerAgent do
     end
   end
 
-  defp record_exchange(context, agent_id, message, decision) do
+  defp record_exchange(context, agent_id, message, decision, model_info) do
     trace = Repo.get!(FlambeNext.Traces.Trace, context.trace.id)
     activity = Repo.get!(Activity, context.current.id)
     now = System.system_time(:millisecond)
@@ -316,8 +431,16 @@ defmodule FlambeNext.ReducerAgent do
         "timestamp_integer" => now
       })
 
+    model_summary =
+      if model_info.escalated do
+        "model=#{model_info.primary_model}->#{model_info.final_model} escalation=#{model_info.escalation_reason}"
+      else
+        "model=#{model_info.final_model}"
+      end
+
     summary =
       [
+        model_summary,
         "assessment=#{decision["assessment"]}",
         decision["direction"] && "direction=#{decision["direction"]}",
         decision["reply"] && "reply=#{decision["reply"]}",
