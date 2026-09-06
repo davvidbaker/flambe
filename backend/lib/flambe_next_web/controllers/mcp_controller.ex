@@ -135,7 +135,7 @@ defmodule FlambeNextWeb.McpController do
             type: "boolean",
             default: true,
             description:
-              "Set false when the worker maintains its own stack (e.g. the flambe CLI). The reducer then only returns assessment, direction, and reply."
+              "Set false for advice only: the reducer returns assessment, direction, and reply and applies no stack mutation. By default the reducer is the single writer and applies at most one."
           },
           message: %{
             type: "string",
