@@ -25,7 +25,9 @@ defmodule FlambeNext.MixProject do
   def application do
     [
       mod: {FlambeNext.Application, []},
-      extra_applications: [:logger, :runtime_tools, :ssl]
+      # :inets is started on demand by the MCP reducer (`:httpc`). Mix releases
+      # omit OTP apps that are not listed here, which fails as `inets.app` missing.
+      extra_applications: [:logger, :runtime_tools, :ssl, :inets]
     ]
   end
 
