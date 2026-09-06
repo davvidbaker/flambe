@@ -25,9 +25,11 @@ defmodule FlambeNext.ReducerAgent do
          {:ok, activity_id} <- positive_id(attrs["activity_id"] || attrs[:activity_id]),
          {:ok, message} <- required_string(attrs["message"] || attrs[:message]),
          agent_id <- optional_string(attrs["agent_id"] || attrs[:agent_id]),
+         allow_changes? <- allow_stack_changes?(attrs),
          {:ok, context} <- build_context(user, trace_id, activity_id),
-         {:ok, decision, model_info} <- decide(context, agent_id, message),
-         {:ok, applied} <- apply_actions(user, context, decision["actions"] || []) do
+         {:ok, decision, model_info} <- decide(context, agent_id, message, allow_changes?),
+         actions <- restrict_actions(decision["actions"] || [], allow_changes?),
+         {:ok, applied} <- apply_actions(user, context, actions) do
       record_exchange(context, agent_id, message, decision, model_info)
 
       {:ok,
@@ -43,6 +45,25 @@ defmodule FlambeNext.ReducerAgent do
     end
   rescue
     Ecto.NoResultsError -> {:error, :not_found}
+  end
+
+  @doc """
+  Workers that maintain their own stack (the `flambe` CLI) ask the reducer for direction
+  only. Their decisions keep `assessment`/`direction`/`reply`, but any stack mutation the
+  model proposed is dropped so there is a single writer for that flame.
+  """
+  def restrict_actions(actions, true), do: actions
+
+  def restrict_actions(actions, false) do
+    Enum.filter(actions, &match?(%{"type" => "no_op"}, &1))
+  end
+
+  defp allow_stack_changes?(attrs) do
+    case attrs["allow_stack_changes"] || attrs[:allow_stack_changes] do
+      false -> false
+      "false" -> false
+      _ -> true
+    end
   end
 
   defp build_context(user, trace_id, activity_id) do
@@ -98,8 +119,8 @@ defmodule FlambeNext.ReducerAgent do
     }
   end
 
-  defp decide(context, agent_id, message) do
-    prompt = reducer_prompt(context, agent_id, message)
+  defp decide(context, agent_id, message, allow_changes?) do
+    prompt = reducer_prompt(context, agent_id, message, allow_changes?)
     primary_model = primary_model()
 
     case model_decision(primary_model, prompt, context) do
@@ -175,9 +196,21 @@ defmodule FlambeNext.ReducerAgent do
     end
   end
 
-  defp reducer_prompt(context, agent_id, message) do
+  defp reducer_prompt(context, agent_id, message, allow_changes?) do
+    stack_policy =
+      if allow_changes? do
+        ""
+      else
+        """
+
+        This worker maintains its own stack. Do NOT propose create_child or update_activity;
+        return actions as [] or [{\"type\":\"no_op\"}]. Steer only through assessment, direction, and reply.
+        """
+      end
+
     """
     You are Flambe's Reducer Agent. You preserve the global intent of the current flame.
+    #{stack_policy}
 
     A flame is the CURRENT STACK represented below. Worker agents see local branches; you
     must judge each incoming message against the whole stack and steer the worker back
@@ -287,7 +320,7 @@ defmodule FlambeNext.ReducerAgent do
          {~c"content-type", ~c"application/json"}
        ], ~c"application/json", body}
 
-    case :httpc.request(:post, request, [timeout: 60_000], [body_format: :binary]) do
+    case :httpc.request(:post, request, [timeout: 60_000], body_format: :binary) do
       {:ok, {{_http, status, _reason}, _headers, response_body}} when status in 200..299 ->
         extract_output_text(response_body)
 
@@ -324,13 +357,26 @@ defmodule FlambeNext.ReducerAgent do
     actions = decision["actions"]
 
     cond do
-      assessment not in @allowed_assessments -> {:error, :invalid_model_response}
-      not is_nil(direction) and direction not in @allowed_directions -> {:error, :invalid_model_response}
-      not is_nil(reply) and not is_binary(reply) -> {:error, :invalid_model_response}
-      not is_binary(rationale) -> {:error, :invalid_model_response}
-      not is_list(actions) or length(actions) > 1 -> {:error, :invalid_model_response}
-      not valid_actions?(actions, context) -> {:error, :invalid_model_response}
-      true -> :ok
+      assessment not in @allowed_assessments ->
+        {:error, :invalid_model_response}
+
+      not is_nil(direction) and direction not in @allowed_directions ->
+        {:error, :invalid_model_response}
+
+      not is_nil(reply) and not is_binary(reply) ->
+        {:error, :invalid_model_response}
+
+      not is_binary(rationale) ->
+        {:error, :invalid_model_response}
+
+      not is_list(actions) or length(actions) > 1 ->
+        {:error, :invalid_model_response}
+
+      not valid_actions?(actions, context) ->
+        {:error, :invalid_model_response}
+
+      true ->
+        :ok
     end
   end
 
@@ -340,7 +386,8 @@ defmodule FlambeNext.ReducerAgent do
     ids = MapSet.new(Enum.map(context.stack, & &1.id))
 
     Enum.all?(actions, fn
-      %{"type" => "no_op"} -> true
+      %{"type" => "no_op"} ->
+        true
 
       %{"type" => "create_child", "parent_activity_id" => parent_id, "name" => name}
       when is_integer(parent_id) and is_binary(name) ->
@@ -376,11 +423,15 @@ defmodule FlambeNext.ReducerAgent do
 
   defp apply_action(_user, _context, %{"type" => "no_op"}), do: {:ok, %{type: "no_op"}}
 
-  defp apply_action(user, context, %{
-         "type" => "create_child",
-         "parent_activity_id" => parent_id,
-         "name" => name
-       } = action) do
+  defp apply_action(
+         user,
+         context,
+         %{
+           "type" => "create_child",
+           "parent_activity_id" => parent_id,
+           "name" => name
+         } = action
+       ) do
     parent = Traces.get_user_trace_activity!(user, context.trace.id, parent_id)
     thread = Traces.get_user_trace_thread!(user, context.trace.id, parent.thread_id)
     trace = Traces.get_user_trace!(user, context.trace.id)

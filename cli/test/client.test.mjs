@@ -640,6 +640,7 @@ test('status identifies active and suspended activities by their latest lifecycl
       threadId: 4,
       threadName: 'Open',
       parentId: null,
+      agentId: null,
       path: ['Open work'],
       categoryIds: [5],
       startedAt: '2026-09-02T11:00:00Z',
@@ -650,6 +651,7 @@ test('status identifies active and suspended activities by their latest lifecycl
       threadId: 4,
       threadName: 'Open',
       parentId: null,
+      agentId: null,
       path: ['Resumed work'],
       categoryIds: [],
       startedAt: '2026-09-02T12:15:00Z',
@@ -663,11 +665,105 @@ test('status identifies active and suspended activities by their latest lifecycl
     threadId: 4,
     threadName: 'Open',
     parentId: null,
+    agentId: null,
     path: ['Paused work'],
     categoryIds: [],
     startedAt: '2026-09-02T12:30:00Z',
     latestEvent: { id: 4, phase: 'S', timestamp: '2026-09-02T13:00:00Z', message: 'Waiting' },
   }]);
+});
+
+test('message asks the reducer about this agent\'s newest active activity without allowing stack changes', async () => {
+  const requests = [];
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 3,
+    agentId: 'cursor:conv-1',
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      if (url.endsWith('/api/traces/3')) {
+        return jsonResponse({
+          data: {
+            id: 3,
+            name: 'Agent work',
+            threads: [{ id: 1, name: 'Main', rank: 0 }],
+            events: [
+              { id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', activity: { id: 20, name: 'Root', thread: { id: 1 }, categories: [], agent_id: null } },
+              { id: 2, timestamp: '2026-09-02T11:00:00Z', phase: 'B', activity: { id: 21, name: 'Mine', parent_id: 20, thread: { id: 1 }, categories: [], agent_id: 'cursor:conv-1' } },
+              { id: 3, timestamp: '2026-09-02T12:00:00Z', phase: 'B', activity: { id: 22, name: 'Someone else', parent_id: 20, thread: { id: 1 }, categories: [], agent_id: 'codex:x' } },
+            ],
+          },
+        });
+      }
+      return jsonResponse({
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          isError: false,
+          content: [{ type: 'text', text: 'Direction: narrow_scope' }],
+          structuredContent: {
+            assessment: 'slightly_off_track',
+            direction: 'narrow_scope',
+            reply: 'Stay on the auth fix; leave the refactor.',
+            rationale: 'Refactor is outside the flame intent.',
+            actions_applied: [],
+            reducer_model: 'gpt-5.6-terra',
+            escalated: true,
+          },
+        },
+      });
+    },
+  });
+
+  const decision = await client.message({ text: 'I want to refactor the whole session module while here.' });
+
+  assert.equal(decision.activityId, 21);
+  assert.equal(decision.direction, 'narrow_scope');
+  assert.equal(decision.escalated, true);
+
+  const mcp = requests.at(-1);
+  assert.equal(mcp.url, 'http://flambe.test/mcp');
+  assert.equal(mcp.options.headers.authorization, 'Bearer secret');
+  assert.deepEqual(JSON.parse(mcp.options.body), {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/call',
+    params: {
+      name: 'flambe_message',
+      arguments: {
+        trace_id: 3,
+        activity_id: 21,
+        agent_id: 'cursor:conv-1',
+        message: 'I want to refactor the whole session module while here.',
+        allow_stack_changes: false,
+      },
+    },
+  });
+});
+
+test('message surfaces reducer tool errors and refuses without an active activity', async () => {
+  const errorClient = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 3,
+    fetchImpl: async () => jsonResponse({
+      jsonrpc: '2.0',
+      id: 1,
+      result: { isError: true, content: [{ type: 'text', text: 'Reducer Agent is not configured: OPENAI_API_KEY is missing' }] },
+    }),
+  });
+
+  await assert.rejects(errorClient.message({ activityId: 21, text: 'hello' }), /OPENAI_API_KEY is missing/);
+
+  const emptyClient = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 3,
+    fetchImpl: async () => jsonResponse({ data: emptyTrace() }),
+  });
+
+  await assert.rejects(emptyClient.message({ text: 'hello' }), /No active activity/);
 });
 
 test('threads sorts by rank and identifies the default thread', async () => {
@@ -725,6 +821,10 @@ test('CLI commands print machine-friendly output', async () => {
     async threads() { calls.push(['threads']); return [{ id: 2, name: 'Main', rank: 0, default: true }]; },
     async categories() { calls.push(['categories']); return [{ id: 5, name: 'Work', color_background: '#fff', color_text: '#000' }]; },
     async observe(input) { calls.push(['observe', input]); return 88; },
+    async message(input) {
+      calls.push(['message', input]);
+      return { activityId: 9, assessment: 'on_track', direction: null, reply: null, rationale: 'fine', actions_applied: [], reducer_model: 'gpt-5.6-luna', escalated: false };
+    },
   };
 
   await run(['start', 'Inspect', 'auth', '--description', 'Agent work', '--category', '5', '--started-at', '2026-09-01T20:00:00-06:00'], { stdout, client });
@@ -735,8 +835,9 @@ test('CLI commands print machine-friendly output', async () => {
   await run(['threads'], { stdout, client });
   await run(['categories', '--json'], { stdout, client });
   await run(['observe', 'carbon', '312.4', '--unit', 'gCO2eq/kWh', '--on', '2026-09-04', '--payload', '{"source":"us-ba-mean"}'], { stdout, client });
+  await run(['message', 'Scope', 'may', 'be', 'drifting', '--activity', '9'], { stdout, client });
 
-  assert.deepEqual(output, ['123\n', '456\n', '457\n', '458\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"threadName":"Main","categoryIds":[5],"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n', '2\t0\tMain\tdefault\n', '[{"id":5,"name":"Work","color_background":"#fff","color_text":"#000"}]\n', '88\n']);
+  assert.deepEqual(output, ['123\n', '456\n', '457\n', '458\n', '{"trace":{"id":1,"name":"Work"},"activities":[{"id":9,"name":"Open work","threadId":2,"threadName":"Main","categoryIds":[5],"latestEvent":{"id":3,"phase":"B","timestamp":"2026-09-02T11:00:00Z"}}]}\n', '2\t0\tMain\tdefault\n', '[{"id":5,"name":"Work","color_background":"#fff","color_text":"#000"}]\n', '88\n', 'activity\t9\n', 'assessment\ton_track\n', 'direction\t-\n', 'reply\t-\n']);
   assert.deepEqual(calls, [
     ['flushQueue'],
     ['start', { name: 'Inspect auth', description: 'Agent work', threadId: undefined, categoryIds: ['5'], startedAt: '2026-09-01T20:00:00-06:00' }],
@@ -754,5 +855,7 @@ test('CLI commands print machine-friendly output', async () => {
     ['categories'],
     ['flushQueue'],
     ['observe', { kind: 'carbon', value: 312.4, unit: 'gCO2eq/kWh', observedOn: '2026-09-04', payload: { source: 'us-ba-mean' }, at: undefined }],
+    ['flushQueue'],
+    ['message', { activityId: '9', text: 'Scope may be drifting' }],
   ]);
 });

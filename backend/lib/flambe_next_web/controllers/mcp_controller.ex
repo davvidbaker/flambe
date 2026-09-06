@@ -127,7 +127,16 @@ defmodule FlambeNextWeb.McpController do
         properties: %{
           trace_id: %{type: "integer", minimum: 1, description: "Current flame/trace id"},
           activity_id: %{type: "integer", minimum: 1, description: "Current activity id"},
-          agent_id: %{type: "string", description: "Stable worker/session identifier when available"},
+          agent_id: %{
+            type: "string",
+            description: "Stable worker/session identifier when available"
+          },
+          allow_stack_changes: %{
+            type: "boolean",
+            default: true,
+            description:
+              "Set false when the worker maintains its own stack (e.g. the flambe CLI). The reducer then only returns assessment, direction, and reply."
+          },
           message: %{
             type: "string",
             minLength: 1,

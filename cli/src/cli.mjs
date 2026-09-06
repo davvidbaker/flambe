@@ -14,6 +14,7 @@ const usage = `Usage:
   flambe threads [--json]
   flambe categories [--json]
   flambe ping
+  flambe message <text> [--activity <id>] [--json]
   flambe observe <kind> <value> [--unit <unit>] [--on <YYYY-MM-DD>] [--payload <json>] [--at <ISO-8601>]
   flambe serve [--port <n>] [--db <path>] [--static <dir>]
   flambe export [file] [--db <path>]
@@ -228,6 +229,19 @@ function parseExport(args, env) {
   };
 }
 
+function parseMessage(args) {
+  let rest = args;
+  let activityId;
+  ({ value: activityId, rest } = takeOption(rest, '--activity'));
+  const json = rest.includes('--json');
+  rest = rest.filter(arg => arg !== '--json');
+  const unknown = rest.filter(arg => arg.startsWith('--'));
+  if (unknown.length > 0) throw new Error(`Unknown option: ${unknown[0]}`);
+  const text = rest.join(' ').trim();
+  if (!text) throw new Error('Usage: flambe message <text> [--activity <id>] [--json]');
+  return { text, activityId, json };
+}
+
 function parseImport(args) {
   let rest = args;
   let url;
@@ -360,6 +374,20 @@ export async function run(argv, { env = process.env, stdout = process.stdout, cl
   if (command === 'observe') {
     const observationId = await flambe.observe(parseObserve(args));
     stdout.write(`${observationId}\n`);
+    return;
+  }
+
+  if (command === 'message') {
+    const { text, activityId, json } = parseMessage(args);
+    const decision = await flambe.message({ activityId, text });
+    if (json) {
+      stdout.write(`${JSON.stringify(decision)}\n`);
+    } else {
+      stdout.write(`activity\t${decision.activityId}\n`);
+      stdout.write(`assessment\t${decision.assessment}\n`);
+      stdout.write(`direction\t${decision.direction ?? '-'}\n`);
+      stdout.write(`reply\t${decision.reply ?? '-'}\n`);
+    }
     return;
   }
 

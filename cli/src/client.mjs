@@ -199,6 +199,7 @@ export class FlambeClient {
         threadId: event.activity.thread.id,
         threadName: threadNames.get(event.activity.thread.id) ?? null,
         parentId: event.activity.parent_id ?? null,
+        agentId: event.activity.agent_id ?? null,
         path: pathFor(event.activity),
         categoryIds: event.activity.categories ?? [],
         startedAt: startedAtByActivity.get(event.activity.id)?.timestamp ?? null,
@@ -433,6 +434,66 @@ export class FlambeClient {
 
   async importBundle(bundle) {
     return this.request('/api/imports', { method: 'POST', body: bundle });
+  }
+
+  /**
+   * Ask the Reducer Agent for direction. The CLI owns this worker's stack, so the
+   * reducer is told not to create or rename activities; it answers with
+   * assessment / direction / reply only. Never queued: a stale answer is useless.
+   */
+  async message({ activityId, text }) {
+    if (!text?.trim()) throw new Error('Message text is required');
+
+    const resolvedActivityId = activityId === undefined
+      ? await this.currentActivityId()
+      : await this.queue.resolveActivityId(activityId);
+
+    if (String(resolvedActivityId).startsWith('offline-')) {
+      throw new Error('Activity is still queued for offline delivery; retry once Flambe is reachable');
+    }
+
+    const id = Number(resolvedActivityId);
+    if (!Number.isInteger(id) || id <= 0) throw new Error('--activity must be a positive integer');
+
+    const payload = await this.request('/mcp', {
+      method: 'POST',
+      body: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+          name: 'flambe_message',
+          arguments: {
+            trace_id: this.traceId,
+            activity_id: id,
+            ...(this.agentId ? { agent_id: this.agentId } : {}),
+            message: text.trim(),
+            allow_stack_changes: false,
+          },
+        },
+      },
+    });
+
+    if (payload?.error) {
+      throw new Error(`Reducer request failed: ${payload.error.message ?? JSON.stringify(payload.error)}`);
+    }
+
+    const result = payload?.result;
+    if (!result || result.isError) {
+      const detail = result?.content?.map(item => item.text).filter(Boolean).join(' ');
+      throw new Error(detail || 'Reducer returned an error');
+    }
+
+    return { activityId: id, ...result.structuredContent };
+  }
+
+  /** Newest active activity for this agent, falling back to the newest active activity in the flame. */
+  async currentActivityId() {
+    const { activities } = await this.status({ activeOnly: true });
+    const mine = this.agentId ? activities.filter(activity => activity.agentId === this.agentId) : [];
+    const current = (mine.length > 0 ? mine : activities).at(-1);
+    if (!current) throw new Error('No active activity to message about; pass --activity <id> or run flambe start first');
+    return current.id;
   }
 
   async postObservation({ kind, value, unit, observedOn, payload, timestamp }) {

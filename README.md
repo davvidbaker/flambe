@@ -210,6 +210,19 @@ path.
 `flambe ping` verifies connectivity. The commands print machine-friendly IDs
 or JSON on stdout so agents can capture them easily.
 
+An agent can also ask the Reducer Agent whether it is still on track:
+
+```sh
+flambe message "Auth fix needs the session module refactored too; widening scope"
+```
+
+This posts the update and the current flame to `POST /mcp` (tool
+`flambe_message`) and prints `assessment`, `direction`, and `reply`. Because the
+CLI already owns this agent's stack, it sends `allow_stack_changes: false`, so
+the reducer steers but never creates or renames activities. A returned
+`direction` is meant to be followed. The server needs `OPENAI_API_KEY`; see
+[ADR-010](docs/ADR-010-reducer-advises-worker-owned-stack.md).
+
 Generic overlays (carbon intensity, moods, and similar) are observations, not
 activities. Record them with:
 

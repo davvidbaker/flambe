@@ -30,6 +30,7 @@ flambe end "$ID" "Resolved USERPROFILE on Windows"
 flambe suspend "$ID" "Waiting for product decision"   # only when explicitly tabling work
 flambe resume "$ID" "Decision received"
 flambe observe carbon 312.4 --unit gCO2eq/kWh --on 2026-09-04 --payload '{"source":"us-ba-mean"}'
+flambe message "Auth fix needs the session module refactored too; widening scope"   # ask the Reducer Agent
 ```
 
 `observe` writes a user overlay (carbon, mood, …), not an activity. Same `kind` + `--on` date upserts and merges payload keys. Omit `--on` to always insert.
@@ -39,6 +40,21 @@ flambe observe carbon 312.4 --unit gCO2eq/kWh --on 2026-09-04 --payload '{"sourc
 Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch suspended/threads/categories unless the default thread or parent is wrong.
 
 `start` uses the default thread and the newest active parent. Pass `--thread ID` / `--parent ID` / `--category ID` only when you already know them. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations.
+
+## Ask the reducer before you drift
+
+You own the stack; the Reducer Agent owns global intent. `flambe message "<update>"` sends your update plus the whole flame to the reducer, which answers with `assessment`, `direction`, and `reply`. It never edits your activities.
+
+Message the reducer when you are about to:
+
+- widen scope beyond the activity you started
+- change approach after the plan stalled
+- end a root workstream
+- continue while suspecting the work has drifted from what David asked
+
+Do not message for routine progress, and never instead of `start`/`end`. Defaults to your newest active activity; pass `--activity <id>` to target another. Needs a reachable server (not queued).
+
+A returned `direction` is binding: follow it before doing more work. On `pause`, `stop`, or `escalate`, stop and surface the reply to David rather than deciding yourself. `direction -` means continue as you were.
 
 ## What to record
 
