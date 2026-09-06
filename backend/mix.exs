@@ -25,7 +25,7 @@ defmodule FlambeNext.MixProject do
   def application do
     [
       mod: {FlambeNext.Application, []},
-      extra_applications: [:logger, :runtime_tools, :ssl, :inets]
+      extra_applications: [:logger, :runtime_tools, :ssl]
     ]
   end
 
@@ -58,8 +58,11 @@ defmodule FlambeNext.MixProject do
   end
 
   # Aliases are shortcuts or tasks specific to the current project.
+  # For example, to install project dependencies and perform other setup tasks, run:
   #
-  # Type `mix help compile.app` for more information.
+  #     $ mix setup
+  #
+  # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup"],
