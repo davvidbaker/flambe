@@ -244,6 +244,70 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
   }).toBeLessThan(afterPan.rbt - afterPan.lbt);
 });
 
+test('opens activity details from a tap and supports renaming', async ({ page }) => {
+  await page.setViewportSize(phone);
+
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+
+  const traceResponse = page.waitForResponse(response =>
+    response.request().method() === 'GET' && /\/api\/traces\/\d+$/.test(new URL(response.url()).pathname),
+  );
+  await page.getByRole('button', { name: 'Log In' }).click();
+  await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
+
+  const response = await traceResponse;
+  const trace = await response.json();
+  const beginEvent = (trace.data.events || []).find(
+    (entry: { phase?: string; activity?: { name?: string } | null }) =>
+      entry.phase === 'B' && entry.activity?.name === 'Smoke activity',
+  ) || (trace.data.events || []).find(
+    (entry: { phase?: string; activity?: { name?: string } | null }) =>
+      entry.phase === 'B' && entry.activity?.name,
+  );
+  expect(beginEvent?.activity?.name).toBeTruthy();
+  const activityName = beginEvent.activity.name as string;
+  const start = Number(beginEvent.timestamp);
+
+  const canvas = page.locator('#chart-wrapper canvas');
+  const surface = page.locator('[data-timeline-surface="true"]');
+  await expect(canvas).toBeVisible();
+  await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBeGreaterThan(0);
+
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Flame chart canvas has no bounding box');
+
+  const lbt = Number(await surface.getAttribute('data-lbt'));
+  const rbt = Number(await surface.getAttribute('data-rbt'));
+  const span = rbt - lbt;
+  expect(span).toBeGreaterThan(0);
+
+  const clickTime = Math.min(Math.max(start + 1_000, lbt + span * 0.2), rbt - span * 0.05);
+  const clickX = ((clickTime - lbt) / span) * box.width;
+  // Below the thread header (20px) into the first activity row.
+  const clickY = 30;
+
+  await page.mouse.click(box.x + clickX, box.y + clickY);
+
+  const detail = page.locator('[data-activity-detail="true"]');
+  await expect(detail).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Activity details' })).toBeVisible();
+  await expect(detail.getByRole('button', { name: activityName })).toBeVisible();
+  await expect(page.locator('[data-app-modal-sheet="true"]')).toBeVisible();
+
+  const renamed = `Smoke activity ${Date.now()}`;
+  await detail.getByRole('button', { name: activityName }).click();
+  const nameField = detail.locator('textarea');
+  await expect(nameField).toBeVisible();
+  await nameField.fill(renamed);
+  await nameField.press('Enter');
+  await expect(detail.getByRole('button', { name: renamed })).toBeVisible();
+
+  await detail.getByTitle('close').click();
+  await expect(detail).toHaveCount(0);
+});
+
 test('renders the post-login timeline on WebKit without requestIdleCallback', async ({ browserName, page }) => {
   test.skip(browserName !== 'webkit', 'WebKit/Safari regression only');
 
