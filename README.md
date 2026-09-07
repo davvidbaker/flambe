@@ -136,10 +136,17 @@ mix flambe_next.create_api_token you@example.com "Claude"
 
 Revoke tokens from the same Settings panel. The raw secret is shown once.
 
-Install the zero-dependency Node 22 CLI from this checkout:
+Install the zero-dependency Node 22 CLI from npm (other repos and Cursor Cloud):
 
 ```sh
-cd ../cli
+npm install -g @davvidbaker/flambe-cli
+```
+
+CI publishes `@davvidbaker/flambe-cli` from `cli/` when `cli/package.json` on
+`main` changes. From this checkout instead:
+
+```sh
+cd cli
 npm link
 ```
 
