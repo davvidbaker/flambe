@@ -1,6 +1,8 @@
 defmodule FlambeNext.ReducerPlacementTest do
   use FlambeNext.DataCase, async: false
 
+  @moduletag :capture_log
+
   alias FlambeNext.{Accounts, ReducerAgent, Traces}
 
   setup do
