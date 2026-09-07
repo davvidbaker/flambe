@@ -47,6 +47,38 @@ defmodule FlambeNext.Accounts do
     |> Repo.all()
   end
 
+  @doc """
+  The palette new users and empty accounts get. Names and colors match the
+  in-repo flame-chart fixtures for agent work.
+  """
+  def default_categories do
+    [
+      %{"name" => "coding", "color_background" => "#efc360", "color_text" => "#000000"},
+      %{"name" => "investigation", "color_background" => "#60a5fa", "color_text" => "#000000"},
+      %{"name" => "review", "color_background" => "#a78bfa", "color_text" => "#ffffff"},
+      %{"name" => "operations", "color_background" => "#34d399", "color_text" => "#000000"},
+      %{"name" => "failure", "color_background" => "#fb7185", "color_text" => "#000000"}
+    ]
+  end
+
+  @doc """
+  Inserts `default_categories/0` when the user has none. Existing palettes are
+  left alone, including a user who deleted every default on purpose.
+  """
+  def ensure_default_categories(%User{} = user) do
+    case list_user_categories(user) do
+      [] ->
+        Enum.each(default_categories(), fn attrs ->
+          {:ok, _category} = create_category(user, [], attrs)
+        end)
+
+        list_user_categories(user)
+
+      existing ->
+        existing
+    end
+  end
+
   def get_user_category!(%User{} = user, id) do
     from(category in Category, where: category.id == ^id and category.user_id == ^user.id)
     |> Repo.one!()
