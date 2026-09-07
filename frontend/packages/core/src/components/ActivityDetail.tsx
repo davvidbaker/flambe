@@ -30,9 +30,19 @@ import AppModal from './AppModal';
 
 const Actions = styled.div`
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
 
   & > button {
-    margin: 0 5px;
+    min-height: 36px;
+  }
+
+  @media (max-width: 640px) {
+    & > button {
+      min-height: 44px;
+      flex: 1 1 auto;
+    }
   }
 `;
 
