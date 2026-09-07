@@ -297,8 +297,18 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   expect(setup.status).toBe(201);
   expect(setup.activityStatus).toBe(201);
 
-  await page.goto(`/${username}/traces/${setup.traceBody.data.id}`);
-  await expect(page).toHaveURL(new RegExp(`/${username}/traces/${setup.traceBody.data.id}$`));
+  const traceId = setup.traceBody.data.id as number;
+  // Pin a tight viewport around the open activity so the block is wide enough
+  // to hit (and not only the 10px left-edge resize zone in a multi-hour view).
+  await page.evaluate(({ id, start }) => {
+    const end = Date.now() + 60_000;
+    localStorage.setItem('lbt', String(start - 60_000));
+    localStorage.setItem('rbt', String(end));
+    localStorage.setItem('flambe.timeline.viewport-trace-id.v1', String(id));
+  }, { id: traceId, start: startTime });
+
+  await page.goto(`/${username}/traces/${traceId}`);
+  await expect(page).toHaveURL(new RegExp(`/${username}/traces/${traceId}$`));
 
   const canvas = page.locator('#chart-wrapper canvas');
   const surface = page.locator('[data-timeline-surface="true"]');
@@ -313,9 +323,9 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   const span = rbt - lbt;
   expect(span).toBeGreaterThan(0);
 
-  // Open activity extends to "now"; click near the right edge, in Main's first row
-  // (thread header is 20px; block row starts immediately below).
-  const clickTime = Math.min(rbt - span * 0.05, Math.max(lbt + span * 0.2, startTime + 1_000));
+  // Midpoint of the open block (start → now), clamped into the visible range.
+  const now = Date.now();
+  const clickTime = Math.min(Math.max((startTime + now) / 2, lbt + span * 0.1), rbt - span * 0.05);
   const clickX = ((clickTime - lbt) / span) * box.width;
   const clickY = 30;
   expect(Number.isFinite(clickX)).toBe(true);
