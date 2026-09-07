@@ -4,7 +4,9 @@ defmodule FlambeNextWeb.CategoryController do
   alias FlambeNext.{Accounts, Traces}
 
   def index(conn, _params) do
-    render(conn, :index, categories: Accounts.ensure_default_categories(conn.assigns.current_user))
+    render(conn, :index,
+      categories: Accounts.ensure_default_categories(conn.assigns.current_user)
+    )
   end
 
   def create(conn, %{"category" => attrs} = params) do

@@ -47,6 +47,7 @@ defmodule FlambeNextWeb.UserControllerTest do
       |> Enum.map(& &1["name"])
 
     assert names == ["coding", "investigation", "review", "operations", "failure"]
+
     assert json_response(conn, 200)["data"]["traces"] == [
              %{"id" => trace.id, "name" => "Existing trace"}
            ]
