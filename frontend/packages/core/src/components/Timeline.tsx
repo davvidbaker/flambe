@@ -25,6 +25,14 @@ import {
   loadSuspendedActivityCount,
 } from '../utilities/timeline';
 import { scheduleIdleCallback } from '../utilities/requestIdleCallback';
+import {
+  panDeltaFromTouchMove,
+  TOUCH_PAN_THRESHOLD_PX,
+  touchDistance,
+  touchMidpoint,
+  wheelDeltaFromPinchScale,
+  type TouchPoint,
+} from '../utilities/timelineTouch';
 import type { Command } from '../constants/commands';
 import type { EntityId } from '../types/ids';
 import type { Category } from '../types/Category';
@@ -134,6 +142,12 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   flameChart = React.createRef<FlameChartComponent>();
   timeSeries = React.createRef<TimeSeries>();
   focusedBlock = React.createRef<React.ComponentRef<typeof FocusedBlock>>();
+  timelineSurface: HTMLDivElement | null = null;
+  touchPoints = new Map<number, TouchPoint>();
+  touchMode: 'none' | 'pan' | 'pinch' = 'none';
+  panStartX = 0;
+  panLastX = 0;
+  pinchLastDistance = 0;
   viewportTraceId: string | null = null;
   leftBoundaryTime = 0;
   rightBoundaryTime = 0;
@@ -184,6 +198,148 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     persistCollapsedThreadState(this.props.trace_id, this.props.threads);
     requestAnimationFrame(this.drawChildren.bind(this));
   }
+
+  componentWillUnmount(): void {
+    this.detachTouchListeners();
+  }
+
+  setTimelineSurface = (element: HTMLDivElement | null): void => {
+    if (element === this.timelineSurface) return;
+    this.detachTouchListeners();
+    this.timelineSurface = element;
+    if (element) {
+      this.attachTouchListeners(element);
+      if (Number.isFinite(this.leftBoundaryTime)) {
+        element.dataset.lbt = String(this.leftBoundaryTime);
+      }
+      if (Number.isFinite(this.rightBoundaryTime)) {
+        element.dataset.rbt = String(this.rightBoundaryTime);
+      }
+    }
+  };
+
+  attachTouchListeners = (element: HTMLDivElement): void => {
+    element.addEventListener('touchstart', this.onTouchStart, { passive: true });
+    element.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    element.addEventListener('touchend', this.onTouchEnd, { passive: true });
+    element.addEventListener('touchcancel', this.onTouchEnd, { passive: true });
+  };
+
+  detachTouchListeners = (): void => {
+    const element = this.timelineSurface;
+    if (!element) return;
+    element.removeEventListener('touchstart', this.onTouchStart);
+    element.removeEventListener('touchmove', this.onTouchMove);
+    element.removeEventListener('touchend', this.onTouchEnd);
+    element.removeEventListener('touchcancel', this.onTouchEnd);
+  };
+
+  syncTouchPoints = (touchList: TouchList): void => {
+    this.touchPoints.clear();
+    for (let index = 0; index < touchList.length; index += 1) {
+      const touch = touchList.item(index);
+      if (!touch) continue;
+      this.touchPoints.set(touch.identifier, {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      });
+    }
+  };
+
+  touchPointsList = (): TouchPoint[] => Array.from(this.touchPoints.values());
+
+  onTouchStart = (event: TouchEvent): void => {
+    this.syncTouchPoints(event.touches);
+    const points = this.touchPointsList();
+    if (points.length >= 2) {
+      this.touchMode = 'pinch';
+      this.pinchLastDistance = touchDistance(points[0]!, points[1]!);
+      return;
+    }
+    if (points.length === 1) {
+      this.touchMode = 'none';
+      this.panStartX = points[0]!.clientX;
+      this.panLastX = points[0]!.clientX;
+    }
+  };
+
+  onTouchMove = (event: TouchEvent): void => {
+    this.syncTouchPoints(event.touches);
+    const points = this.touchPointsList();
+    const width = this.state.width;
+    if (!(width > 0) || !isValidTime(this.leftBoundaryTime) || !isValidTime(this.rightBoundaryTime)) {
+      return;
+    }
+
+    if (points.length >= 2) {
+      event.preventDefault();
+      const [first, second] = points;
+      const distance = touchDistance(first!, second!);
+      if (!(this.pinchLastDistance > 0)) {
+        this.touchMode = 'pinch';
+        this.pinchLastDistance = distance;
+        return;
+      }
+
+      const scaleRatio = distance / this.pinchLastDistance;
+      this.pinchLastDistance = distance;
+      this.touchMode = 'pinch';
+
+      const surface = this.timelineSurface;
+      if (!surface || !(scaleRatio > 0) || scaleRatio === 1) return;
+      const rect = surface.getBoundingClientRect();
+      const midpoint = touchMidpoint(first!, second!);
+      const offsetX = midpoint.clientX - rect.left;
+      const zoomCenterTime = pixelsToTime(
+        offsetX,
+        this.leftBoundaryTime,
+        this.rightBoundaryTime,
+        width,
+      );
+      this.zoom(
+        wheelDeltaFromPinchScale(scaleRatio),
+        offsetX,
+        zoomCenterTime,
+        width,
+      );
+      requestAnimationFrame(this.drawChildren.bind(this));
+      return;
+    }
+
+    if (points.length === 1) {
+      const currentX = points[0]!.clientX;
+      if (this.touchMode !== 'pan') {
+        if (Math.abs(currentX - this.panStartX) < TOUCH_PAN_THRESHOLD_PX) return;
+        this.touchMode = 'pan';
+      }
+
+      event.preventDefault();
+      const deltaX = panDeltaFromTouchMove(this.panLastX, currentX);
+      this.panLastX = currentX;
+      if (deltaX === 0) return;
+      this.pan(deltaX, 0, width);
+      requestAnimationFrame(this.drawChildren.bind(this));
+    }
+  };
+
+  onTouchEnd = (event: TouchEvent): void => {
+    this.syncTouchPoints(event.touches);
+    const points = this.touchPointsList();
+    if (points.length >= 2) {
+      this.touchMode = 'pinch';
+      this.pinchLastDistance = touchDistance(points[0]!, points[1]!);
+      return;
+    }
+    if (points.length === 1) {
+      this.touchMode = 'none';
+      this.panStartX = points[0]!.clientX;
+      this.panLastX = points[0]!.clientX;
+      this.pinchLastDistance = 0;
+      return;
+    }
+    this.touchMode = 'none';
+    this.pinchLastDistance = 0;
+  };
 
   componentDidUpdate(previousProps: TimelineProps): void {
     this.syncTimelineToProps(this.props, previousProps);
@@ -565,6 +721,14 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     topOffset: number;
   }>): void => {
     Object.assign(this, state);
+    if (this.timelineSurface) {
+      if (Number.isFinite(this.leftBoundaryTime)) {
+        this.timelineSurface.dataset.lbt = String(this.leftBoundaryTime);
+      }
+      if (Number.isFinite(this.rightBoundaryTime)) {
+        this.timelineSurface.dataset.rbt = String(this.rightBoundaryTime);
+      }
+    }
     scheduleIdleCallback(this.setLocalStorage.bind(this));
   };
 
@@ -702,10 +866,15 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
             >
               {({ measureRef }) => (
                 <div
-                  ref={measureRef}
+                  ref={element => {
+                    measureRef(element);
+                    this.setTimelineSurface(element);
+                  }}
+                  data-timeline-surface="true"
                   style={{
                     position: 'relative',
                     height: '100%',
+                    touchAction: 'none',
                   }}
                   onWheel={this.handleWheel}
                 >
