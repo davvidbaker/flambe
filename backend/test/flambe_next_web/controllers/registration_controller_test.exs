@@ -51,6 +51,38 @@ defmodule FlambeNextWeb.RegistrationControllerTest do
     assert json_response(conn, 401) == %{"error" => "UNAUTHENTICATED"}
   end
 
+  test "seeds default categories for a newly registered user", %{conn: conn} do
+    conn =
+      post(conn, ~p"/api/register", %{
+        "invite_code" => "test-invite",
+        "user" => %{
+          "name" => "Palette User",
+          "username" => "palette-user",
+          "credentials" => [%{"email" => "palette@example.com", "password" => "password123"}]
+        }
+      })
+
+    assert %{"data" => %{"id" => user_id}} = json_response(conn, 201)
+
+    conn =
+      conn
+      |> recycle()
+      |> post(~p"/auth/identity/callback", %{
+        email: "palette@example.com",
+        password: "password123"
+      })
+
+    assert json_response(conn, 200)["data"]["id"] == user_id
+
+    conn = conn |> recycle() |> get(~p"/api/categories")
+
+    names =
+      json_response(conn, 200)["data"]
+      |> Enum.map(& &1["name"])
+
+    assert names == ["coding", "investigation", "review", "operations", "failure"]
+  end
+
   test "rejects registration without a valid invite code", %{conn: conn} do
     params = %{
       "user" => %{
