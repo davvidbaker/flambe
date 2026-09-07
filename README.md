@@ -160,6 +160,8 @@ FLAMBE_TRACE_ID=1
 
 On the Fly instance, set `FLAMBE_URL` to `https://your-app.fly.dev`.
 
+Cursor Cloud agents only see this git checkout, not laptop `~/.cursor` or `~/.claude` config. In-repo entry points are `AGENTS.md`, `CLAUDE.md`, `.cursor/rules`, `.cursor/skills/flambe-cli`, and `.cursor/hooks`. Set `FLAMBE_*` as Cloud environment secrets. If `flambe` is not on PATH, agents should run `node cli/bin/flambe.mjs`.
+
 The CLI loads `.env` from its current working directory automatically and
 discovers the trace's lowest-rank thread. Existing shell environment variables
 take precedence over values in `.env`, which makes one-off overrides and CI
