@@ -309,31 +309,41 @@ test('opens activity details from a tap and supports renaming', async ({ page })
 
   await page.goto(`/${username}/traces/${traceId}`);
   await expect(page).toHaveURL(new RegExp(`/${username}/traces/${traceId}$`));
+  await page.setViewportSize(phone);
 
   const canvas = page.locator('#chart-wrapper canvas');
   const surface = page.locator('[data-timeline-surface="true"]');
   await expect(canvas).toBeVisible();
   await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBeGreaterThan(0);
-
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error('Flame chart canvas has no bounding box');
-
-  const lbt = Number(await surface.getAttribute('data-lbt'));
-  const rbt = Number(await surface.getAttribute('data-rbt'));
-  const span = rbt - lbt;
-  expect(span).toBeGreaterThan(0);
-
-  // Midpoint of the open block (start → now), clamped into the visible range.
-  const now = Date.now();
-  const clickTime = Math.min(Math.max((startTime + now) / 2, lbt + span * 0.1), rbt - span * 0.05);
-  const clickX = ((clickTime - lbt) / span) * box.width;
-  const clickY = 30;
-  expect(Number.isFinite(clickX)).toBe(true);
-
-  await canvas.click({ position: { x: clickX, y: clickY } });
+  // Prefer the pinned ~2–3 minute window; a leaked multi-hour range is too thin to tap.
+  await expect.poll(async () => {
+    const lbt = Number(await surface.getAttribute('data-lbt'));
+    const rbt = Number(await surface.getAttribute('data-rbt'));
+    return rbt - lbt;
+  }).toBeLessThan(10 * 60_000);
 
   const detail = page.locator('[data-activity-detail="true"]');
-  await expect(detail).toBeVisible();
+  await expect.poll(async () => {
+    const box = await canvas.boundingBox();
+    if (!box) return false;
+    const lbt = Number(await surface.getAttribute('data-lbt'));
+    const rbt = Number(await surface.getAttribute('data-rbt'));
+    const span = rbt - lbt;
+    if (!(span > 0)) return false;
+    const now = Date.now();
+    const clickTime = Math.min(
+      Math.max((startTime + now) / 2, lbt + span * 0.1),
+      rbt - span * 0.05,
+    );
+    const clickX = ((clickTime - lbt) / span) * box.width;
+    if (!Number.isFinite(clickX)) return false;
+    await canvas.click({ position: { x: clickX, y: 30 } });
+    if (await detail.isVisible().catch(() => false)) return true;
+    // Desktop Chromium is a fine pointer; second tap opens via already-focused.
+    await canvas.click({ position: { x: clickX, y: 30 } });
+    return detail.isVisible();
+  }, { timeout: 15_000 }).toBe(true);
+
   await expect(page.getByRole('dialog', { name: 'Activity details' })).toBeVisible();
   await expect(detail.getByRole('button', { name: activityName })).toBeVisible();
   await expect(page.locator('[data-app-modal-sheet="true"]')).toBeVisible();
