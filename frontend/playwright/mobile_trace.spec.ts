@@ -244,6 +244,121 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
   }).toBeLessThan(afterPan.rbt - afterPan.lbt);
 });
 
+test('opens activity details from a tap and supports renaming', async ({ page }) => {
+  await page.setViewportSize(phone);
+
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log In' }).click();
+  await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
+
+  const username = new URL(page.url()).pathname.split('/')[1];
+  const activityName = `Mobile details ${Date.now()}`;
+  const startTime = Date.now() - 30_000;
+
+  // Fresh trace keeps Main empty so clickY under the header hits our block —
+  // the shared e2e trace has an empty Main above the seeded smoke thread.
+  const setup = await page.evaluate(async ({ timestamp, name }) => {
+    const traceResponse = await fetch('/api/traces', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ trace: { name: `Mobile details ${timestamp}` } }),
+    });
+    const traceBody = await traceResponse.json();
+    if (traceResponse.status !== 201) {
+      return { status: traceResponse.status, traceBody, activityStatus: 0, activityBody: null };
+    }
+
+    const detailResponse = await fetch(`/api/traces/${traceBody.data.id}`, { credentials: 'include' });
+    const detail = await detailResponse.json();
+    const threadId = [...detail.data.threads].sort((left, right) => left.rank - right.rank)[0].id;
+    const activityResponse = await fetch('/api/activities', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        trace_id: traceBody.data.id,
+        thread_id: threadId,
+        activity: { name, categories: [] },
+        event: { timestamp_integer: timestamp, phase: 'B' },
+      }),
+    });
+
+    return {
+      status: traceResponse.status,
+      traceBody,
+      activityStatus: activityResponse.status,
+      activityBody: await activityResponse.json(),
+    };
+  }, { timestamp: startTime, name: activityName });
+
+  expect(setup.status).toBe(201);
+  expect(setup.activityStatus).toBe(201);
+
+  const traceId = setup.traceBody.data.id as number;
+  const pinViewport = async () => {
+    // ~3 minutes around the open activity so the block is a comfortable tap target.
+    await page.evaluate(({ id, start }) => {
+      const end = Date.now() + 60_000;
+      localStorage.setItem('lbt', String(start - 60_000));
+      localStorage.setItem('rbt', String(end));
+      localStorage.setItem('flambe.timeline.viewport-trace-id.v1', String(id));
+    }, { id: traceId, start: startTime });
+  };
+
+  await pinViewport();
+  await page.goto(`/${username}/traces/${traceId}`);
+  await expect(page).toHaveURL(new RegExp(`/${username}/traces/${traceId}$`));
+  // WebKit sometimes mounts before the pinned range sticks; re-pin and reload.
+  await pinViewport();
+  await page.reload();
+  await page.setViewportSize(phone);
+
+  const canvas = page.locator('#chart-wrapper canvas');
+  const surface = page.locator('[data-timeline-surface="true"]');
+  await expect(canvas).toBeVisible();
+  await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBeGreaterThan(0);
+
+  const detail = page.locator('[data-activity-detail="true"]');
+  await expect.poll(async () => {
+    const box = await canvas.boundingBox();
+    if (!box) return false;
+    const lbt = Number(await surface.getAttribute('data-lbt'));
+    const rbt = Number(await surface.getAttribute('data-rbt'));
+    const span = rbt - lbt;
+    if (!(span > 0)) return false;
+    const now = Date.now();
+    const clickTime = Math.min(
+      Math.max((startTime + now) / 2, lbt + span * 0.1),
+      rbt - span * 0.05,
+    );
+    const clickX = ((clickTime - lbt) / span) * box.width;
+    if (!Number.isFinite(clickX)) return false;
+    await canvas.click({ position: { x: clickX, y: 30 } });
+    if (await detail.isVisible().catch(() => false)) return true;
+    // Desktop Chromium is a fine pointer; second tap opens via already-focused.
+    await canvas.click({ position: { x: clickX, y: 30 } });
+    return detail.isVisible();
+  }, { timeout: 15_000 }).toBe(true);
+
+  await expect(page.getByRole('dialog', { name: 'Activity details' })).toBeVisible();
+  await expect(detail.getByRole('button', { name: activityName })).toBeVisible();
+  await expect(page.locator('[data-app-modal-sheet="true"]')).toBeVisible();
+
+  const renamed = `${activityName} renamed`;
+  await detail.getByRole('button', { name: activityName }).click();
+  const nameField = detail.locator('textarea');
+  await expect(nameField).toBeVisible();
+  await nameField.fill(renamed);
+  await nameField.press('Enter');
+  await expect(detail.getByRole('button', { name: renamed })).toBeVisible();
+
+  await detail.getByTitle('close').click();
+  await expect(detail).toHaveCount(0);
+});
+
 test('renders the post-login timeline on WebKit without requestIdleCallback', async ({ browserName, page }) => {
   test.skip(browserName !== 'webkit', 'WebKit/Safari regression only');
 
