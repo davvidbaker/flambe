@@ -1,6 +1,7 @@
 import {
   panDeltaFromTouchMove,
   touchDistance,
+  touchHasMoved,
   touchMidpoint,
   wheelDeltaFromPinchScale,
 } from './timelineTouch';
@@ -26,5 +27,10 @@ describe('timelineTouch', () => {
 
   it('scrubs earlier when the finger moves right', () => {
     expect(panDeltaFromTouchMove(100, 140)).toBe(-40);
+  });
+
+  it('treats a mostly-vertical drag as movement once the hypot crosses the threshold', () => {
+    expect(touchHasMoved({ clientX: 10, clientY: 10 }, { clientX: 12, clientY: 12 })).toBe(false);
+    expect(touchHasMoved({ clientX: 10, clientY: 10 }, { clientX: 10, clientY: 20 })).toBe(true);
   });
 });
