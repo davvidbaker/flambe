@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { FlambeClient, configFromEnv } from '../src/client.mjs';
+import { FlambeClient, clientFromEnv, configFromEnv } from '../src/client.mjs';
 import { run } from '../src/cli.mjs';
 import { loadProjectEnv } from '../src/env.mjs';
 
@@ -296,6 +296,62 @@ test('an explicit thread is sent as a request, and the reducer may keep a child 
   assert.equal(notes[0].threadId, 3);
   assert.equal(notes[0].requestedThreadId, 11);
   await assert.rejects(client.start({ name: 'Bad thread', threadId: 'main' }), /--thread must be a positive integer/);
+});
+
+test('start sends FLAMBE_THREAD when --thread is omitted', async () => {
+  let body;
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 't', traceId: 2, threadId: 11, now: () => 7,
+    fetchImpl: async (_url, options = {}) => {
+      body = JSON.parse(options.body);
+      return jsonResponse({ data: { activity: { id: 8, parent_id: null, thread_id: 11 }, event: { id: 9 } } }, 201);
+    },
+  });
+
+  assert.equal(await client.start({ name: 'Root work' }), 8);
+  assert.equal(body.thread_id, 11);
+
+  await client.start({ name: 'Override', threadId: '4' });
+  assert.equal(body.thread_id, 4);
+});
+
+test('configFromEnv reads optional FLAMBE_THREAD', () => {
+  const env = {
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+  };
+  assert.equal(configFromEnv(env).threadId, undefined);
+  assert.equal(configFromEnv({ ...env, FLAMBE_THREAD: ' 11 ' }).threadId, 11);
+  assert.throws(() => configFromEnv({ ...env, FLAMBE_THREAD: 'main' }), /FLAMBE_THREAD must be a positive integer/);
+});
+
+test('CLI start forwards FLAMBE_THREAD from the environment', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'flambe-thread-env-'));
+
+  try {
+    let body;
+    const env = {
+      FLAMBE_URL: 'http://flambe.test',
+      FLAMBE_API_TOKEN: 't',
+      FLAMBE_TRACE_ID: '2',
+      FLAMBE_THREAD: '11',
+      FLAMBE_QUEUE_PATH: join(directory, 'queue.json'),
+    };
+    const client = clientFromEnv(env, {
+      now: () => 7,
+      fetchImpl: async (_url, options = {}) => {
+        body = JSON.parse(options.body);
+        return jsonResponse({ data: { activity: { id: 8, parent_id: null, thread_id: 11 }, event: { id: 9 } } }, 201);
+      },
+    });
+    const output = [];
+    await run(['start', 'Root work'], { env, client, stdout: { write(value) { output.push(value); } } });
+    assert.deepEqual(output, ['8\n']);
+    assert.equal(body.thread_id, 11);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('start omits parent_id so the reducer infers this agent\'s newest active activity', async () => {
