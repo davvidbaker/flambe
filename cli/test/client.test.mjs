@@ -52,6 +52,15 @@ test('configFromEnv derives an agent identity from the Codex session when needed
 
   assert.equal(config.agentId, 'codex:session-1:thread-2');
   assert.equal(config.agentName, undefined);
+  assert.equal(config.agentPlatform, 'Codex');
+  assert.equal(configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CURSOR_AGENT: '1',
+    CURSOR_CONVERSATION_ID: 'conv-1',
+    FLAMBE_AGENT_PLATFORM: ' Cursor Cloud ',
+  }).agentPlatform, 'Cursor Cloud');
   assert.equal(configFromEnv({
     FLAMBE_URL: 'http://localhost:4001',
     FLAMBE_API_TOKEN: 'flb_secret',
@@ -1001,17 +1010,18 @@ test('adopts the name the reducer assigns, remembers it, and tells the worker on
 test('whoami reports the reducer-side identity and needs an agent id', async () => {
   const stdout = [];
   const client = new FlambeClient({
-    baseUrl: 'http://flambe.test', token: 't', traceId: 3, agentId: 'cursor:conv-1',
+    baseUrl: 'http://flambe.test', token: 't', traceId: 3, agentId: 'cursor:conv-1', agentPlatform: 'Cursor Cloud',
     fetchImpl: async (url, options = {}) => {
       assert.equal(url, 'http://flambe.test/api/agents/me');
       assert.equal(options.headers['x-flambe-agent-id'], 'cursor:conv-1');
-      return jsonResponse({ data: { agent_id: 'cursor:conv-1', name: 'Juniper', name_assigned: false } });
+      assert.equal(options.headers['x-flambe-agent-platform'], 'Cursor Cloud');
+      return jsonResponse({ data: { agent_id: 'cursor:conv-1', name: 'Juniper', platform: 'Cursor Cloud', name_assigned: false } });
     },
   });
   client.flushQueue = async () => {};
 
   await run(['whoami'], { client, stdout: { write: chunk => stdout.push(chunk) }, stderr: { write: () => {} } });
-  assert.deepEqual(stdout, ['cursor:conv-1\tJuniper\n']);
+  assert.deepEqual(stdout, ['cursor:conv-1\tJuniper\tCursor Cloud\n']);
 
   const nameless = new FlambeClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 3, fetchImpl: async () => { throw new Error('unexpected'); } });
   await assert.rejects(nameless.whoami(), /FLAMBE_AGENT_ID/);

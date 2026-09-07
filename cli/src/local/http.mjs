@@ -93,8 +93,14 @@ function identifyAgent(store, req, auth) {
   if (!auth) return null;
   const agentId = req.headers['x-flambe-agent-id'];
   const agentName = req.headers['x-flambe-agent-name'];
+  const agentPlatform = req.headers['x-flambe-agent-platform'];
   if (typeof agentId !== 'string') return null;
-  return store.identifyAgent(auth.user.id, agentId, typeof agentName === 'string' ? agentName : undefined);
+  return store.identifyAgent(
+    auth.user.id,
+    agentId,
+    typeof agentName === 'string' ? agentName : undefined,
+    typeof agentPlatform === 'string' ? agentPlatform : undefined,
+  );
 }
 
 function agentHeaders(agent) {
@@ -141,7 +147,7 @@ async function dispatch(store, req, url, body, { auth, agent }) {
     if (!agent) {
       return { status: 400, json: { error: 'AGENT_ID_REQUIRED', detail: 'Send x-flambe-agent-id with a bearer token' } };
     }
-    return { status: 200, json: { data: { agent_id: agent.agent_id, name: agent.name, name_assigned: agent.assigned } } };
+    return { status: 200, json: { data: { agent_id: agent.agent_id, name: agent.name, platform: agent.platform ?? null, name_assigned: agent.assigned } } };
   }
 
   if (method === 'GET' && path === '/api/export') {

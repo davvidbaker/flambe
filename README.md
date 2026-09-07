@@ -183,9 +183,12 @@ picks a name no other agent of yours has, answers every request with
 `x-flambe-agent-name`, and the CLI remembers it in `~/.flambe/agent-names.json`
 and prints `reducer named this agent "Juniper"` once. `flambe whoami` shows the
 current identity; `GET /api/agents/me` is the API. `FLAMBE_AGENT_NAME` is an
-override, not a requirement, and a shared product name like `"Cursor Cloud"`
-collapses every session onto one lane, so leave it unset. Do not put
-`FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`.
+override, not a requirement. The product an agent runs on is a separate,
+shared label: `FLAMBE_AGENT_PLATFORM` (`"Cursor Cloud"`, `"Codex"`, `"Claude
+Code"`; derived from the session type when unset) is sent as
+`x-flambe-agent-platform` and stored with the agent, so many agents can share a
+platform while each keeps its own lane. Do not put `FLAMBE_AGENT_ID`,
+`FLAMBE_AGENT_NAME`, or `FLAMBE_AGENT_PLATFORM` in `.env`.
 
 An agent records a meaningful unit of work with a begin/end pair:
 

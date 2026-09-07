@@ -139,6 +139,7 @@ defmodule FlambeNext.ReducerAgent do
         name: activity.name,
         description: activity.description,
         agent_name: activity.agent_name,
+        agent_platform: agent_platform(user, activity.agent_id),
         thread_id: activity.thread_id
       },
       threads: Enum.map(threads, &%{id: &1.id, name: &1.name}),
@@ -146,6 +147,15 @@ defmodule FlambeNext.ReducerAgent do
       recent_by_same_agent: recent,
       user: user.username
     }
+  end
+
+  defp agent_platform(_user, nil), do: nil
+
+  defp agent_platform(user, agent_id) do
+    case FlambeNext.Agents.get(user, agent_id) do
+      %{platform: platform} -> platform
+      nil -> nil
+    end
   end
 
   defp placement_prompt(context) do

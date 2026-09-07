@@ -3,7 +3,8 @@ defmodule FlambeNext.Agents do
   Agent identity (ADR-012). An agent is a stable `agent_id` a worker sends on every
   request. The reducer gives each agent of a user a name no other agent of that user
   has, persists it, and tells the worker so it can use it from then on. A name the
-  worker supplies wins and is stored too.
+  worker supplies wins and is stored too. The optional platform ("Cursor Cloud", "Codex",
+  "Claude Code") is the product the agent runs on; many agents share one.
   """
 
   import Ecto.Query
@@ -30,20 +31,25 @@ defmodule FlambeNext.Agents do
   `assigned?` is true only on the request that coined a name, so callers can tell the
   worker once.
   """
-  @spec identify(User.t(), String.t(), String.t() | nil) :: {:ok, identity()} | {:error, term()}
-  def identify(%User{} = user, agent_id, provided_name) when is_binary(agent_id) do
+  @spec identify(User.t(), String.t(), String.t() | nil, String.t() | nil) ::
+          {:ok, identity()} | {:error, term()}
+  def identify(%User{} = user, agent_id, provided_name, platform \\ nil)
+      when is_binary(agent_id) do
     now = DateTime.utc_now(:second)
     provided = if usable_name?(provided_name), do: String.trim(provided_name)
+    platform = if usable_name?(platform), do: String.trim(platform)
 
     case Repo.get_by(Agent, user_id: user.id, agent_id: agent_id) do
       nil ->
-        insert_new(user, agent_id, provided, now)
+        insert_new(user, agent_id, provided, platform, now)
 
       %Agent{} = agent ->
         attrs =
           if provided && provided != agent.name,
             do: %{name: provided, name_source: "provided", last_seen_at: now},
             else: %{last_seen_at: now}
+
+        attrs = if platform, do: Map.put(attrs, :platform, platform), else: attrs
 
         with {:ok, agent} <- agent |> Agent.changeset(attrs) |> Repo.update() do
           {:ok, %{agent: agent, assigned?: false}}
@@ -87,7 +93,7 @@ defmodule FlambeNext.Agents do
       else: candidate
   end
 
-  defp insert_new(user, agent_id, provided, now) do
+  defp insert_new(user, agent_id, provided, platform, now) do
     {name, source} =
       case provided do
         nil -> {pick_name(agent_id, taken_names(user)), "assigned"}
@@ -95,7 +101,13 @@ defmodule FlambeNext.Agents do
       end
 
     %Agent{user_id: user.id}
-    |> Agent.changeset(%{agent_id: agent_id, name: name, name_source: source, last_seen_at: now})
+    |> Agent.changeset(%{
+      agent_id: agent_id,
+      name: name,
+      name_source: source,
+      platform: platform,
+      last_seen_at: now
+    })
     |> Repo.insert()
     |> case do
       {:ok, agent} ->
@@ -104,7 +116,7 @@ defmodule FlambeNext.Agents do
       {:error, %Ecto.Changeset{} = changeset} ->
         # Two first requests from the same new agent raced; the other one won.
         if unique_violation?(changeset),
-          do: identify(user, agent_id, provided),
+          do: identify(user, agent_id, provided, platform),
           else: {:error, changeset}
     end
   end

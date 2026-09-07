@@ -48,11 +48,22 @@ export function agentIdentityFromEnv(env = process.env) {
   const agentNamesPath = env.FLAMBE_AGENT_NAMES_PATH?.trim() || defaultAgentNamesPath();
   // An explicit name is an override; otherwise reuse whatever the reducer named this agent.
   const agentName = env.FLAMBE_AGENT_NAME?.trim() || rememberedAgentName(agentId, agentNamesPath);
+  // The product the agent runs on ("Cursor Cloud", "Codex"); many agents share one.
+  const agentPlatform = env.FLAMBE_AGENT_PLATFORM?.trim() || platformFromAgentId(agentId);
 
   return {
     ...(agentId ? { agentId, agentNamesPath } : {}),
     ...(agentName ? { agentName } : {}),
+    ...(agentPlatform ? { agentPlatform } : {}),
   };
+}
+
+function platformFromAgentId(agentId) {
+  if (!agentId) return undefined;
+  if (agentId.startsWith('codex:')) return 'Codex';
+  if (agentId.startsWith('cursor:')) return 'Cursor';
+  if (agentId.startsWith('claude:')) return 'Claude Code';
+  return undefined;
 }
 
 function firstPresent(...values) {
@@ -85,11 +96,12 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, agentId, agentName, agentNamesPath, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
+  constructor({ baseUrl, token, traceId, agentId, agentName, agentPlatform, agentNamesPath, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.token = token;
     this.agentId = agentId;
     this.agentName = agentName;
+    this.agentPlatform = agentPlatform;
     this.agentNamesPath = agentNamesPath;
     this.traceId = Number(traceId);
     this.fetch = fetchImpl;
@@ -107,6 +119,7 @@ export class FlambeClient {
           authorization: `Bearer ${this.token}`,
           ...(this.agentId ? { 'x-flambe-agent-id': this.agentId } : {}),
           ...(this.agentId && this.agentName ? { 'x-flambe-agent-name': this.agentName } : {}),
+          ...(this.agentId && this.agentPlatform ? { 'x-flambe-agent-platform': this.agentPlatform } : {}),
           ...(body === undefined ? {} : { 'content-type': 'application/json' }),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -162,7 +175,12 @@ export class FlambeClient {
       throw new Error('No agent id for this process; set FLAMBE_AGENT_ID (Cursor, Codex, and Claude Code sessions derive one automatically)');
     }
     const payload = await this.request('/api/agents/me');
-    return { agentId: payload.data.agent_id, name: payload.data.name, nameAssigned: payload.data.name_assigned === true };
+    return {
+      agentId: payload.data.agent_id,
+      name: payload.data.name,
+      platform: payload.data.platform ?? null,
+      nameAssigned: payload.data.name_assigned === true,
+    };
   }
 
   async getTrace() {

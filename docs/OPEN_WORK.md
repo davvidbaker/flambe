@@ -37,8 +37,9 @@ Shipped on `main` the same day:
   resolves `start` (agent-scoped parent inference, thread follows parent,
   category inheritance; local `flambe serve` too), places roots via the model
   asynchronously (thread + categories, `reducer_decision` event), and names
-  agents (`agents` table, `x-flambe-agent-name`, `flambe whoami`). Remove the
-  `FLAMBE_AGENT_NAME` Cloud secret so cloud sessions get distinct lanes.
+  agents (`agents` table, `x-flambe-agent-name`, `flambe whoami`).
+  `FLAMBE_AGENT_PLATFORM` (Cloud secret `Cursor Cloud`) is the shared product
+  label, stored on the agent, not a lane name.
   Not yet: re-placing an activity when its name changes; model review of
   deterministic decisions.
 

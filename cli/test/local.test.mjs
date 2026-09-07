@@ -81,6 +81,7 @@ test('local server names nameless agents and applies the deterministic start rul
       authorization: `Bearer ${rawToken}`,
       'content-type': 'application/json',
       'x-flambe-agent-id': agentId,
+      'x-flambe-agent-platform': 'Cursor Cloud',
     });
     const start = (agentId, body) => fetch(`${origin}/api/activities`, {
       method: 'POST',
@@ -92,6 +93,7 @@ test('local server names nameless agents and applies the deterministic start rul
     assert.equal(me.status, 200);
     const identity = await me.json();
     assert.equal(identity.data.name_assigned, true);
+    assert.equal(identity.data.platform, 'Cursor Cloud');
     assert.equal(me.headers.get('x-flambe-agent-name'), identity.data.name);
     assert.equal(me.headers.get('x-flambe-agent-name-assigned'), 'true');
 

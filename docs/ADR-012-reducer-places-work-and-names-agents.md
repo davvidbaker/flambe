@@ -54,7 +54,9 @@ given one and told, so it uses it from then on.
    Every agent request is answered with `x-flambe-agent-name`, plus
    `x-flambe-agent-name-assigned: true` on the request that coined it. A name the
    agent supplies wins and is stored. The API token name is no longer used as a lane
-   name. `GET /api/agents/me` returns the caller's identity.
+   name. `GET /api/agents/me` returns the caller's identity. The product an agent runs
+   on is a separate label, `x-flambe-agent-platform` (`FLAMBE_AGENT_PLATFORM`, e.g.
+   "Cursor Cloud"), stored on the agent; many agents share one platform.
 4. **The CLI remembers.** It stores assigned names in `~/.flambe/agent-names.json` by
    `agent_id`, sends them on later requests, prints "this agent is now named X" on
    stderr when a name is coined, and gains `flambe whoami`. `FLAMBE_AGENT_NAME` becomes
@@ -88,8 +90,8 @@ identity when many sessions share it.
 `start` no longer needs a `GET /api/traces/:id` first, so it is one request. Agents
 should stop passing `--thread` and `--category` unless certain. Roots may move threads
 shortly after creation; the CLI-printed id stays valid. Because `x-flambe-agent-name`
-now wins when present, David should remove the `FLAMBE_AGENT_NAME` Cloud secret so
-cloud sessions get distinct names. Activities keep their own `agent_name` column, so a
+now wins when present, the Cloud secret is `FLAMBE_AGENT_PLATFORM=Cursor Cloud`, not
+`FLAMBE_AGENT_NAME`, so cloud sessions get distinct names and a shared platform. Activities keep their own `agent_name` column, so a
 later rename does not rewrite history.
 
 ## Not yet

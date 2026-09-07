@@ -203,15 +203,27 @@ defmodule FlambeNextWeb.ReducerStartTest do
   end
 
   test "GET /api/agents/me reports the caller's assigned name", ctx do
-    conn = ctx.conn |> as_agent(ctx, "cursor:me") |> get(~p"/api/agents/me")
+    conn =
+      ctx.conn
+      |> as_agent(ctx, "cursor:me")
+      |> put_req_header("x-flambe-agent-platform", "Cursor Cloud")
+      |> get(~p"/api/agents/me")
 
-    assert %{"data" => %{"agent_id" => "cursor:me", "name" => name, "name_assigned" => true}} =
-             json_response(conn, 200)
+    assert %{
+             "data" => %{
+               "agent_id" => "cursor:me",
+               "name" => name,
+               "platform" => "Cursor Cloud",
+               "name_assigned" => true
+             }
+           } = json_response(conn, 200)
 
     assert [^name] = get_resp_header(conn, "x-flambe-agent-name")
 
     conn = ctx.conn |> as_agent(ctx, "cursor:me") |> get(~p"/api/agents/me")
-    assert %{"data" => %{"name" => ^name, "name_assigned" => false}} = json_response(conn, 200)
+
+    assert %{"data" => %{"name" => ^name, "platform" => "Cursor Cloud", "name_assigned" => false}} =
+             json_response(conn, 200)
 
     conn =
       ctx.conn

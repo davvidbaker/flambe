@@ -7,7 +7,7 @@ description: Track coding-agent work in a Flambe trace with the flambe CLI. Use 
 
 Log semantic work units as a live flame chart — not commands, file opens, or hidden reasoning. Skip trivial questions. If `FLAMBE_URL`, `FLAMBE_API_TOKEN`, or `FLAMBE_TRACE_ID` is set neither in `.env` nor in the shell environment (Cloud Agent secrets arrive as environment variables), skip silently.
 
-Needs Node 22+ and `flambe` on `PATH`. If it is missing, `npm install -g @davvidbaker/flambe-cli`; in this repo without a global install, use `node cli/bin/flambe.mjs`. You do not need to pick a name: the reducer names each agent on its first request, the CLI remembers it (`~/.flambe/agent-names.json`) and prints `reducer named this agent "X"` on stderr once. `flambe whoami` shows your id and name. Set `FLAMBE_AGENT_NAME` only to override; never put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`.
+Needs Node 22+ and `flambe` on `PATH`. If it is missing, `npm install -g @davvidbaker/flambe-cli`; in this repo without a global install, use `node cli/bin/flambe.mjs`. You do not need to pick a name: the reducer names each agent on its first request, the CLI remembers it (`~/.flambe/agent-names.json`) and prints `reducer named this agent "X"` on stderr once. `flambe whoami` shows your id, name, and platform. `FLAMBE_AGENT_PLATFORM` is the product you run on (`"Cursor Cloud"`, `"Codex"`; derived from the session when unset) and is shared by many agents; it is not your name. Set `FLAMBE_AGENT_NAME` only to override; never put `FLAMBE_AGENT_ID`, `FLAMBE_AGENT_NAME`, or `FLAMBE_AGENT_PLATFORM` in `.env`.
 
 ## Think in a stack
 

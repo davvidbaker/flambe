@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS agents (
   agent_id TEXT NOT NULL,
   name TEXT NOT NULL,
   name_source TEXT NOT NULL,
+  platform TEXT,
   last_seen_ms INTEGER NOT NULL,
   UNIQUE (user_id, agent_id)
 );
@@ -346,28 +347,30 @@ export class LocalStore {
    * Resolve (and if needed name) the agent behind `agentId` for this user, mirroring
    * FlambeNext.Agents.identify. `assigned` is true only when a name was coined now.
    */
-  identifyAgent(userId, agentId, providedName) {
+  identifyAgent(userId, agentId, providedName, providedPlatform) {
     if (typeof agentId !== 'string' || agentId.length === 0 || agentId.length > 200) return null;
     const provided = usableName(providedName) ? providedName.trim() : null;
+    const platformGiven = usableName(providedPlatform) ? providedPlatform.trim() : null;
     const now = Date.now();
     const existing = this.db.prepare('SELECT * FROM agents WHERE user_id = ? AND agent_id = ?').get(userId, agentId);
 
     if (existing) {
       const name = provided && provided !== existing.name ? provided : existing.name;
-      this.db.prepare('UPDATE agents SET name = ?, name_source = ?, last_seen_ms = ? WHERE id = ?')
-        .run(name, provided && provided !== existing.name ? 'provided' : existing.name_source, now, existing.id);
-      return { agent_id: agentId, name, assigned: false };
+      const platform = platformGiven ?? existing.platform ?? null;
+      this.db.prepare('UPDATE agents SET name = ?, name_source = ?, platform = ?, last_seen_ms = ? WHERE id = ?')
+        .run(name, provided && provided !== existing.name ? 'provided' : existing.name_source, platform, now, existing.id);
+      return { agent_id: agentId, name, platform, assigned: false };
     }
 
     const taken = this.db.prepare('SELECT name FROM agents WHERE user_id = ?').all(userId).map(row => row.name);
     const name = provided ?? pickName(agentId, taken);
-    this.db.prepare('INSERT INTO agents (user_id, agent_id, name, name_source, last_seen_ms) VALUES (?, ?, ?, ?, ?)')
-      .run(userId, agentId, name, provided ? 'provided' : 'assigned', now);
-    return { agent_id: agentId, name, assigned: provided === null };
+    this.db.prepare('INSERT INTO agents (user_id, agent_id, name, name_source, platform, last_seen_ms) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(userId, agentId, name, provided ? 'provided' : 'assigned', platformGiven, now);
+    return { agent_id: agentId, name, platform: platformGiven, assigned: provided === null };
   }
 
   listAgents(userId) {
-    return this.db.prepare('SELECT agent_id, name, name_source, last_seen_ms FROM agents WHERE user_id = ? ORDER BY last_seen_ms DESC, id')
+    return this.db.prepare('SELECT agent_id, name, name_source, platform, last_seen_ms FROM agents WHERE user_id = ? ORDER BY last_seen_ms DESC, id')
       .all(userId);
   }
 

@@ -67,6 +67,17 @@ defmodule FlambeNext.AgentsTest do
     assert a.id != b.id
   end
 
+  test "records the platform when given and keeps the last one seen", %{user: user} do
+    assert {:ok, %{agent: agent}} = Agents.identify(user, "cursor:conv-1", nil, "Cursor Cloud")
+    assert agent.platform == "Cursor Cloud"
+
+    assert {:ok, %{agent: same}} = Agents.identify(user, "cursor:conv-1", nil, nil)
+    assert same.platform == "Cursor Cloud"
+
+    assert {:ok, %{agent: moved}} = Agents.identify(user, "cursor:conv-1", nil, "Cursor")
+    assert moved.platform == "Cursor"
+  end
+
   test "pick_name is deterministic for an id and avoids taken names" do
     assert Agents.pick_name("x", []) == Agents.pick_name("x", [])
     first = Agents.pick_name("x", [])

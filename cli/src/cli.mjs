@@ -44,6 +44,8 @@ Optional:
                      Derived from Codex, Cursor, or Claude Code session env when unset.
   FLAMBE_AGENT_NAME  Override the lane name. Unset, the reducer names the agent and the
                      CLI remembers it in ~/.flambe/agent-names.json. Do not put this in .env.
+  FLAMBE_AGENT_PLATFORM  Product the agent runs on, shared by many agents ("Cursor Cloud",
+                     "Codex"). Derived from the session type when unset.
   FLAMBE_AGENT_NAMES_PATH  Where remembered agent names live.
   FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)
   FLAMBE_LOCAL_DB    SQLite path for flambe serve / export (default: ~/.flambe/local.sqlite)
@@ -421,7 +423,7 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
     const json = parseJson(args);
     const me = await flambe.whoami();
     if (json) stdout.write(`${JSON.stringify(me)}\n`);
-    else stdout.write(`${me.agentId}\t${me.name}\n`);
+    else stdout.write(`${me.agentId}\t${me.name}\t${me.platform ?? ''}\n`);
     return;
   }
 
