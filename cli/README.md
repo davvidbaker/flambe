@@ -34,8 +34,9 @@ cd cli && npm link
    Copy the `flambe-cli` skill from this repo (`.codex/skills/flambe-cli`) so
    agents know when to `start` / `end`.
 
-3. Do not put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`. In a Cursor
-   Cloud Agent, export `FLAMBE_AGENT_NAME="Cursor Cloud"` if it is unset.
+3. Do not put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`. Agents do not
+   need a name: the reducer assigns one on first contact and the CLI remembers
+   it (`flambe whoami`). Set `FLAMBE_AGENT_NAME` only to override.
 
 CI publishes this package from `cli/` via npm trusted publishing when
 `cli/package.json` on `main` changes. Local `npm publish` needs access to

@@ -7,7 +7,7 @@ description: Track coding-agent work in a Flambe trace with the flambe CLI. Use 
 
 Log semantic work units as a live flame chart — not commands, file opens, or hidden reasoning. Skip trivial questions. If `FLAMBE_URL`, `FLAMBE_API_TOKEN`, or `FLAMBE_TRACE_ID` is set neither in `.env` nor in the shell environment (Cloud Agent secrets arrive as environment variables), skip silently.
 
-Needs Node 22+ and `flambe` on `PATH`; in this repo without it, use `node cli/bin/flambe.mjs`. Before the first command, if `FLAMBE_AGENT_NAME` is unset, export a short product/model name (`export FLAMBE_AGENT_NAME="Grok"`; in a Cursor Cloud Agent, `"Cursor Cloud"`). Do not put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`.
+Needs Node 22+ and `flambe` on `PATH`. If it is missing, `npm install -g @davvidbaker/flambe-cli`; in this repo without a global install, use `node cli/bin/flambe.mjs`. You do not need to pick a name: the reducer names each agent on its first request, the CLI remembers it (`~/.flambe/agent-names.json`) and prints `reducer named this agent "X"` on stderr once. `flambe whoami` shows your id and name. Set `FLAMBE_AGENT_NAME` only to override; never put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`.
 
 ## Think in a stack
 
@@ -37,9 +37,9 @@ flambe message "Auth fix needs the session module refactored too; widening scope
 
 **255-character hard limit on activity names and `--description`.** The column is `varchar(255)`. A longer value returns a 500 and can wedge the offline queue. Count before `start`. Prefer a short concrete name; put detail in the end/suspend/resume message (those are unbounded).
 
-Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch suspended/threads/categories unless the default thread or parent is wrong.
+Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch threads or categories to decide placement; that is the reducer's job.
 
-`start` uses the default thread and the newest active parent. Pass `--thread ID` / `--parent ID` / `--category ID` only when you already know them. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations.
+`start` is a proposal. Without `--parent`/`--root`, the reducer nests the new activity under **your own** newest active activity (other agents' work is never your parent), puts a child on its parent's thread, and gives it the parent's categories; a new root gets its thread and categories chosen by the reducer a few seconds later. The CLI prints what was inferred on stderr (`reducer nested 43 under 42`). Pass `--thread ID` / `--parent ID` / `--category ID` only when you are certain. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations.
 
 ## Ask the reducer before you drift
 
