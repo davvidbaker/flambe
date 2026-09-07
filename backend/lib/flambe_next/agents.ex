@@ -14,7 +14,7 @@ defmodule FlambeNext.Agents do
 
   @names ~w(
     Steve Belinda Juniper Marcel Priya Otis Nia Theo Carmen Felix Imani Rory Greta Miles Suki
-    Anouk Bastian Cleo Dashiell Esme Fitz Hollis Ines Jasper Kenji Lucía Mattias Noor Oona
+    Anouk Bastian Cleo Dashiell Esme Fitz Hollis Ines Jasper Kenji Lucia Mattias Noor Oona
     Pilar Quill Ravi Sable Tamsin Ulla Vera Wren Xiomara Yusuf Zadie
   )
   @max_name_bytes 100
