@@ -65,10 +65,14 @@ const StyledHeader = styled.header`
       flex: 0 0 auto;
     }
 
-    > button,
-    > textarea {
+    > button {
       min-height: 34px;
       font-size: 12px;
+    }
+
+    > textarea {
+      min-height: 34px;
+      font-size: 16px;
     }
 
     h1 {
