@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { handleLocalRequest } from './http.mjs';
 import { LocalStore } from './store.mjs';
 
+/** Kept in sync with the copy in cli.mjs, which must not import this module eagerly. */
 export function defaultDbPath() {
   return join(homedir(), '.flambe', 'local.sqlite');
 }
