@@ -169,7 +169,44 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
   const afterPan = {
     lbt: Number(await surface.getAttribute('data-lbt')),
     rbt: Number(await surface.getAttribute('data-rbt')),
+    topOffset: Number(await surface.getAttribute('data-top-offset')) || 0,
   };
+
+  // One-finger vertical drag: time window stays put; threads scroll when they overflow.
+  await page.evaluate(({ x, y }) => {
+    const target = document.querySelector('[data-timeline-surface="true"]');
+    if (!target) throw new Error('timeline surface missing');
+    const touch = (id: number, cx: number, cy: number) =>
+      new Touch({ identifier: id, target, clientX: cx, clientY: cy });
+    target.dispatchEvent(new TouchEvent('touchstart', {
+      bubbles: true,
+      cancelable: true,
+      touches: [touch(1, x, y)],
+      targetTouches: [touch(1, x, y)],
+      changedTouches: [touch(1, x, y)],
+    }));
+    target.dispatchEvent(new TouchEvent('touchmove', {
+      bubbles: true,
+      cancelable: true,
+      touches: [touch(1, x, y - 120)],
+      targetTouches: [touch(1, x, y - 120)],
+      changedTouches: [touch(1, x, y - 120)],
+    }));
+    target.dispatchEvent(new TouchEvent('touchend', {
+      bubbles: true,
+      cancelable: true,
+      touches: [],
+      targetTouches: [],
+      changedTouches: [touch(1, x, y - 120)],
+    }));
+  }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+
+  await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBe(afterPan.lbt);
+  const maxTopOffset = Number(await surface.getAttribute('data-max-top-offset')) || 0;
+  if (maxTopOffset > 0) {
+    await expect.poll(async () => Number(await surface.getAttribute('data-top-offset')) || 0)
+      .toBeGreaterThan(afterPan.topOffset);
+  }
 
   // Pinch out around the chart center → narrower time window.
   await page.evaluate(({ x, y }) => {
