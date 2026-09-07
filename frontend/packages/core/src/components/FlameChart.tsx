@@ -37,6 +37,13 @@ import {
   formatTimelineTickLabel,
   shortEnglishHumanizer,
 } from '../utilities';
+import {
+  isCoarsePointer,
+  isHoverNone,
+  isNarrowViewport,
+  shouldOpenActivityDetailsOnSelect,
+} from '../utilities/activityDetailGesture';
+import { showActivityDetails } from '../actions';
 import { colors } from '../styles';
 import type { RootState } from '../rootReducer';
 import type { EntityId } from '../types/ids';
@@ -107,7 +114,9 @@ const connector = connect((state: RootState) => ({
   showSuspendResumeFlows: state.settings.suspendResumeFlows,
   showSuspendResumeFlowsOnlyForFocusedActivity:
     state.settings.suspendResumeFlowsOnlyForFocusedActivity,
-}), null, null, { forwardRef: true });
+}), {
+  showActivityDetails,
+}, null, { forwardRef: true });
 
 type Props = OwnProps & ConnectedProps<typeof connector>;
 interface State { canvasHeight: number }
@@ -393,15 +402,36 @@ export class FlameChart extends Component<Props, State> {
           /** 💁 hit.value is array like [key, val] */
 
         case 'block':
-          const block = this.props.blocks[Number(hit.value[0])];
+        case 'block_edge_left':
+        case 'block_edge_right': {
+          // Click (not drag) on an edge still selects / opens details. Resize is
+          // started from mousedown+drag; on mobile a short open block is often
+          // entirely inside the 10px edge threshold in a wide viewport.
+          const blockIndex = Number(hit.value[0]);
+          const block = this.props.blocks[blockIndex];
           const activity = this.props.activities[String(block.activity_id)];
+          const focusedActivityId = activityByBlockIndex(
+            this.props.blocks,
+            this.props.focusedBlockIndex,
+          );
+          const alreadyFocusedSameActivity = focusedActivityId !== null
+            && String(focusedActivityId) === String(block.activity_id);
           this.props.focusBlock({
-            index: Number(hit.value[0]),
+            index: blockIndex,
             activity_id: block.activity_id,
             activityStatus: activity.status,
             thread_id: activity.thread_id ?? null,
           });
+          if (shouldOpenActivityDetailsOnSelect({
+            alreadyFocusedSameActivity,
+            coarsePointer: isCoarsePointer(),
+            narrowViewport: isNarrowViewport(),
+            hoverNone: isHoverNone(),
+          })) {
+            this.props.showActivityDetails();
+          }
           break;
+        }
 
         default:
       }
