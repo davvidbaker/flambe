@@ -7,7 +7,7 @@ description: Track coding-agent work in a Flambe trace with the flambe CLI. Use 
 
 Log semantic work units as a live flame chart — not commands, file opens, or hidden reasoning. Skip trivial questions. If `FLAMBE_URL`, `FLAMBE_API_TOKEN`, or `FLAMBE_TRACE_ID` is set neither in `.env` nor in the shell environment (Cloud Agent secrets arrive as environment variables), skip silently.
 
-Needs Node 22+ and `flambe` on `PATH`; in this repo without it, use `node cli/bin/flambe.mjs`. Before the first command, if `FLAMBE_AGENT_NAME` is unset, export a short product/model name (`export FLAMBE_AGENT_NAME="Grok"`; in a Cursor Cloud Agent, `"Cursor Cloud"`). Do not put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`.
+Needs Node 22+ and `flambe` on `PATH`; in this repo without it, use `node cli/bin/flambe.mjs`. Before the first command, if `FLAMBE_AGENT_NAME` is unset, export a short product/model name (`export FLAMBE_AGENT_NAME="Grok"`; in a Cursor Cloud Agent, `"Cursor Cloud"`). Do not put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`. `FLAMBE_THREAD` belongs in `.env` (this project's thread name, unique slug, or id).
 
 ## Think in a stack
 
@@ -37,9 +37,9 @@ flambe message "Auth fix needs the session module refactored too; widening scope
 
 **255-character hard limit on activity names and `--description`.** The column is `varchar(255)`. A longer value returns a 500 and can wedge the offline queue. Count before `start`. Prefer a short concrete name; put detail in the end/suspend/resume message (those are unbounded).
 
-Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch suspended/threads/categories unless the default thread or parent is wrong.
+Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch suspended/threads/categories unless the parent is wrong.
 
-`start` uses the default thread and the newest active parent. Pass `--thread ID` / `--parent ID` / `--category ID` only when you already know them. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations.
+`start` uses `FLAMBE_THREAD` from this project's `.env` or Cloud secrets, else the lowest-rank thread, and the newest active parent in that thread. Do not list threads and pick one by project name — never pass `--thread flambe` (or any other guessed name) unless `FLAMBE_THREAD` is that value. Pass `--thread` / `--parent` / `--category` only when you already know the id from this session. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations.
 
 ## Ask the reducer before you drift
 
