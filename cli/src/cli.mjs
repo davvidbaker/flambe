@@ -23,6 +23,7 @@ const usage = `Usage:
   flambe threads [--json]
   flambe categories [--json]
   flambe ping
+  flambe whoami [--json]
   flambe message <text> [--activity <id>] [--json]
   flambe observe <kind> <value> [--unit <unit>] [--on <YYYY-MM-DD>] [--payload <json>] [--at <ISO-8601>]
   flambe serve [--port <n>] [--db <path>] [--static <dir>]
@@ -41,7 +42,11 @@ Required values:
 Optional:
   FLAMBE_AGENT_ID    Stable ID for this running agent; enables named flame lanes.
                      Derived from Codex, Cursor, or Claude Code session env when unset.
-  FLAMBE_AGENT_NAME  Display name for this agent's lane. Do not put this in .env.
+  FLAMBE_AGENT_NAME  Override the lane name. Unset, the reducer names the agent and the
+                     CLI remembers it in ~/.flambe/agent-names.json. Do not put this in .env.
+  FLAMBE_AGENT_PLATFORM  Product the agent runs on, shared by many agents ("Cursor Cloud",
+                     "Codex"). Derived from the session type when unset.
+  FLAMBE_AGENT_NAMES_PATH  Where remembered agent names live.
   FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)
   FLAMBE_LOCAL_DB    SQLite path for flambe serve / export (default: ~/.flambe/local.sqlite)
 
@@ -275,6 +280,18 @@ function formatReducerNote(note) {
     const list = note.closedDescendants.map(item => `${item.activityId} (${item.activityName})`).join(', ');
     return `reducer closed open descendants of ${note.activityId}: ${list}\n`;
   }
+  if (note.type === 'agent_named') {
+    return `reducer named this agent "${note.name}"; the CLI will use it from now on\n`;
+  }
+  if (note.type === 'start_reduced') {
+    const parts = [];
+    if (note.parentSource === 'inferred') parts.push(`nested ${note.activityId} under ${note.parentId}`);
+    if (note.threadSource === 'parent' && note.requestedThreadId !== undefined && note.requestedThreadId !== note.threadId) {
+      parts.push(`kept it on the parent's thread ${note.threadId}, not ${note.requestedThreadId}`);
+    }
+    if (note.categoriesSource === 'parent') parts.push('inherited the parent\'s categories');
+    return parts.length > 0 ? `reducer ${parts.join('; ')}\n` : '';
+  }
   return `reducer: ${JSON.stringify(note)}\n`;
 }
 
@@ -327,7 +344,10 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
   }
 
   // Reducer notes go to stderr so stdout stays a machine-friendly id.
-  const onReducerNote = note => stderr.write(formatReducerNote(note));
+  const onReducerNote = note => {
+    const text = formatReducerNote(note);
+    if (text) stderr.write(text);
+  };
   const flambe = client ?? clientFromEnv(env, { onReducerNote });
   flambe.onReducerNote ??= onReducerNote;
   await flambe.flushQueue?.();
@@ -396,6 +416,14 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
   if (command === 'ping') {
     const trace = await flambe.getTrace();
     stdout.write(`${trace.id}\t${trace.name}\n`);
+    return;
+  }
+
+  if (command === 'whoami') {
+    const json = parseJson(args);
+    const me = await flambe.whoami();
+    if (json) stdout.write(`${JSON.stringify(me)}\n`);
+    else stdout.write(`${me.agentId}\t${me.name}\t${me.platform ?? ''}\n`);
     return;
   }
 
