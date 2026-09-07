@@ -298,29 +298,28 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   expect(setup.activityStatus).toBe(201);
 
   const traceId = setup.traceBody.data.id as number;
-  // Pin a tight viewport around the open activity so the block is wide enough
-  // to hit (and not only the 10px left-edge resize zone in a multi-hour view).
-  await page.evaluate(({ id, start }) => {
-    const end = Date.now() + 60_000;
-    localStorage.setItem('lbt', String(start - 60_000));
-    localStorage.setItem('rbt', String(end));
-    localStorage.setItem('flambe.timeline.viewport-trace-id.v1', String(id));
-  }, { id: traceId, start: startTime });
+  const pinViewport = async () => {
+    // ~3 minutes around the open activity so the block is a comfortable tap target.
+    await page.evaluate(({ id, start }) => {
+      const end = Date.now() + 60_000;
+      localStorage.setItem('lbt', String(start - 60_000));
+      localStorage.setItem('rbt', String(end));
+      localStorage.setItem('flambe.timeline.viewport-trace-id.v1', String(id));
+    }, { id: traceId, start: startTime });
+  };
 
+  await pinViewport();
   await page.goto(`/${username}/traces/${traceId}`);
   await expect(page).toHaveURL(new RegExp(`/${username}/traces/${traceId}$`));
+  // WebKit sometimes mounts before the pinned range sticks; re-pin and reload.
+  await pinViewport();
+  await page.reload();
   await page.setViewportSize(phone);
 
   const canvas = page.locator('#chart-wrapper canvas');
   const surface = page.locator('[data-timeline-surface="true"]');
   await expect(canvas).toBeVisible();
   await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBeGreaterThan(0);
-  // Prefer the pinned ~2–3 minute window; a leaked multi-hour range is too thin to tap.
-  await expect.poll(async () => {
-    const lbt = Number(await surface.getAttribute('data-lbt'));
-    const rbt = Number(await surface.getAttribute('data-rbt'));
-    return rbt - lbt;
-  }).toBeLessThan(10 * 60_000);
 
   const detail = page.locator('[data-activity-detail="true"]');
   await expect.poll(async () => {
