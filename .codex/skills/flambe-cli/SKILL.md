@@ -7,7 +7,7 @@ description: Track coding-agent work in a Flambe trace with the flambe CLI. Use 
 
 Log semantic work units as a live flame chart — not commands, file opens, or hidden reasoning. Skip trivial questions. If `FLAMBE_URL`, `FLAMBE_API_TOKEN`, or `FLAMBE_TRACE_ID` is set neither in `.env` nor in the shell environment (Cloud Agent secrets arrive as environment variables), skip silently.
 
-Needs Node 22+ and `flambe` on `PATH`; in this repo without it, use `node cli/bin/flambe.mjs`. Before the first command, if `FLAMBE_AGENT_NAME` is unset, export a short product/model name (`export FLAMBE_AGENT_NAME="Grok"`; in a Cursor Cloud Agent, `"Cursor Cloud"`). Do not put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`.
+Needs Node 22+ and `flambe` on `PATH`. If it is missing, `npm install -g @davvidbaker/flambe-cli`. In this repo without a global install, use `node cli/bin/flambe.mjs`. Before the first command, if `FLAMBE_AGENT_NAME` is unset, export a short product/model name (`export FLAMBE_AGENT_NAME="Grok"`; in a Cursor Cloud Agent, `"Cursor Cloud"`). Do not put `FLAMBE_AGENT_ID` or `FLAMBE_AGENT_NAME` in `.env`.
 
 ## Think in a stack
 
