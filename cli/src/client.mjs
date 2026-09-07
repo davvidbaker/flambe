@@ -1,4 +1,5 @@
 import { FlambeQueue } from './queue.mjs';
+import { defaultAgentNamesPath, rememberAgentName, rememberedAgentName } from './agentNames.mjs';
 
 export function hostConfigFromEnv(env = process.env) {
   const required = ['FLAMBE_URL', 'FLAMBE_API_TOKEN'];
@@ -44,10 +45,12 @@ export function agentIdentityFromEnv(env = process.env) {
       ? `cursor:${env.CURSOR_CONVERSATION_ID.trim()}`
       : undefined)
     || claudeAgentId(env);
-  const agentName = env.FLAMBE_AGENT_NAME?.trim() || undefined;
+  const agentNamesPath = env.FLAMBE_AGENT_NAMES_PATH?.trim() || defaultAgentNamesPath();
+  // An explicit name is an override; otherwise reuse whatever the reducer named this agent.
+  const agentName = env.FLAMBE_AGENT_NAME?.trim() || rememberedAgentName(agentId, agentNamesPath);
 
   return {
-    ...(agentId ? { agentId } : {}),
+    ...(agentId ? { agentId, agentNamesPath } : {}),
     ...(agentName ? { agentName } : {}),
   };
 }
@@ -72,6 +75,8 @@ function claudeAgentId(env) {
   return sessionId ? `claude:${sessionId}` : undefined;
 }
 
+const LIFECYCLE_PHASES = new Set(['B', 'E', 'S', 'R']);
+
 function errorDetail(payload) {
   if (!payload) return null;
   if (typeof payload.error === 'string') return payload.error;
@@ -80,11 +85,12 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, agentId, agentName, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
+  constructor({ baseUrl, token, traceId, agentId, agentName, agentNamesPath, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.token = token;
     this.agentId = agentId;
     this.agentName = agentName;
+    this.agentNamesPath = agentNamesPath;
     this.traceId = Number(traceId);
     this.fetch = fetchImpl;
     this.now = now;
@@ -129,7 +135,34 @@ export class FlambeClient {
       throw error;
     }
 
+    this.adoptAgentName(response.headers);
     return payload;
+  }
+
+  /**
+   * The reducer names agents that arrive without a name and echoes the name on every
+   * response (ADR-012). Keep it for the rest of this process, remember it for future
+   * ones, and tell the worker the first time.
+   */
+  adoptAgentName(headers) {
+    if (!this.agentId || !headers?.get) return;
+    const name = headers.get('x-flambe-agent-name')?.trim();
+    if (!name) return;
+
+    const assigned = headers.get('x-flambe-agent-name-assigned') === 'true';
+    if (name !== this.agentName) {
+      this.agentName = name;
+      if (this.agentNamesPath) rememberAgentName(this.agentId, name, this.agentNamesPath);
+    }
+    if (assigned) this.onReducerNote?.({ type: 'agent_named', agentId: this.agentId, name });
+  }
+
+  async whoami() {
+    if (!this.agentId) {
+      throw new Error('No agent id for this process; set FLAMBE_AGENT_ID (Cursor, Codex, and Claude Code sessions derive one automatically)');
+    }
+    const payload = await this.request('/api/agents/me');
+    return { agentId: payload.data.agent_id, name: payload.data.name, nameAssigned: payload.data.name_assigned === true };
   }
 
   async getTrace() {
@@ -168,6 +201,8 @@ export class FlambeClient {
 
     for (const event of trace.events ?? []) {
       if (!event.activity) continue;
+      // Reducer annotations (reducer_incoming / reducer_decision) do not change state.
+      if (!LIFECYCLE_PHASES.has(event.phase)) continue;
 
       if (event.phase === 'B') {
         const startedAt = startedAtByActivity.get(event.activity.id);
@@ -218,16 +253,11 @@ export class FlambeClient {
     };
   }
 
-  resolveThreadId(explicitThreadId, trace) {
-    if (explicitThreadId !== undefined && explicitThreadId !== null) {
-      const id = Number(explicitThreadId);
-      if (!Number.isInteger(id) || id <= 0) throw new Error('--thread must be a positive integer');
-      return id;
-    }
-
-    const threads = [...(trace.threads ?? [])].sort((a, b) => (a.rank - b.rank) || (a.id - b.id));
-    if (threads.length === 0) throw new Error(`Trace ${this.traceId} has no threads`);
-    return threads[0].id;
+  resolveThreadId(explicitThreadId) {
+    if (explicitThreadId === undefined || explicitThreadId === null) return undefined;
+    const id = Number(explicitThreadId);
+    if (!Number.isInteger(id) || id <= 0) throw new Error('--thread must be a positive integer');
+    return id;
   }
 
   resolveCategoryIds(categoryIds = []) {
@@ -268,7 +298,7 @@ export class FlambeClient {
     const input = {
       name: name.trim(),
       description,
-      threadId,
+      threadId: this.resolveThreadId(threadId),
       parentId: this.resolveParentId(parentId),
       categoryIds: resolvedCategoryIds,
       timestamp,
@@ -282,15 +312,15 @@ export class FlambeClient {
     }
   }
 
+  /**
+   * `start` is a proposal (ADR-012): the reducer picks the parent (this agent's newest
+   * active activity unless `--parent`/`--root` said otherwise), puts a child on its
+   * parent's thread, inherits categories, and places roots asynchronously. So the CLI
+   * sends only what the worker actually said: `parent_id` absent = infer, `null` = root.
+   */
   async postStart({ name, description, threadId, parentId, categoryIds, timestamp }) {
-    const trace = await this.getTrace();
-    const resolvedThreadId = this.resolveThreadId(threadId, trace);
-    const activeActivities = this.statusFromTrace(trace, { activeOnly: true }).activities;
-    const inferredParentId = activeActivities
-      .filter(activity => activity.threadId === resolvedThreadId)
-      .at(-1)?.id;
-    const resolvedParentId = parentId === undefined
-      ? inferredParentId
+    const resolvedParentId = parentId === undefined || parentId === null
+      ? parentId
       : await this.queue.resolveActivityId(parentId);
 
     if (String(resolvedParentId).startsWith('offline-')) {
@@ -303,11 +333,11 @@ export class FlambeClient {
       method: 'POST',
       body: {
         trace_id: this.traceId,
-        thread_id: resolvedThreadId,
+        ...(threadId === undefined ? {} : { thread_id: threadId }),
         activity: {
           name,
           ...(description ? { description } : {}),
-          ...(resolvedParentId ? { parent_id: resolvedParentId } : {}),
+          ...(resolvedParentId === undefined ? {} : { parent_id: resolvedParentId }),
           categories: categoryIds,
         },
         event: {
@@ -317,7 +347,21 @@ export class FlambeClient {
       },
     });
 
-    return payload.data.activity.id;
+    const { activity, reducer } = payload.data;
+    if (reducer) {
+      this.onReducerNote?.({
+        type: 'start_reduced',
+        activityId: activity.id,
+        parentId: activity.parent_id ?? null,
+        threadId: activity.thread_id,
+        requestedThreadId: threadId,
+        parentSource: reducer.parent_source,
+        threadSource: reducer.thread_source,
+        categoriesSource: reducer.categories_source,
+      });
+    }
+
+    return activity.id;
   }
 
   async end({ activityId, message, force = false }) {
