@@ -400,7 +400,12 @@ export class FlameChart extends Component<Props, State> {
           break;
           /** 💁 hit.value is array like [key, val] */
 
-        case 'block': {
+        case 'block':
+        case 'block_edge_left':
+        case 'block_edge_right': {
+          // Click (not drag) on an edge still selects / opens details. Resize is
+          // started from mousedown+drag; on mobile a short open block is often
+          // entirely inside the 10px edge threshold in a wide viewport.
           const blockIndex = Number(hit.value[0]);
           const block = this.props.blocks[blockIndex];
           const activity = this.props.activities[String(block.activity_id)];
