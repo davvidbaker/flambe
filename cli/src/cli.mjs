@@ -1,9 +1,18 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import { clientFromEnv, clientFromHostEnv } from './client.mjs';
-import { listenLocal, printServeBanner, defaultDbPath } from './local/serve.mjs';
-import { LocalStore } from './local/store.mjs';
+
+// `node:sqlite` still prints an ExperimentalWarning on import in some Node 22 releases.
+// Only serve/export need it, so load those modules on demand and keep every other
+// command's stderr clean for reducer notes.
+const loadServe = () => import('./local/serve.mjs');
+const loadStore = () => import('./local/store.mjs');
+
+function defaultDbPath() {
+  return join(homedir(), '.flambe', 'local.sqlite');
+}
 
 const usage = `Usage:
   flambe start <activity name> [--description <text>] [--thread <id>] [--parent <id> | --root] [--category <id>...] [--started-at <ISO-8601>]
@@ -279,6 +288,7 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
 
   if (command === 'serve') {
     const options = parseServe(args, env);
+    const { listenLocal, printServeBanner } = await loadServe();
     const listening = await listenLocal(options);
     printServeBanner(listening, stdout);
     await new Promise((resolveClose, reject) => {
@@ -290,6 +300,7 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
 
   if (command === 'export') {
     const { file, dbPath } = parseExport(args, env);
+    const { LocalStore } = await loadStore();
     const store = new LocalStore(dbPath);
     try {
       const bundle = store.exportBundle();
