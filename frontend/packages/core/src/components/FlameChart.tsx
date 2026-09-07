@@ -39,6 +39,7 @@ import {
 } from '../utilities';
 import {
   isCoarsePointer,
+  isHoverNone,
   isNarrowViewport,
   shouldOpenActivityDetailsOnSelect,
 } from '../utilities/activityDetailGesture';
@@ -425,6 +426,7 @@ export class FlameChart extends Component<Props, State> {
             alreadyFocusedSameActivity,
             coarsePointer: isCoarsePointer(),
             narrowViewport: isNarrowViewport(),
+            hoverNone: isHoverNone(),
           })) {
             this.props.showActivityDetails();
           }
