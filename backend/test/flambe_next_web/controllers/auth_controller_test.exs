@@ -29,6 +29,8 @@ defmodule FlambeNextWeb.AuthControllerTest do
     session_cookie = get_resp_header(conn, "set-cookie") |> Enum.join("\n")
     assert session_cookie =~ "HttpOnly"
     assert session_cookie =~ "SameSite=Lax"
+    max_age = Keyword.fetch!(FlambeNextWeb.Endpoint.session_options(), :max_age)
+    assert session_cookie =~ ~r/max-age=#{max_age}/i
 
     conn = conn |> recycle() |> get(~p"/api/traces/#{trace}")
 
