@@ -10,10 +10,14 @@ defmodule FlambeNext.ReducerAgent do
 
   import Ecto.Query
 
+  require Logger
+
+  alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
   alias FlambeNext.Repo
   alias FlambeNext.Traces
   alias FlambeNext.Traces.Activity
+  alias FlambeNextWeb.EventStream
 
   @allowed_assessments ~w(on_track slightly_off_track off_track blocked uncertain)
   @allowed_directions ~w(continue narrow_scope investigate change_approach pause stop escalate)
@@ -45,6 +49,190 @@ defmodule FlambeNext.ReducerAgent do
     end
   rescue
     Ecto.NoResultsError -> {:error, :not_found}
+  end
+
+  @doc """
+  Places a freshly started root activity on the right thread with the right categories
+  (ADR-012), off the request path. Returns `:skipped` when there is nothing to decide or
+  no model is configured; the activity is already recorded either way.
+  """
+  def place_root_async(%User{} = user, %Activity{parent_id: nil} = activity) do
+    if configured?() do
+      Task.Supervisor.start_child(FlambeNext.TaskSupervisor, fn -> place_root(user, activity) end)
+      :started
+    else
+      :skipped
+    end
+  end
+
+  def place_root_async(_user, _activity), do: :skipped
+
+  @doc false
+  def place_root(%User{} = user, %Activity{parent_id: nil} = activity, opts \\ []) do
+    activity = Repo.preload(activity, [:categories, thread: :trace])
+    trace = Traces.get_user_trace!(user, activity.thread.trace_id)
+    threads = trace.threads
+    categories = Accounts.list_user_categories(user)
+
+    if length(threads) < 2 and categories == [] do
+      :skipped
+    else
+      context = placement_context(user, activity, threads, categories)
+      # Tests inject `:llm` to avoid the network; production uses the primary model.
+      llm = Keyword.get(opts, :llm, &llm/2)
+
+      case placement_decision(
+             llm,
+             primary_model(),
+             placement_prompt(context),
+             threads,
+             categories
+           ) do
+        {:ok, decision} ->
+          apply_placement(user, activity, decision, threads)
+
+        {:error, reason} ->
+          Logger.warning(
+            "reducer placement skipped for activity #{activity.id}: #{inspect(reason)}"
+          )
+
+          {:error, reason}
+      end
+    end
+  end
+
+  defp configured? do
+    case System.get_env("OPENAI_API_KEY") do
+      nil -> false
+      "" -> false
+      _ -> true
+    end
+  end
+
+  defp placement_context(user, activity, threads, categories) do
+    recent =
+      if activity.agent_id do
+        from(a in Activity,
+          join: thread in assoc(a, :thread),
+          where:
+            thread.trace_id == ^activity.thread.trace_id and a.agent_id == ^activity.agent_id and
+              a.id != ^activity.id,
+          order_by: [desc: a.id],
+          limit: 8,
+          preload: [:categories]
+        )
+        |> Repo.all()
+        |> Enum.map(
+          &%{
+            name: &1.name,
+            thread_id: &1.thread_id,
+            category_ids: Enum.map(&1.categories, fn c -> c.id end)
+          }
+        )
+      else
+        []
+      end
+
+    %{
+      activity: %{
+        id: activity.id,
+        name: activity.name,
+        description: activity.description,
+        agent_name: activity.agent_name,
+        thread_id: activity.thread_id
+      },
+      threads: Enum.map(threads, &%{id: &1.id, name: &1.name}),
+      categories: Enum.map(categories, &%{id: &1.id, name: &1.name}),
+      recent_by_same_agent: recent,
+      user: user.username
+    }
+  end
+
+  defp placement_prompt(context) do
+    """
+    You are Flambe's Reducer Agent. A worker just started a new top-level activity (a root)
+    and left the placement to you. Choose the thread (a workstream lane) and the categories
+    that fit it best.
+
+    Rules:
+    - thread_id MUST be one of the listed threads. Keep the current thread_id unless another
+      thread's name clearly matches the activity; the recent activities of the same agent
+      are a strong hint about which thread it works in.
+    - category_ids MUST be a subset of the listed categories. Pick zero or more; do not
+      force a category when none fits.
+    - Be conservative. When unsure, keep the current thread and pick no categories.
+
+    Return ONLY one JSON object with exactly these keys:
+    {"thread_id": INTEGER, "category_ids": ARRAY_OF_INTEGERS, "rationale": STRING}
+
+    Context:
+    #{Jason.encode!(context)}
+    """
+  end
+
+  defp placement_decision(llm, model, prompt, threads, categories) do
+    thread_ids = MapSet.new(threads, & &1.id)
+    category_ids = MapSet.new(categories, & &1.id)
+
+    with {:ok, raw} <- llm.(model, prompt),
+         {:ok, %{"thread_id" => thread_id, "category_ids" => ids, "rationale" => rationale}}
+         when is_integer(thread_id) and is_list(ids) and is_binary(rationale) <-
+           Jason.decode(raw),
+         true <- MapSet.member?(thread_ids, thread_id),
+         true <- Enum.all?(ids, &(is_integer(&1) and MapSet.member?(category_ids, &1))) do
+      {:ok,
+       %{thread_id: thread_id, category_ids: Enum.uniq(ids), rationale: rationale, model: model}}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_model_response}
+    end
+  end
+
+  defp apply_placement(user, activity, decision, threads) do
+    from_thread = activity.thread
+    to_thread = Enum.find(threads, &(&1.id == decision.thread_id))
+    moved? = to_thread.id != from_thread.id
+
+    with {:ok, categories} <- Accounts.get_user_categories(user, decision.category_ids),
+         {:ok, activity} <-
+           if(moved?,
+             do: Traces.move_activity_subtree(user, activity, to_thread.id),
+             else: {:ok, activity}
+           ),
+         {:ok, activity} <-
+           Traces.update_activity(Repo.preload(activity, :categories), %{}, categories) do
+      trace = Repo.get!(FlambeNext.Traces.Trace, from_thread.trace_id)
+
+      summary =
+        [
+          "model=#{decision.model}",
+          moved? && "thread=#{from_thread.name}->#{to_thread.name}",
+          "categories=#{Enum.map_join(categories, ",", & &1.name)}",
+          "rationale=#{decision.rationale}"
+        ]
+        |> Enum.reject(&(&1 in [nil, false]))
+        |> Enum.join(" | ")
+
+      {:ok, decision_event} =
+        Traces.create_event(trace, activity, %{
+          "phase" => "reducer_decision",
+          "message" => "placed | " <> summary,
+          "timestamp_integer" => System.system_time(:millisecond)
+        })
+
+      # Re-broadcast the activity's existing events so the SPA picks up the new thread and
+      # categories; then the decision itself.
+      from(e in FlambeNext.Traces.Event,
+        where: e.activity_id == ^activity.id and e.id != ^decision_event.id
+      )
+      |> Repo.all()
+      |> Enum.each(&EventStream.broadcast_event(user, &1))
+
+      :ok = EventStream.broadcast_event(user, decision_event)
+
+      {:ok,
+       %{moved?: moved?, thread_id: to_thread.id, category_ids: Enum.map(categories, & &1.id)}}
+    end
   end
 
   @doc """
