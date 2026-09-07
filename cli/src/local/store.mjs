@@ -141,6 +141,14 @@ CREATE TABLE IF NOT EXISTS observations (
 export const EXPORT_FORMAT = 'flambe-local-export';
 export const EXPORT_VERSION = 1;
 
+export const DEFAULT_CATEGORIES = [
+  { name: 'coding', color_background: '#efc360', color_text: '#000000' },
+  { name: 'investigation', color_background: '#60a5fa', color_text: '#000000' },
+  { name: 'review', color_background: '#a78bfa', color_text: '#ffffff' },
+  { name: 'operations', color_background: '#34d399', color_text: '#000000' },
+  { name: 'failure', color_background: '#fb7185', color_text: '#000000' },
+];
+
 export function hashToken(rawToken) {
   return createHash('sha256').update(rawToken).digest('hex');
 }
@@ -239,6 +247,7 @@ export class LocalStore {
     this.db.prepare(
       'INSERT INTO threads (trace_id, name, rank, export_id) VALUES (?, ?, 0, ?)',
     ).run(traceId, 'Main', randomUUID());
+    this.#ensureDefaultCategories(userId);
     return this.getTrace(userId, traceId);
   }
 
@@ -820,6 +829,26 @@ export class LocalStore {
     };
   }
 
+  #ensureDefaultCategories(userId) {
+    const existing = this.db.prepare(
+      'SELECT COUNT(*) AS count FROM categories WHERE user_id = ?',
+    ).get(userId);
+    if (existing.count > 0) return;
+
+    const insert = this.db.prepare(
+      'INSERT INTO categories (user_id, name, color_background, color_text, export_id) VALUES (?, ?, ?, ?, ?)',
+    );
+    for (const category of DEFAULT_CATEGORIES) {
+      insert.run(
+        userId,
+        category.name,
+        category.color_background,
+        category.color_text,
+        randomUUID(),
+      );
+    }
+  }
+
   #seed() {
     const user = this.db.prepare('SELECT id FROM users WHERE id = 1').get();
     if (user) return;
@@ -837,6 +866,7 @@ export class LocalStore {
       this.db.prepare(
         'INSERT INTO threads (trace_id, name, rank, export_id) VALUES (?, ?, 0, ?)',
       ).run(Number(trace.lastInsertRowid), 'Main', randomUUID());
+      this.#ensureDefaultCategories(1);
       this.db.exec('COMMIT');
     } catch (error) {
       this.db.exec('ROLLBACK');

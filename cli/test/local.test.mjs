@@ -19,6 +19,11 @@ async function withServer(fn) {
   });
   const origin = `http://127.0.0.1:${port}`;
   const { rawToken, traceId } = store.credentials();
+  const categories = store.listCategories(1);
+  assert.deepEqual(
+    categories.map(category => category.name),
+    ['coding', 'investigation', 'review', 'operations', 'failure'],
+  );
 
   try {
     await fn({ origin, rawToken, traceId, store, dbPath, directory });

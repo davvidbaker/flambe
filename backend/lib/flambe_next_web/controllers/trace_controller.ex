@@ -1,16 +1,19 @@
 defmodule FlambeNextWeb.TraceController do
   use FlambeNextWeb, :controller
 
-  alias FlambeNext.Traces
+  alias FlambeNext.{Accounts, Traces}
 
   def index(conn, _params) do
     render(conn, :index, traces: Traces.list_user_traces(conn.assigns.current_user))
   end
 
   def create(conn, %{"trace" => attrs}) do
-    case Traces.create_trace(conn.assigns.current_user, attrs) do
+    user = conn.assigns.current_user
+
+    case Traces.create_trace(user, attrs) do
       {:ok, trace} ->
-        trace = Traces.get_user_trace!(conn.assigns.current_user, trace.id)
+        Accounts.ensure_default_categories(user)
+        trace = Traces.get_user_trace!(user, trace.id)
 
         conn
         |> put_status(:created)
