@@ -35,7 +35,8 @@ not selected; in-memory presence is therefore acceptable.
 The public internet can reach login and registration, but registration is useless without the
 invite secret. HTTPS, DB SSL, and a DB-backed health check are required on Fly. A second Machine
 would break agent-presence counts until presence is moved out of memory. Email, password reset,
-custom domains, and a published CLI are out of scope.
+and custom domains are out of scope. The CLI is published to npm as
+`@davvidbaker/flambe-cli` so other repos (including Cursor Cloud) can install it.
 
 ## Follow-ups
 
