@@ -250,26 +250,55 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
-
-  const traceResponse = page.waitForResponse(response =>
-    response.request().method() === 'GET' && /\/api\/traces\/\d+$/.test(new URL(response.url()).pathname),
-  );
   await page.getByRole('button', { name: 'Log In' }).click();
   await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
 
-  const response = await traceResponse;
-  const trace = await response.json();
-  const beginEvent = (trace.data.events || []).find(
-    (entry: { phase?: string; activity?: { name?: string } | null }) =>
-      entry.phase === 'B' && entry.activity?.name === 'Smoke activity',
-  ) || (trace.data.events || []).find(
-    (entry: { phase?: string; activity?: { name?: string } | null }) =>
-      entry.phase === 'B' && entry.activity?.name,
-  );
-  expect(beginEvent?.activity?.name).toBeTruthy();
-  const activityName = beginEvent.activity.name as string;
-  const start = Date.parse(String(beginEvent.timestamp));
-  expect(Number.isFinite(start)).toBe(true);
+  const username = new URL(page.url()).pathname.split('/')[1];
+  const activityName = `Mobile details ${Date.now()}`;
+  const startTime = Date.now() - 30_000;
+
+  // Fresh trace keeps Main empty so clickY under the header hits our block —
+  // the shared e2e trace has an empty Main above the seeded smoke thread.
+  const setup = await page.evaluate(async ({ timestamp, name }) => {
+    const traceResponse = await fetch('/api/traces', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ trace: { name: `Mobile details ${timestamp}` } }),
+    });
+    const traceBody = await traceResponse.json();
+    if (traceResponse.status !== 201) {
+      return { status: traceResponse.status, traceBody, activityStatus: 0, activityBody: null };
+    }
+
+    const detailResponse = await fetch(`/api/traces/${traceBody.data.id}`, { credentials: 'include' });
+    const detail = await detailResponse.json();
+    const threadId = [...detail.data.threads].sort((left, right) => left.rank - right.rank)[0].id;
+    const activityResponse = await fetch('/api/activities', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        trace_id: traceBody.data.id,
+        thread_id: threadId,
+        activity: { name, categories: [] },
+        event: { timestamp_integer: timestamp, phase: 'B' },
+      }),
+    });
+
+    return {
+      status: traceResponse.status,
+      traceBody,
+      activityStatus: activityResponse.status,
+      activityBody: await activityResponse.json(),
+    };
+  }, { timestamp: startTime, name: activityName });
+
+  expect(setup.status).toBe(201);
+  expect(setup.activityStatus).toBe(201);
+
+  await page.goto(`/${username}/traces/${setup.traceBody.data.id}`);
+  await expect(page).toHaveURL(new RegExp(`/${username}/traces/${setup.traceBody.data.id}$`));
 
   const canvas = page.locator('#chart-wrapper canvas');
   const surface = page.locator('[data-timeline-surface="true"]');
@@ -284,18 +313,14 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   const span = rbt - lbt;
   expect(span).toBeGreaterThan(0);
 
-  // Open activities extend to "now"; prefer a point near the right edge of the view.
-  const clickTime = Math.min(
-    rbt - span * 0.05,
-    Math.max(lbt + span * 0.2, start + 1_000),
-  );
+  // Open activity extends to "now"; click near the right edge, in Main's first row
+  // (thread header is 20px; block row starts immediately below).
+  const clickTime = Math.min(rbt - span * 0.05, Math.max(lbt + span * 0.2, startTime + 1_000));
   const clickX = ((clickTime - lbt) / span) * box.width;
-  // Below the thread header (20px) into the first activity row.
   const clickY = 30;
   expect(Number.isFinite(clickX)).toBe(true);
-  expect(Number.isFinite(clickY)).toBe(true);
 
-  await page.mouse.click(box.x + clickX, box.y + clickY);
+  await canvas.click({ position: { x: clickX, y: clickY } });
 
   const detail = page.locator('[data-activity-detail="true"]');
   await expect(detail).toBeVisible();
@@ -303,7 +328,7 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   await expect(detail.getByRole('button', { name: activityName })).toBeVisible();
   await expect(page.locator('[data-app-modal-sheet="true"]')).toBeVisible();
 
-  const renamed = `Smoke activity ${Date.now()}`;
+  const renamed = `${activityName} renamed`;
   await detail.getByRole('button', { name: activityName }).click();
   const nameField = detail.locator('textarea');
   await expect(nameField).toBeVisible();
