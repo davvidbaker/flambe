@@ -651,6 +651,7 @@ export class FlameChart extends Component<Props, State> {
               style={{
                 width: '100%',
                 height: '100%',
+                touchAction: 'none',
               }}
               height={this.state.canvasHeight * window.devicePixelRatio || 300}
               width={this.width * window.devicePixelRatio || 450}
