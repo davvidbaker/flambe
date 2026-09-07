@@ -12,6 +12,14 @@ export function touchDistance(a: TouchPoint, b: TouchPoint): number {
   return Math.hypot(dx, dy);
 }
 
+export function touchHasMoved(
+  start: TouchPoint,
+  current: TouchPoint,
+  thresholdPx: number = TOUCH_PAN_THRESHOLD_PX,
+): boolean {
+  return touchDistance(start, current) >= thresholdPx;
+}
+
 export function touchMidpoint(a: TouchPoint, b: TouchPoint): TouchPoint {
   return {
     clientX: (a.clientX + b.clientX) / 2,
@@ -28,7 +36,7 @@ export function wheelDeltaFromPinchScale(scaleRatio: number): number {
   return (120 * Math.log(1 / scaleRatio)) / Math.log(1.1);
 }
 
-/** Finger drag right should reveal earlier times (content follows the finger). */
-export function panDeltaFromTouchMove(previousX: number, currentX: number): number {
-  return previousX - currentX;
+/** Finger drag right/down should reveal earlier times / lower threads (content follows). */
+export function panDeltaFromTouchMove(previous: number, current: number): number {
+  return previous - current;
 }

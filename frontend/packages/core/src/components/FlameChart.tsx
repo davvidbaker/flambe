@@ -16,6 +16,7 @@ import {
   timeToPixels,
   visibleThreadLevels,
 } from '../utilities/timelineGeometry';
+import { clampTopOffset } from '../utilities/pan';
 import { getShamefulColor } from '../utilities/timeline';
 import {
   actorAccentColor,
@@ -166,7 +167,10 @@ export class FlameChart extends Component<Props, State> {
 
   resizingBlock: BlockEntry | null = null;
 
-  scrollTop = 0;
+  requestedTopOffset = 0;
+  appliedTopOffset = 0;
+  maxTopOffset = 0;
+  contentHeight = 0;
 
   width = 300;
   leftBoundaryTime = Date.now();
@@ -227,6 +231,7 @@ export class FlameChart extends Component<Props, State> {
 
       this.threadsSortedByRank = sortThreadsByRank(threads) || [];
 
+      let contentHeight = 0;
       this.threadsSortedByRank.reduce((acc, [thread_id, thread], ind) => {
         const spacer = ind > 0 ? 4 : 0;
         offsets[thread_id] = acc + spacer; // FlameChart.foldedThreadHeight;
@@ -234,11 +239,22 @@ export class FlameChart extends Component<Props, State> {
         const add = thread.collapsed
           ? FlameChart.threadHeaderHeight
           : (this.blockHeight + 1) * max + FlameChart.threadHeaderHeight;
-        return acc + add + spacer;
+        const next = acc + add + spacer;
+        contentHeight = next;
+        return next;
       }, 0);
 
-      return offsets;
+      this.contentHeight = contentHeight;
+      this.maxTopOffset = Math.max(0, contentHeight - (this.state.canvasHeight || 0));
+      this.appliedTopOffset = clampTopOffset(this.requestedTopOffset, this.maxTopOffset);
+      if (this.appliedTopOffset === 0) return offsets;
+      return Object.fromEntries(
+        Object.entries(offsets).map(([id, y]) => [id, y - this.appliedTopOffset]),
+      );
     }
+    this.contentHeight = 0;
+    this.maxTopOffset = 0;
+    this.appliedTopOffset = 0;
     return {};
   };
 
@@ -730,12 +746,14 @@ export class FlameChart extends Component<Props, State> {
     rightBoundaryTime: number,
     width: number,
     dividersData: DividerData,
+    topOffset: number = this.requestedTopOffset,
   ): void {
     /* ⚠️ IDK if this is a bad idea, but this is the only place I will ever set these values */
     this.leftBoundaryTime = leftBoundaryTime;
     this.rightBoundaryTime = rightBoundaryTime;
     this.width = width;
     this.dividersData = dividersData;
+    this.requestedTopOffset = Number.isFinite(topOffset) ? Math.max(0, topOffset) : 0;
 
     const threadLevels = this.props.activities && this.props.reactiveThreadHeight
       ? visibleThreadLevels(
@@ -913,7 +931,6 @@ export class FlameChart extends Component<Props, State> {
       collapsed ? -1 : row,
       this.blockHeight,
       (collapsed ? 1 : 0)
-        + this.scrollTop
         + (this.offsets[String(activity.thread_id)] ?? 0)
         + FlameChart.threadHeaderHeight
         + pad,
@@ -964,7 +981,6 @@ export class FlameChart extends Component<Props, State> {
       const topBleed = nestedPad > 0 ? 0 : 2;
       const top = threadOffset
         + FlameChart.threadHeaderHeight
-        + this.scrollTop
         + chrome.rowStart * rowHeight
         - topBleed
         + nestedPad;
@@ -1143,19 +1159,17 @@ export class FlameChart extends Component<Props, State> {
         const y1 = getBlockY(
           prevRow + 1,
           this.blockHeight,
-          this.scrollTop,
+          0,
         )
-          + this.scrollTop
           + this.offsets[block.thread_id]
           - 1;
         const x2 = this.timeToPixels(block.startTime);
         const y2 = getBlockY(
           nextRow + 1,
           this.blockHeight,
-          this.scrollTop,
+          0,
         )
           + this.offsets[block.thread_id]
-          + this.scrollTop
           - 1;
 
         const aThird = (x2 - x1) / 3;
