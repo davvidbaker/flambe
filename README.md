@@ -163,7 +163,7 @@ Then set the three values:
 FLAMBE_URL=http://localhost:4001
 FLAMBE_API_TOKEN=flb_...
 FLAMBE_TRACE_ID=1
-# FLAMBE_THREAD=1
+# FLAMBE_THREAD=flambe
 ```
 
 On the Fly instance, set `FLAMBE_URL` to `https://your-app.fly.dev`.

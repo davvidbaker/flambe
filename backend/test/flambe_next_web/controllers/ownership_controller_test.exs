@@ -81,7 +81,6 @@ defmodule FlambeNextWeb.OwnershipControllerTest do
 
     for path <- [
           ~p"/api/traces",
-          ~p"/api/categories",
           ~p"/api/todos",
           ~p"/api/mantras",
           ~p"/api/attentions",
@@ -90,6 +89,15 @@ defmodule FlambeNextWeb.OwnershipControllerTest do
         ] do
       assert json_response(get(conn, path), 200) == %{"data" => []}
     end
+
+    names =
+      conn
+      |> get(~p"/api/categories")
+      |> json_response(200)
+      |> Map.fetch!("data")
+      |> Enum.map(& &1["name"])
+
+    assert names == ["coding", "investigation", "review", "operations", "failure"]
   end
 
   defp authenticated_as(conn, user) do

@@ -15,7 +15,7 @@ function defaultDbPath() {
 }
 
 const usage = `Usage:
-  flambe start <activity name> [--description <text>] [--thread <id>] [--parent <id> | --root] [--category <id>...] [--started-at <ISO-8601>]
+  flambe start <activity name> [--description <text>] [--thread <id|name>] [--parent <id> | --root] [--category <id>...] [--started-at <ISO-8601>]
   flambe end <activity-id> [message] [--force]
   flambe suspend <activity-id> [message]
   flambe resume <activity-id> [message]
@@ -47,8 +47,9 @@ Optional:
   FLAMBE_AGENT_PLATFORM  Product the agent runs on, shared by many agents ("Cursor Cloud",
                      "Codex"). Derived from the session type when unset.
   FLAMBE_AGENT_NAMES_PATH  Where remembered agent names live.
-  FLAMBE_THREAD      Thread id for start when --thread is omitted (overridden by --thread).
-                     The reducer still keeps a child on its parent's thread.
+  FLAMBE_THREAD      Thread name, unique slug, or id for start when --thread is omitted
+                     (overridden by --thread). 'flambe' matches 'flambé🔥'. The reducer
+                     still keeps a child on its parent's thread.
   FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)
   FLAMBE_LOCAL_DB    SQLite path for flambe serve / export (default: ~/.flambe/local.sqlite)
 

@@ -3,4 +3,4 @@ description: Flambe activity logging for this repo, including Cursor Cloud agent
 alwaysApply: true
 ---
 
-Follow root `AGENTS.md`. For substantial or multi-step work, use the `flambe-cli` skill when Flambe is configured (`FLAMBE_URL`, `FLAMBE_API_TOKEN`, `FLAMBE_TRACE_ID` in the environment or `.env`). If `flambe` is not on PATH, run `node cli/bin/flambe.mjs` from the repo root. Skip trivial questions and never log secrets.
+Follow root `AGENTS.md`. For substantial or multi-step work, use the `flambe-cli` skill when Flambe is configured (`FLAMBE_URL`, `FLAMBE_API_TOKEN`, `FLAMBE_TRACE_ID` in the environment or `.env`). Optional `FLAMBE_THREAD` selects this project's thread by name, slug, or id; do not pick a thread by guessing. If `flambe` is not on PATH, run `node cli/bin/flambe.mjs` from the repo root. Skip trivial questions and never log secrets.

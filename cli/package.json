@@ -1,6 +1,6 @@
 {
   "name": "@davvidbaker/flambe-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI for streaming coding-agent activity into Flambe",
   "type": "module",
   "bin": {

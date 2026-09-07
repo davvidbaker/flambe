@@ -49,6 +49,18 @@ defmodule FlambeNextWeb.CategoryControllerTest do
            } = json_response(conn, 200)
   end
 
+  test "index seeds default categories when the user has none", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Empty Categories", username: "empty-categories"})
+
+    conn = conn |> authenticated_as(user) |> get(~p"/api/categories")
+
+    names =
+      json_response(conn, 200)["data"]
+      |> Enum.map(& &1["name"])
+
+    assert names == ["coding", "investigation", "review", "operations", "failure"]
+  end
+
   defp authenticated_as(conn, user) do
     conn
     |> init_test_session(%{})
