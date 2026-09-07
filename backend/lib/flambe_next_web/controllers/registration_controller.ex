@@ -17,6 +17,7 @@ defmodule FlambeNextWeb.RegistrationController do
     with {:ok, user} <- Accounts.register_user(attrs),
          {:ok, trace} <- Traces.create_trace(user, %{name: "Main"}) do
       Accounts.ensure_default_categories(user)
+
       conn
       |> put_status(:created)
       |> json(%{
