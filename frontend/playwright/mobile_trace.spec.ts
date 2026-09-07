@@ -268,7 +268,8 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   );
   expect(beginEvent?.activity?.name).toBeTruthy();
   const activityName = beginEvent.activity.name as string;
-  const start = Number(beginEvent.timestamp);
+  const start = Date.parse(String(beginEvent.timestamp));
+  expect(Number.isFinite(start)).toBe(true);
 
   const canvas = page.locator('#chart-wrapper canvas');
   const surface = page.locator('[data-timeline-surface="true"]');
@@ -283,10 +284,16 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   const span = rbt - lbt;
   expect(span).toBeGreaterThan(0);
 
-  const clickTime = Math.min(Math.max(start + 1_000, lbt + span * 0.2), rbt - span * 0.05);
+  // Open activities extend to "now"; prefer a point near the right edge of the view.
+  const clickTime = Math.min(
+    rbt - span * 0.05,
+    Math.max(lbt + span * 0.2, start + 1_000),
+  );
   const clickX = ((clickTime - lbt) / span) * box.width;
   // Below the thread header (20px) into the first activity row.
   const clickY = 30;
+  expect(Number.isFinite(clickX)).toBe(true);
+  expect(Number.isFinite(clickY)).toBe(true);
 
   await page.mouse.click(box.x + clickX, box.y + clickY);
 
