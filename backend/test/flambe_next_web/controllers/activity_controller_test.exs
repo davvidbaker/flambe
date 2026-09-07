@@ -97,7 +97,7 @@ defmodule FlambeNextWeb.ActivityControllerTest do
              }
            } = json_response(conn, 200)
 
-    assert agent_name in ~w(Steve Belinda Juniper Marcel Priya Otis Nia Theo Carmen Felix Imani Rory Greta Miles Suki)
+    assert agent_name == FlambeNext.Agents.get(user, "codex-instance-42").name
   end
 
   test "uses the agent display name from the request when present", %{conn: conn} do
@@ -136,7 +136,7 @@ defmodule FlambeNextWeb.ActivityControllerTest do
            } = json_response(conn, 200)
   end
 
-  test "falls back to the API token name when the agent omits a display name", %{conn: conn} do
+  test "names a nameless agent instead of using the API token name, and tells it", %{conn: conn} do
     {:ok, user} = Accounts.create_user(%{name: "Token Agent User", username: "token-agent-user"})
     {:ok, trace} = Traces.create_trace(user, %{name: "Token agent trace"})
     [thread] = Traces.get_trace!(trace.id).threads
@@ -154,8 +154,15 @@ defmodule FlambeNextWeb.ActivityControllerTest do
       })
 
     assert %{"data" => %{"activity" => %{"id" => activity_id}}} = json_response(conn, 201)
+    [assigned] = get_resp_header(conn, "x-flambe-agent-name")
+    assert ["true"] == get_resp_header(conn, "x-flambe-agent-name-assigned")
+    refute assigned == "Claude"
 
-    conn = conn |> recycle() |> get(~p"/api/traces/#{trace}")
+    conn =
+      conn
+      |> recycle()
+      |> put_req_header("x-flambe-agent-id", "cursor:conv-2")
+      |> get(~p"/api/traces/#{trace}")
 
     assert %{
              "data" => %{
@@ -163,13 +170,16 @@ defmodule FlambeNextWeb.ActivityControllerTest do
                  %{
                    "activity" => %{
                      "agent_id" => "cursor:conv-2",
-                     "agent_name" => "Claude",
+                     "agent_name" => ^assigned,
                      "id" => ^activity_id
                    }
                  }
                ]
              }
            } = json_response(conn, 200)
+
+    assert [^assigned] = get_resp_header(conn, "x-flambe-agent-name")
+    assert [] == get_resp_header(conn, "x-flambe-agent-name-assigned")
   end
 
   test "ignores agent identity fields in the activity body", %{conn: conn} do

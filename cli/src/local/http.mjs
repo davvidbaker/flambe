@@ -10,8 +10,8 @@ function sendJson(res, status, body) {
   res.end(payload);
 }
 
-function sendEmpty(res, status) {
-  res.writeHead(status);
+function sendEmpty(res, status, headers = {}) {
+  res.writeHead(status, headers);
   res.end();
 }
 
@@ -88,12 +88,32 @@ function headerBag() {
   };
 }
 
-async function dispatch(store, req, url, body) {
-  const method = req.method ?? 'GET';
-  const path = url.pathname;
-  const auth = authenticate(store, req);
+// Same contract as FlambeNextWeb.Plugs.AgentIdentity (ADR-012).
+function identifyAgent(store, req, auth) {
+  if (!auth) return null;
   const agentId = req.headers['x-flambe-agent-id'];
   const agentName = req.headers['x-flambe-agent-name'];
+  const agentPlatform = req.headers['x-flambe-agent-platform'];
+  if (typeof agentId !== 'string') return null;
+  return store.identifyAgent(
+    auth.user.id,
+    agentId,
+    typeof agentName === 'string' ? agentName : undefined,
+    typeof agentPlatform === 'string' ? agentPlatform : undefined,
+  );
+}
+
+function agentHeaders(agent) {
+  if (!agent) return {};
+  return {
+    'x-flambe-agent-name': agent.name,
+    ...(agent.assigned ? { 'x-flambe-agent-name-assigned': 'true' } : {}),
+  };
+}
+
+async function dispatch(store, req, url, body, { auth, agent }) {
+  const method = req.method ?? 'GET';
+  const path = url.pathname;
 
   if (method === 'GET' && path === '/api/health') {
     return { status: 200, json: { status: 'ok' } };
@@ -122,6 +142,13 @@ async function dispatch(store, req, url, body) {
   }
 
   const userId = auth?.user?.id;
+
+  if (method === 'GET' && path === '/api/agents/me') {
+    if (!agent) {
+      return { status: 400, json: { error: 'AGENT_ID_REQUIRED', detail: 'Send x-flambe-agent-id with a bearer token' } };
+    }
+    return { status: 200, json: { data: { agent_id: agent.agent_id, name: agent.name, platform: agent.platform ?? null, name_assigned: agent.assigned } } };
+  }
 
   if (method === 'GET' && path === '/api/export') {
     return { status: 200, json: store.exportBundle() };
@@ -225,9 +252,9 @@ async function dispatch(store, req, url, body) {
       threadId: body.thread_id,
       activity: body.activity ?? {},
       event: body.event ?? {},
-      agentId: typeof agentId === 'string' ? agentId : undefined,
-      agentName: typeof agentName === 'string' ? agentName : undefined,
-      tokenName: auth.tokenName,
+      agent,
+      // Bearer callers are agents proposing a start; the SPA (cookie) writes what it sent.
+      reduce: auth.tokenName !== null,
     });
     if (result.error) return { status: 404, json: { error: 'NOT_FOUND' } };
     return { status: 201, json: { data: result } };
@@ -374,15 +401,18 @@ FLAMBE_TRACE_ID=${traceId}</pre>
     return;
   }
 
-  const result = await dispatch(store, req, url, body);
+  const auth = authenticate(store, req);
+  const agent = identifyAgent(store, req, auth);
+  const result = await dispatch(store, req, url, body, { auth, agent });
+  const identity = agentHeaders(agent);
   if (result.status === 204) {
-    if (result.headers) result.headers.apply(res, 204);
-    else sendEmpty(res, 204);
+    if (result.headers) result.headers.apply(res, 204, identity);
+    else sendEmpty(res, 204, identity);
     return;
   }
 
   const payload = JSON.stringify(result.json);
-  const extra = { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(payload) };
+  const extra = { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(payload), ...identity };
   if (result.headers) result.headers.apply(res, result.status, extra);
   else res.writeHead(result.status, extra);
   res.end(payload);
