@@ -52,6 +52,15 @@ test('configFromEnv derives an agent identity from the Codex session when needed
 
   assert.equal(config.agentId, 'codex:session-1:thread-2');
   assert.equal(config.agentName, undefined);
+  assert.equal(config.agentPlatform, 'Codex');
+  assert.equal(configFromEnv({
+    FLAMBE_URL: 'http://localhost:4001',
+    FLAMBE_API_TOKEN: 'flb_secret',
+    FLAMBE_TRACE_ID: '7',
+    CURSOR_AGENT: '1',
+    CURSOR_CONVERSATION_ID: 'conv-1',
+    FLAMBE_AGENT_PLATFORM: ' Cursor Cloud ',
+  }).agentPlatform, 'Cursor Cloud');
   assert.equal(configFromEnv({
     FLAMBE_URL: 'http://localhost:4001',
     FLAMBE_API_TOKEN: 'flb_secret',
@@ -157,14 +166,18 @@ test('loadProjectEnv is a no-op when the project has no .env', () => {
   }
 });
 
-test('start discovers the default thread and posts an authenticated begin event', async () => {
+test('start posts one authenticated begin event and leaves thread and parent to the reducer', async () => {
   const requests = [];
+  const notes = [];
   const fetchImpl = async (url, options = {}) => {
     requests.push({ url, options });
-    if (options.method === undefined || options.method === 'GET') {
-      return jsonResponse({ data: { id: 9, threads: [{ id: 12, name: 'Later', rank: 2 }, { id: 4, name: 'Main', rank: 0 }] } });
-    }
-    return jsonResponse({ data: { activity: { id: 42 }, event: { id: 50 } } }, 201);
+    return jsonResponse({
+      data: {
+        activity: { id: 42, parent_id: null, thread_id: 4 },
+        event: { id: 50 },
+        reducer: { parent_source: 'root', thread_source: 'default', categories_source: 'request' },
+      },
+    }, 201);
   };
 
   const client = new FlambeClient({
@@ -173,19 +186,28 @@ test('start discovers the default thread and posts an authenticated begin event'
     traceId: 9,
     fetchImpl,
     now: () => 1_788_360_000_123,
+    onReducerNote: note => notes.push(note),
   });
 
   assert.equal(await client.start({ name: 'Inspect authentication flow', categoryIds: ['5', '5', '8'] }), 42);
-  assert.equal(requests.length, 2);
-  assert.equal(requests[0].url, 'http://flambe.test/api/traces/9');
-  assert.equal(requests[1].url, 'http://flambe.test/api/activities');
-  assert.equal(requests[1].options.headers.authorization, 'Bearer flb_test_token');
-  assert.deepEqual(JSON.parse(requests[1].options.body), {
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, 'http://flambe.test/api/activities');
+  assert.equal(requests[0].options.headers.authorization, 'Bearer flb_test_token');
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
     trace_id: 9,
-    thread_id: 4,
     activity: { name: 'Inspect authentication flow', categories: [5, 8] },
     event: { timestamp_integer: 1_788_360_000_123, phase: 'B' },
   });
+  assert.deepEqual(notes, [{
+    type: 'start_reduced',
+    activityId: 42,
+    parentId: null,
+    threadId: 4,
+    requestedThreadId: undefined,
+    parentSource: 'root',
+    threadSource: 'default',
+    categoriesSource: 'request',
+  }]);
 });
 
 test('includes the stable agent instance ID when configured', async () => {
@@ -247,67 +269,64 @@ test('sends the agent display name only together with an instance ID', async () 
   assert.equal(namelessRequest.headers['x-flambe-agent-name'], undefined);
 });
 
-test('explicit thread still discovers an active parent in that thread', async () => {
+test('an explicit thread is sent as a request, and the reducer may keep a child on its parent\'s thread', async () => {
   const requests = [];
+  const notes = [];
   const fetchImpl = async (url, options = {}) => {
     requests.push({ url, options });
-    if (options.method === undefined || options.method === 'GET') {
-      return jsonResponse({ data: { id: 2, threads: [{ id: 11, name: 'Main', rank: 0 }], events: [] } });
-    }
-    return jsonResponse({ data: { activity: { id: 8 }, event: { id: 9 } } }, 201);
+    return jsonResponse({
+      data: {
+        activity: { id: 8, parent_id: 6, thread_id: 3 },
+        event: { id: 9 },
+        reducer: { parent_source: 'inferred', thread_source: 'parent', categories_source: 'parent' },
+      },
+    }, 201);
   };
 
-  const client = new FlambeClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 2, fetchImpl, now: () => 7 });
-  assert.equal(await client.start({ name: 'Run tests', threadId: '11', description: 'CI', categoryIds: ['4'] }), 8);
-  assert.equal(requests.length, 2);
-  assert.deepEqual(JSON.parse(requests[1].options.body), {
+  const client = new FlambeClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 2, fetchImpl, now: () => 7, onReducerNote: note => notes.push(note) });
+  assert.equal(await client.start({ name: 'Run tests', threadId: '11', description: 'CI' }), 8);
+  assert.equal(requests.length, 1);
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
     trace_id: 2,
     thread_id: 11,
-    activity: { name: 'Run tests', description: 'CI', categories: [4] },
+    activity: { name: 'Run tests', description: 'CI', categories: [] },
     event: { timestamp_integer: 7, phase: 'B' },
   });
+  assert.equal(notes[0].parentId, 6);
+  assert.equal(notes[0].threadId, 3);
+  assert.equal(notes[0].requestedThreadId, 11);
+  await assert.rejects(client.start({ name: 'Bad thread', threadId: 'main' }), /--thread must be a positive integer/);
 });
 
-test('start makes the latest active activity in its thread the parent by default', async () => {
+test('start omits parent_id so the reducer infers this agent\'s newest active activity', async () => {
   let request;
   const client = new FlambeClient({
-    baseUrl: 'http://flambe.test', token: 't', traceId: 2, now: () => 7,
+    baseUrl: 'http://flambe.test', token: 't', traceId: 2, now: () => 7, agentId: 'cursor:conv-1',
     fetchImpl: async (_url, options = {}) => {
-      if (options.method === undefined || options.method === 'GET') {
-        return jsonResponse({ data: {
-          id: 2,
-          threads: [{ id: 11, name: 'Main', rank: 0 }],
-          events: [{ id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', activity: { id: 6, name: 'Root task', thread: { id: 11 }, categories: [] } }],
-        } });
-      }
       request = options;
-      return jsonResponse({ data: { activity: { id: 8 }, event: { id: 9 } } }, 201);
+      return jsonResponse({ data: { activity: { id: 8, parent_id: 6, thread_id: 11 }, event: { id: 9 } } }, 201);
     },
   });
 
-  await client.start({ name: 'Inspect config', threadId: 11 });
-  assert.equal(JSON.parse(request.body).activity.parent_id, 6);
+  await client.start({ name: 'Inspect config' });
+  assert.equal(request.headers['x-flambe-agent-id'], 'cursor:conv-1');
+  assert.equal(Object.hasOwn(JSON.parse(request.body).activity, 'parent_id'), false);
+  assert.equal(Object.hasOwn(JSON.parse(request.body), 'thread_id'), false);
 });
 
-test('start can explicitly remain a root in a thread with active work', async () => {
+test('start --root sends an explicit null parent', async () => {
   let request;
   const client = new FlambeClient({
     baseUrl: 'http://flambe.test', token: 't', traceId: 2, now: () => 7,
     fetchImpl: async (_url, options = {}) => {
-      if (options.method === undefined || options.method === 'GET') {
-        return jsonResponse({ data: {
-          id: 2,
-          threads: [{ id: 11, name: 'Main', rank: 0 }],
-          events: [{ id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', activity: { id: 6, name: 'Existing work', thread: { id: 11 }, categories: [] } }],
-        } });
-      }
       request = options;
-      return jsonResponse({ data: { activity: { id: 8 }, event: { id: 9 } } }, 201);
+      return jsonResponse({ data: { activity: { id: 8, parent_id: null, thread_id: 11 }, event: { id: 9 } } }, 201);
     },
   });
 
   await client.start({ name: 'New root', threadId: 11, parentId: null });
-  assert.equal(Object.hasOwn(JSON.parse(request.body).activity, 'parent_id'), false);
+  assert.equal(JSON.parse(request.body).activity.parent_id, null);
+  assert.equal(Object.hasOwn(JSON.parse(request.body).activity, 'parent_id'), true);
 });
 
 test('CLI parses --root as an explicit root activity', async () => {
@@ -671,25 +690,25 @@ test('queues the full offline activity lifecycle and replays it in order', async
 
     await client.flushQueue();
 
-    assert.equal(requests.length, 5);
-    assert.equal(requests[0].url, 'http://flambe.test/api/traces/3');
-    assert.deepEqual(JSON.parse(requests[1].options.body), {
+    assert.equal(requests.length, 4);
+    assert.equal(requests[0].url, 'http://flambe.test/api/activities');
+    assert.deepEqual(JSON.parse(requests[0].options.body), {
       trace_id: 3,
       thread_id: 4,
       activity: { name: 'Work offline', categories: [5] },
       event: { timestamp_integer: 456, phase: 'B' },
     });
-    assert.deepEqual(JSON.parse(requests[2].options.body), {
+    assert.deepEqual(JSON.parse(requests[1].options.body), {
       trace_id: 3,
       activity_id: 42,
       event: { timestamp_integer: 456, phase: 'S', message: 'Waiting offline' },
     });
-    assert.deepEqual(JSON.parse(requests[3].options.body), {
+    assert.deepEqual(JSON.parse(requests[2].options.body), {
       trace_id: 3,
       activity_id: 42,
       event: { timestamp_integer: 456, phase: 'R', message: 'Back offline' },
     });
-    assert.deepEqual(JSON.parse(requests[4].options.body), {
+    assert.deepEqual(JSON.parse(requests[3].options.body), {
       trace_id: 3,
       activity_id: 42,
       event: { timestamp_integer: 456, phase: 'E', message: 'Finished offline' },
@@ -948,4 +967,98 @@ test('CLI commands print machine-friendly output', async () => {
     ['flushQueue'],
     ['message', { activityId: '9', text: 'Scope may be drifting' }],
   ]);
+});
+
+test('adopts the name the reducer assigns, remembers it, and tells the worker once', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'flambe-names-'));
+  const namesPath = join(directory, 'agent-names.json');
+  const notes = [];
+  const seenNameHeaders = [];
+  let first = true;
+
+  const fetchImpl = async (_url, options = {}) => {
+    seenNameHeaders.push(options.headers['x-flambe-agent-name']);
+    const headers = { 'content-type': 'application/json', 'x-flambe-agent-name': 'Juniper' };
+    if (first) headers['x-flambe-agent-name-assigned'] = 'true';
+    first = false;
+    return new Response(JSON.stringify({ data: { id: 3, name: 'Work', threads: [], events: [] } }), { status: 200, headers });
+  };
+
+  try {
+    const client = new FlambeClient({
+      baseUrl: 'http://flambe.test', token: 't', traceId: 3, agentId: 'cursor:conv-1', agentNamesPath: namesPath,
+      fetchImpl, onReducerNote: note => notes.push(note),
+    });
+
+    await client.getTrace();
+    await client.getTrace();
+
+    assert.deepEqual(seenNameHeaders, [undefined, 'Juniper']);
+    assert.deepEqual(notes, [{ type: 'agent_named', agentId: 'cursor:conv-1', name: 'Juniper' }]);
+    assert.deepEqual(JSON.parse(readFileSync(namesPath, 'utf8')), { 'cursor:conv-1': 'Juniper' });
+
+    // A later process for the same agent picks the name up from disk; FLAMBE_AGENT_NAME still overrides.
+    const base = { FLAMBE_URL: 'http://flambe.test', FLAMBE_API_TOKEN: 't', FLAMBE_TRACE_ID: '3', FLAMBE_AGENT_ID: 'cursor:conv-1', FLAMBE_AGENT_NAMES_PATH: namesPath };
+    assert.equal(configFromEnv(base).agentName, 'Juniper');
+    assert.equal(configFromEnv({ ...base, FLAMBE_AGENT_NAME: 'Grok' }).agentName, 'Grok');
+    assert.equal(configFromEnv({ ...base, FLAMBE_AGENT_ID: 'cursor:other' }).agentName, undefined);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('whoami reports the reducer-side identity and needs an agent id', async () => {
+  const stdout = [];
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 't', traceId: 3, agentId: 'cursor:conv-1', agentPlatform: 'Cursor Cloud',
+    fetchImpl: async (url, options = {}) => {
+      assert.equal(url, 'http://flambe.test/api/agents/me');
+      assert.equal(options.headers['x-flambe-agent-id'], 'cursor:conv-1');
+      assert.equal(options.headers['x-flambe-agent-platform'], 'Cursor Cloud');
+      return jsonResponse({ data: { agent_id: 'cursor:conv-1', name: 'Juniper', platform: 'Cursor Cloud', name_assigned: false } });
+    },
+  });
+  client.flushQueue = async () => {};
+
+  await run(['whoami'], { client, stdout: { write: chunk => stdout.push(chunk) }, stderr: { write: () => {} } });
+  assert.deepEqual(stdout, ['cursor:conv-1\tJuniper\tCursor Cloud\n']);
+
+  const nameless = new FlambeClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 3, fetchImpl: async () => { throw new Error('unexpected'); } });
+  await assert.rejects(nameless.whoami(), /FLAMBE_AGENT_ID/);
+});
+
+test('CLI prints reducer start and naming notes on stderr, ids on stdout', async () => {
+  const stdout = [];
+  const stderr = [];
+  const client = {
+    flushQueue: async () => {},
+    async start() {
+      this.onReducerNote({ type: 'agent_named', agentId: 'a', name: 'Juniper' });
+      this.onReducerNote({ type: 'start_reduced', activityId: 8, parentId: 6, threadId: 3, requestedThreadId: 11, parentSource: 'inferred', threadSource: 'parent', categoriesSource: 'parent' });
+      this.onReducerNote({ type: 'start_reduced', activityId: 9, parentId: null, threadId: 3, requestedThreadId: undefined, parentSource: 'root', threadSource: 'default', categoriesSource: 'none' });
+      return 8;
+    },
+  };
+
+  await run(['start', 'Thing'], { client, stdout: { write: chunk => stdout.push(chunk) }, stderr: { write: chunk => stderr.push(chunk) } });
+  assert.deepEqual(stdout, ['8\n']);
+  assert.deepEqual(stderr, [
+    'reducer named this agent "Juniper"; the CLI will use it from now on\n',
+    "reducer nested 8 under 6; kept it on the parent's thread 3, not 11; inherited the parent's categories\n",
+  ]);
+});
+
+test('status ignores reducer annotation events when deciding what is active', async () => {
+  const client = new FlambeClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 3 });
+  const status = client.statusFromTrace({
+    id: 3,
+    name: 'Work',
+    threads: [{ id: 1, name: 'Main', rank: 0 }],
+    events: [
+      { id: 1, timestamp: '2026-09-02T10:00:00Z', phase: 'B', activity: { id: 6, name: 'Task', thread: { id: 1 }, categories: [] } },
+      { id: 2, timestamp: '2026-09-02T10:05:00Z', phase: 'reducer_decision', message: 'placed', activity: { id: 6, name: 'Task', thread: { id: 1 }, categories: [] } },
+    ],
+  }, { activeOnly: true });
+
+  assert.deepEqual(status.activities.map(activity => [activity.id, activity.latestEvent.phase]), [[6, 'B']]);
 });
