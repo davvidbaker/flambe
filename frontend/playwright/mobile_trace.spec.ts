@@ -1,7 +1,75 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const email = process.env.PLAYWRIGHT_EMAIL || 'e2e@flambe.local';
 const password = process.env.PLAYWRIGHT_PASSWORD || 'e2e-password';
+
+const phone = { width: 390, height: 844 };
+
+async function assertFitsPhoneViewport(page: Page) {
+  const metrics = await page.evaluate(() => {
+    const vw = window.innerWidth;
+    const shell = document.querySelector('[data-auth-shell="true"]');
+    const shellBox = shell?.getBoundingClientRect();
+    const nodes = [
+      document.querySelector('form'),
+      document.querySelector('button[type="submit"]'),
+      document.querySelector('h1'),
+    ];
+    const clipped = nodes.some(node => {
+      if (!node) return true;
+      const box = node.getBoundingClientRect();
+      return box.width <= 0 || box.left < -1 || box.right > vw + 1;
+    });
+    return {
+      clipped,
+      shellWidth: Math.round(shellBox?.width ?? 0),
+      shellLeft: Math.round(shellBox?.left ?? -1),
+      vw,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    };
+  });
+
+  expect(metrics.clipped).toBe(false);
+  expect(metrics.shellLeft).toBeGreaterThanOrEqual(0);
+  expect(metrics.shellWidth).toBeGreaterThan(300);
+  expect(metrics.shellWidth).toBeLessThanOrEqual(metrics.vw);
+  expect(metrics.scrollWidth).toBe(metrics.clientWidth);
+}
+
+test('login and register forms fit a phone-sized viewport', async ({ page }) => {
+  await page.setViewportSize(phone);
+
+  await page.goto('/login');
+  await expect(page.getByRole('heading', { name: 'Log in!' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Log In' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Create an account' })).toBeVisible();
+  await assertFitsPhoneViewport(page);
+
+  await page.goto('/register');
+  await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible();
+  await assertFitsPhoneViewport(page);
+});
+
+test('keeps the signed-in session cookie after a full reload', async ({ context, page }) => {
+  await page.setViewportSize(phone);
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log In' }).click();
+  await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
+
+  const session = (await context.cookies()).find(cookie => cookie.name === '_flambe_next_key');
+  expect(session).toBeTruthy();
+  // Session cookies (no Max-Age) report expires: -1. iOS Safari drops those
+  // when the process is killed; a dated expiry is what keeps mobile logins.
+  expect(session!.expires).toBeGreaterThan(Date.now() / 1000 + 60 * 60 * 24);
+
+  await page.reload();
+  await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
+  await expect(page.getByRole('banner')).toBeVisible();
+});
 
 test('keeps the flame chart usable in a phone-sized viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

@@ -4,13 +4,20 @@ defmodule FlambeNextWeb.Endpoint do
   # The browser session is encrypted, signed, HTTP-only, and scoped to the
   # same site. Production HTTPS deployments also set Secure; HTTP prod CI
   # (PHX_URL_SCHEME=http) must not, or WebKit drops the cookie.
+  #
+  # Cookies without Max-Age are session cookies. iOS Safari drops those when
+  # it kills the browser process (typical after switching apps), so every
+  # fresh load of the SPA required logging in again.
+  @session_max_age 60 * 60 * 24 * 60
+
   @session_options [
     store: :cookie,
     key: "_flambe_next_key",
     signing_salt: "wpvY4weL",
     encryption_salt: "eY8rV2mQ",
     http_only: true,
-    same_site: "Lax"
+    same_site: "Lax",
+    max_age: @session_max_age
   ]
 
   def session_options do
