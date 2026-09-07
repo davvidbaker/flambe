@@ -157,20 +157,26 @@ that project's working directory. You can copy Flambe's checked-in template:
 cp /path/to/flambe/.env.example .env
 ```
 
-Then set the three values:
+Then set:
 
 ```dotenv
 FLAMBE_URL=http://localhost:4001
 FLAMBE_API_TOKEN=flb_...
 FLAMBE_TRACE_ID=1
+FLAMBE_THREAD=flambe
 ```
 
-On the Fly instance, set `FLAMBE_URL` to `https://your-app.fly.dev`.
+`FLAMBE_THREAD` is the thread **this project** should log to: the thread's
+name, a unique slug of that name (`flambe` matches `flambé🔥`), or a numeric
+id. Each repo that shares one Flambe account should set its own value so
+agents do not pick a thread by guessing from the list. On the Fly instance,
+set `FLAMBE_URL` to `https://your-app.fly.dev`.
 
 Cursor Cloud agents only see this git checkout, not laptop `~/.cursor` or `~/.claude` config. In-repo entry points are `AGENTS.md`, `CLAUDE.md`, `.cursor/rules`, `.cursor/skills/flambe-cli`, and `.cursor/hooks`. Set `FLAMBE_*` as Cloud environment secrets. If `flambe` is not on PATH, agents should run `node cli/bin/flambe.mjs`.
 
-The CLI loads `.env` from its current working directory automatically and
-discovers the trace's lowest-rank thread. Existing shell environment variables
+The CLI loads `.env` from its current working directory automatically.
+When `start` has no `--thread`, it uses `FLAMBE_THREAD`, or the lowest-rank
+thread if that variable is unset. Existing shell environment variables
 take precedence over values in `.env`, which makes one-off overrides and CI
 configuration predictable. `.env` is ignored by this repository and should not
 be committed because it contains the bearer token.
@@ -193,7 +199,9 @@ flambe end "$ACTIVITY_ID" "Confirmed bearer-token path"
 ```
 
 Use `flambe threads` to list threads; the `default` row is the thread selected
-when `start` has no `--thread ID`. Use `--thread ID` to target another thread.
+when `start` has no `--thread` (`FLAMBE_THREAD`, else lowest rank). Use
+`--thread <id|name>` to target another thread. Do not have agents choose a
+thread by project name when `FLAMBE_THREAD` is set.
 By default, `start` makes the newest active activity in that thread its parent,
 so an agent records a nested work tree. Use `--parent ID` to choose a parent
 explicitly, or `--root` to deliberately begin a top-level workstream.

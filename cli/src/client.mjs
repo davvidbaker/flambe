@@ -27,11 +27,14 @@ export function configFromEnv(env = process.env) {
     throw new Error('FLAMBE_TRACE_ID must be a positive integer');
   }
 
+  const defaultThread = env.FLAMBE_THREAD?.trim() || undefined;
+
   return {
     baseUrl: env.FLAMBE_URL.replace(/\/+$/, ''),
     ...agentIdentityFromEnv(env),
     token: env.FLAMBE_API_TOKEN,
     traceId,
+    ...(defaultThread ? { defaultThread } : {}),
   };
 }
 
@@ -80,11 +83,12 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, agentId, agentName, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
+  constructor({ baseUrl, token, traceId, agentId, agentName, defaultThread, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.token = token;
     this.agentId = agentId;
     this.agentName = agentName;
+    this.defaultThread = defaultThread?.trim() || undefined;
     this.traceId = Number(traceId);
     this.fetch = fetchImpl;
     this.now = now;
@@ -139,14 +143,14 @@ export class FlambeClient {
 
   async threads() {
     const trace = await this.getTrace();
-    const threads = [...(trace.threads ?? [])]
-      .sort((a, b) => (a.rank - b.rank) || (a.id - b.id));
+    const threads = sortedThreads(trace);
+    const defaultId = this.resolveThreadId(undefined, trace);
 
-    return threads.map((thread, index) => ({
+    return threads.map(thread => ({
       id: thread.id,
       name: thread.name,
       rank: thread.rank,
-      default: index === 0,
+      default: thread.id === defaultId,
     }));
   }
 
@@ -219,15 +223,15 @@ export class FlambeClient {
   }
 
   resolveThreadId(explicitThreadId, trace) {
-    if (explicitThreadId !== undefined && explicitThreadId !== null) {
-      const id = Number(explicitThreadId);
-      if (!Number.isInteger(id) || id <= 0) throw new Error('--thread must be a positive integer');
-      return id;
+    const threads = sortedThreads(trace);
+    const hasExplicit = explicitThreadId != null && String(explicitThreadId).trim() !== '';
+    const selector = hasExplicit ? explicitThreadId : this.defaultThread;
+    if (selector == null || String(selector).trim() === '') {
+      if (threads.length === 0) throw new Error(`Trace ${this.traceId} has no threads`);
+      return threads[0].id;
     }
 
-    const threads = [...(trace.threads ?? [])].sort((a, b) => (a.rank - b.rank) || (a.id - b.id));
-    if (threads.length === 0) throw new Error(`Trace ${this.traceId} has no threads`);
-    return threads[0].id;
+    return matchThread(threads, selector, this.traceId, { requireListed: !hasExplicit }).id;
   }
 
   resolveCategoryIds(categoryIds = []) {
@@ -546,4 +550,54 @@ export function clientFromHostEnv(env = process.env, overrides = {}) {
 function compareEvents(a, b) {
   const timestampDifference = Date.parse(a.timestamp) - Date.parse(b.timestamp);
   return timestampDifference || (a.id - b.id);
+}
+
+function sortedThreads(trace) {
+  return [...(trace.threads ?? [])].sort((a, b) => (a.rank - b.rank) || (a.id - b.id));
+}
+
+export function threadSlug(name) {
+  return String(name)
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function matchThread(threads, selector, traceId, { requireListed = true } = {}) {
+  const raw = String(selector).trim();
+  const available = threads.map(thread => thread.name).join(', ');
+  const notFound = label => new Error(
+    `Thread ${label} not found in trace ${traceId}${available ? ` (threads: ${available})` : ''}`,
+  );
+
+  if (/^\d+$/.test(raw)) {
+    const id = Number(raw);
+    const byId = threads.find(thread => thread.id === id);
+    if (byId) return byId;
+    if (!requireListed) return { id };
+    throw notFound(raw);
+  }
+
+  const exact = threads.filter(thread => thread.name === raw);
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) {
+    throw new Error(`Thread name "${raw}" is ambiguous in trace ${traceId}`);
+  }
+
+  const caseInsensitive = threads.filter(thread => thread.name.toLowerCase() === raw.toLowerCase());
+  if (caseInsensitive.length === 1) return caseInsensitive[0];
+  if (caseInsensitive.length > 1) {
+    throw new Error(`Thread name "${raw}" is ambiguous in trace ${traceId}`);
+  }
+
+  const slug = threadSlug(raw);
+  if (!slug) throw notFound(`"${raw}"`);
+  const bySlug = threads.filter(thread => threadSlug(thread.name) === slug);
+  if (bySlug.length === 1) return bySlug[0];
+  if (bySlug.length > 1) {
+    throw new Error(`Thread "${raw}" is ambiguous in trace ${traceId} (matches: ${bySlug.map(thread => thread.name).join(', ')})`);
+  }
+
+  throw notFound(`"${raw}"`);
 }

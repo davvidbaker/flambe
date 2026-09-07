@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { FlambeClient, configFromEnv } from '../src/client.mjs';
+import { FlambeClient, configFromEnv, threadSlug } from '../src/client.mjs';
 import { run } from '../src/cli.mjs';
 import { loadProjectEnv } from '../src/env.mjs';
 
@@ -32,6 +32,16 @@ test('configFromEnv requires exactly the agent-facing configuration', () => {
       FLAMBE_TRACE_ID: '7',
     }),
     { baseUrl: 'http://localhost:4001', token: 'flb_secret', traceId: 7 },
+  );
+
+  assert.deepEqual(
+    configFromEnv({
+      FLAMBE_URL: 'http://localhost:4001/',
+      FLAMBE_API_TOKEN: 'flb_secret',
+      FLAMBE_TRACE_ID: '7',
+      FLAMBE_THREAD: '  flambe  ',
+    }),
+    { baseUrl: 'http://localhost:4001', token: 'flb_secret', traceId: 7, defaultThread: 'flambe' },
   );
 
   assert.throws(() => configFromEnv({}), /FLAMBE_URL, FLAMBE_API_TOKEN, FLAMBE_TRACE_ID/);
@@ -155,6 +165,86 @@ test('loadProjectEnv is a no-op when the project has no .env', () => {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('threadSlug strips accents, emoji, and punctuation', () => {
+  assert.equal(threadSlug('flambé🔥'), 'flambe');
+  assert.equal(threadSlug('pulse ⚡'), 'pulse');
+  assert.equal(threadSlug('R&D rewrite'), 'rdrewrite');
+});
+
+test('start uses FLAMBE_THREAD name or slug instead of the lowest-rank thread', async () => {
+  const requests = [];
+  const fetchImpl = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (options.method === undefined || options.method === 'GET') {
+      return jsonResponse({
+        data: {
+          id: 1,
+          threads: [
+            { id: 1, name: 'flambé🔥', rank: 0 },
+            { id: 4, name: 'pulse ⚡', rank: 2 },
+            { id: 5, name: 'puptrainr 🐶', rank: 3 },
+          ],
+        },
+      });
+    }
+    return jsonResponse({ data: { activity: { id: 99 }, event: { id: 100 } } }, 201);
+  };
+
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 1,
+    defaultThread: 'pulse',
+    fetchImpl,
+    now: () => 1_788_360_000_123,
+  });
+
+  assert.equal(await client.start({ name: 'Fix auth' }), 99);
+  assert.equal(JSON.parse(requests[1].options.body).thread_id, 4);
+});
+
+test('start --thread name overrides FLAMBE_THREAD', async () => {
+  let body;
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 1,
+    defaultThread: 'flambe',
+    fetchImpl: async (_url, options = {}) => {
+      if (!options.method || options.method === 'GET') {
+        return jsonResponse({
+          data: {
+            threads: [
+              { id: 1, name: 'flambé🔥', rank: 0 },
+              { id: 5, name: 'puptrainr 🐶', rank: 3 },
+            ],
+          },
+        });
+      }
+      body = JSON.parse(options.body);
+      return jsonResponse({ data: { activity: { id: 7 }, event: { id: 8 } } }, 201);
+    },
+    now: () => 1,
+  });
+
+  await client.start({ name: 'Work', threadId: 'puptrainr' });
+  assert.equal(body.thread_id, 5);
+});
+
+test('start rejects an unknown FLAMBE_THREAD', async () => {
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 1,
+    defaultThread: 'other-app',
+    fetchImpl: async () => jsonResponse({
+      data: { threads: [{ id: 1, name: 'flambé🔥', rank: 0 }, { id: 4, name: 'pulse ⚡', rank: 2 }] },
+    }),
+  });
+
+  await assert.rejects(client.start({ name: 'Work' }), /Thread "other-app" not found.*flambé🔥, pulse ⚡/);
 });
 
 test('start discovers the default thread and posts an authenticated begin event', async () => {
@@ -866,6 +956,28 @@ test('threads sorts by rank and identifies the default thread', async () => {
     { id: 3, name: 'Also main', rank: 0, default: true },
     { id: 4, name: 'Main', rank: 0, default: false },
     { id: 8, name: 'Later', rank: 2, default: false },
+  ]);
+});
+
+test('threads marks FLAMBE_THREAD as default even when it is not rank 0', async () => {
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 1,
+    defaultThread: 'pulse',
+    fetchImpl: async () => jsonResponse({
+      data: {
+        threads: [
+          { id: 1, name: 'flambé🔥', rank: 0 },
+          { id: 4, name: 'pulse ⚡', rank: 2 },
+        ],
+      },
+    }),
+  });
+
+  assert.deepEqual(await client.threads(), [
+    { id: 1, name: 'flambé🔥', rank: 0, default: false },
+    { id: 4, name: 'pulse ⚡', rank: 2, default: true },
   ]);
 });
 

@@ -30,7 +30,8 @@ cd cli && npm link
    npm install -g @davvidbaker/flambe-cli
    ```
 
-2. Set Cloud secrets / env: `FLAMBE_URL`, `FLAMBE_API_TOKEN`, `FLAMBE_TRACE_ID`.
+2. Set Cloud secrets / env: `FLAMBE_URL`, `FLAMBE_API_TOKEN`, `FLAMBE_TRACE_ID`,
+   and `FLAMBE_THREAD` (this project's thread name, unique slug, or id).
    Copy the `flambe-cli` skill from this repo (`.codex/skills/flambe-cli`) so
    agents know when to `start` / `end`.
 
@@ -50,6 +51,11 @@ shell; shell wins):
 FLAMBE_URL=https://flambe.fly.dev
 FLAMBE_API_TOKEN=flb_...
 FLAMBE_TRACE_ID=1
+FLAMBE_THREAD=your-project
 ```
+
+`FLAMBE_THREAD` pins `flambe start` to that project's thread so agents in
+other repos do not choose a thread named flambe by guesswork. Omit it only
+when the lowest-rank thread is the intended default.
 
 Mint a token in Flambe Settings → API tokens. See the [repository README](https://github.com/davvidbaker/flambe#coding-agent-cli) for commands (`start`, `end`, `message`, `observe`, local `serve`).

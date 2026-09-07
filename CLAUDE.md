@@ -32,7 +32,7 @@ For substantial or multi-step work, use the `flambe-cli` skill whenever Flambe i
 
 Skip trivial one-offs and never log secrets. Let the `flambe-cli` skill own the CLI mechanics, status checks, nesting behavior, configuration handling, and offline recovery.
 
-Flambe is configured when `FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID` are set in the process environment or in `.env` (shell env wins). Cursor Cloud: put those in environment secrets, not in git.
+Flambe is configured when `FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID` are set in the process environment or in `.env` (shell env wins). Optional `FLAMBE_THREAD` pins `start` to that project's thread (name, unique slug, or id). Cursor Cloud: put those in environment secrets, not in git.
 
 If `flambe` is not on PATH, run `node cli/bin/flambe.mjs` from the repo root.
 

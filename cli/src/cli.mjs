@@ -15,7 +15,7 @@ function defaultDbPath() {
 }
 
 const usage = `Usage:
-  flambe start <activity name> [--description <text>] [--thread <id>] [--parent <id> | --root] [--category <id>...] [--started-at <ISO-8601>]
+  flambe start <activity name> [--description <text>] [--thread <id|name>] [--parent <id> | --root] [--category <id>...] [--started-at <ISO-8601>]
   flambe end <activity-id> [message] [--force]
   flambe suspend <activity-id> [message]
   flambe resume <activity-id> [message]
@@ -39,6 +39,9 @@ Required values:
   FLAMBE_TRACE_ID
 
 Optional:
+  FLAMBE_THREAD      Thread this project logs to: name, unique slug of that name, or id.
+                     start uses this when --thread is omitted. Unset falls back to
+                     the lowest-rank thread. Put this in each project's .env.
   FLAMBE_AGENT_ID    Stable ID for this running agent; enables named flame lanes.
                      Derived from Codex, Cursor, or Claude Code session env when unset.
   FLAMBE_AGENT_NAME  Display name for this agent's lane. Do not put this in .env.
