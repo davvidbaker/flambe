@@ -33,6 +33,25 @@ defmodule FlambeNextWeb.TraceThreadControllerTest do
     assert is_integer(main_thread_id)
   end
 
+  test "creating a trace seeds default categories when the user has none", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Palette Trace", username: "palette-trace"})
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> post(~p"/api/traces", %{"trace" => %{"name" => "Fresh trace"}})
+
+    assert json_response(conn, 201)["data"]["name"] == "Fresh trace"
+
+    conn = conn |> recycle() |> get(~p"/api/categories")
+
+    names =
+      json_response(conn, 200)["data"]
+      |> Enum.map(& &1["name"])
+
+    assert names == ["coding", "investigation", "review", "operations", "failure"]
+  end
+
   test "creates, updates, and deletes a thread owned by the current user", %{conn: conn} do
     {:ok, user} = Accounts.create_user(%{name: "Thread User", username: "thread-user"})
 
