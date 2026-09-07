@@ -1,42 +1,8 @@
 import React, { useState, type FormEvent } from 'react';
-import styled from 'styled-components';
 
+import AuthShell, { AuthForm, AuthLogoWrap } from '../components/AuthShell';
 import Logo from '../components/Logo/src';
 
-const CenterFlex = styled.div`
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  flex-direction: column;
-  align-items: center;
-  outline: 5px solid #ffd12f;
-  outline-offset: -10px;
-  border: 5px solid #ff5826;
-
-  box-sizing: outline-box;
-
-  .inner {
-    padding: 20px;
-    text-align: center;
-    /* border: 3px solid #FFD12F; */
-  }
-`;
-
-const Form = styled.form`
-  text-align: left;
-  label,
-  input {
-    display: block;
-    width: 100%;
-  }
-`;
-
-const Padded = styled.div`
-  /* 🤔  maybe bad/weird pattern here*/
-  padding: 30px;
-  /* background: ; */
-`;
 const Login = () => {
   const [error, setError] = useState<string | null>(null);
 
@@ -67,27 +33,21 @@ const Login = () => {
   };
 
   return (
-  <CenterFlex>
-    <div className="inner">
-      <Padded>
+    <AuthShell>
+      <AuthLogoWrap>
         <Logo isAnimated size={90} />
-      </Padded>
+      </AuthLogoWrap>
       <h1>Log in!</h1>
-      <Form
-        onSubmit={submit}
-      >
-        <div>
-          <label htmlFor="login-email">Email</label>
-          <input type="email" name="email" id="login-email" required />
-          <label htmlFor="login-password">Password</label>
-          <input type="password" required name="password" id="login-password" />
-        </div>
+      <AuthForm onSubmit={submit}>
+        <label htmlFor="login-email">Email</label>
+        <input type="email" name="email" id="login-email" required />
+        <label htmlFor="login-password">Password</label>
+        <input type="password" required name="password" id="login-password" />
         <button type="submit">Log In</button>
-      </Form>
+      </AuthForm>
       {error && <p>{error}</p>}
       <p><a href="/register">Create an account</a></p>
-    </div>
-  </CenterFlex>
+    </AuthShell>
   );
 };
 export default Login;

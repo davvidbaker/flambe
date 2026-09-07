@@ -20,6 +20,8 @@ const GlobalStyle = createGlobalStyle`
     overflow: hidden;
     width: 100%;
     height: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   *::before, *::after {
@@ -117,6 +119,16 @@ const GlobalStyle = createGlobalStyle`
 
   .ReactModalPortal > div {
     z-index: 1000;
+  }
+
+  /* iOS Safari zooms the page when a focused field is under 16px, which
+     combined with overflow:hidden clips the SPA. */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
   }
 
 `;

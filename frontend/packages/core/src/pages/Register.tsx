@@ -1,39 +1,7 @@
 import React, { useState, type FormEvent } from 'react';
-import styled from 'styled-components';
 
-import Button from '../components/Button';
+import AuthShell, { AuthForm, AuthLogoWrap } from '../components/AuthShell';
 import Logo from '../components/Logo/src';
-
-const CenterFlex = styled.div`
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  flex-direction: column;
-  align-items: center;
-  outline: 5px solid #ffd12f;
-  outline-offset: -10px;
-  border: 5px solid #ff5826;
-
-  box-sizing: outline-box;
-
-  .inner {
-    padding: 20px;
-    text-align: center;
-    /* border: 3px solid #FFD12F; */
-  }
-`;
-
-const Padded = styled.div`
-  /* 🤔  maybe bad/weird pattern here*/
-  padding: 30px;
-  /* background: ; */
-`;
-const Form = styled.form`
-  text-align: left;
-  label,
-  input { display: block; width: 100%; }
-`;
 
 const Register = () => {
   const [error, setError] = useState<string | null>(null);
@@ -63,13 +31,12 @@ const Register = () => {
   };
 
   return (
-  <CenterFlex>
-    <div className="inner">
-      <Padded>
+    <AuthShell>
+      <AuthLogoWrap>
         <Logo size={90} />
-      </Padded>
+      </AuthLogoWrap>
       <h1>Create your account</h1>
-      <Form onSubmit={submit}>
+      <AuthForm onSubmit={submit}>
         <label htmlFor="register-name">Name</label>
         <input id="register-name" name="name" required />
         <label htmlFor="register-username">Username</label>
@@ -81,11 +48,10 @@ const Register = () => {
         <label htmlFor="register-invite">Invite code</label>
         <input id="register-invite" name="invite_code" autoComplete="off" />
         <button type="submit">Create account</button>
-      </Form>
+      </AuthForm>
       {error && <p>{error}</p>}
       <p><a href="/login">Back to login</a></p>
-    </div>
-  </CenterFlex>
+    </AuthShell>
   );
 };
 export default Register;
