@@ -31,6 +31,7 @@ cd cli && npm link
    ```
 
 2. Set Cloud secrets / env: `FLAMBE_URL`, `FLAMBE_API_TOKEN`, `FLAMBE_TRACE_ID`.
+   Optional: `FLAMBE_THREAD` is sent on `start` when `--thread` is omitted.
    Copy the `flambe-cli` skill from this repo (`.codex/skills/flambe-cli`) so
    agents know when to `start` / `end`.
 
@@ -53,6 +54,7 @@ shell; shell wins):
 FLAMBE_URL=https://flambe.fly.dev
 FLAMBE_API_TOKEN=flb_...
 FLAMBE_TRACE_ID=1
+# FLAMBE_THREAD=1
 ```
 
 Mint a token in Flambe Settings → API tokens. See the [repository README](https://github.com/davvidbaker/flambe#coding-agent-cli) for commands (`start`, `end`, `message`, `observe`, local `serve`).

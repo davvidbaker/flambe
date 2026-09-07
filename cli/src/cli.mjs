@@ -47,6 +47,8 @@ Optional:
   FLAMBE_AGENT_PLATFORM  Product the agent runs on, shared by many agents ("Cursor Cloud",
                      "Codex"). Derived from the session type when unset.
   FLAMBE_AGENT_NAMES_PATH  Where remembered agent names live.
+  FLAMBE_THREAD      Thread id for start when --thread is omitted (overridden by --thread).
+                     The reducer still keeps a child on its parent's thread.
   FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)
   FLAMBE_LOCAL_DB    SQLite path for flambe serve / export (default: ~/.flambe/local.sqlite)
 

@@ -39,7 +39,7 @@ flambe message "Auth fix needs the session module refactored too; widening scope
 
 Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch threads or categories to decide placement; that is the reducer's job.
 
-`start` is a proposal. Without `--parent`/`--root`, the reducer nests the new activity under **your own** newest active activity (other agents' work is never your parent), puts a child on its parent's thread, and gives it the parent's categories; a new root gets its thread and categories chosen by the reducer a few seconds later. The CLI prints what was inferred on stderr (`reducer nested 43 under 42`). Pass `--thread ID` / `--parent ID` / `--category ID` only when you are certain. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations.
+`start` is a proposal. Without `--parent`/`--root`, the reducer nests the new activity under **your own** newest active activity (other agents' work is never your parent), puts a child on its parent's thread, and gives it the parent's categories; a new root gets its thread and categories chosen by the reducer a few seconds later. The CLI prints what was inferred on stderr (`reducer nested 43 under 42`). `FLAMBE_THREAD` is sent as `--thread` when that flag is omitted. Pass `--thread ID` / `--parent ID` / `--category ID` only when you are certain. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations.
 
 ## Ask the reducer before you drift
 
