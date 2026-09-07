@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "bash .cursor/hooks/flambe-context.sh",
+        "timeout": 10
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "bash .cursor/hooks/flambe-context.sh",
+        "timeout": 10
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "bash .cursor/hooks/flambe-context.sh",
+        "timeout": 10
+      }
+    ]
+  }
+}
