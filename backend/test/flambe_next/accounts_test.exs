@@ -59,4 +59,24 @@ defmodule FlambeNext.AccountsTest do
     assert @default_names -- names == []
     assert "Work" in names
   end
+
+  test "update_user_settings merges allowed keys" do
+    {:ok, user} =
+      Accounts.create_user(%{
+        name: "Settings User",
+        username: "settings-user-#{System.unique_integer([:positive])}"
+      })
+
+    {:ok, user} =
+      Accounts.update_user_settings(user, %{
+        "settings" => %{"rightAlignTimelineText" => true, "ignored" => true}
+      })
+
+    assert user.settings == %{"rightAlignTimelineText" => true}
+
+    {:ok, user} =
+      Accounts.update_user_settings(user, %{"settings" => %{"rightAlignTimelineText" => false}})
+
+    assert user.settings == %{"rightAlignTimelineText" => false}
+  end
 end

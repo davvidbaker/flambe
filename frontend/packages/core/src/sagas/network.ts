@@ -33,8 +33,11 @@ import {
   TRACE_SELECT,
   TRACE_DELETE,
   USER_FETCH,
+  USER_SETTINGS_UPDATE,
+  SETTING_TOGGLE,
 } from '../actions';
 import { getUser, type UserState } from '../reducers/user';
+import { isUserSettingKey, type SettingsState } from '../reducers/settings';
 import { getTimeline, type TimelineState } from '../reducers/timeline';
 import { getCollapsedThreadState } from '../utilities/threadCollapseState';
 import { getHiddenThreadIds, persistHiddenThreadIds } from '../utilities/threadHiddenState';
@@ -408,10 +411,40 @@ function* createTrace({ type, name }: NetworkAction): SagaIterator {
   });
 }
 
+function* persistUserSettings(settings: Partial<Pick<SettingsState, 'rightAlignTimelineText'>>): SagaIterator {
+  const user: UserState = yield select(getUser);
+  if (user.id === undefined || user.id === null) return;
+  yield* fetchResource(USER_SETTINGS_UPDATE, {
+    resource: { path: 'users', id: user.id },
+    params: {
+      method: 'PUT',
+      body: JSON.stringify({ user: { settings } }),
+    },
+  });
+}
+
+function* persistUserSetting({ setting }: NetworkAction & { setting?: string }): SagaIterator {
+  if (!setting || !isUserSettingKey(setting)) return;
+  const value: boolean = yield select(
+    (state: { settings: SettingsState }) => state.settings[setting],
+  );
+  yield* persistUserSettings({ [setting]: value });
+}
+
 function* fetchUser({ type, id }: NetworkAction): SagaIterator {
-  yield* fetchResource(type, {
+  const data = yield* fetchResource(type, {
     resource: { path: 'users', id },
   });
+  if (!data || typeof data !== 'object') return;
+  const remote = (data as { settings?: { rightAlignTimelineText?: unknown } }).settings
+    ?.rightAlignTimelineText;
+  if (typeof remote === 'boolean') return;
+  const local: boolean = yield select(
+    (state: { settings: SettingsState }) => state.settings.rightAlignTimelineText,
+  );
+  if (local) {
+    yield* persistUserSettings({ rightAlignTimelineText: true });
+  }
 }
 
 function* fetchTrace({ trace }: NetworkAction): SagaIterator {
@@ -560,6 +593,7 @@ function* networkSaga(): SagaIterator {
   yield takeEvery(TRACE_FILTER, persistHiddenThreads);
 
   yield takeLatest(USER_FETCH, fetchUser);
+  yield takeLatest(SETTING_TOGGLE, persistUserSetting);
 
   // yield takeEvery('FETCH_RESOURCE', fetchResource);
 }

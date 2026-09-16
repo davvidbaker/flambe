@@ -15,9 +15,12 @@ defmodule FlambeNext.Accounts.User do
 
   alias FlambeNext.Traces.Trace
 
+  @user_setting_keys ~w(rightAlignTimelineText)
+
   schema "users" do
     field :name, :string
     field :username, :string
+    field :settings, :map, default: %{}
 
     has_many :credentials, Credential, on_replace: :delete
     has_many :traces, Trace
@@ -43,5 +46,33 @@ defmodule FlambeNext.Accounts.User do
     user
     |> changeset(attrs)
     |> cast_assoc(:credentials, with: &Credential.changeset/2, required: true)
+  end
+
+  def settings_changeset(user, incoming) when is_map(incoming) do
+    incoming = stringify_keys(incoming)
+
+    Enum.reduce(@user_setting_keys, change(user), fn key, changeset ->
+      if Map.has_key?(incoming, key) do
+        put_setting(changeset, key, incoming[key])
+      else
+        changeset
+      end
+    end)
+  end
+
+  defp put_setting(changeset, key, value) when is_boolean(value) do
+    settings = get_field(changeset, :settings) || %{}
+    put_change(changeset, :settings, Map.put(settings, key, value))
+  end
+
+  defp put_setting(changeset, key, _value) do
+    add_error(changeset, :settings, "#{key} must be a boolean")
+  end
+
+  defp stringify_keys(map) do
+    Map.new(map, fn
+      {key, value} when is_atom(key) -> {Atom.to_string(key), value}
+      {key, value} -> {key, value}
+    end)
   end
 end
