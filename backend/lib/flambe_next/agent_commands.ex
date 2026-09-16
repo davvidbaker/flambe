@@ -8,7 +8,6 @@ defmodule FlambeNext.AgentCommands do
 
   import Ecto.Query
 
-  alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
   alias FlambeNext.{AgentTransitions, Agents, Reducer, ReducerAgent, Repo, Traces}
   alias FlambeNext.Traces.{Activity, Event}
@@ -20,7 +19,8 @@ defmodule FlambeNext.AgentCommands do
 
   def execute(%User{} = user, command, attrs)
       when command in @commands and is_map(attrs) do
-    with {:ok, trace_id} <- positive_id(attrs["trace_id"], "trace_id"),
+    with {:ok, attrs} <- identify_agent(user, attrs),
+         {:ok, trace_id} <- positive_id(attrs["trace_id"], "trace_id"),
          {:ok, trace} <- authorized_trace(user, trace_id) do
       run(user, trace, command, attrs)
     end
@@ -34,23 +34,21 @@ defmodule FlambeNext.AgentCommands do
 
   defp run(user, trace, "start", attrs) do
     with {:ok, name} <- required_string(attrs["name"], "name"),
-         {:ok, thread} <- selected_thread(user, trace, attrs["thread_id"]),
-         {:ok, parent} <- selected_parent(user, trace, thread, attrs),
          {:ok, category_ids} <- id_list(attrs["category_ids"], "category_ids"),
-         {:ok, categories} <- Accounts.get_user_categories(user, category_ids),
          {:ok, timestamp} <- timestamp(attrs["timestamp"]),
-         activity_attrs <- activity_attrs(attrs, name),
-         {:ok, activity, event} <-
-           Traces.create_activity(
-             trace,
-             thread,
-             parent,
-             activity_attrs,
-             %{"phase" => "B", "timestamp_integer" => timestamp},
-             categories
-           ) do
+         {:ok, thread_id} <- optional_id(attrs["thread_id"], "thread_id"),
+         {:ok, parent_id} <- optional_parent_id(attrs),
+         activity_attrs <- activity_attrs(attrs, name, parent_id, category_ids),
+         {:ok, %{activity: activity, event: event, notes: notes}} <-
+           Reducer.reduce_start(user, trace, %{
+             "thread_id" => thread_id,
+             "activity" => activity_attrs,
+             "event" => %{"phase" => "B", "timestamp_integer" => timestamp},
+             agent_id: optional_string(attrs["agent_id"])
+           }) do
       :ok = EventStream.broadcast_event(user, event)
-      result(user, trace, activity.id, event.id)
+      if is_nil(activity.parent_id), do: ReducerAgent.place_root_async(user, activity)
+      result(user, trace, activity.id, event.id, reducer: notes)
     else
       {:error, %Ecto.Changeset{} = changeset} -> invalid_changeset(changeset)
       other -> other
@@ -114,13 +112,14 @@ defmodule FlambeNext.AgentCommands do
     end
   end
 
-  defp result(user, trace, activity_id, event_id, options \\ []) do
+  defp result(user, trace, activity_id, event_id, options) do
     with {:ok, current_state} <- state(user, trace) do
       {:ok,
        base_result(current_state)
        |> Map.put(:activity_id, activity_id)
        |> Map.put(:event_id, event_id)
-       |> Map.put(:closed_descendants, Keyword.get(options, :closed_descendants, []))}
+       |> Map.put(:closed_descendants, Keyword.get(options, :closed_descendants, []))
+       |> maybe_put(:reducer, Keyword.get(options, :reducer))}
     end
   end
 
@@ -212,28 +211,6 @@ defmodule FlambeNext.AgentCommands do
     end
   rescue
     Ecto.NoResultsError -> {:error, :not_found}
-  end
-
-  defp selected_parent(user, trace, thread, attrs) do
-    case Map.fetch(attrs, "parent_id") do
-      {:ok, nil} ->
-        {:ok, nil}
-
-      {:ok, value} ->
-        explicit_parent(user, trace, thread, value)
-
-      :error ->
-        {:ok, inferred_activity(user, trace, thread.id, optional_string(attrs["agent_id"]))}
-    end
-  end
-
-  defp explicit_parent(user, trace, thread, value) do
-    with {:ok, id} <- positive_id(value, "parent_id") do
-      case Traces.get_user_trace_thread_activity(user, trace.id, thread.id, id) do
-        nil -> {:error, :not_found}
-        parent -> {:ok, parent}
-      end
-    end
   end
 
   defp inferred_activity(user, trace, thread_id, agent_id) do
@@ -425,17 +402,52 @@ defmodule FlambeNext.AgentCommands do
     end
   end
 
-  defp activity_attrs(attrs, name) do
+  defp activity_attrs(attrs, name, parent_id, category_ids) do
     agent_id = optional_string(attrs["agent_id"])
 
     %{"name" => name}
     |> maybe_put("description", optional_string(attrs["description"]))
     |> maybe_put("agent_id", agent_id)
-    |> maybe_put(
-      "agent_name",
-      if(agent_id, do: Agents.display_name(agent_id, attrs["agent_name"]), else: nil)
-    )
+    |> maybe_put("agent_name", if(agent_id, do: optional_string(attrs["agent_name"])))
+    |> maybe_put_parent(parent_id)
+    |> Map.put("categories", category_ids)
   end
+
+  defp identify_agent(user, attrs) do
+    case optional_string(attrs["agent_id"]) do
+      nil ->
+        {:ok, Map.drop(attrs, ["agent_name", "agent_platform"])}
+
+      agent_id ->
+        with {:ok, %{agent: agent}} <-
+               Agents.identify(
+                 user,
+                 agent_id,
+                 optional_string(attrs["agent_name"]),
+                 optional_string(attrs["agent_platform"])
+               ) do
+          {:ok,
+           attrs
+           |> Map.put("agent_id", agent.agent_id)
+           |> Map.put("agent_name", agent.name)
+           |> Map.put("agent_platform", agent.platform)}
+        end
+    end
+  end
+
+  defp optional_parent_id(attrs) do
+    case Map.fetch(attrs, "parent_id") do
+      :error -> {:ok, :absent}
+      {:ok, nil} -> {:ok, nil}
+      {:ok, value} -> positive_id(value, "parent_id")
+    end
+  end
+
+  defp optional_id(nil, _field), do: {:ok, nil}
+  defp optional_id(value, field), do: positive_id(value, field)
+
+  defp maybe_put_parent(map, :absent), do: map
+  defp maybe_put_parent(map, parent_id), do: Map.put(map, "parent_id", parent_id)
 
   defp status_filters(user, trace, attrs) do
     with {:ok, active} <- boolean(attrs["active_only"], false, "active_only"),
