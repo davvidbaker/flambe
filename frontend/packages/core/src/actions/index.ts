@@ -140,7 +140,6 @@ export function processTimelineTrace(events: TraceEvent[], threads: Thread[]) {
 }
 
 export function runCommand(operand: unknown, command: unknown) {
-  console.log(`🔥  operand, command`, operand, command);
   return {
     type: COMMAND_RUN,
     operand,

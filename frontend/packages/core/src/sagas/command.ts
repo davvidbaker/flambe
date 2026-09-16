@@ -199,7 +199,6 @@ function* handleCommand({ operand, command }: CommandRunAction): SagaIterator {
         // Threads are stored by id, not in an array. Using `.length` here
         // sent an undefined rank for every newly created thread.
         const rank = Object.keys(timeline.threads).length;
-        console.log('timeline, rank', timeline, rank);
         yield put(createThread(command.name ?? '', rank));
         break;
 

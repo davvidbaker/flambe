@@ -118,7 +118,7 @@ function* fetchResource(actionType: string, { resource, params }: ResourceReques
       yield call(navigate, '/login');
       return;
     }
-    console.log(`network error`, error);
+    console.error(`network error`, error);
     yield put(
       createToast(
         `${actionType.replace(/_/g, ' ')} failed. Network error.
