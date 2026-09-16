@@ -46,6 +46,8 @@ defmodule FlambeNextWeb.Router do
     resources "/observations", ObservationController, except: [:new, :edit]
     get "/agent-status", AgentStatusController, :show
     get "/agent-status/stream", AgentStatusStreamController, :show
+    get "/agent-commands", AgentCommandController, :index
+    post "/agent-commands", AgentCommandController, :create
     post "/imports", ImportController, :create
     get "/users/:id", UserController, :show
     resources "/api-tokens", ApiTokenController, only: [:index, :create, :delete]
@@ -56,7 +58,9 @@ defmodule FlambeNextWeb.Router do
   scope "/", FlambeNextWeb do
     pipe_through [:api, :authenticated_api]
 
+    get "/mcp", McpController, :unsupported
     post "/mcp", McpController, :handle
+    delete "/mcp", McpController, :unsupported
   end
 
   scope "/", FlambeNextWeb do

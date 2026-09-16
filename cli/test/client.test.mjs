@@ -8,11 +8,19 @@ import { FlambeClient, configFromEnv } from '../src/client.mjs';
 import { run } from '../src/cli.mjs';
 import { loadProjectEnv } from '../src/env.mjs';
 
+const HOSTED_COMMANDS = ['start', 'end', 'suspend', 'resume', 'status', 'message'];
+
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { 'content-type': 'application/json' },
   });
+}
+
+function legacyClient(options) {
+  const client = new FlambeClient(options);
+  client.agentCommandsCapability = Promise.resolve(false);
+  return client;
 }
 
 function emptyTrace(traceId = 3) {
@@ -157,6 +165,258 @@ test('loadProjectEnv is a no-op when the project has no .env', () => {
   }
 });
 
+test('hosted agent commands are discovered once and preserve identity, root intent, timestamps, and state', async () => {
+  const requests = [];
+  const hostedState = {
+    trace: { id: 9, name: 'Hosted work' },
+    activities: [],
+    availableActions: { canStart: true },
+  };
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test',
+    token: 'secret',
+    traceId: 9,
+    agentId: 'codex:session:thread',
+    agentName: 'Sol',
+    now: () => 456,
+    fetchImpl: async (url, options = {}) => {
+      requests.push({ url, options });
+      if (options.method === 'GET') {
+        return jsonResponse({ data: { version: 1, commands: HOSTED_COMMANDS } });
+      }
+      const { command } = JSON.parse(options.body);
+      if (command === 'start') return jsonResponse({ data: { activity_id: 42, event_id: 50, state: hostedState } });
+      if (command === 'status') return jsonResponse({ data: { state: hostedState } });
+      return jsonResponse({ data: { event_id: 51, state: hostedState, closed_descendants: [] } });
+    },
+  });
+
+  assert.equal(await client.start({
+    name: 'Hosted root',
+    description: 'Keep all input fields',
+    threadId: '4',
+    parentId: null,
+    categoryIds: ['5', '5', '8'],
+    startedAt: '2026-09-01T20:00:00-06:00',
+  }), 42);
+  assert.deepEqual(await client.status({ activeOnly: true }), hostedState);
+  assert.equal(await client.end({ activityId: 42, message: 'Done', force: true }), 51);
+
+  assert.equal(requests.filter(request => request.options.method === 'GET').length, 1);
+  assert.ok(requests.every(request => request.options.headers.authorization === 'Bearer secret'));
+  assert.ok(requests.every(request => request.options.headers['x-flambe-agent-id'] === 'codex:session:thread'));
+  assert.ok(requests.every(request => request.options.headers['x-flambe-agent-name'] === 'Sol'));
+  assert.deepEqual(JSON.parse(requests[1].options.body), {
+    command: 'start',
+    arguments: {
+      trace_id: 9,
+      agent_id: 'codex:session:thread',
+      agent_name: 'Sol',
+      name: 'Hosted root',
+      description: 'Keep all input fields',
+      thread_id: 4,
+      parent_id: null,
+      category_ids: [5, 8],
+      timestamp: Date.parse('2026-09-01T20:00:00-06:00'),
+    },
+  });
+  assert.deepEqual(JSON.parse(requests[2].options.body), {
+    command: 'status',
+    arguments: {
+      trace_id: 9,
+      agent_id: 'codex:session:thread',
+      agent_name: 'Sol',
+      active_only: true,
+      suspended_only: false,
+    },
+  });
+  assert.deepEqual(JSON.parse(requests[3].options.body), {
+    command: 'end',
+    arguments: {
+      trace_id: 9,
+      agent_id: 'codex:session:thread',
+      agent_name: 'Sol',
+      activity_id: 42,
+      message: 'Done',
+      timestamp: 456,
+      force: true,
+    },
+  });
+});
+
+test('only 404 and 405 capability responses select the legacy API', async () => {
+  for (const status of [404, 405]) {
+    const requests = [];
+    const client = new FlambeClient({
+      baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
+      fetchImpl: async (url, options = {}) => {
+        requests.push({ url, options });
+        if (url.endsWith('/api/agent-commands')) return jsonResponse({ error: 'missing' }, status);
+        return jsonResponse({ data: emptyTrace() });
+      },
+    });
+    assert.deepEqual(await client.status(), { trace: { id: 3, name: 'Work' }, activities: [] });
+    assert.equal(requests.at(-1).url, 'http://flambe.test/api/traces/3');
+  }
+
+  const failedRequests = [];
+  const failed = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
+    fetchImpl: async (url, options = {}) => {
+      failedRequests.push({ url, options });
+      return jsonResponse({ error: 'broken' }, 500);
+    },
+  });
+  await assert.rejects(failed.status(), /500.*broken/);
+  assert.deepEqual(failedRequests.map(request => request.url), ['http://flambe.test/api/agent-commands']);
+});
+
+test('an HTML SPA fallback selects the legacy API but malformed JSON capabilities fail', async () => {
+  const htmlRequests = [];
+  const htmlFallback = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
+    fetchImpl: async (url, options = {}) => {
+      htmlRequests.push({ url, options });
+      if (url.endsWith('/api/agent-commands')) {
+        return new Response('<!doctype html><title>Flambe</title>', {
+          status: 200,
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        });
+      }
+      return jsonResponse({ data: emptyTrace() });
+    },
+  });
+  assert.deepEqual(await htmlFallback.status(), { trace: { id: 3, name: 'Work' }, activities: [] });
+  assert.equal(htmlRequests.at(-1).url, 'http://flambe.test/api/traces/3');
+
+  const malformed = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
+    fetchImpl: async () => jsonResponse({ data: { version: 1 } }),
+  });
+  await assert.rejects(malformed.status(), /invalid agent-command capability document/);
+
+  const incomplete = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
+    fetchImpl: async () => jsonResponse({ data: { version: 1, commands: ['status'] } }),
+  });
+  await assert.rejects(incomplete.status(), /invalid agent-command capability document/);
+});
+
+test('hosted message lets the server infer activity and does not preflight the trace', async () => {
+  const requests = [];
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3, agentId: 'agent-7',
+    fetchImpl: async (url, options = {}) => {
+      requests.push({ url, options });
+      if (options.method === 'GET') {
+        return jsonResponse({ data: { version: 1, commands: HOSTED_COMMANDS } });
+      }
+      return jsonResponse({ data: {
+        activity_id: 21,
+        assessment: 'on_track',
+        direction: null,
+        reply: 'Continue.',
+        actions_applied: [],
+      } });
+    },
+  });
+
+  assert.deepEqual(await client.message({ text: 'Progress update' }), {
+    activityId: 21,
+    activity_id: 21,
+    assessment: 'on_track',
+    direction: null,
+    reply: 'Continue.',
+    actions_applied: [],
+  });
+  assert.deepEqual(JSON.parse(requests[1].options.body), {
+    command: 'message',
+    arguments: {
+      trace_id: 3,
+      agent_id: 'agent-7',
+      message: 'Progress update',
+    },
+  });
+  assert.equal(requests.some(request => request.url.includes('/api/traces/')), false);
+});
+
+test('hosted offline queue replay preserves timestamps and resolves activity aliases', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'flambe-hosted-queue-'));
+  const queuePath = join(directory, 'queue.json');
+  const commands = [];
+  let connected = false;
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3, queuePath, now: () => 456,
+    fetchImpl: async (_url, options = {}) => {
+      if (!connected) throw new TypeError('network unavailable');
+      if (options.method === 'GET') {
+        return jsonResponse({ data: { version: 1, commands: HOSTED_COMMANDS } });
+      }
+      const body = JSON.parse(options.body);
+      commands.push(body);
+      return jsonResponse({ data: body.command === 'start'
+        ? { activity_id: 42, event_id: 50, state: {} }
+        : { event_id: 51, state: {}, closed_descendants: [] } });
+    },
+  });
+
+  try {
+    const localId = await client.start({ name: 'Queued hosted work', threadId: 4 });
+    assert.match(localId, /^offline-/);
+    connected = true;
+    assert.equal(await client.end({ activityId: localId, message: 'Queued done', force: true }), 'queued');
+
+    await client.flushQueue();
+
+    assert.deepEqual(commands, [{
+      command: 'start',
+      arguments: {
+        trace_id: 3,
+        name: 'Queued hosted work',
+        thread_id: 4,
+        category_ids: [],
+        timestamp: 456,
+      },
+    }, {
+      command: 'end',
+      arguments: {
+        trace_id: 3,
+        activity_id: 42,
+        message: 'Queued done',
+        timestamp: 456,
+        force: true,
+      },
+    }]);
+    assert.throws(() => readFileSync(queuePath, 'utf8'), /ENOENT/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('hosted end reports actionable open-child conflicts', async () => {
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
+    fetchImpl: async (_url, options = {}) => {
+      if (options.method === 'GET') {
+        return jsonResponse({ data: { version: 1, commands: HOSTED_COMMANDS } });
+      }
+      return jsonResponse({ error: {
+        code: 'open_children',
+        message: 'Activity has open children',
+        open_children: [
+          { activity_id: 11, activity_name: 'First child' },
+          { activity_id: 12, activity_name: 'Second child' },
+        ],
+      } }, 409);
+    },
+  });
+
+  await assert.rejects(
+    client.end({ activityId: 10, message: 'Done' }),
+    /409.*Activity has open children: 11 \(First child\), 12 \(Second child\)\. End 11, 12 first \(or pass --force\)/,
+  );
+});
+
 test('start discovers the default thread and posts an authenticated begin event', async () => {
   const requests = [];
   const fetchImpl = async (url, options = {}) => {
@@ -167,7 +427,7 @@ test('start discovers the default thread and posts an authenticated begin event'
     return jsonResponse({ data: { activity: { id: 42 }, event: { id: 50 } } }, 201);
   };
 
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test/',
     token: 'flb_test_token',
     traceId: 9,
@@ -190,7 +450,7 @@ test('start discovers the default thread and posts an authenticated begin event'
 
 test('includes the stable agent instance ID when configured', async () => {
   let request;
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test', token: 'secret', traceId: 3, agentId: 'agent-session-7',
     fetchImpl: async (url, options = {}) => {
       request = options;
@@ -208,7 +468,7 @@ test('includes the stable agent instance ID when configured', async () => {
 
 test('sends the agent display name only together with an instance ID', async () => {
   let namedRequest;
-  const named = new FlambeClient({
+  const named = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -228,7 +488,7 @@ test('sends the agent display name only together with an instance ID', async () 
   assert.equal(namedRequest.headers['x-flambe-agent-name'], 'Grok');
 
   let namelessRequest;
-  const nameless = new FlambeClient({
+  const nameless = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -257,7 +517,7 @@ test('explicit thread still discovers an active parent in that thread', async ()
     return jsonResponse({ data: { activity: { id: 8 }, event: { id: 9 } } }, 201);
   };
 
-  const client = new FlambeClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 2, fetchImpl, now: () => 7 });
+  const client = legacyClient({ baseUrl: 'http://flambe.test', token: 't', traceId: 2, fetchImpl, now: () => 7 });
   assert.equal(await client.start({ name: 'Run tests', threadId: '11', description: 'CI', categoryIds: ['4'] }), 8);
   assert.equal(requests.length, 2);
   assert.deepEqual(JSON.parse(requests[1].options.body), {
@@ -270,7 +530,7 @@ test('explicit thread still discovers an active parent in that thread', async ()
 
 test('start makes the latest active activity in its thread the parent by default', async () => {
   let request;
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test', token: 't', traceId: 2, now: () => 7,
     fetchImpl: async (_url, options = {}) => {
       if (options.method === undefined || options.method === 'GET') {
@@ -291,7 +551,7 @@ test('start makes the latest active activity in its thread the parent by default
 
 test('start can explicitly remain a root in a thread with active work', async () => {
   let request;
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test', token: 't', traceId: 2, now: () => 7,
     fetchImpl: async (_url, options = {}) => {
       if (options.method === undefined || options.method === 'GET') {
@@ -327,7 +587,7 @@ test('CLI parses --root as an explicit root activity', async () => {
 
 test('start accepts a timezone-aware ISO timestamp for a backdated begin event', async () => {
   let request;
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test', token: 't', traceId: 2,
     fetchImpl: async (_url, options = {}) => {
       request = options;
@@ -342,7 +602,7 @@ test('start accepts a timezone-aware ISO timestamp for a backdated begin event',
 });
 
 test('start rejects timestamps without a timezone before posting an activity', async () => {
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test', token: 't', traceId: 2,
     fetchImpl: async () => { throw new Error('should not make a request'); },
   });
@@ -354,7 +614,7 @@ test('start rejects timestamps without a timezone before posting an activity', a
 });
 
 test('start rejects invalid category IDs before posting an activity', async () => {
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test', token: 't', traceId: 2,
     fetchImpl: async () => { throw new Error('should not make a request'); },
   });
@@ -372,7 +632,7 @@ test('end posts an authenticated end event with the completion message', async (
     return jsonResponse({ data: { id: 77, phase: 'E' } }, 201);
   };
 
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -390,7 +650,7 @@ test('end posts an authenticated end event with the completion message', async (
 });
 
 test('end refuses when the activity still has open children', async () => {
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -455,7 +715,7 @@ test('end refuses when the activity still has open children', async () => {
 
 test('end --force closes a parent even when children are still open', async () => {
   let posted;
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -508,7 +768,7 @@ test('end --force closes a parent even when children are still open', async () =
 
 test('end reports descendants the reducer closed on its behalf', async () => {
   const notes = [];
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -616,7 +876,7 @@ test('cli end --force passes through to the client', async () => {
 
 test('suspend and resume post lifecycle events', async () => {
   const requests = [];
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test', token: 'secret', traceId: 3, now: () => 456,
     fetchImpl: async (_url, options = {}) => {
       requests.push(JSON.parse(options.body));
@@ -638,7 +898,7 @@ test('queues the full offline activity lifecycle and replays it in order', async
   const requests = [];
   let connected = false;
 
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'do-not-store-me',
     traceId: 3,
@@ -701,7 +961,7 @@ test('queues the full offline activity lifecycle and replays it in order', async
 });
 
 test('status identifies active and suspended activities by their latest lifecycle event', async () => {
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -766,7 +1026,7 @@ test('status identifies active and suspended activities by their latest lifecycl
 
 test('message asks the reducer about this agent\'s newest active activity without allowing stack changes', async () => {
   const requests = [];
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -833,7 +1093,7 @@ test('message asks the reducer about this agent\'s newest active activity withou
 });
 
 test('message surfaces reducer tool errors and refuses without an active activity', async () => {
-  const errorClient = new FlambeClient({
+  const errorClient = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -846,7 +1106,7 @@ test('message surfaces reducer tool errors and refuses without an active activit
 
   await assert.rejects(errorClient.message({ activityId: 21, text: 'hello' }), /OPENAI_API_KEY is missing/);
 
-  const emptyClient = new FlambeClient({
+  const emptyClient = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'secret',
     traceId: 3,
@@ -857,7 +1117,7 @@ test('message surfaces reducer tool errors and refuses without an active activit
 });
 
 test('threads sorts by rank and identifies the default thread', async () => {
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
     fetchImpl: async () => jsonResponse({ data: { threads: [{ id: 8, name: 'Later', rank: 2 }, { id: 4, name: 'Main', rank: 0 }, { id: 3, name: 'Also main', rank: 0 }] } }),
   });
@@ -870,7 +1130,7 @@ test('threads sorts by rank and identifies the default thread', async () => {
 });
 
 test('categories returns the authenticated user categories', async () => {
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test', token: 'secret', traceId: 3,
     fetchImpl: async () => jsonResponse({ data: [{ id: 5, name: 'Client', color_background: '#fff', color_text: '#000' }] }),
   });
@@ -879,7 +1139,7 @@ test('categories returns the authenticated user categories', async () => {
 });
 
 test('API errors are useful without echoing credentials', async () => {
-  const client = new FlambeClient({
+  const client = legacyClient({
     baseUrl: 'http://flambe.test',
     token: 'do-not-print-me',
     traceId: 1,

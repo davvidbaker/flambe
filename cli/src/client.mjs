@@ -1,5 +1,7 @@
 import { FlambeQueue } from './queue.mjs';
 
+const REQUIRED_AGENT_COMMANDS = ['start', 'end', 'suspend', 'resume', 'status', 'message'];
+
 export function hostConfigFromEnv(env = process.env) {
   const required = ['FLAMBE_URL', 'FLAMBE_API_TOKEN'];
   const missing = required.filter(key => !env[key]?.trim());
@@ -75,6 +77,17 @@ function claudeAgentId(env) {
 function errorDetail(payload) {
   if (!payload) return null;
   if (typeof payload.error === 'string') return payload.error;
+  if (payload.error && typeof payload.error === 'object') {
+    const message = payload.error.message ?? payload.error.code;
+    const openChildren = payload.error.open_children;
+    if (!Array.isArray(openChildren) || openChildren.length === 0) return message ?? JSON.stringify(payload.error);
+
+    const children = openChildren
+      .map(child => `${child.activity_id} (${child.activity_name ?? child.name ?? 'unnamed'})`)
+      .join(', ');
+    const ids = openChildren.map(child => child.activity_id).join(', ');
+    return `${message ?? 'Open children remain'}: ${children}. End ${ids} first (or pass --force).`;
+  }
   if (payload.errors) return JSON.stringify(payload.errors);
   return null;
 }
@@ -90,9 +103,49 @@ export class FlambeClient {
     this.now = now;
     this.onReducerNote = onReducerNote;
     this.queue = queue ?? new FlambeQueue({ baseUrl: this.baseUrl, traceId: this.traceId, path: queuePath });
+    this.agentCommandsCapability = null;
   }
 
-  async request(path, { method = 'GET', body } = {}) {
+  async supportsAgentCommands() {
+    if (!this.agentCommandsCapability) {
+      const probe = this.request('/api/agent-commands', { responseMetadata: true })
+        .then(({ payload, contentType }) => {
+          if (contentType.toLowerCase().startsWith('text/html')) return false;
+          const commands = payload?.data?.commands;
+          if (payload?.data?.version !== 1
+            || !Array.isArray(commands)
+            || REQUIRED_AGENT_COMMANDS.some(command => !commands.includes(command))) {
+            throw new Error('Flambe API returned an invalid agent-command capability document');
+          }
+          return true;
+        })
+        .catch(error => {
+          if (error?.status === 404 || error?.status === 405) return false;
+          this.agentCommandsCapability = null;
+          throw error;
+        });
+      this.agentCommandsCapability = probe;
+    }
+    return this.agentCommandsCapability;
+  }
+
+  async agentCommand(command, arguments_) {
+    const payload = await this.request('/api/agent-commands', {
+      method: 'POST',
+      body: { command, arguments: arguments_ },
+    });
+    return payload.data;
+  }
+
+  commandIdentity() {
+    return {
+      trace_id: this.traceId,
+      ...(this.agentId ? { agent_id: this.agentId } : {}),
+      ...(this.agentName ? { agent_name: this.agentName } : {}),
+    };
+  }
+
+  async request(path, { method = 'GET', body, responseMetadata = false } = {}) {
     let response;
     try {
       response = await this.fetch(`${this.baseUrl}${path}`, {
@@ -129,6 +182,13 @@ export class FlambeClient {
       throw error;
     }
 
+    if (responseMetadata) {
+      return {
+        payload,
+        contentType: response.headers.get('content-type') ?? '',
+        status: response.status,
+      };
+    }
     return payload;
   }
 
@@ -157,6 +217,14 @@ export class FlambeClient {
 
   async status({ activeOnly = false, suspendedOnly = false } = {}) {
     if (activeOnly && suspendedOnly) throw new Error('--active and --suspended cannot be used together');
+    if (await this.supportsAgentCommands()) {
+      const result = await this.agentCommand('status', {
+        ...this.commandIdentity(),
+        active_only: activeOnly,
+        suspended_only: suspendedOnly,
+      });
+      return result.state;
+    }
     const trace = await this.getTrace();
     return this.statusFromTrace(trace, { activeOnly, suspendedOnly });
   }
@@ -283,6 +351,27 @@ export class FlambeClient {
   }
 
   async postStart({ name, description, threadId, parentId, categoryIds, timestamp }) {
+    if (await this.supportsAgentCommands()) {
+      const resolvedParentId = parentId === undefined
+        ? undefined
+        : await this.queue.resolveActivityId(parentId);
+      if (String(resolvedParentId).startsWith('offline-')) {
+        const error = new Error('Parent activity is queued for offline delivery');
+        error.retryable = true;
+        throw error;
+      }
+      const result = await this.agentCommand('start', {
+        ...this.commandIdentity(),
+        name,
+        ...(description ? { description } : {}),
+        ...(threadId === undefined ? {} : { thread_id: Number(threadId) }),
+        ...(resolvedParentId === undefined ? {} : { parent_id: resolvedParentId }),
+        category_ids: categoryIds,
+        timestamp,
+      });
+      return result.activity_id;
+    }
+
     const trace = await this.getTrace();
     const resolvedThreadId = this.resolveThreadId(threadId, trace);
     const activeActivities = this.statusFromTrace(trace, { activeOnly: true }).activities;
@@ -321,8 +410,7 @@ export class FlambeClient {
   }
 
   async end({ activityId, message, force = false }) {
-    if (!force) await this.assertNoOpenChildren(activityId);
-    return this.lifecycleEvent({ activityId, message, phase: 'E', queueType: 'end' });
+    return this.lifecycleEvent({ activityId, message, phase: 'E', queueType: 'end', force, guardChildren: !force });
   }
 
   /**
@@ -362,14 +450,19 @@ export class FlambeClient {
     return this.lifecycleEvent({ activityId, message, phase: 'R', queueType: 'resume' });
   }
 
-  async lifecycleEvent({ activityId, message, phase, queueType }) {
+  async lifecycleEvent({ activityId, message, phase, queueType, force = false, guardChildren = false }) {
     if (!String(activityId).startsWith('offline-')) {
       const id = Number(activityId);
       if (!Number.isInteger(id) || id <= 0) throw new Error('Activity id must be a positive integer');
     }
 
     const timestamp = this.now();
-    const input = { activityId, message, timestamp };
+    const input = {
+      activityId,
+      message,
+      timestamp,
+      ...(queueType === 'end' ? { force } : {}),
+    };
 
     try {
       const id = await this.queue.resolveActivityId(activityId);
@@ -377,7 +470,10 @@ export class FlambeClient {
         await this.queue.enqueue(queueType, input);
         return 'queued';
       }
-      const eventId = await this.postLifecycleEvent({ ...input, activityId: id, phase });
+      if (guardChildren && !await this.supportsAgentCommands()) {
+        await this.assertNoOpenChildren(id);
+      }
+      const eventId = await this.postLifecycleEvent({ ...input, activityId: id, phase, force });
       if (phase === 'E') await this.queue.removeAlias(activityId);
       return eventId;
     } catch (error) {
@@ -387,7 +483,20 @@ export class FlambeClient {
     }
   }
 
-  async postLifecycleEvent({ activityId, message, timestamp, phase }) {
+  async postLifecycleEvent({ activityId, message, timestamp, phase, force = false }) {
+    if (await this.supportsAgentCommands()) {
+      const command = { E: 'end', S: 'suspend', R: 'resume' }[phase];
+      const result = await this.agentCommand(command, {
+        ...this.commandIdentity(),
+        activity_id: Number(activityId),
+        ...(message ? { message } : {}),
+        timestamp,
+        ...(command === 'end' ? { force } : {}),
+      });
+      this.reportClosedDescendants(Number(activityId), result.closed_descendants ?? []);
+      return result.event_id;
+    }
+
     const payload = await this.request('/api/events', {
       method: 'POST',
       body: {
@@ -402,10 +511,16 @@ export class FlambeClient {
     });
 
     const closed = payload.data.reducer?.closed_descendants ?? [];
+    this.reportClosedDescendants(Number(activityId), closed);
+
+    return payload.data.id;
+  }
+
+  reportClosedDescendants(activityId, closed) {
     if (closed.length > 0) {
       this.onReducerNote?.({
         type: 'closed_descendants',
-        activityId: Number(activityId),
+        activityId,
         closedDescendants: closed.map(item => ({
           activityId: item.activity_id,
           activityName: item.activity_name,
@@ -413,8 +528,6 @@ export class FlambeClient {
         })),
       });
     }
-
-    return payload.data.id;
   }
 
   async flushQueue() {
@@ -460,6 +573,26 @@ export class FlambeClient {
    */
   async message({ activityId, text }) {
     if (!text?.trim()) throw new Error('Message text is required');
+
+    if (await this.supportsAgentCommands()) {
+      let resolvedActivityId = activityId;
+      if (activityId !== undefined) {
+        resolvedActivityId = await this.queue.resolveActivityId(activityId);
+        if (String(resolvedActivityId).startsWith('offline-')) {
+          throw new Error('Activity is still queued for offline delivery; retry once Flambe is reachable');
+        }
+        const id = Number(resolvedActivityId);
+        if (!Number.isInteger(id) || id <= 0) throw new Error('--activity must be a positive integer');
+        resolvedActivityId = id;
+      }
+
+      const result = await this.agentCommand('message', {
+        ...this.commandIdentity(),
+        ...(resolvedActivityId === undefined ? {} : { activity_id: resolvedActivityId }),
+        message: text.trim(),
+      });
+      return { activityId: result.activity_id ?? resolvedActivityId, ...result };
+    }
 
     const resolvedActivityId = activityId === undefined
       ? await this.currentActivityId()

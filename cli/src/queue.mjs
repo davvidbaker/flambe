@@ -107,7 +107,7 @@ export class FlambeQueue {
         } else if (entry.type === 'end' || entry.type === 'suspend' || entry.type === 'resume') {
           const activityId = state.aliases[entry.activityId] ?? entry.activityId;
           const post = { end, suspend, resume }[entry.type];
-          await post({ activityId, message: entry.message, timestamp: entry.timestamp });
+          await post({ activityId, message: entry.message, timestamp: entry.timestamp, force: entry.force ?? false });
           if (entry.type === 'end') delete state.aliases[entry.activityId];
         } else if (entry.type === 'observe') {
           await observe(entry.input);
