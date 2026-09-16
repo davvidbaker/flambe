@@ -76,6 +76,10 @@ export const SETTING_TOGGLE = 'SETTING_TOGGLE';
 export const SETTINGS_SHOW = 'SETTINGS_SHOW';
 export const SETTINGS_HIDE = 'SETTINGS_HIDE';
 
+export const KEYBOARD_SHORTCUTS_SHOW = 'KEYBOARD_SHORTCUTS_SHOW';
+export const KEYBOARD_SHORTCUTS_HIDE = 'KEYBOARD_SHORTCUTS_HIDE';
+export const KEYBOARD_SHORTCUTS_TOGGLE = 'KEYBOARD_SHORTCUTS_TOGGLE';
+
 export const THREAD_CREATE = 'THREAD_CREATE';
 export const THREAD_DELETE = 'THREAD_DELETE';
 export const THREAD_COLLAPSE = 'THREAD_COLLAPSE';
@@ -475,6 +479,24 @@ export function showSettings() {
 export function hideSettings() {
   return {
     type: SETTINGS_HIDE,
+  };
+}
+
+export function showKeyboardShortcuts() {
+  return {
+    type: KEYBOARD_SHORTCUTS_SHOW,
+  };
+}
+
+export function hideKeyboardShortcuts() {
+  return {
+    type: KEYBOARD_SHORTCUTS_HIDE,
+  };
+}
+
+export function toggleKeyboardShortcuts() {
+  return {
+    type: KEYBOARD_SHORTCUTS_TOGGLE,
   };
 }
 
