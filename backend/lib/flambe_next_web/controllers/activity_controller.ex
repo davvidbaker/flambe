@@ -1,32 +1,40 @@
 defmodule FlambeNextWeb.ActivityController do
   use FlambeNextWeb, :controller
 
-  alias FlambeNext.{Accounts, Agents, Traces}
+  alias FlambeNext.{Accounts, Reducer, ReducerAgent, Traces}
   alias FlambeNextWeb.EventStream
 
-  def create(conn, %{
-        "trace_id" => trace_id,
-        "thread_id" => thread_id,
-        "activity" => activity_attrs,
-        "event" => event_attrs
-      }) do
+  # Agents (bearer token) propose a start and the reducer resolves parent, thread, and
+  # categories (ADR-012); the SPA (session) writes exactly what it sent.
+  def create(
+        conn,
+        %{"trace_id" => trace_id, "activity" => activity_attrs, "event" => event_attrs} = params
+      ) do
     user = conn.assigns.current_user
     trace = Traces.get_user_trace!(user, trace_id)
-    thread = Traces.get_user_trace_thread!(user, trace.id, thread_id)
     activity_attrs = agent_identity(conn, activity_attrs)
-    category_ids = Map.get(activity_attrs, "categories", [])
 
-    with {:ok, parent} <-
-           parent_activity(user, trace.id, thread.id, Map.get(activity_attrs, "parent_id")),
-         {:ok, categories} <- Accounts.get_user_categories(user, category_ids),
-         {:ok, activity, event} <-
-           Traces.create_activity(trace, thread, parent, activity_attrs, event_attrs, categories) do
-      :ok = EventStream.broadcast_event(user, event)
+    result =
+      if Map.has_key?(conn.assigns, :api_token) do
+        Reducer.reduce_start(user, trace, %{
+          "thread_id" => Map.get(params, "thread_id"),
+          "activity" => activity_attrs,
+          "event" => event_attrs,
+          agent_id: Map.get(activity_attrs, "agent_id")
+        })
+      else
+        direct_create(user, trace, params, activity_attrs, event_attrs)
+      end
 
-      conn
-      |> put_status(:created)
-      |> render(:show, activity: activity, event: event)
-    else
+    case result do
+      {:ok, %{activity: activity, event: event, notes: notes}} ->
+        :ok = EventStream.broadcast_event(user, event)
+        if notes && is_nil(activity.parent_id), do: ReducerAgent.place_root_async(user, activity)
+
+        conn
+        |> put_status(:created)
+        |> render(:show, activity: activity, event: event, reducer: notes)
+
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
@@ -39,33 +47,31 @@ defmodule FlambeNextWeb.ActivityController do
     end
   end
 
+  defp direct_create(user, trace, %{"thread_id" => thread_id}, activity_attrs, event_attrs) do
+    thread = Traces.get_user_trace_thread!(user, trace.id, thread_id)
+    category_ids = Map.get(activity_attrs, "categories", [])
+
+    with {:ok, parent} <-
+           parent_activity(user, trace.id, thread.id, Map.get(activity_attrs, "parent_id")),
+         {:ok, categories} <- Accounts.get_user_categories(user, category_ids),
+         {:ok, activity, event} <-
+           Traces.create_activity(trace, thread, parent, activity_attrs, event_attrs, categories) do
+      {:ok, %{activity: activity, event: event, notes: nil}}
+    end
+  end
+
+  defp direct_create(_user, _trace, _params, _activity_attrs, _event_attrs),
+    do: {:error, :not_found}
+
   defp agent_identity(conn, activity_attrs) do
     attrs = Map.drop(activity_attrs, ["agent_id", "agent_name"])
 
-    case get_req_header(conn, "x-flambe-agent-id") do
-      [instance_id] when byte_size(instance_id) in 1..200 ->
-        Map.merge(attrs, %{
-          "agent_id" => instance_id,
-          "agent_name" =>
-            Agents.display_name(instance_id, request_agent_name(conn), api_token_name(conn))
-        })
+    case conn.assigns[:agent] do
+      %{id: agent_id, name: name} ->
+        Map.merge(attrs, %{"agent_id" => agent_id, "agent_name" => name})
 
-      _ ->
+      nil ->
         attrs
-    end
-  end
-
-  defp request_agent_name(conn) do
-    case get_req_header(conn, "x-flambe-agent-name") do
-      [name] -> name
-      _ -> nil
-    end
-  end
-
-  defp api_token_name(conn) do
-    case conn.assigns[:api_token] do
-      %{name: name} -> name
-      _ -> nil
     end
   end
 

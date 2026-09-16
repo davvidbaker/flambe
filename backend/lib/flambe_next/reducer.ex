@@ -6,18 +6,225 @@ defmodule FlambeNext.Reducer do
   so it keeps working when `OPENAI_API_KEY` is absent. It reinterprets, it never drops:
   a proposed event is always recorded, and the stack invariants are restored around it.
 
-  Current rule: ending an activity also ends any descendant that is still open
-  (latest phase `B` or `R`), deepest first, at the same timestamp.
+  Rules:
+
+  - Ending an activity also ends any descendant that is still open (latest lifecycle
+    phase `B` or `R`), deepest first, at the same timestamp.
+  - Starting an activity resolves what the worker left open (ADR-012): an absent
+    `parent_id` infers the agent's own newest active activity; a child lives in its
+    parent's thread; missing categories are inherited from the parent.
   """
 
   import Ecto.Query
 
+  alias FlambeNext.Accounts
+  alias FlambeNext.Accounts.User
   alias FlambeNext.Repo
   alias FlambeNext.Traces
-  alias FlambeNext.Traces.{Activity, Event, Trace}
+  alias FlambeNext.Traces.{Activity, Event, Thread, Trace}
 
   @lifecycle_phases ~w(B R X S E J V)
   @open_phases ~w(B R X)
+  # Reducer bookkeeping events (`reducer_*`) are annotations; they do not change whether
+  # an activity is open.
+
+  @type start_notes :: %{
+          parent_source: :inferred | :explicit | :root,
+          thread_source: :parent | :request | :default,
+          categories_source: :request | :parent | :none
+        }
+
+  @doc """
+  Creates an activity from a worker's `start` proposal.
+
+  `params`:
+    * `"thread_id"` — optional; ignored when a parent exists
+    * `"activity"` — activity attrs; `parent_id` absent = infer, `nil` = root
+    * `"event"` — the `B` event attrs
+    * `:agent_id` — the calling agent, used to scope parent inference
+  """
+  @spec reduce_start(User.t(), Trace.t(), map()) ::
+          {:ok, %{activity: Activity.t(), event: Event.t(), notes: start_notes()}}
+          | {:error, :not_found | Ecto.Changeset.t()}
+  def reduce_start(%User{} = user, %Trace{} = trace, params) when is_map(params) do
+    activity_attrs = Map.get(params, "activity", %{})
+    event_attrs = Map.get(params, "event", %{})
+    agent_id = Map.get(params, :agent_id)
+
+    with {:ok, parent, parent_source} <-
+           resolve_parent(trace, Map.get(params, "thread_id"), activity_attrs, agent_id),
+         {:ok, thread, thread_source} <-
+           resolve_thread(trace, parent, Map.get(params, "thread_id")),
+         {:ok, categories, categories_source} <-
+           resolve_categories(user, parent, Map.get(activity_attrs, "categories", [])),
+         {:ok, activity, event} <-
+           Traces.create_activity(trace, thread, parent, activity_attrs, event_attrs, categories) do
+      {:ok,
+       %{
+         activity: activity,
+         event: event,
+         notes: %{
+           parent_source: parent_source,
+           thread_source: thread_source,
+           categories_source: categories_source
+         }
+       }}
+    end
+  end
+
+  @doc """
+  The newest activity in `trace` whose latest lifecycle event is `B` or `R`, optionally
+  restricted to one agent. Preloads `:thread` and `:categories`.
+  """
+  @spec newest_active_activity(Trace.t(), keyword()) :: Activity.t() | nil
+  def newest_active_activity(%Trace{id: trace_id}, opts \\ []) do
+    latest =
+      from(e in Event,
+        where: e.trace_id == ^trace_id and e.phase in @lifecycle_phases,
+        distinct: e.activity_id,
+        order_by: [asc: e.activity_id, desc: e.timestamp, desc: e.id],
+        select: %{activity_id: e.activity_id, phase: e.phase, timestamp: e.timestamp, id: e.id}
+      )
+
+    query =
+      from(a in Activity,
+        join: l in subquery(latest),
+        on: l.activity_id == a.id,
+        where: l.phase in @open_phases,
+        order_by: [desc: l.timestamp, desc: l.id],
+        preload: [:thread, :categories]
+      )
+
+    query =
+      case Keyword.fetch(opts, :agent_id) do
+        {:ok, agent_id} when is_binary(agent_id) -> where(query, [a], a.agent_id == ^agent_id)
+        _ -> query
+      end
+
+    query =
+      case Keyword.fetch(opts, :thread_id) do
+        {:ok, thread_id} when not is_nil(thread_id) ->
+          where(query, [a], a.thread_id == ^thread_id)
+
+        _ ->
+          query
+      end
+
+    query
+    |> Repo.all()
+    |> Enum.find(&(not suspended_ancestor?(trace_id, &1.parent_id)))
+  end
+
+  defp resolve_parent(trace, thread_id, activity_attrs, agent_id) do
+    case Map.fetch(activity_attrs, "parent_id") do
+      {:ok, nil} ->
+        {:ok, nil, :root}
+
+      {:ok, parent_id} ->
+        case fetch_parent(trace, parent_id) do
+          nil -> {:error, :not_found}
+          parent -> {:ok, parent, :explicit}
+        end
+
+      :error ->
+        # Without an agent id there is nothing to scope by, so fall back to the old
+        # "newest active in the requested thread" behaviour.
+        with {:ok, scope} <- inference_scope(trace, thread_id, agent_id) do
+          case newest_active_activity(trace, scope) do
+            nil -> {:ok, nil, :root}
+            parent -> {:ok, parent, :inferred}
+          end
+        end
+    end
+  end
+
+  # `trace` already belongs to the user (fetched with `get_user_trace!`), so scoping the
+  # parent to the trace is enough.
+  defp fetch_parent(trace, parent_id) when is_binary(parent_id) do
+    case Integer.parse(parent_id) do
+      {id, ""} -> fetch_parent(trace, id)
+      _ -> nil
+    end
+  end
+
+  defp fetch_parent(trace, parent_id) when is_integer(parent_id) and parent_id > 0 do
+    from(a in Activity,
+      join: thread in assoc(a, :thread),
+      where: a.id == ^parent_id and thread.trace_id == ^trace.id,
+      preload: [:thread, :categories]
+    )
+    |> Repo.one()
+  end
+
+  defp fetch_parent(_trace, _parent_id), do: nil
+
+  defp inference_scope(_trace, _thread_id, agent_id) when is_binary(agent_id),
+    do: {:ok, [agent_id: agent_id]}
+
+  defp inference_scope(trace, thread_id, _agent_id) do
+    with {:ok, %Thread{id: id}, _source} <- resolve_thread(trace, nil, thread_id) do
+      {:ok, [thread_id: id]}
+    end
+  end
+
+  defp resolve_thread(_trace, %Activity{thread: %Thread{} = thread}, _thread_id),
+    do: {:ok, thread, :parent}
+
+  defp resolve_thread(trace, nil, nil) do
+    case trace.threads do
+      [thread | _] -> {:ok, thread, :default}
+      [] -> {:error, :not_found}
+    end
+  end
+
+  defp resolve_thread(trace, nil, thread_id) do
+    id =
+      case thread_id do
+        id when is_integer(id) -> id
+        id when is_binary(id) -> with({n, ""} <- Integer.parse(id), do: n, else: (_ -> nil))
+        _ -> nil
+      end
+
+    case Enum.find(trace.threads, &(&1.id == id)) do
+      %Thread{} = thread -> {:ok, thread, :request}
+      nil -> {:error, :not_found}
+    end
+  end
+
+  defp resolve_categories(user, parent, requested) do
+    case List.wrap(requested) do
+      [] ->
+        case parent do
+          %Activity{categories: [_ | _] = categories} -> {:ok, categories, :parent}
+          _ -> {:ok, [], :none}
+        end
+
+      ids ->
+        with {:ok, categories} <- Accounts.get_user_categories(user, ids) do
+          {:ok, categories, :request}
+        end
+    end
+  end
+
+  defp suspended_ancestor?(_trace_id, nil), do: false
+
+  defp suspended_ancestor?(trace_id, parent_id) do
+    parent = Repo.get(Activity, parent_id)
+
+    latest_phase =
+      from(e in Event,
+        where:
+          e.trace_id == ^trace_id and e.activity_id == ^parent_id and
+            e.phase in @lifecycle_phases,
+        order_by: [desc: e.timestamp, desc: e.id],
+        limit: 1,
+        select: e.phase
+      )
+      |> Repo.one()
+
+    latest_phase == "S" or
+      (match?(%Activity{}, parent) and suspended_ancestor?(trace_id, parent.parent_id))
+  end
 
   @type closed :: %{activity: Activity.t(), event: Event.t()}
   @type result :: %{event: Event.t(), closed_descendants: [closed()]}
@@ -61,8 +268,7 @@ defmodule FlambeNext.Reducer do
 
       open_ids =
         from(e in Event,
-          where: e.activity_id in ^ids,
-          where: e.phase in @lifecycle_phases,
+          where: e.activity_id in ^ids and e.phase in @lifecycle_phases,
           distinct: e.activity_id,
           order_by: [asc: e.activity_id, desc: e.timestamp, desc: e.id],
           select: {e.activity_id, e.phase}

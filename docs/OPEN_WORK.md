@@ -32,8 +32,16 @@ Shipped on `main` the same day:
   Deterministic path behind `POST /api/events` for agents (ending a parent
   closes open descendants); `flambe message` allows stack changes again.
   Not yet: model review when a structural rule fires, `direction` on lifecycle
-  events, server-side parent inference on `start`, deterministic reducer in
-  local `flambe serve`.
+  events.
+- [ADR-012](ADR-012-reducer-places-work-and-names-agents.md): the reducer
+  resolves `start` (agent-scoped parent inference, thread follows parent,
+  category inheritance; local `flambe serve` too), places roots via the model
+  asynchronously (thread + categories, `reducer_decision` event), and names
+  agents (`agents` table, `x-flambe-agent-name`, `flambe whoami`).
+  `FLAMBE_AGENT_PLATFORM` (Cloud secret `Cursor Cloud`) is the shared product
+  label, stored on the agent, not a lane name.
+  Not yet: re-placing an activity when its name changes; model review of
+  deterministic decisions.
 
 Optional Fly secrets: `FLAMBE_REDUCER_PRIMARY_MODEL` / `FLAMBE_REDUCER_ESCALATION_MODEL`
 (defaults `gpt-5.6-luna` / `gpt-5.6-terra`). Local Phoenix needs `OPENAI_API_KEY`

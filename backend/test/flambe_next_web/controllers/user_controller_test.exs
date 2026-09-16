@@ -36,6 +36,23 @@ defmodule FlambeNextWeb.UserControllerTest do
            }
   end
 
+  test "dashboard show seeds default categories when the user has none", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Empty Palette", username: "empty-palette"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Existing trace"})
+
+    conn = conn |> authenticated_as(user) |> get(~p"/api/users/#{user}")
+
+    names =
+      json_response(conn, 200)["data"]["categories"]
+      |> Enum.map(& &1["name"])
+
+    assert names == ["coding", "investigation", "review", "operations", "failure"]
+
+    assert json_response(conn, 200)["data"]["traces"] == [
+             %{"id" => trace.id, "name" => "Existing trace"}
+           ]
+  end
+
   defp authenticated_as(conn, user) do
     conn
     |> init_test_session(%{})
