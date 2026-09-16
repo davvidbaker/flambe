@@ -6,6 +6,15 @@ export {
   type AppChartFixture,
   type AppChartFixtureOptions,
 } from './storybook/fixtureTrace';
+export {
+  buildTimelineSnapshot,
+  isTimelineSnapshot,
+  TIMELINE_SNAPSHOT_VERSION,
+  type BuildTimelineSnapshotOptions,
+  type SnapshotSource,
+  type SnapshotViewport,
+  type TimelineSnapshot,
+} from './utilities/timelineSnapshot';
 export { createFrontiersFixture } from './storybook/frontiersFixture';
 export type { Activity, ActivityStatus } from './types/Activity';
 export type { Category } from './types/Category';
