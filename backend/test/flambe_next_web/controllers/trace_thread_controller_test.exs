@@ -49,7 +49,7 @@ defmodule FlambeNextWeb.TraceThreadControllerTest do
       json_response(conn, 200)["data"]
       |> Enum.map(& &1["name"])
 
-    assert names == ["coding", "investigation", "review", "operations", "failure"]
+    assert names == Enum.map(Accounts.default_categories(), & &1["name"])
   end
 
   test "creates, updates, and deletes a thread owned by the current user", %{conn: conn} do

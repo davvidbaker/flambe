@@ -78,6 +78,7 @@ defmodule FlambeNext.ReducerPlacementTest do
         assert prompt =~ ~s("name":"Root")
         assert prompt =~ ~s("name":"Side")
         assert prompt =~ ~s("name":"Backend")
+        assert prompt =~ "Prefer a close match over leaving the activity uncategorized"
 
         {:ok,
          Jason.encode!(%{
