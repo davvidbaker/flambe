@@ -12,6 +12,7 @@ declare module '*.css';
 
 declare const SERVER: string;
 declare const SOCKET_SERVER: string;
+declare const NODE_ENV: string;
 declare const FLAMBE_ASSET_SHA: string;
 
 interface Window {
