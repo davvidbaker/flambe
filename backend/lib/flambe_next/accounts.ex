@@ -48,35 +48,58 @@ defmodule FlambeNext.Accounts do
   end
 
   @doc """
-  The palette new users and empty accounts get. Names and colors match the
-  in-repo flame-chart fixtures for agent work.
+  The palette new users and incomplete accounts get. Names and colors are the
+  work-kind labels from David's local Flambe database, not the five-item chart
+  fixture vocabulary.
   """
   def default_categories do
     [
-      %{"name" => "coding", "color_background" => "#efc360", "color_text" => "#000000"},
-      %{"name" => "investigation", "color_background" => "#60a5fa", "color_text" => "#000000"},
-      %{"name" => "review", "color_background" => "#a78bfa", "color_text" => "#ffffff"},
-      %{"name" => "operations", "color_background" => "#34d399", "color_text" => "#000000"},
-      %{"name" => "failure", "color_background" => "#fb7185", "color_text" => "#000000"}
+      %{"name" => "bug fixing", "color_background" => "#ff4747", "color_text" => "#000000"},
+      %{"name" => "research", "color_background" => "#cd94f1", "color_text" => "#000000"},
+      %{"name" => "cleaning", "color_background" => "#ffbd69", "color_text" => "#000000"},
+      %{"name" => "bug hunting", "color_background" => "#ef60ab", "color_text" => "#000000"},
+      %{"name" => "design", "color_background" => "#dce7ea", "color_text" => "#000000"},
+      %{"name" => "writing tests", "color_background" => "#50f035", "color_text" => "#000000"},
+      %{"name" => "toil", "color_background" => "#8b6125", "color_text" => "#ffffff"},
+      %{"name" => "analytics", "color_background" => "#f9f9f9", "color_text" => "#4598d6"},
+      %{"name" => "oss", "color_background" => "#60ef6c", "color_text" => "#000000"},
+      %{"name" => "enhancements", "color_background" => "#55defb", "color_text" => "#ffffff"},
+      %{
+        "name" => "refactoring components",
+        "color_background" => "#ffd368",
+        "color_text" => "#000000"
+      },
+      %{"name" => "Fundamentals", "color_background" => "#acefdb", "color_text" => "#000000"},
+      %{"name" => "jarring ui", "color_background" => "#f22d6a", "color_text" => "#ffffff"},
+      %{"name" => "writing", "color_background" => "#ffefce", "color_text" => "#000000"},
+      %{"name" => "risky", "color_background" => "#ff2a22", "color_text" => "#ffffff"},
+      %{
+        "name" => "dependency upgrades",
+        "color_background" => "#b58e38",
+        "color_text" => "#ffffff"
+      },
+      %{"name" => "shiny", "color_background" => "#f5ff86", "color_text" => "#000000"},
+      %{"name" => "performance", "color_background" => "#60efc7", "color_text" => "#000000"},
+      %{"name" => "learning", "color_background" => "#d3f791", "color_text" => "#000000"}
     ]
   end
 
   @doc """
-  Inserts `default_categories/0` when the user has none. Existing palettes are
-  left alone, including a user who deleted every default on purpose.
+  Inserts any `default_categories/0` name the user does not already have.
+  Custom categories are kept; missing defaults are appended so existing
+  accounts pick up an expanded palette without a wipe.
   """
   def ensure_default_categories(%User{} = user) do
-    case list_user_categories(user) do
-      [] ->
-        Enum.each(default_categories(), fn attrs ->
-          {:ok, _category} = create_category(user, [], attrs)
-        end)
+    existing = list_user_categories(user)
+    have = MapSet.new(existing, &String.downcase(&1.name))
 
-        list_user_categories(user)
+    Enum.each(default_categories(), fn attrs ->
+      unless MapSet.member?(have, String.downcase(attrs["name"])) do
+        {:ok, _category} = create_category(user, [], attrs)
+      end
+    end)
 
-      existing ->
-        existing
-    end
+    list_user_categories(user)
   end
 
   def get_user_category!(%User{} = user, id) do

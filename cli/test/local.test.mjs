@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import { run } from '../src/cli.mjs';
 import { listenLocal } from '../src/local/serve.mjs';
-import { LocalStore } from '../src/local/store.mjs';
+import { DEFAULT_CATEGORIES, LocalStore } from '../src/local/store.mjs';
 
 async function withServer(fn) {
   const directory = mkdtempSync(join(tmpdir(), 'flambe-local-'));
@@ -22,7 +22,7 @@ async function withServer(fn) {
   const categories = store.listCategories(1);
   assert.deepEqual(
     categories.map(category => category.name),
-    ['coding', 'investigation', 'review', 'operations', 'failure'],
+    DEFAULT_CATEGORIES.map(category => category.name),
   );
 
   try {

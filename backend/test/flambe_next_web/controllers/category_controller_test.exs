@@ -58,7 +58,7 @@ defmodule FlambeNextWeb.CategoryControllerTest do
       json_response(conn, 200)["data"]
       |> Enum.map(& &1["name"])
 
-    assert names == ["coding", "investigation", "review", "operations", "failure"]
+    assert names == Enum.map(Accounts.default_categories(), & &1["name"])
   end
 
   defp authenticated_as(conn, user) do
