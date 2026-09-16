@@ -1,5 +1,6 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
+import { COMMANDS, CommandError, executeCommand } from './commands.mjs';
 
 function sendJson(res, status, body) {
   const payload = JSON.stringify(body);
@@ -143,6 +144,15 @@ async function dispatch(store, req, url, body, { auth, agent }) {
 
   const userId = auth?.user?.id;
 
+  if (path === '/api/agent-commands') {
+    if (method === 'GET') return { status: 200, json: { data: {
+      version: 1, commands: COMMANDS, runtime_mode: 'local_self_contained', model_review: false,
+    } } };
+    if (method === 'POST') return { status: 200, json: {
+      data: executeCommand(store, userId, body.command, body.arguments, agent),
+    } };
+  }
+
   if (method === 'GET' && path === '/api/agents/me') {
     if (!agent) {
       return { status: 400, json: { error: 'AGENT_ID_REQUIRED', detail: 'Send x-flambe-agent-id with a bearer token' } };
@@ -247,14 +257,29 @@ async function dispatch(store, req, url, body, { auth, agent }) {
   }
 
   if (method === 'POST' && path === '/api/activities') {
+    if (auth.tokenName !== null) {
+      const activity = body.activity ?? {};
+      const folded = executeCommand(store, userId, 'start', {
+        trace_id: body.trace_id, thread_id: body.thread_id, name: activity.name,
+        description: activity.description, category_ids: activity.categories,
+        ...(Object.hasOwn(activity, 'parent_id') ? { parent_id: activity.parent_id } : {}),
+        timestamp: body.event?.timestamp_integer,
+      }, agent);
+      return { status: 201, json: { data: {
+        activity: store.getActivity(userId, folded.activity_id),
+        event: { id: folded.event_id,
+          phase: folded.state.activities.find(a => a.id === folded.activity_id)?.latestEvent.phase },
+        reducer: folded.reducer ?? { actions_applied: folded.actions_applied },
+        direction: folded.direction, reply: folded.reply, rules_fired: folded.rules_fired,
+        actions_applied: folded.actions_applied,
+      } } };
+    }
     const result = store.createActivity(userId, {
       traceId: body.trace_id,
       threadId: body.thread_id,
       activity: body.activity ?? {},
       event: body.event ?? {},
       agent,
-      // Bearer callers are agents proposing a start; the SPA (cookie) writes what it sent.
-      reduce: auth.tokenName !== null,
     });
     if (result.error) return { status: 404, json: { error: 'NOT_FOUND' } };
     return { status: 201, json: { data: result } };
@@ -280,6 +305,21 @@ async function dispatch(store, req, url, body, { auth, agent }) {
   }
 
   if (method === 'POST' && path === '/api/events') {
+    const phase = body.event?.phase;
+    const command = { E: 'end', J: 'end', V: 'end', S: 'suspend', R: 'resume' }[phase];
+    if (auth.tokenName !== null && command) {
+      const folded = executeCommand(store, userId, command, {
+        trace_id: body.trace_id, activity_id: body.activity_id,
+        timestamp: body.event?.timestamp_integer, message: body.event?.message,
+        phase, force: body.force ?? true,
+      }, agent);
+      return { status: 201, json: { data: {
+        id: folded.event_id, phase,
+        reducer: { closed_descendants: folded.closed_descendants,
+          rules_fired: folded.rules_fired, actions_applied: folded.actions_applied,
+          direction: folded.direction, reply: folded.reply },
+      } } };
+    }
     const result = store.createEvent(userId, {
       traceId: body.trace_id,
       activityId: body.activity_id,
@@ -376,6 +416,21 @@ function tryStatic(staticDir, urlPath, res) {
 export async function handleLocalRequest(store, req, res, { staticDir } = {}) {
   const host = req.headers.host ?? '127.0.0.1';
   const url = new URL(req.url ?? '/', `http://${host}`);
+  // A locally served UI must not send trace content to a compiled-in remote API.
+  res.setHeader('content-security-policy', "connect-src 'self'; form-action 'self'; frame-ancestors 'none'");
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) {
+    sendJson(res, 403, { error: 'LOCAL_HOST_REQUIRED' });
+    return;
+  }
+  if (req.headers.origin) {
+    let origin;
+    try { origin = new URL(req.headers.origin); } catch { /* rejected below */ }
+    if (!origin || !['http:', 'https:'].includes(origin.protocol)
+      || !['127.0.0.1', 'localhost', '[::1]'].includes(origin.hostname)) {
+      sendJson(res, 403, { error: 'LOCAL_ORIGIN_REQUIRED' });
+      return;
+    }
+  }
 
   if (!url.pathname.startsWith('/api') && !url.pathname.startsWith('/auth')) {
     if (tryStatic(staticDir, url.pathname, res)) return;
@@ -383,8 +438,9 @@ export async function handleLocalRequest(store, req, res, { staticDir } = {}) {
     const html = `<!doctype html><meta charset="utf-8"><title>Flambe local</title>
 <body style="font-family:sans-serif;max-width:40rem;margin:3rem auto;line-height:1.4">
 <h1>Flambe local</h1>
-<p>CLI API is running. Build the frontend (<code>cd frontend &amp;&amp; npm run build</code>) and restart with <code>--static</code> pointing at <code>backend/priv/static</code> to open the chart here. Vite can also proxy to this port.</p>
+<p>CLI API is running. From the repository root, run <code>npm --prefix frontend run build:local</code>, then restart <code>flambe serve</code> to open the local chart here.</p>
 <pre>FLAMBE_URL=http://${host}
+FLAMBE_RUNTIME_MODE=local_self_contained
 FLAMBE_API_TOKEN=${rawToken}
 FLAMBE_TRACE_ID=${traceId}</pre>
 </body>`;
@@ -403,7 +459,13 @@ FLAMBE_TRACE_ID=${traceId}</pre>
 
   const auth = authenticate(store, req);
   const agent = identifyAgent(store, req, auth);
-  const result = await dispatch(store, req, url, body, { auth, agent });
+  let result;
+  try {
+    result = await dispatch(store, req, url, body, { auth, agent });
+  } catch (error) {
+    if (!(error instanceof CommandError)) throw error;
+    result = { status: error.status, json: error.body };
+  }
   const identity = agentHeaders(agent);
   if (result.status === 204) {
     if (result.headers) result.headers.apply(res, 204, identity);
