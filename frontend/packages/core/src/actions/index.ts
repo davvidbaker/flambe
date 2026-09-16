@@ -65,6 +65,7 @@ export const SEARCH_MATCH_INCREMENT = 'SEARCH_MATCH_INCREMENT';
 export const SEARCH_BLOCK_INCREMENT = 'SEARCH_BLOCK_INCREMENT';
 export const SEARCH_MATCH_INCREMENT_RESULT = 'SEARCH_MATCH_INCREMENT_RESULT';
 export const SEARCH_BLOCK_INCREMENT_RESULT = 'SEARCH_BLOCK_INCREMENT_RESULT';
+export const TOGGLE_SEARCH_OPTION = 'TOGGLE_SEARCH_OPTION';
 
 export const ADVANCED_SEARCH_SHOW = 'ADVANCED_SEARCH_SHOW';
 export const ADVANCED_SEARCH_HIDE = 'ADVANCED_SEARCH_HIDE';
@@ -598,6 +599,13 @@ export function search(searchTerm: string, options?: unknown) {
     type: SEARCH,
     searchTerm,
     options,
+  };
+}
+
+export function toggleSearchOption(option: 'matchCase' | 'matchWholeWord' | 'useRegularExpression') {
+  return {
+    type: TOGGLE_SEARCH_OPTION,
+    option,
   };
 }
 

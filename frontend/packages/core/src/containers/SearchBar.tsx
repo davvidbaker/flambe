@@ -1,10 +1,12 @@
-import React, { Component, type Ref, type ReactNode } from 'react';
+import React, { Component, type KeyboardEvent, type MouseEvent, type Ref, type ReactNode } from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
 
-import { search, incrementMatch, incrementBlock } from '../actions';
+import { search, incrementMatch, incrementBlock, toggleSearchOption } from '../actions';
 import SearchInput from '../components/SearchInput';
 import NextPrevButton from '../components/NextPrevButton';
+import Unbutton from '../components/Unbutton';
+import type { SearchOptions } from '../utilities/activityMatchesSearch';
 
 const Wrapper = styled.div`
   display: flex;
@@ -21,6 +23,58 @@ const InputContainer = styled.div`
   flex-grow: 1;
   font-size: 11px;
   color: lightgrey;
+`;
+
+const FindField = styled.div`
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #c8c8c8;
+  border-radius: 2px;
+
+  &:focus-within {
+    border-color: #007fd4;
+  }
+
+  input {
+    outline: none;
+    min-width: 0;
+    width: auto;
+    flex: 1;
+    padding: 6px 8px;
+  }
+`;
+
+const OptionToggles = styled.div`
+  display: flex;
+  align-items: center;
+  padding-right: 4px;
+  gap: 1px;
+`;
+
+const OptionToggle = styled(Unbutton)<{ $active: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  color: ${({ $active }) => ($active ? '#fff' : '#616161')};
+  background: ${({ $active }) => ($active ? '#007fd4' : 'transparent')};
+
+  &:hover {
+    background: ${({ $active }) => ($active ? '#007fd4' : '#e8e8e8')};
+  }
+`;
+
+const WholeWordGlyph = styled.span`
+  text-decoration: underline;
+  text-underline-offset: 1px;
 `;
 
 const SearchControls = styled.div`
@@ -45,12 +99,26 @@ interface Props {
   blockIndex: number;
   matchIndex: number;
   searchStack: string[];
+  options: SearchOptions;
+  searchError: string | null;
   search: (value: string) => unknown;
   incrementMatch: (direction: 1 | -1) => unknown;
   incrementBlock: (direction: 1 | -1) => unknown;
+  toggleSearchOption: (option: keyof SearchOptions) => unknown;
 }
 interface State { error: string | null; errorInfo: string | null }
-interface SearchRootState { search: Pick<Props, 'matches' | 'blocksForMatch' | 'blockIndex' | 'matchIndex' | 'searchStack'> }
+interface SearchRootState {
+  search: Pick<
+    Props,
+    'matches' | 'blocksForMatch' | 'blockIndex' | 'matchIndex' | 'searchStack' | 'options' | 'searchError'
+  >;
+}
+
+const SEARCH_OPTION_BY_CODE: Record<string, keyof SearchOptions> = {
+  KeyC: 'matchCase',
+  KeyW: 'matchWholeWord',
+  KeyR: 'useRegularExpression',
+};
 
 class SearchBar extends Component<Props, State> {
   state: State = {
@@ -59,10 +127,7 @@ class SearchBar extends Component<Props, State> {
   };
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Display fallback UI
     this.setState({ error: error.message, errorInfo: errorInfo.componentStack ?? null });
-    // You can also log the error to an error reporting service
-    // logErrorToMyService(error, info);
   }
 
   search = (value: string): void => {
@@ -85,11 +150,23 @@ class SearchBar extends Component<Props, State> {
     this.props.incrementBlock(-1);
   };
 
+  onToggleMouseDown = (event: MouseEvent<HTMLButtonElement>): void => {
+    event.preventDefault();
+  };
+
+  onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (!event.altKey) return;
+    const option = SEARCH_OPTION_BY_CODE[event.code];
+    if (!option) return;
+    event.preventDefault();
+    this.props.toggleSearchOption(option);
+  };
+
   render(): ReactNode {
     const matchCount = this.props.matches.length;
     const blockCount = this.props.blocksForMatch.length;
 
-    const { matchIndex, hideSearchBar, inputRef, searchStack } = this.props;
+    const { matchIndex, hideSearchBar, inputRef, searchStack, options, searchError } = this.props;
 
     return this.state.error ? (
       <div>
@@ -97,18 +174,54 @@ class SearchBar extends Component<Props, State> {
         {this.state.errorInfo}
       </div>
     ) : (
-      <Wrapper>
+      <Wrapper onKeyDown={this.onKeyDown}>
         <div style={{ margin: '0 5px', display: 'flex', flexGrow: 1 }}>
           <InputContainer>
-            <SearchInput
-              onSubmit={this.search}
-              inputRef={inputRef}
-              searchStack={searchStack}
-            />
+            <FindField>
+              <SearchInput
+                onSubmit={this.search}
+                inputRef={inputRef}
+                searchStack={searchStack}
+              />
+              <OptionToggles>
+                <OptionToggle
+                  type="button"
+                  $active={options.matchCase}
+                  aria-pressed={options.matchCase}
+                  title="Match Case (⌥⌘C)"
+                  onMouseDown={this.onToggleMouseDown}
+                  onClick={() => this.props.toggleSearchOption('matchCase')}
+                >
+                  Aa
+                </OptionToggle>
+                <OptionToggle
+                  type="button"
+                  $active={options.matchWholeWord}
+                  aria-pressed={options.matchWholeWord}
+                  title="Match Whole Word (⌥⌘W)"
+                  onMouseDown={this.onToggleMouseDown}
+                  onClick={() => this.props.toggleSearchOption('matchWholeWord')}
+                >
+                  <WholeWordGlyph>ab</WholeWordGlyph>
+                </OptionToggle>
+                <OptionToggle
+                  type="button"
+                  $active={options.useRegularExpression}
+                  aria-pressed={options.useRegularExpression}
+                  title="Use Regular Expression (⌥⌘R)"
+                  onMouseDown={this.onToggleMouseDown}
+                  onClick={() => this.props.toggleSearchOption('useRegularExpression')}
+                >
+                  .*
+                </OptionToggle>
+              </OptionToggles>
+            </FindField>
             <SearchResultCount>
-              {matchCount > 0
-                ? `${matchIndex + 1} of ${matchCount}`
-                : 'no results'}
+              {searchError
+                ? searchError
+                : matchCount > 0
+                  ? `${matchIndex + 1} of ${matchCount}`
+                  : 'no results'}
             </SearchResultCount>
           </InputContainer>
           <SearchControls>
@@ -159,10 +272,13 @@ export default connect(
     blockIndex: state.search.blockIndex,
     matchIndex: state.search.matchIndex,
     searchStack: state.search.searchStack,
+    options: state.search.options,
+    searchError: state.search.searchError,
   }),
   dispatch => ({
     incrementBlock: (direction: 1 | -1) => dispatch(incrementBlock(direction)),
     incrementMatch: (direction: 1 | -1) => dispatch(incrementMatch(direction)),
     search: (searchTerm: string) => dispatch(search(searchTerm, undefined)),
+    toggleSearchOption: (option: keyof SearchOptions) => dispatch(toggleSearchOption(option)),
   }),
 )(SearchBar);
