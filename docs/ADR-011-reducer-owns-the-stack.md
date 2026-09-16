@@ -6,6 +6,10 @@ Accepted. Supersedes decision 1 of [ADR-010](ADR-010-reducer-advises-worker-owne
 ("the worker owns its stack"). ADR-010's other decisions stand: the CLI is the adapter,
 a `direction` is binding, `flambe message` is the channel for free-text updates.
 
+[ADR-012](ADR-012-shared-agent-commands-and-mcp.md) subsequently adds shared
+agent commands and MCP lifecycle tools, including server-side parent inference
+for those commands. The implementation notes below describe the original scope.
+
 ## Context
 
 ADR-010 gave the writer role to the worker because that is what the CLI already did:
