@@ -10,6 +10,9 @@ import {
   LOG_OUT,
   SETTINGS_SHOW,
   SETTINGS_HIDE,
+  KEYBOARD_SHORTCUTS_SHOW,
+  KEYBOARD_SHORTCUTS_HIDE,
+  KEYBOARD_SHORTCUTS_TOGGLE,
   VIEW_CHANGE,
 } from '../actions';
 
@@ -72,6 +75,19 @@ function settingsVisible(state = false, action: RootAction): boolean {
   }
 }
 
+function keyboardShortcutsVisible(state = false, action: RootAction): boolean {
+  switch (action.type) {
+    case KEYBOARD_SHORTCUTS_SHOW:
+      return true;
+    case KEYBOARD_SHORTCUTS_HIDE:
+      return false;
+    case KEYBOARD_SHORTCUTS_TOGGLE:
+      return !state;
+    default:
+      return state;
+  }
+}
+
 function view(state = 'multithread', action: RootAction): string {
   switch (action.type) {
     case VIEW_CHANGE:
@@ -124,6 +140,7 @@ export {
   search,
   settings,
   settingsVisible,
+  keyboardShortcutsVisible,
   timeline,
   todosVisible,
   toaster,

@@ -18,6 +18,7 @@ import SearchBar from '../containers/SearchBar';
 import WithEventListeners, { type EventListenerTuple } from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
+import KeyboardShortcuts from '../components/KeyboardShortcuts';
 import {
   collapseAllThreads,
   createMantra,
@@ -35,9 +36,11 @@ import {
   showActivityDetails,
   showAdvancedSearch,
   showSettings,
+  toggleKeyboardShortcuts,
   toggleSetting,
   undoLastCommand,
 } from '../actions';
+import { isKeyboardShortcutsHotkey } from '../utilities/keyboardShortcuts';
 import COMMANDS, {
   ACTIVITY_COMMANDS,
   activityCommandsByStatus,
@@ -111,6 +114,7 @@ interface AppProps {
   showActivityDetails: () => unknown;
   showAdvancedSearch: () => unknown;
   showSettings: () => unknown;
+  toggleKeyboardShortcuts: () => unknown;
   threadLevels: Record<string, ThreadLevel>;
   threads: Record<string, Thread>;
   toggleActivityMute: () => unknown;
@@ -258,6 +262,11 @@ class App extends React.Component<AppProps, AppState> {
           if (e.key === 'Shift') this.props.keyDown(e.key);
 
           if (e.ctrlKey || e.metaKey) {
+            if (isKeyboardShortcutsHotkey(e)) {
+              e.preventDefault();
+              this.props.toggleKeyboardShortcuts();
+              return;
+            }
             switch (e.key) {
               case 'z':
                 if (
@@ -467,6 +476,7 @@ class App extends React.Component<AppProps, AppState> {
               )}
               <CategoryManager />
               <Settings />
+              <KeyboardShortcuts />
               <Commander
                 field={this.state.field}
                 isOpen={this.state.commanderVisible}
@@ -492,6 +502,7 @@ const ConnectedTrace = connect(
       return {
       aModalIsOpen:
         state.settingsVisible ||
+        state.keyboardShortcutsVisible ||
         state.activityDetailModalVisible ||
         state.todosVisible,
       activities: timeline.activities,
@@ -526,6 +537,7 @@ const ConnectedTrace = connect(
       showActivityDetails: () => dispatch(showActivityDetails()),
       showAdvancedSearch: () => dispatch(showAdvancedSearch()),
       showSettings: () => dispatch(showSettings()),
+      toggleKeyboardShortcuts: () => dispatch(toggleKeyboardShortcuts()),
       toggleActivityMute: () => dispatch(toggleSetting('activityMute')),
       undoLastCommand: () => dispatch(undoLastCommand()),
     }),
