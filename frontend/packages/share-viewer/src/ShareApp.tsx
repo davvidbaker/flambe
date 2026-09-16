@@ -1,29 +1,26 @@
 import { useEffect, useState } from 'react';
-import { Route, Routes, useParams } from 'react-router-dom';
 import {
   ChartHarness,
   isTimelineSnapshot,
   type TimelineSnapshot,
 } from '../../core/src/chart';
+import { shareIdFromPath } from './sharePath';
 
 function snapshotUrl(id: string): string {
-  const base = (import.meta.env.VITE_SNAPSHOT_BASE_URL as string | undefined)?.replace(/\/$/, '');
+  const base = import.meta.env.VITE_SNAPSHOT_BASE_URL?.replace(/\/$/, '');
   if (!base) {
     throw new Error('VITE_SNAPSHOT_BASE_URL is not set');
   }
   return `${base}/${id}.json`;
 }
 
-function SharePage() {
-  const { id } = useParams<{ id: string }>();
+export function ShareApp() {
+  const id = typeof window === 'undefined' ? null : shareIdFromPath(window.location.pathname);
   const [snapshot, setSnapshot] = useState<TimelineSnapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(id ? null : 'Open a link like /s/<id> to view a frozen timeline.');
 
   useEffect(() => {
-    if (!id) {
-      setError('Missing share id.');
-      return;
-    }
+    if (!id) return;
     let cancelled = false;
     setSnapshot(null);
     setError(null);
@@ -36,7 +33,9 @@ function SharePage() {
     }
     fetch(url)
       .then(async response => {
-        if (!response.ok) throw new Error(response.status === 404 ? 'This share was not found.' : 'Could not load this share.');
+        if (!response.ok) {
+          throw new Error(response.status === 404 ? 'This share was not found.' : 'Could not load this share.');
+        }
         return response.json();
       })
       .then(body => {
@@ -48,7 +47,9 @@ function SharePage() {
         setSnapshot(body);
       })
       .catch(caught => {
-        if (!cancelled) setError(caught instanceof Error ? caught.message : 'Could not load this share.');
+        if (!cancelled) {
+          setError(caught instanceof Error ? caught.message : 'Could not load this share.');
+        }
       });
     return () => {
       cancelled = true;
@@ -58,7 +59,7 @@ function SharePage() {
   if (error) {
     return (
       <main style={{ padding: 24, fontFamily: 'sans-serif' }}>
-        <h1>Share unavailable</h1>
+        <h1>{id ? 'Share unavailable' : 'Flambe share'}</h1>
         <p>{error}</p>
       </main>
     );
@@ -80,22 +81,5 @@ function SharePage() {
       fixture={snapshot.fixture}
       viewport={snapshot.viewport}
     />
-  );
-}
-
-export function ShareApp() {
-  return (
-    <Routes>
-      <Route path="/s/:id" element={<SharePage />} />
-      <Route
-        path="*"
-        element={(
-          <main style={{ padding: 24, fontFamily: 'sans-serif' }}>
-            <h1>Flambe share</h1>
-            <p>Open a link like <code>/s/&lt;id&gt;</code> to view a frozen timeline.</p>
-          </main>
-        )}
-      />
-    </Routes>
   );
 }
