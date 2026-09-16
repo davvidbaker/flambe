@@ -28,14 +28,19 @@ function emptyState() {
 }
 
 export class FlambeQueue {
-  constructor({ baseUrl, traceId, path = defaultQueuePath() }) {
+  constructor({ baseUrl, traceId, agentId, path = defaultQueuePath() }) {
     this.baseUrl = baseUrl;
     this.traceId = Number(traceId);
+    this.agentId = agentId;
     this.path = path;
   }
 
   matches(entry) {
-    return entry.baseUrl === this.baseUrl && entry.traceId === this.traceId;
+    return entry.baseUrl === this.baseUrl
+      && entry.traceId === this.traceId
+      // Version-1 entries created before identity was recorded remain replayable.
+      // New entries may only be replayed by the worker that queued them.
+      && (entry.agentId === undefined || entry.agentId === this.agentId);
   }
 
   async read() {
@@ -70,6 +75,7 @@ export class FlambeQueue {
       type,
       baseUrl: this.baseUrl,
       traceId: this.traceId,
+      ...(this.agentId ? { agentId: this.agentId } : {}),
       ...(localId ? { localId } : {}),
       ...payload,
     });

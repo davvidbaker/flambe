@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -53,6 +53,7 @@ Optional:
                      still keeps a child on its parent's thread.
   FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)
   FLAMBE_LOCAL_DB    SQLite path for flambe serve / export (default: ~/.flambe/local.sqlite)
+  FLAMBE_RUNTIME_MODE  local_self_contained restricts CLI requests to numeric loopback; cloud preserves hosted access
 
 serve / export do not need FLAMBE_URL. import needs FLAMBE_URL and FLAMBE_API_TOKEN (the production instance).`;
 
@@ -338,6 +339,9 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
 
   if (command === 'export') {
     const { file, dbPath } = parseExport(args, env);
+    if (!existsSync(dbPath)) {
+      throw new Error(`Local database does not exist: ${dbPath}`);
+    }
     const { LocalStore } = await loadStore();
     const store = new LocalStore(dbPath);
     try {

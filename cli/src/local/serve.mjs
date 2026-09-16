@@ -12,7 +12,7 @@ export function defaultDbPath() {
 }
 
 export function defaultStaticDir() {
-  return resolve(fileURLToPath(new URL('../../../../backend/priv/static', import.meta.url)));
+  return resolve(fileURLToPath(new URL('../../../backend/priv/static', import.meta.url)));
 }
 
 export function createLocalServer({ dbPath = defaultDbPath(), staticDir } = {}) {
@@ -56,6 +56,7 @@ export function printServeBanner({ host, port, store }, stdout = process.stdout)
   const origin = `http://${host}:${port}`;
   stdout.write(`Flambe local on ${origin} (SQLite, loopback only)\n`);
   stdout.write(`FLAMBE_URL=${origin}\n`);
+  stdout.write('FLAMBE_RUNTIME_MODE=local_self_contained\n');
   stdout.write(`FLAMBE_API_TOKEN=${rawToken}\n`);
   stdout.write(`FLAMBE_TRACE_ID=${traceId}\n`);
 }
