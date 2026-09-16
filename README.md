@@ -138,8 +138,9 @@ that client's secret configuration. The endpoint provides `flambe_status`,
 
 Give each worker its trace ID and a distinct `agent_id`; `agent_name` supplies
 the display name. Pass `trace_id` with each call. `flambe_start` infers a parent
-within that agent's running work in the selected thread when `parent_id` is
+within that agent's running work when `parent_id` is
 omitted; pass `parent_id: null` for a root, or an ID to choose a parent explicitly.
+A child follows its parent's thread and inherits categories when none are supplied.
 
 Command results include current `state`, advisory `availableActions` on threads
 and activities, `actions_applied`, `closed_descendants`, and `direction`.
@@ -154,7 +155,7 @@ stack, and inspect returned state and direction before continuing. MCP exposes
 the tools; these reporting habits still need to be part of the agent's instructions.
 
 MCP and the CLI's hosted command endpoint call the same backend service. Browser
-editing continues to use REST. See [ADR-012](docs/ADR-012-shared-agent-commands-and-mcp.md).
+editing continues to use REST. See [ADR-013](docs/ADR-013-shared-agent-commands-and-mcp.md).
 
 ### CLI: shell, local, and offline use
 
@@ -167,10 +168,17 @@ mix flambe_next.create_api_token you@example.com "Claude"
 
 Revoke tokens from the same Settings panel. The raw secret is shown once.
 
-Install the zero-dependency Node 22 CLI from this checkout:
+Install the zero-dependency Node 22 CLI from npm (other repos and Cursor Cloud):
 
 ```sh
-cd ../cli
+npm install -g @davvidbaker/flambe-cli
+```
+
+CI publishes `@davvidbaker/flambe-cli` from `cli/` when `cli/package.json` on
+`main` changes. From this checkout instead:
+
+```sh
+cd cli
 npm link
 ```
 
@@ -187,25 +195,33 @@ Then set the three values:
 FLAMBE_URL=http://localhost:4001
 FLAMBE_API_TOKEN=flb_...
 FLAMBE_TRACE_ID=1
+# FLAMBE_THREAD=flambe
 ```
 
 On the Fly instance, set `FLAMBE_URL` to `https://your-app.fly.dev`.
 
 Cursor Cloud agents only see this git checkout, not laptop `~/.cursor` or `~/.claude` config. In-repo entry points are `AGENTS.md`, `CLAUDE.md`, `.cursor/rules`, `.cursor/skills/flambe-cli`, and `.cursor/hooks`. Set `FLAMBE_*` as Cloud environment secrets. If `flambe` is not on PATH, agents should run `node cli/bin/flambe.mjs`.
 
-The CLI loads `.env` from its current working directory automatically and
-discovers the trace's lowest-rank thread. Existing shell environment variables
+The CLI loads `.env` from its current working directory automatically.
+Existing shell environment variables
 take precedence over values in `.env`, which makes one-off overrides and CI
 configuration predictable. `.env` is ignored by this repository and should not
 be committed because it contains the bearer token.
 
 Agent identity is separate from the token. The CLI sends a per-session
-`FLAMBE_AGENT_ID` automatically in Codex, Cursor, and Claude Code agent shells,
-and a `FLAMBE_AGENT_NAME` when that variable is set in the process environment.
-If the agent omits a name, Flambe uses the API token name (the `"Claude"`
-argument above) and then a generated instance name. Do not put `FLAMBE_AGENT_ID`
-or `FLAMBE_AGENT_NAME` in `.env`; that would collapse concurrent agents onto one
-lane.
+`FLAMBE_AGENT_ID` automatically in Codex, Cursor, and Claude Code agent shells.
+An agent that arrives without a name is named by the reducer
+([ADR-012](docs/ADR-012-reducer-places-work-and-names-agents.md)): the server
+picks a name no other agent of yours has, answers every request with
+`x-flambe-agent-name`, and the CLI remembers it in `~/.flambe/agent-names.json`
+and prints `reducer named this agent "Juniper"` once. `flambe whoami` shows the
+current identity; `GET /api/agents/me` is the API. `FLAMBE_AGENT_NAME` is an
+override, not a requirement. The product an agent runs on is a separate,
+shared label: `FLAMBE_AGENT_PLATFORM` (`"Cursor Cloud"`, `"Codex"`, `"Claude
+Code"`; derived from the session type when unset) is sent as
+`x-flambe-agent-platform` and stored with the agent, so many agents can share a
+platform while each keeps its own lane. Do not put `FLAMBE_AGENT_ID`,
+`FLAMBE_AGENT_NAME`, or `FLAMBE_AGENT_PLATFORM` in `.env`.
 
 An agent records a meaningful unit of work with a begin/end pair:
 
@@ -216,14 +232,19 @@ flambe resume "$ACTIVITY_ID" "Decision received"
 flambe end "$ACTIVITY_ID" "Confirmed bearer-token path"
 ```
 
-Use `flambe threads` to list threads; the `default` row is the thread selected
-when `start` has no `--thread ID`. Use `--thread ID` to target another thread.
-On a command-capable backend, `start` makes this agent's newest active activity
-in that thread its parent. Older/local servers retain thread-wide inference,
-so an agent records a nested work tree. Use `--parent ID` to choose a parent
-explicitly, or `--root` to deliberately begin a top-level workstream.
-Use `flambe categories` to list category IDs, then repeat `--category ID` to
-associate categories with a new activity:
+`start` is a proposal; the reducer decides placement
+([ADR-012](docs/ADR-012-reducer-places-work-and-names-agents.md)). Without
+`--parent` or `--root`, the new activity nests under the calling agent's own
+newest active activity (never another agent's), lives in its parent's thread,
+and inherits the parent's categories when none are given. A root with no
+`--thread` starts on the lowest-rank thread and, when `OPENAI_API_KEY` is set
+and there is a choice to make, the reducer asks the model for a thread and
+categories a few seconds later, moves the activity, and records a
+`reducer_decision` event; the chart updates live. The CLI prints what was
+inferred on stderr. Use `--parent ID` to choose a parent explicitly, `--root`
+to deliberately begin a top-level workstream, `flambe threads` and
+`flambe categories` to list ids, and `--thread ID` / `--category ID` when you
+already know the answer:
 
 ```sh
 flambe start "Investigate authentication" --thread 14 --category 3 --category 8

@@ -27,8 +27,8 @@ import {
 import { scheduleIdleCallback } from '../utilities/requestIdleCallback';
 import {
   panDeltaFromTouchMove,
-  TOUCH_PAN_THRESHOLD_PX,
   touchDistance,
+  touchHasMoved,
   touchMidpoint,
   wheelDeltaFromPinchScale,
   type TouchPoint,
@@ -146,7 +146,9 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   touchPoints = new Map<number, TouchPoint>();
   touchMode: 'none' | 'pan' | 'pinch' = 'none';
   panStartX = 0;
+  panStartY = 0;
   panLastX = 0;
+  panLastY = 0;
   pinchLastDistance = 0;
   viewportTraceId: string | null = null;
   leftBoundaryTime = 0;
@@ -209,12 +211,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     this.timelineSurface = element;
     if (element) {
       this.attachTouchListeners(element);
-      if (Number.isFinite(this.leftBoundaryTime)) {
-        element.dataset.lbt = String(this.leftBoundaryTime);
-      }
-      if (Number.isFinite(this.rightBoundaryTime)) {
-        element.dataset.rbt = String(this.rightBoundaryTime);
-      }
+      this.writeViewportDataset(element);
     }
   };
 
@@ -259,7 +256,9 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     if (points.length === 1) {
       this.touchMode = 'none';
       this.panStartX = points[0]!.clientX;
+      this.panStartY = points[0]!.clientY;
       this.panLastX = points[0]!.clientX;
+      this.panLastY = points[0]!.clientY;
     }
   };
 
@@ -308,16 +307,24 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
     if (points.length === 1) {
       const currentX = points[0]!.clientX;
+      const currentY = points[0]!.clientY;
       if (this.touchMode !== 'pan') {
-        if (Math.abs(currentX - this.panStartX) < TOUCH_PAN_THRESHOLD_PX) return;
+        if (!touchHasMoved(
+          { clientX: this.panStartX, clientY: this.panStartY },
+          { clientX: currentX, clientY: currentY },
+        )) {
+          return;
+        }
         this.touchMode = 'pan';
       }
 
       event.preventDefault();
       const deltaX = panDeltaFromTouchMove(this.panLastX, currentX);
+      const deltaY = panDeltaFromTouchMove(this.panLastY, currentY);
       this.panLastX = currentX;
-      if (deltaX === 0) return;
-      this.pan(deltaX, 0, width);
+      this.panLastY = currentY;
+      if (deltaX === 0 && deltaY === 0) return;
+      this.pan(deltaX, deltaY, width);
       requestAnimationFrame(this.drawChildren.bind(this));
     }
   };
@@ -333,7 +340,9 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     if (points.length === 1) {
       this.touchMode = 'none';
       this.panStartX = points[0]!.clientX;
+      this.panStartY = points[0]!.clientY;
       this.panLastX = points[0]!.clientX;
+      this.panLastY = points[0]!.clientY;
       this.pinchLastDistance = 0;
       return;
     }
@@ -413,17 +422,14 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       this.state.width,
     );
 
-    // pan around if holding shift or scroll was mostly vertical
-    if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
-      // props.pan just does left right panning of the timeline
-      this.pan(e.deltaX, 0, this.state.width);
-
+    if (e.getModifierState('Shift')) {
+      // Shift+wheel (or Shift converted to deltaX by the OS) scrolls threads.
+      const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      this.pan(0, delta, this.state.width);
       requestAnimationFrame(this.drawChildren.bind(this));
-    } else if (e.getModifierState('Shift')) {
-      if (typeof e.deltaY === 'number') {
-        /* ⚠️ probably should move this to timelinestate */
-        // this.setState({ scrollTop: this.state.scrollTop + Number(e.deltaY) });
-      }
+    } else if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
+      this.pan(e.deltaX, 0, this.state.width);
+      requestAnimationFrame(this.drawChildren.bind(this));
     } else {
       this.zoom(
         e.deltaY,
@@ -462,7 +468,13 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
         rightBoundaryTime,
         this.state.width,
         dividersData,
+        this.topOffset,
       );
+
+    if (this.flameChart.current) {
+      this.topOffset = this.flameChart.current.appliedTopOffset;
+      this.writeViewportDataset();
+    }
 
     this.focusedBlock
       && this.focusedBlock.current
@@ -694,15 +706,18 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   pan = (dx: number, dy: number, canvasWidth: number): void => {
     this.viewportTraceId = String(this.props.trace_id);
     const dividersData = this.calculateGridOffsets();
+    const maxTopOffset = this.flameChart.current?.maxTopOffset
+      ?? Number.POSITIVE_INFINITY;
     const { leftBoundaryTime, rightBoundaryTime, topOffset } = pan(
       dx,
-      this.props.modifiers.shift ? dy : 0,
+      dy,
       this.leftBoundaryTime,
       this.rightBoundaryTime,
       canvasWidth,
       this.topOffset,
       Date.now(),
       this.props.minTime ?? 0,
+      maxTopOffset,
     );
 
     this.setTimelineState({
@@ -713,6 +728,21 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     });
   };
 
+  writeViewportDataset = (element: HTMLDivElement | null = this.timelineSurface): void => {
+    if (!element) return;
+    if (Number.isFinite(this.leftBoundaryTime)) {
+      element.dataset.lbt = String(this.leftBoundaryTime);
+    }
+    if (Number.isFinite(this.rightBoundaryTime)) {
+      element.dataset.rbt = String(this.rightBoundaryTime);
+    }
+    element.dataset.topOffset = String(this.topOffset || 0);
+    const maxTopOffset = this.flameChart.current?.maxTopOffset;
+    if (maxTopOffset !== undefined) {
+      element.dataset.maxTopOffset = String(maxTopOffset);
+    }
+  };
+
   // avoiding react state for some stuff
   setTimelineState = (state: Partial<{
     dividersData: DividerData;
@@ -721,14 +751,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     topOffset: number;
   }>): void => {
     Object.assign(this, state);
-    if (this.timelineSurface) {
-      if (Number.isFinite(this.leftBoundaryTime)) {
-        this.timelineSurface.dataset.lbt = String(this.leftBoundaryTime);
-      }
-      if (Number.isFinite(this.rightBoundaryTime)) {
-        this.timelineSurface.dataset.rbt = String(this.rightBoundaryTime);
-      }
-    }
+    this.writeViewportDataset();
     scheduleIdleCallback(this.setLocalStorage.bind(this));
   };
 
