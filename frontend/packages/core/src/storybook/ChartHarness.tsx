@@ -6,9 +6,9 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { setTimeline } from '../actions';
 import ConnectedTimeline from '../containers/ConnectedTimeline';
-import { colors } from '../styles';
+import { colors, timelineActivityFontFamily } from '../styles';
 import { createChartStore, seedChartViewport, viewportForFixture } from './createChartStore';
-import type { SnapshotViewport } from '../utilities/timelineSnapshot';
+import type { SnapshotTimeLabels, SnapshotViewport } from '../utilities/timelineSnapshot';
 import type { AppChartFixture } from './fixtureTrace';
 
 export type ChartHarnessProps = {
@@ -21,6 +21,7 @@ export type ChartHarnessProps = {
   chrome?: ReactNode;
   storeExtras?: Parameters<typeof createChartStore>[2];
   viewport?: SnapshotViewport;
+  timeLabels?: SnapshotTimeLabels;
   /** Storybook seeds fake mantras/observations. Share pages should pass false. */
   demoOverlays?: boolean;
 };
@@ -33,9 +34,10 @@ export function ChartHarness({
   chrome,
   storeExtras,
   viewport,
+  timeLabels,
   demoOverlays = true,
 }: ChartHarnessProps) {
-  const extras = { ...storeExtras, viewport, demoOverlays };
+  const extras = { ...storeExtras, viewport, timeLabels, demoOverlays };
   const [store] = useState(() => createChartStore(fixture, Date.now(), extras));
   const [mounted, setMounted] = useState(false);
 
@@ -64,6 +66,7 @@ export function ChartHarness({
     background: colors.background,
     display: 'flex',
     flexDirection: 'column',
+    fontFamily: timelineActivityFontFamily,
     height,
     ...style,
   };

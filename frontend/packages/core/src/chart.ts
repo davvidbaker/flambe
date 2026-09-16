@@ -12,6 +12,7 @@ export {
   TIMELINE_SNAPSHOT_VERSION,
   type BuildTimelineSnapshotOptions,
   type SnapshotSource,
+  type SnapshotTimeLabels,
   type SnapshotViewport,
   type TimelineSnapshot,
 } from './utilities/timelineSnapshot';
