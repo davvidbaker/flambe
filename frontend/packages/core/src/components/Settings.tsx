@@ -63,6 +63,11 @@ const SETTINGS: SettingDefinition[] = [
     description: 'Shade nested activities darker at each deeper level.',
   },
   {
+    setting: 'rightAlignTimelineText',
+    copy: 'Right-align Timeline Text',
+    description: 'Draw activity names against the right edge of each block.',
+  },
+  {
     setting: 'absoluteTimeLabels',
     copy: 'Absolute Time Labels',
     description:
