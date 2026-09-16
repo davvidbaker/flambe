@@ -1,5 +1,6 @@
 import { FlambeQueue } from './queue.mjs';
 import { defaultAgentNamesPath, rememberAgentName, rememberedAgentName } from './agentNames.mjs';
+import { assertRuntimeUrl, runtimeConfig } from './runtime.mjs';
 
 const REQUIRED_AGENT_COMMANDS = ['start', 'end', 'suspend', 'resume', 'status', 'message'];
 const ENDED_PHASES = new Set(['E', 'J', 'V']);
@@ -18,6 +19,7 @@ export function hostConfigFromEnv(env = process.env) {
 
   return {
     baseUrl: env.FLAMBE_URL.replace(/\/+$/, ''),
+    ...runtimeConfig(env),
     token: env.FLAMBE_API_TOKEN,
   };
 }
@@ -39,6 +41,7 @@ export function configFromEnv(env = process.env) {
 
   return {
     baseUrl: env.FLAMBE_URL.replace(/\/+$/, ''),
+    ...runtimeConfig(env),
     ...agentIdentityFromEnv(env),
     token: env.FLAMBE_API_TOKEN,
     traceId,
@@ -96,7 +99,7 @@ function claudeAgentId(env) {
   return sessionId ? `claude:${sessionId}` : undefined;
 }
 
-const LIFECYCLE_PHASES = new Set(['B', 'E', 'S', 'R']);
+const LIFECYCLE_PHASES = new Set(['B', 'E', 'S', 'R', 'X', 'J', 'V']);
 
 function errorDetail(payload) {
   if (!payload) return null;
@@ -117,7 +120,10 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, threadId, defaultThread, agentId, agentName, agentPlatform, agentNamesPath, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
+  constructor({ baseUrl, token, traceId, threadId, defaultThread, agentId, agentName, agentPlatform, agentNamesPath, runtimeMode, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
+    runtimeConfig({ FLAMBE_RUNTIME_MODE: runtimeMode });
+    assertRuntimeUrl(baseUrl, runtimeMode);
+    this.runtimeMode = runtimeMode;
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.token = token;
     this.agentId = agentId;
@@ -129,7 +135,12 @@ export class FlambeClient {
     this.fetch = fetchImpl;
     this.now = now;
     this.onReducerNote = onReducerNote;
-    this.queue = queue ?? new FlambeQueue({ baseUrl: this.baseUrl, traceId: this.traceId, path: queuePath });
+    this.queue = queue ?? new FlambeQueue({
+      baseUrl: this.baseUrl,
+      traceId: this.traceId,
+      agentId: this.agentId,
+      path: queuePath,
+    });
     this.agentCommandsCapability = null;
   }
 
@@ -174,10 +185,12 @@ export class FlambeClient {
   }
 
   async request(path, { method = 'GET', body, responseMetadata = false } = {}) {
+    assertRuntimeUrl(`${this.baseUrl}${path}`, this.runtimeMode);
     let response;
     try {
       response = await this.fetch(`${this.baseUrl}${path}`, {
         method,
+        ...(this.runtimeMode === 'local_self_contained' ? { redirect: 'manual' } : {}),
         headers: {
           authorization: `Bearer ${this.token}`,
           ...(this.agentId ? { 'x-flambe-agent-id': this.agentId } : {}),
@@ -324,7 +337,7 @@ export class FlambeClient {
     };
 
     const activities = [...latestByActivity.values()]
-      .filter(event => !activeOnly || event.phase === 'B' || event.phase === 'R')
+      .filter(event => !activeOnly || ['B', 'R', 'X'].includes(event.phase))
       .filter(event => !suspendedOnly || event.phase === 'S')
       .sort(compareEvents)
       .map(event => ({

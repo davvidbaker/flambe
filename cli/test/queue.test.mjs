@@ -133,3 +133,28 @@ test('entries for a different server are left untouched', async () => {
     rmSync(path, { force: true });
   }
 });
+
+test('one agent cannot replay another agent queued work', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'flambe-queue-agent-'));
+  const path = join(directory, 'queue.json');
+  const first = new FlambeQueue({ baseUrl: BASE, traceId: TRACE, agentId: 'agent-a', path });
+  const second = new FlambeQueue({ baseUrl: BASE, traceId: TRACE, agentId: 'agent-b', path });
+  const replayed = [];
+  const handlers = name => ({
+    async start(input) { replayed.push([name, input.name]); return replayed.length; },
+    async end() {}, async suspend() {}, async resume() {}, async observe() {},
+  });
+
+  try {
+    await first.enqueue('start', { input: { name: 'A queued work' } });
+    await second.enqueue('start', { input: { name: 'B queued work' } });
+    await second.flush(handlers('agent-b'), { warn() {} });
+    assert.deepEqual(replayed, [['agent-b', 'B queued work']]);
+    assert.equal(JSON.parse(readFileSync(path, 'utf8')).entries[0].agentId, 'agent-a');
+    await first.flush(handlers('agent-a'), { warn() {} });
+    assert.deepEqual(replayed, [['agent-b', 'B queued work'], ['agent-a', 'A queued work']]);
+    assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')).entries, []);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

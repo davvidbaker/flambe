@@ -113,8 +113,8 @@ password and opens the local user.
 
 The chart still lives in the Vite/Phoenix SPA. Point Vite at this process
 (`VITE_API_URL=http://127.0.0.1:4001`) or pass `--static` to `backend/priv/static`
-after `npm run build` in `frontend`. Live updates use the SPA’s existing 2s
-trace poll when the Phoenix socket is absent.
+after `npm run build:local` in `frontend` (clears a saved production API URL).
+Live updates use the SPA’s existing 2s trace poll when the Phoenix socket is absent.
 
 Copy selected history onto production later:
 

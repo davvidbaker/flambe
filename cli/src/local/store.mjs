@@ -5,8 +5,8 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { pickName, usableName } from './agents.mjs';
 
-const LIFECYCLE_PHASES = ['B', 'E', 'S', 'R'];
-const OPEN_PHASES = ['B', 'R'];
+const LIFECYCLE_PHASES = ['B', 'E', 'S', 'R', 'X', 'J', 'V'];
+const OPEN_PHASES = ['B', 'R', 'X'];
 
 const SCHEMA = `
 PRAGMA foreign_keys = ON;
@@ -398,7 +398,7 @@ export class LocalStore {
       .all(userId);
   }
 
-  /** Newest activity in the trace whose latest lifecycle event is B/R, optionally for one agent or thread. */
+  /** Newest running activity in the trace, optionally for one agent or thread. */
   newestActiveActivity(traceId, { agentId, threadId } = {}) {
     const placeholders = LIFECYCLE_PHASES.map(() => '?').join(',');
     const open = OPEN_PHASES.map(() => '?').join(',');

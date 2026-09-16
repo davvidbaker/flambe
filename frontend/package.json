@@ -10,6 +10,7 @@
     "dev": "vite --config vite.config.mjs",
     "dev:share-viewer": "vite --config packages/share-viewer/vite.config.ts",
     "build": "vite build --config vite.config.mjs",
+    "build:local": "node scripts/build-local.mjs",
     "build:share-viewer": "vite build --config packages/share-viewer/vite.config.ts",
     "preview": "vite preview --config vite.config.mjs",
     "test": "npm run test:smoke",
