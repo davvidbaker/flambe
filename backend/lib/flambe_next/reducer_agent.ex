@@ -59,7 +59,7 @@ defmodule FlambeNext.ReducerAgent do
   end
 
   defp allow_stack_changes?(attrs) do
-    case attrs["allow_stack_changes"] || attrs[:allow_stack_changes] do
+    case Map.get(attrs, "allow_stack_changes", Map.get(attrs, :allow_stack_changes)) do
       false -> false
       "false" -> false
       _ -> true

@@ -16,7 +16,8 @@ defmodule FlambeNext.Reducer do
   alias FlambeNext.Traces
   alias FlambeNext.Traces.{Activity, Event, Trace}
 
-  @open_phases ~w(B R)
+  @lifecycle_phases ~w(B R X S E J V)
+  @open_phases ~w(B R X)
 
   @type closed :: %{activity: Activity.t(), event: Event.t()}
   @type result :: %{event: Event.t(), closed_descendants: [closed()]}
@@ -61,6 +62,7 @@ defmodule FlambeNext.Reducer do
       open_ids =
         from(e in Event,
           where: e.activity_id in ^ids,
+          where: e.phase in @lifecycle_phases,
           distinct: e.activity_id,
           order_by: [asc: e.activity_id, desc: e.timestamp, desc: e.id],
           select: {e.activity_id, e.phase}
