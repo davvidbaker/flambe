@@ -254,6 +254,7 @@ test('hosted agent commands are discovered once and preserve identity, root inte
       message: 'Done',
       timestamp: 456,
       force: true,
+      phase: 'V',
     },
   });
 });
@@ -399,6 +400,7 @@ test('hosted offline queue replay preserves timestamps and resolves activity ali
         message: 'Queued done',
         timestamp: 456,
         force: true,
+        phase: 'V',
       },
     }]);
     assert.throws(() => readFileSync(queuePath, 'utf8'), /ENOENT/);
@@ -807,7 +809,7 @@ test('end posts an authenticated end event with the completion message', async (
   assert.deepEqual(JSON.parse(request.options.body), {
     trace_id: 3,
     activity_id: 42,
-    event: { timestamp_integer: 456, phase: 'E', message: 'Found the issue' },
+    event: { timestamp_integer: 456, phase: 'V', message: 'Found the issue' },
   });
 });
 
@@ -925,7 +927,7 @@ test('end --force closes a parent even when children are still open', async () =
 
   assert.equal(await client.end({ activityId: 10, message: 'Forced', force: true }), 99);
   assert.equal(posted.activity_id, 10);
-  assert.equal(posted.event.phase, 'E');
+  assert.equal(posted.event.phase, 'V');
 });
 
 test('end reports descendants the reducer closed on its behalf', async () => {
@@ -1114,7 +1116,7 @@ test('queues the full offline activity lifecycle and replays it in order', async
     assert.deepEqual(JSON.parse(requests[3].options.body), {
       trace_id: 3,
       activity_id: 42,
-      event: { timestamp_integer: 456, phase: 'E', message: 'Finished offline' },
+      event: { timestamp_integer: 456, phase: 'V', message: 'Finished offline' },
     });
     assert.throws(() => readFileSync(queuePath, 'utf8'), /ENOENT/);
   } finally {
