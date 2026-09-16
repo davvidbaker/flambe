@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
 
@@ -71,7 +71,9 @@ const UrlBox = styled.div`
   }
 `;
 
-function orderedThreads(
+const EMPTY_IDS: EntityId[] = [];
+
+export function orderedThreads(
   threads: Record<string, Thread>,
   attentionShifts: { thread_id: EntityId }[],
   attentionDriven: boolean,
@@ -83,6 +85,21 @@ function orderedThreads(
     ? rankThreadsByAttention(attentionShifts, copy)
     : copy;
   return sortThreadsByRank(ranked).map(([, thread]) => thread);
+}
+
+export function createShareThreadDrafts(
+  threads: Record<string, Thread>,
+  attentionShifts: { thread_id: EntityId }[],
+  attentionDriven: boolean,
+  filterExcludes: EntityId[],
+): ThreadDraft[] {
+  const hidden = new Set(filterExcludes.map(String));
+  return orderedThreads(threads, attentionShifts, attentionDriven).map(thread => ({
+    id: thread.id,
+    name: thread.name,
+    included: !hidden.has(String(thread.id)),
+    collapsed: Boolean(thread.collapsed),
+  }));
 }
 
 interface Props {
@@ -110,13 +127,6 @@ function ShareTimeline({
   traceId,
   traceName,
 }: Props) {
-  const visibleIds = useMemo(() => {
-    const hidden = new Set(filterExcludes.map(String));
-    return orderedThreads(threads, attentionShifts, attentionDrivenThreadOrder)
-      .filter(thread => !hidden.has(String(thread.id)))
-      .map(thread => thread.id);
-  }, [attentionDrivenThreadOrder, attentionShifts, filterExcludes, threads]);
-
   const [startValue, setStartValue] = useState('');
   const [endValue, setEndValue] = useState('');
   const [draftThreads, setDraftThreads] = useState<ThreadDraft[]>([]);
@@ -131,17 +141,20 @@ function ShareTimeline({
     setStartValue(toDatetimeLocalValue(viewport?.leftBoundaryTime ?? now - 60 * 60 * 1000));
     setEndValue(toDatetimeLocalValue(viewport?.rightBoundaryTime ?? now));
     setDraftThreads(
-      orderedThreads(threads, attentionShifts, attentionDrivenThreadOrder).map(thread => ({
-        id: thread.id,
-        name: thread.name,
-        included: visibleIds.some(id => String(id) === String(thread.id)),
-        collapsed: Boolean(thread.collapsed),
-      })),
+      createShareThreadDrafts(
+        threads,
+        attentionShifts,
+        attentionDrivenThreadOrder,
+        filterExcludes,
+      ),
     );
     setBusy(false);
     setError(null);
     setShareUrl(null);
-  }, [attentionDrivenThreadOrder, attentionShifts, shareTimelineVisible, threads, visibleIds]);
+    // Seed only when the modal opens. Live thread updates and local checkbox
+    // state must not rebuild this list, or includes snap back to Redux.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shareTimelineVisible]);
 
   const publish = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -293,7 +306,7 @@ export default connect(
       attentionShifts: getUser(state).attentionShifts,
       categories: getUser(state).categories,
       events: timeline.events,
-      filterExcludes: timeline.trace?.filterExcludes ?? [],
+      filterExcludes: timeline.trace?.filterExcludes ?? EMPTY_IDS,
       shareTimelineVisible: state.shareTimelineVisible,
       threads: timeline.threads,
       traceId: timeline.trace?.id ?? null,
