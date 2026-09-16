@@ -8,7 +8,7 @@ import CloseButton from './CloseButton';
 import { hideActivityDetailModal } from '../actions';
 import type { ActivityDetailProps } from './ActivityDetail';
 
-interface Props extends Omit<ActivityDetailProps, 'activity_id' | 'categories' | 'createCategory' | 'deleteActivity' | 'events' | 'threads' | 'updateActivity' | 'updateCategory'> {
+interface Props extends Omit<ActivityDetailProps, 'activity_id' | 'categories' | 'events' | 'showCategoryManager' | 'threads' | 'updateActivity'> {
   activityDetailModalVisible: boolean;
   hideActivityDetailModal: () => unknown;
 }

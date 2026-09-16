@@ -106,6 +106,7 @@ export const VIEW_CHANGE = 'VIEW_CHANGE';
 
 export const SEARCH_TERMS_EVENT = 'SEARCH_TERMS_EVENT';
 export const TABS_EVENT = 'TABS_EVENT';
+export const CATEGORIES_EVENT = 'CATEGORIES_EVENT';
 
 export const SET_THREAD_INCLUDE_LIST = 'SET_THREAD_INCLUDE_LIST';
 export const SET_THREAD_EXCLUDE_LIST = 'SET_THREAD_EXCLUDE_LIST';
@@ -225,16 +226,19 @@ export function createCategory({
   activity_id,
   name,
   color_background,
+  color_text,
 }: {
-  activity_id: EntityId;
+  activity_id?: EntityId;
   name: string;
   color_background: string;
+  color_text?: string;
 }) {
   return {
     type: CATEGORY_CREATE,
     activity_id,
     name,
     color_background,
+    color_text,
   };
 }
 

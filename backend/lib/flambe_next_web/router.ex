@@ -16,6 +16,17 @@ defmodule FlambeNextWeb.Router do
     plug :accepts, ["html"]
   end
 
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
+
+  pipeline :authenticated_browser do
+    plug FlambeNextWeb.Plugs.RequireBrowserUser
+  end
+
   scope "/api", FlambeNextWeb do
     pipe_through :api
 
@@ -63,6 +74,15 @@ defmodule FlambeNextWeb.Router do
     get "/mcp", McpController, :unsupported
     post "/mcp", McpController, :handle
     delete "/mcp", McpController, :unsupported
+  end
+
+  scope "/", FlambeNextWeb do
+    pipe_through [:browser, :authenticated_browser]
+
+    get "/settings/categories", CategorySettingsController, :index
+    post "/settings/categories", CategorySettingsController, :create
+    put "/settings/categories/:id", CategorySettingsController, :update
+    delete "/settings/categories/:id", CategorySettingsController, :delete
   end
 
   scope "/", FlambeNextWeb do
