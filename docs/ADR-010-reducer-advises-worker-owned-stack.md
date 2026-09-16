@@ -5,6 +5,8 @@
 Accepted. Decision 1 ("the worker owns its stack") is superseded by
 [ADR-011](ADR-011-reducer-owns-the-stack.md); decisions 2–4 stand, except that the CLI
 no longer sends `allow_stack_changes: false`.
+Decision 3 (the CLI as the primary hosted adapter) is superseded by
+[ADR-012](ADR-012-shared-agent-commands-and-mcp.md).
 
 ## Context
 
