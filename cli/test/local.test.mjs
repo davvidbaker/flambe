@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
 import { run } from '../src/cli.mjs';
-import { listenLocal } from '../src/local/serve.mjs';
+import { defaultStaticDir, listenLocal } from '../src/local/serve.mjs';
+import { fileURLToPath } from 'node:url';
+import { request as httpRequest } from 'node:http';
 import { DEFAULT_CATEGORIES, LocalStore } from '../src/local/store.mjs';
 
 async function withServer(fn) {
@@ -33,6 +35,32 @@ async function withServer(fn) {
     rmSync(directory, { recursive: true, force: true });
   }
 }
+
+test('default static path finds the frontend build in this checkout', () => {
+  assert.equal(defaultStaticDir(), fileURLToPath(new URL('../../backend/priv/static', import.meta.url)));
+});
+
+test('local UI prevents remote connections and rejects foreign browser origins', async () => {
+  await withServer(async ({ origin, rawToken }) => {
+    const page = await fetch(origin);
+    assert.match(page.headers.get('content-security-policy'), /connect-src 'self'/);
+    const foreign = await fetch(`${origin}/api/traces`, { headers: {
+      authorization: `Bearer ${rawToken}`, origin: 'https://example.com',
+    } });
+    assert.equal(foreign.status, 403);
+    const rebindingStatus = await new Promise((resolve, reject) => {
+      const req = httpRequest(`${origin}/api/health`, { headers: { host: 'example.com' } }, res => {
+        res.resume();
+        resolve(res.statusCode);
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    assert.equal(rebindingStatus, 403);
+    const proxy = await fetch(`${origin}/api/health`, { headers: { origin: 'http://localhost:5173' } });
+    assert.equal(proxy.status, 200);
+  });
+});
 
 test('local server binds loopback, seeds a token, and round-trips CLI activity events', async () => {
   await withServer(async ({ origin, rawToken, traceId }) => {
@@ -77,6 +105,23 @@ test('local server binds loopback, seeds a token, and round-trips CLI activity e
     assert.equal(trace.data.events[0].activity.name, 'Keep work on this laptop');
     assert.equal(trace.data.events[0].activity.agent_name, 'Grok');
     assert.equal(trace.data.events[1].phase, 'E');
+  });
+});
+
+test('ending local work with a message does not infer it as the next parent', async () => {
+  await withServer(async ({ store, traceId }) => {
+    const agent = store.identifyAgent(1, 'test:worker');
+    const start = name => store.createActivity(1, {
+      traceId, activity: { name }, agent, reduce: true,
+      event: { phase: 'B', timestamp_integer: 1 },
+    });
+    const first = start('First');
+    store.createEvent(1, { traceId, activityId: first.activity.id, event: {
+      phase: 'V', message: 'Finished', timestamp_integer: 2,
+    } });
+    const second = start('Second');
+    assert.equal(second.activity.parent_id, null);
+    assert.equal(store.newestActiveActivity(traceId, { agentId: agent.agent_id }).id, second.activity.id);
   });
 });
 
@@ -181,6 +226,19 @@ test('export writes a remappable bundle without tokens', async () => {
     assert.equal(JSON.stringify(bundle).includes('flb_'), false);
   } finally {
     store.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('export refuses a missing database instead of creating an empty one', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'flambe-export-missing-'));
+  const dbPath = join(directory, 'typo.sqlite');
+  try {
+    await assert.rejects(run(['export', join(directory, 'out.json'), '--db', dbPath], {
+      env: {}, stdout: { write() {} },
+    }), /Local database does not exist/);
+    assert.equal(existsSync(dbPath), false);
+  } finally {
     rmSync(directory, { recursive: true, force: true });
   }
 });
