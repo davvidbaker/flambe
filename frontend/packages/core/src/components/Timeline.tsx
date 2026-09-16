@@ -38,7 +38,7 @@ import type { EntityId } from '../types/ids';
 import type { Category } from '../types/Category';
 import type { Thread } from '../types/Thread';
 import type { ModifiersState } from '../reducers/modifiers';
-import type { AttentionShift, Mantra, SearchTerm, TabCount } from '../reducers/user';
+import type { AttentionShift, Mantra, Observation, SearchTerm, TabCount } from '../reducers/user';
 import type { ProcessedActivity, ThreadLevel, TraceBlock } from '../utilities/processTrace';
 
 import WithEventListeners from './WithEventListeners';
@@ -98,6 +98,7 @@ export interface TimelineProps {
   hoveredBlockIndex?: number | null;
   leftBoundaryTimeOverride?: number;
   mantras: Mantra[];
+  observations?: Observation[];
   maxTime?: number;
   minTime?: number;
   modifiers: ModifiersState;
@@ -908,6 +909,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       height={`${this.state.timeSeriesHeight}px`}
                       // leftBoundaryTime={leftBoundaryTime}
                       mantras={props.mantras}
+                      observations={props.observations ?? []}
                       pan={this.pan}
                       // rightBoundaryTime={rightBoundaryTime}
                       searchTerms={props.searchTerms}
