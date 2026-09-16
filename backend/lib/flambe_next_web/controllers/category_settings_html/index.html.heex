@@ -1,0 +1,62 @@
+<main>
+  <h1>Categories</h1>
+  <p class="lede">Create, recolor, and rename labels. The chart updates when you save.</p>
+
+  <p :if={@error} class="error">{@error}</p>
+
+  <section class="card">
+    <form class="row" action={~p"/settings/categories"} method="post">
+      <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+      <label>
+        New category
+        <input type="text" name="category[name]" required placeholder="Name" />
+      </label>
+      <label>
+        Background
+        <input type="color" name="category[color_background]" value="#efc360" />
+      </label>
+      <label>
+        Text
+        <input type="color" name="category[color_text]" value="#000000" />
+      </label>
+      <div class="actions">
+        <button class="primary" type="submit">Add</button>
+      </div>
+    </form>
+  </section>
+
+  <section :for={category <- @categories} class="card">
+    <form class="row" action={~p"/settings/categories/#{category}"} method="post">
+      <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+      <input type="hidden" name="_method" value="put" />
+      <label>
+        Name
+        <input type="text" name="category[name]" required value={category.name} />
+      </label>
+      <label>
+        Background
+        <input
+          type="color"
+          name="category[color_background]"
+          value={hex(category.color_background, "#efc360")}
+        />
+      </label>
+      <label>
+        Text
+        <input type="color" name="category[color_text]" value={hex(category.color_text, "#000000")} />
+      </label>
+      <div class="actions">
+        <button class="primary" type="submit">Save</button>
+      </div>
+    </form>
+    <form
+      action={~p"/settings/categories/#{category}"}
+      method="post"
+      onsubmit="return confirm('Delete this category?')"
+    >
+      <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+      <input type="hidden" name="_method" value="delete" />
+      <button class="danger" type="submit">Delete</button>
+    </form>
+  </section>
+</main>

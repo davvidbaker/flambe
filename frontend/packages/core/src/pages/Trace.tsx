@@ -465,7 +465,7 @@ class App extends React.Component<AppProps, AppState> {
                   Activities muted — ⌘M / Ctrl+M to unmute
                 </div>
               )}
-              <CategoryManager categories={this.props.categories} />
+              <CategoryManager />
               <Settings />
               <Commander
                 field={this.state.field}
