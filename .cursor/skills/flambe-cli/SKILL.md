@@ -65,4 +65,4 @@ Do not message for routine progress, and never instead of `start`/`end`. Default
 
 - Start a new activity when the goal or scope meaningfully changes (a specific implementation, a discovered prerequisite, a concrete bug, focused tests, verification) — that is a stack push.
 - Name the concrete action and object (`Fix USERPROFILE config resolution`), not `Investigate` / `Implement` / `Work on tests`. Stay well under 255 characters; do not compensate with a long name or `--description`.
-- End-message: the outcome, not `done`. No secrets, tokens, or transcripts. Ending the leaf is the pop; then resume the parent mentally and in the log.
+- End-message: the outcome, not `done`. That records a resolution. Omitting the message is a plain end. No secrets, tokens, or transcripts. Ending the leaf is the pop; then resume the parent mentally and in the log.

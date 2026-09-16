@@ -72,9 +72,8 @@ defmodule FlambeNext.AgentCommands do
   end
 
   defp run(user, trace, command, attrs) when command in ~w(end suspend resume) do
-    phase = %{"end" => "E", "suspend" => "S", "resume" => "R"}[command]
-
-    with {:ok, activity_id} <- positive_id(attrs["activity_id"], "activity_id"),
+    with {:ok, phase} <- lifecycle_phase(command, attrs),
+         {:ok, activity_id} <- positive_id(attrs["activity_id"], "activity_id"),
          {:ok, activity} <- authorized_activity(user, trace, activity_id),
          open <- Reducer.open_descendants(trace, activity),
          :ok <- allow_end(command, open, attrs["force"]),
@@ -290,6 +289,24 @@ defmodule FlambeNext.AgentCommands do
     {:ok, Traces.get_user_trace_activity!(user, trace.id, id)}
   rescue
     Ecto.NoResultsError -> {:error, :not_found}
+  end
+
+  defp lifecycle_phase("suspend", _attrs), do: {:ok, "S"}
+  defp lifecycle_phase("resume", _attrs), do: {:ok, "R"}
+
+  defp lifecycle_phase("end", attrs) do
+    message = optional_string(attrs["message"])
+
+    case optional_string(attrs["phase"]) do
+      phase when phase in ~w(J V) ->
+        {:ok, phase}
+
+      phase when phase in [nil, "E"] ->
+        {:ok, if(message, do: "V", else: "E")}
+
+      _ ->
+        {:error, {:invalid_input, "phase must be E, J, or V"}}
+    end
   end
 
   defp allow_end("end", [_ | _] = open, force) do
