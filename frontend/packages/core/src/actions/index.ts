@@ -105,6 +105,7 @@ export const TRACE_FETCH = 'TRACE_FETCH';
 export const TRACE_FILTER = 'TRACE_FILTER';
 
 export const USER_FETCH = 'USER_FETCH';
+export const USER_SETTINGS_UPDATE = 'USER_SETTINGS_UPDATE';
 
 export const VIEW_CHANGE = 'VIEW_CHANGE';
 
