@@ -262,6 +262,329 @@ defmodule FlambeNext.AgentCommandsTest do
              })
   end
 
+  test "lifecycle results carry direction, reply, and rules_fired without a model" do
+    previous = System.get_env("OPENAI_API_KEY")
+    System.delete_env("OPENAI_API_KEY")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("OPENAI_API_KEY", previous),
+        else: System.delete_env("OPENAI_API_KEY")
+    end)
+
+    {:ok, user} =
+      Accounts.create_user(%{
+        name: "Quiet",
+        username: "quiet-#{System.unique_integer([:positive])}"
+      })
+
+    {:ok, trace} = Traces.create_trace(user, %{name: "Quiet trace"})
+    trace = Traces.get_trace!(trace.id)
+    [thread] = trace.threads
+
+    assert {:ok, started} =
+             AgentCommands.execute(user, "start", %{
+               "trace_id" => trace.id,
+               "thread_id" => thread.id,
+               "name" => "Logged without a model",
+               "agent_id" => "quiet-agent",
+               "timestamp" => 3_000
+             })
+
+    assert started.direction == nil
+    assert started.reply == nil
+    assert started.rules_fired == []
+
+    assert {:ok, ended} =
+             AgentCommands.execute(user, "end", %{
+               "trace_id" => trace.id,
+               "activity_id" => started.activity_id,
+               "timestamp" => 4_000
+             })
+
+    assert ended.direction == nil
+    assert ended.reply == nil
+    assert ended.rules_fired == []
+    assert ended.event_id
+  end
+
+  test "message returns the injected model's assessment without calling the network" do
+    decision =
+      Jason.encode!(%{
+        "assessment" => "on_track",
+        "direction" => nil,
+        "reply" => nil,
+        "rationale" => "Routine.",
+        "actions" => [%{"type" => "no_op"}]
+      })
+
+    Application.put_env(:flambe_next, :reducer_llm, fn _model, _prompt -> {:ok, decision} end)
+
+    on_exit(fn -> Application.delete_env(:flambe_next, :reducer_llm) end)
+
+    {:ok, user} =
+      Accounts.create_user(%{
+        name: "Injected",
+        username: "injected-#{System.unique_integer([:positive])}"
+      })
+
+    {:ok, trace} = Traces.create_trace(user, %{name: "Injected trace"})
+    trace = Traces.get_trace!(trace.id)
+    [thread] = trace.threads
+
+    {:ok, started} =
+      AgentCommands.execute(user, "start", %{
+        "trace_id" => trace.id,
+        "thread_id" => thread.id,
+        "name" => "Ask the reducer",
+        "agent_id" => "injected-agent",
+        "timestamp" => 5_000
+      })
+
+    assert {:ok, result} =
+             AgentCommands.execute(user, "message", %{
+               "trace_id" => trace.id,
+               "activity_id" => started.activity_id,
+               "agent_id" => "injected-agent",
+               "message" => "Still on the root."
+             })
+
+    assert result.assessment == "on_track"
+    assert result.direction == nil
+    assert result.reply == nil
+    assert result.actions_applied == [%{type: "no_op"}]
+    assert result.rules_fired == []
+  end
+
+  test "deterministic structure rules rewrite a duplicate start, resume a suspended ancestor, and name the parent on end" do
+    {:ok, user} =
+      Accounts.create_user(%{
+        name: "Rules",
+        username: "rules-#{System.unique_integer([:positive])}"
+      })
+
+    {:ok, trace} = Traces.create_trace(user, %{name: "Rules trace"})
+    trace = Traces.get_trace!(trace.id)
+    [thread] = trace.threads
+
+    {:ok, first} =
+      AgentCommands.execute(user, "start", %{
+        "trace_id" => trace.id,
+        "thread_id" => thread.id,
+        "name" => "Same work",
+        "agent_id" => "rules-agent",
+        "timestamp" => 10_000
+      })
+
+    assert {:ok, duplicate} =
+             AgentCommands.execute(user, "start", %{
+               "trace_id" => trace.id,
+               "thread_id" => thread.id,
+               "name" => "Same work",
+               "agent_id" => "rules-agent",
+               "parent_id" => nil,
+               "timestamp" => 11_000
+             })
+
+    assert duplicate.activity_id == first.activity_id
+    assert duplicate.actions_applied == [%{type: "no_op", activity_id: first.activity_id}]
+    assert [%{rule: "duplicate_open"}] = duplicate.rules_fired
+
+    {:ok, parent} =
+      AgentCommands.execute(user, "start", %{
+        "trace_id" => trace.id,
+        "name" => "Paused parent",
+        "agent_id" => "rules-agent",
+        "parent_id" => nil,
+        "timestamp" => 12_000
+      })
+
+    assert {:ok, _} =
+             AgentCommands.execute(user, "suspend", %{
+               "trace_id" => trace.id,
+               "activity_id" => parent.activity_id,
+               "timestamp" => 13_000
+             })
+
+    assert {:ok, child} =
+             AgentCommands.execute(user, "start", %{
+               "trace_id" => trace.id,
+               "name" => "Child under paused work",
+               "agent_id" => "rules-agent",
+               "parent_id" => parent.activity_id,
+               "timestamp" => 14_000
+             })
+
+    assert [%{rule: "resume_ancestor", applied: [parent_id]}] = child.rules_fired
+    assert parent_id == parent.activity_id
+    assert child.actions_applied == [%{type: "resume_ancestor", activity_id: parent.activity_id}]
+
+    assert {:ok, ended} =
+             AgentCommands.execute(user, "end", %{
+               "trace_id" => trace.id,
+               "activity_id" => child.activity_id,
+               "timestamp" => 15_000
+             })
+
+    assert [%{rule: "pop_to_parent", applied: %{activity_id: popped_id, name: "Paused parent"}}] =
+             ended.rules_fired
+
+    assert popped_id == parent.activity_id
+  end
+
+  test "a new root while a leaf is open is judged, and a model failure keeps the recorded root" do
+    {:ok, user} =
+      Accounts.create_user(%{
+        name: "Judge",
+        username: "judge-#{System.unique_integer([:positive])}"
+      })
+
+    {:ok, trace} = Traces.create_trace(user, %{name: "Judge trace"})
+    trace = Traces.get_trace!(trace.id)
+    [thread] = trace.threads
+
+    {:ok, leaf} =
+      AgentCommands.execute(user, "start", %{
+        "trace_id" => trace.id,
+        "thread_id" => thread.id,
+        "name" => "Open leaf",
+        "agent_id" => "judge-agent",
+        "timestamp" => 20_000
+      })
+
+    Application.put_env(:flambe_next, :reducer_llm, fn _model, _prompt -> {:error, :timeout} end)
+    on_exit(fn -> Application.delete_env(:flambe_next, :reducer_llm) end)
+
+    assert {:ok, root} =
+             AgentCommands.execute(user, "start", %{
+               "trace_id" => trace.id,
+               "thread_id" => thread.id,
+               "name" => "Another stream",
+               "agent_id" => "judge-agent",
+               "parent_id" => nil,
+               "timestamp" => 21_000
+             })
+
+    assert root.direction == nil
+    assert [%{rule: "new_root_while_open", applied: %{type: "skipped"}}] = root.rules_fired
+    activity = Traces.get_user_activity!(user, root.activity_id)
+    assert activity.parent_id == nil
+    assert activity.id != leaf.activity_id
+  end
+
+  test "the model may keep, reparent, rename, or ask, and an invalid response changes nothing" do
+    {:ok, user} =
+      Accounts.create_user(%{
+        name: "Outcomes",
+        username: "outcomes-#{System.unique_integer([:positive])}"
+      })
+
+    {:ok, trace} = Traces.create_trace(user, %{name: "Outcomes trace"})
+    trace = Traces.get_trace!(trace.id)
+    [thread] = trace.threads
+
+    start_root = fn name, timestamp ->
+      AgentCommands.execute(user, "start", %{
+        "trace_id" => trace.id,
+        "thread_id" => thread.id,
+        "name" => name,
+        "agent_id" => "outcomes-agent",
+        "parent_id" => nil,
+        "timestamp" => timestamp
+      })
+    end
+
+    {:ok, leaf} = start_root.("Billing export", 30_000)
+
+    Application.put_env(:flambe_next, :reducer_llm, fn _model, _prompt ->
+      {:ok,
+       ~s({"assessment":"on_track","direction":"continue","reply":null,"action":{"type":"keep"}})}
+    end)
+
+    on_exit(fn -> Application.delete_env(:flambe_next, :reducer_llm) end)
+
+    assert {:ok, kept} = start_root.("Unrelated ledger", 31_000)
+    assert kept.direction == "continue"
+    assert Traces.get_user_activity!(user, kept.activity_id).parent_id == nil
+
+    assert {:ok, _} =
+             AgentCommands.execute(user, "end", %{
+               "trace_id" => trace.id,
+               "activity_id" => kept.activity_id,
+               "timestamp" => 31_500
+             })
+
+    Application.put_env(:flambe_next, :reducer_llm, fn _model, prompt ->
+      if String.contains?(prompt, "new_root_while_open") do
+        {:ok,
+         Jason.encode!(%{
+           "assessment" => "slightly_off_track",
+           "direction" => "narrow_scope",
+           "reply" => "This belongs under the open leaf.",
+           "action" => %{"type" => "reparent", "parent_activity_id" => leaf.activity_id}
+         })}
+      else
+        {:ok,
+         ~s({"assessment":"uncertain","direction":null,"reply":null,"action":{"type":"ask","question":"What is this about?"}})}
+      end
+    end)
+
+    assert {:ok, nested} = start_root.("Export rows", 32_000)
+    assert Traces.get_user_activity!(user, nested.activity_id).parent_id == leaf.activity_id
+    assert nested.direction == "narrow_scope"
+    assert [%{type: "reparent"}] = Enum.filter(nested.actions_applied, &(&1.type == "reparent"))
+
+    assert {:ok, asked} =
+             AgentCommands.execute(user, "start", %{
+               "trace_id" => trace.id,
+               "thread_id" => thread.id,
+               "name" => "Calendar sync",
+               "agent_id" => "outcomes-agent",
+               "parent_id" => leaf.activity_id,
+               "timestamp" => 33_000
+             })
+
+    assert asked.reply == "What is this about?"
+    assert [%{type: "ask"}] = Enum.filter(asked.actions_applied, &(&1.type == "ask"))
+    assert Traces.get_user_activity!(user, asked.activity_id).name == "Calendar sync"
+
+    Application.put_env(:flambe_next, :reducer_llm, fn _model, _prompt ->
+      {:ok,
+       Jason.encode!(%{
+         "assessment" => "uncertain",
+         "direction" => nil,
+         "reply" => nil,
+         "action" => %{"type" => "rename", "name" => "Export the billing rows"}
+       })}
+    end)
+
+    assert {:ok, renamed} =
+             AgentCommands.execute(user, "start", %{
+               "trace_id" => trace.id,
+               "name" => "Spreadsheet dance",
+               "agent_id" => "outcomes-agent",
+               "parent_id" => leaf.activity_id,
+               "timestamp" => 34_000
+             })
+
+    assert Traces.get_user_activity!(user, renamed.activity_id).name == "Export the billing rows"
+
+    Application.put_env(:flambe_next, :reducer_llm, fn _model, _prompt -> {:ok, "nope"} end)
+
+    assert {:ok, invalid} =
+             AgentCommands.execute(user, "start", %{
+               "trace_id" => trace.id,
+               "name" => "Kitchen remodel",
+               "agent_id" => "outcomes-agent",
+               "parent_id" => leaf.activity_id,
+               "timestamp" => 35_000
+             })
+
+    assert invalid.direction == nil
+    assert Traces.get_user_activity!(user, invalid.activity_id).name == "Kitchen remodel"
+    assert Traces.get_user_activity!(user, invalid.activity_id).parent_id == leaf.activity_id
+  end
+
   defp start(user, trace, thread, name, timestamp) do
     AgentCommands.execute(user, "start", %{
       "trace_id" => trace.id,
