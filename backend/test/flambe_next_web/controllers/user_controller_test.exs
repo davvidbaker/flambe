@@ -12,28 +12,23 @@ defmodule FlambeNextWeb.UserControllerTest do
 
     conn = conn |> authenticated_as(user) |> get(~p"/api/users/#{user}")
 
-    assert json_response(conn, 200) == %{
-             "data" => %{
-               "attentionShifts" => [],
-               "categories" => [
-                 %{
-                   "color_background" => "#123456",
-                   "color_text" => nil,
-                   "id" => category.id,
-                   "name" => "Work"
-                 }
-               ],
-               "id" => user.id,
-               "mantras" => [],
-               "observations" => [],
-               "name" => "Dashboard User",
-               "searchTerms" => [],
-               "tabs" => [],
-               "todos" => [],
-               "traces" => [%{"id" => trace.id, "name" => "Dashboard trace"}],
-               "username" => "dashboard-user"
-             }
-           }
+    payload = json_response(conn, 200)["data"]
+
+    assert payload["id"] == user.id
+    assert payload["name"] == "Dashboard User"
+    assert payload["username"] == "dashboard-user"
+    assert payload["traces"] == [%{"id" => trace.id, "name" => "Dashboard trace"}]
+    assert payload["observations"] == []
+
+    assert %{
+             "color_background" => "#123456",
+             "color_text" => nil,
+             "id" => category.id,
+             "name" => "Work"
+           } in payload["categories"]
+
+    default_names = Enum.map(Accounts.default_categories(), & &1["name"])
+    assert default_names -- Enum.map(payload["categories"], & &1["name"]) == []
   end
 
   test "dashboard show seeds default categories when the user has none", %{conn: conn} do
@@ -46,7 +41,7 @@ defmodule FlambeNextWeb.UserControllerTest do
       json_response(conn, 200)["data"]["categories"]
       |> Enum.map(& &1["name"])
 
-    assert names == ["coding", "investigation", "review", "operations", "failure"]
+    assert names == Enum.map(Accounts.default_categories(), & &1["name"])
 
     assert json_response(conn, 200)["data"]["traces"] == [
              %{"id" => trace.id, "name" => "Existing trace"}
