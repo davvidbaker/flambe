@@ -55,6 +55,9 @@ function createSocketChannel(socket: Socket, user_id: EntityId): EventChannel<So
     phoenixChannel.on('search_terms', (searchTerm: Record<string, unknown>) => {
       emit({ type: 'SEARCH_TERMS_EVENT', ...searchTerm });
     });
+    phoenixChannel.on('categories', (payload: { data?: unknown }) => {
+      emit({ type: 'CATEGORIES_EVENT', data: payload.data });
+    });
     phoenixChannel.on('timeline_event', (payload: TimelineEventPayload) => {
       const { event, trace_id } = payload;
       if (!event || trace_id === undefined) return;

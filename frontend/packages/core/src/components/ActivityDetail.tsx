@@ -3,10 +3,8 @@ import styled from 'styled-components';
 import { connect } from 'react-redux';
 
 import {
-  deleteActivity,
   updateActivity,
-  createCategory,
-  updateCategory,
+  showCategoryManager,
   ACTIVITY_DETAILS_SHOW,
 } from '../actions';
 import { getUser, type UserState } from '../reducers/user';
@@ -20,13 +18,12 @@ import type { Thread } from '../types/Thread';
 import type { ProcessedActivity, TraceBlock } from '../utilities/processTrace';
 import { activityCommandsByStatus, type Command } from '../constants/commands';
 
-import Category from './Category';
 import ActivityEventFlow from './ActivityEventFlow';
-import AddCategory from './AddCategory';
-import DeleteButton from './DeleteButton';
+import CategoryChip from './CategoryChip';
 import Button, { InputFromButton } from './Button';
 import Fuzzy from './Fuzzy';
 import AppModal from './AppModal';
+import { openCategorySettingsWindow } from '../utilities/openCategorySettingsWindow';
 
 const Actions = styled.div`
   display: flex;
@@ -46,12 +43,64 @@ const Actions = styled.div`
   }
 `;
 
-const ThreadRow = styled.div`
+const Field = styled.div`
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 6px 12px;
+  align-items: start;
+  margin: 10px 0;
+  font-size: 13px;
+`;
+
+const FieldLabel = styled.div`
+  color: #666;
+  padding-top: 4px;
+`;
+
+const FieldBody = styled.div`
+  min-width: 0;
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
   gap: 8px;
-  margin: 8px 0;
+`;
+
+const ChipList = styled.ul`
+  display: flex;
   flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+`;
+
+const ManageRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+
+  button,
+  a {
+    appearance: none;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: #2a6f97;
+    cursor: pointer;
+    text-decoration: underline;
+    font: inherit;
+  }
+`;
+
+const AssignBox = styled.div`
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+  }
 `;
 
 const MoveDialog = styled.div`
@@ -104,13 +153,11 @@ export interface ActivityDetailProps {
   activity_id: EntityId | null;
   blocks: TraceBlock[];
   categories: CategoryType[];
-  createCategory: (input: { activity_id: EntityId; name: string; color_background: string }) => unknown;
-  deleteActivity: (id: EntityId, thread_id: EntityId) => unknown;
+  showCategoryManager: () => unknown;
   events: TraceEvent[];
   submitCommand: (command: Command & { activity_id: EntityId; message?: string; thread_id: EntityId }) => unknown;
   threads: Record<string, Thread>;
   updateActivity: (id: EntityId, updates: Record<string, unknown>) => unknown;
-  updateCategory: (id: EntityId, updates: Record<string, unknown>) => unknown;
 }
 
 const ActivityDetail = (props: ActivityDetailProps) => {
@@ -119,9 +166,8 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     activity_id,
     blocks,
     updateActivity,
-    deleteActivity,
-    updateCategory,
     categories,
+    showCategoryManager,
     submitCommand,
     threads,
   } = props;
@@ -154,19 +200,24 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       && String(candidate.thread_id) === String(threadId))
     .sort((left, right) => Number(left.id) - Number(right.id));
 
-  const addNewCategory = (name: string, hexString: string) => {
-    props.createCategory({
-      activity_id,
-      name,
-      color_background: hexString,
+  const assignedCategoryIds = activity.categories ?? [];
+
+  const assignCategory = (category_id: EntityId) => {
+    if (assignedCategoryIds.some(id => String(id) === String(category_id))) return;
+    updateActivity(activity_id, {
+      category_ids: [...assignedCategoryIds, category_id],
     });
   };
 
-  const addExistingCategory = (category_id: EntityId) => {
-    props.updateActivity(activity_id, {
-      category_ids: [category_id],
+  const unassignCategory = (category_id: EntityId) => {
+    updateActivity(activity_id, {
+      category_ids: assignedCategoryIds.filter(id => String(id) !== String(category_id)),
     });
   };
+
+  const unassignedCategories = categories.filter(
+    cat => !assignedCategoryIds.some(id => String(id) === String(cat.id)),
+  );
 
   const moveToThread = (thread: { id: EntityId; name: string }) => {
     if (String(thread.id) === String(threadId)) return;
@@ -229,69 +280,75 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       >
         {activity.name}
       </InputFromButton>
-      {/* abstract out the delete functionality */}
-      <DeleteButton
-        onConfirm={() => {
-          deleteActivity(activity.id, threadId);
-        }}
-        dialogLabel="Delete Activity?"
-        message={activity.name ?? ''}
-      >
-        Delete Activity
-      </DeleteButton>
-      <ThreadRow>
-        <span>
-          Thread:
-          {' '}
-          {currentThread?.name ?? threadId}
-        </span>
-        {threadChoices.length > 0 && (
-          <Fuzzy
-            itemStringKey="name"
-            onChange={moveToThread}
-            placeholder="Move to thread…"
-            items={threadChoices}
-          />
-        )}
-      </ThreadRow>
-      <div>
-        Weight:{' '}
-        <InputFromButton
-          placeholder={'🏋'}
-          submit={(value: string) => {
-            updateActivity(activity.id, { weight: Number(value) });
-          }}
-        >
-          {activity.weight || '🏋'}
-        </InputFromButton>
-      </div>
-      <div>
-        Categories:
-        <ul>
-          {activity.categories &&
-            categories &&
-            activity.categories.map(category_id => {
+      <Field>
+        <FieldLabel>Thread</FieldLabel>
+        <FieldBody>
+          <div>{currentThread?.name ?? threadId}</div>
+          {threadChoices.length > 0 && (
+            <AssignBox>
+              <Fuzzy
+                itemStringKey="name"
+                onChange={moveToThread}
+                placeholder="Move to thread…"
+                items={threadChoices}
+              />
+            </AssignBox>
+          )}
+        </FieldBody>
+      </Field>
+      <Field>
+        <FieldLabel>Weight</FieldLabel>
+        <FieldBody>
+          <InputFromButton
+            placeholder={'🏋'}
+            submit={(value: string) => {
+              updateActivity(activity.id, { weight: Number(value) });
+            }}
+          >
+            {activity.weight || '🏋'}
+          </InputFromButton>
+        </FieldBody>
+      </Field>
+      <Field>
+        <FieldLabel>Categories</FieldLabel>
+        <FieldBody>
+          <ChipList>
+            {assignedCategoryIds.map(category_id => {
               const category = categories.find(cat => String(cat.id) === String(category_id));
               if (!category) return null;
               return (
-                <li key={category.id}>
-                  <Category
-                    id={category.id}
-                    name={category.name}
-                    color_background={category.color_background}
-                    color_text={category.color_text}
-                    updateCategory={updateCategory}
-                  />
+                <li key={String(category.id)}>
+                  <CategoryChip category={category} onRemove={unassignCategory} />
                 </li>
               );
             })}
-          <AddCategory
-            addNewCategory={addNewCategory}
-            addExistingCategory={addExistingCategory}
-            categories={categories}
-          />
-        </ul>
-      </div>
+          </ChipList>
+          {unassignedCategories.length > 0 && (
+            <AssignBox>
+              <Fuzzy
+                itemStringKey="name"
+                onChange={item => assignCategory(item.id)}
+                placeholder="Assign a category…"
+                items={unassignedCategories.map(cat => ({
+                  ...cat,
+                  label: {
+                    background: cat.color_background,
+                    copy: ' ',
+                  },
+                }))}
+              />
+            </AssignBox>
+          )}
+          <ManageRow>
+            <button type="button" onClick={showCategoryManager}>
+              Edit categories
+            </button>
+            <button type="button" onClick={openCategorySettingsWindow}>
+              Edit in new window
+            </button>
+          </ManageRow>
+        </FieldBody>
+      </Field>
       <div>
         Description:
         <InputFromButton
@@ -411,10 +468,7 @@ export default connect(
     threads: getTimeline(state).threads,
   }),
   dispatch => ({
-    createCategory: ({ activity_id, name, color_background }: { activity_id: EntityId; name: string; color_background: string }) =>
-      dispatch(createCategory({ activity_id, name, color_background })),
-    updateCategory: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateCategory(id, updates)),
+    showCategoryManager: () => dispatch(showCategoryManager()),
     updateActivity: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateActivity(id, updates)),
-    deleteActivity: (id: EntityId, thread_id: EntityId) => dispatch(deleteActivity(id, thread_id)),
   }),
 )(ActivityDetail);

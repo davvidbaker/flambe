@@ -48,7 +48,7 @@ const sheetStyleOverrides: Styles = {
   },
 };
 
-const ActualContent = styled.div<{ $sheet: boolean }>`
+const ActualContent = styled.div<{ $sheet: boolean; $wide?: boolean }>`
   border-radius: ${props => (props.$sheet ? '12px 12px 0 0' : '4px')};
   background: white;
   border: 1px solid rgb(204, 204, 204);
@@ -62,7 +62,11 @@ const ActualContent = styled.div<{ $sheet: boolean }>`
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.2);
   overflow: auto;
   max-height: ${props => (props.$sheet ? 'min(88dvh, 100%)' : 'min(80vh, 640px)')};
-  max-width: ${props => (props.$sheet ? '100%' : 'min(90vw, 420px)')};
+  max-width: ${props => {
+    if (props.$sheet) return '100%';
+    if (props.$wide) return 'min(90vw, 640px)';
+    return 'min(90vw, 420px)';
+  }};
   width: ${props => (props.$sheet ? '100%' : 'auto')};
   -webkit-overflow-scrolling: touch;
 `;
@@ -72,6 +76,7 @@ interface Props {
   contentLabel?: string;
   isOpen: boolean;
   onRequestClose: () => unknown;
+  wide?: boolean;
 }
 
 function useSheetLayout(): boolean {
@@ -118,6 +123,7 @@ const AppModal = ({
   children,
   onRequestClose,
   contentLabel = 'Dialog',
+  wide = false,
 }: Props) => {
   const sheet = useSheetLayout();
 
@@ -128,7 +134,7 @@ const AppModal = ({
       isOpen={isOpen}
       style={sheet ? sheetStyleOverrides : desktopStyleOverrides}
     >
-      <ActualContent $sheet={sheet} data-app-modal-sheet={sheet ? 'true' : 'false'}>
+      <ActualContent $sheet={sheet} $wide={wide} data-app-modal-sheet={sheet ? 'true' : 'false'}>
         {children}
       </ActualContent>
     </Modal>

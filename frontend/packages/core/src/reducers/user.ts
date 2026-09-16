@@ -5,7 +5,7 @@ import type { Trace } from '../types/Trace';
 import {
   ATTENTION_SHIFT, CATEGORY_CREATE, CATEGORY_UPDATE, MANTRA_CREATE,
   TODO_BEGIN, TODO_CREATE, TRACE_DELETE, TRACE_CREATE, USER_FETCH,
-  SEARCH_TERMS_EVENT, TABS_EVENT,
+  SEARCH_TERMS_EVENT, TABS_EVENT, CATEGORIES_EVENT,
 } from '../actions';
 
 interface TimedRecord { timestamp: number }
@@ -105,6 +105,10 @@ function user(state: UserState = defaultState, action: UserAction): UserState {
       return { ...state, searchTerms: [...state.searchTerms, { term: action.term ?? '', timestamp: action.timestamp ?? Date.now() }] };
     case TABS_EVENT:
       return { ...state, tabs: [...state.tabs, { count: action.tabs_count ?? 0, timestamp: action.timestamp ?? Date.now(), window_count: action.window_count ?? 0 }] };
+    case CATEGORIES_EVENT:
+      return Array.isArray(action.data)
+        ? { ...state, categories: action.data as Category[] }
+        : state;
     default:
       return state;
   }

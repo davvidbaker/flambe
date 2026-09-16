@@ -1,10 +1,17 @@
 defmodule FlambeNextWeb.EventStream do
   @moduledoc false
 
+  alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
   alias FlambeNext.Repo
   alias FlambeNext.Traces.{Activity, Event, Thread}
-  alias FlambeNextWeb.Endpoint
+  alias FlambeNextWeb.{CategoryJSON, Endpoint}
+
+  def broadcast_categories(%User{} = user) do
+    Endpoint.broadcast("events:#{user.id}", "categories", %{
+      data: Enum.map(Accounts.list_user_categories(user), &CategoryJSON.data/1)
+    })
+  end
 
   def broadcast_event(%User{id: user_id}, %Event{} = event) do
     event = Repo.preload(event, activity: [:thread, :categories])
