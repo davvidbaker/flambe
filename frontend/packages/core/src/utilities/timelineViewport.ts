@@ -23,7 +23,7 @@ function pad2(value: number): string {
 
 export function toDatetimeLocalValue(ms: number): string {
   const date = new Date(ms);
-  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 
 export function fromDatetimeLocalValue(value: string): number | null {

@@ -4,7 +4,7 @@ import { connect } from 'react-redux';
 
 import ActivityBlockDetails from './ActivityBlockDetails';
 import { getTimeline } from '../reducers/timeline';
-import { colors } from '../styles';
+import { colors, timelineActivityFontFamily, timelineActivityFontSizePx } from '../styles';
 import type { SettingsState } from '../reducers/settings';
 import type { TimelineState } from '../reducers/timeline';
 import type { FlameChartHandle } from '../types/FlameChartHandle';
@@ -19,7 +19,8 @@ const Div = styled.div`
   position: absolute;
   pointer-events: none;
 
-  font-size: 11px;
+  font-family: ${timelineActivityFontFamily};
+  font-size: ${timelineActivityFontSizePx}px;
 `;
 
 const getTooltipPosition = (
