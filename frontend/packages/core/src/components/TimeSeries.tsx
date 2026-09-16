@@ -8,7 +8,19 @@ import {
   drawFutureWindow,
 } from '../utilities/timelineGeometry';
 import { trimTextMiddle } from '../utilities';
-import type { Mantra, SearchTerm, TabCount } from '../reducers/user';
+import {
+  formatObservationValue,
+  groupObservationSeries,
+  hoverSamples,
+  independentScale,
+  nextLocalMidnight,
+  pathPoints,
+  sampleSeriesAtTime,
+  valueToY,
+  type HoverSample,
+  type ObservationSeries,
+} from '../utilities/observationSeries';
+import type { Mantra, Observation, SearchTerm, TabCount } from '../reducers/user';
 
 const windowColor = '#48A2ED';
 const tabColor = '#90BD71';
@@ -16,7 +28,7 @@ const ONE_MINUTE = 1000 * 60;
 
 const CountsBar = styled.div<{ $hidden: boolean }>`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min-content, 100px));
+  grid-template-columns: repeat(auto-fit, minmax(min-content, 120px));
   font-size: 11px;
   visibility: ${({ $hidden }) => ($hidden ? 'hidden' : 'visible')};
 `;
@@ -24,6 +36,7 @@ const CountsBar = styled.div<{ $hidden: boolean }>`
 interface Props {
   height?: string;
   mantras: Mantra[];
+  observations?: Observation[];
   pan?: (...args: any[]) => unknown;
   searchTerms: SearchTerm[];
   tabs: TabCount[];
@@ -34,6 +47,7 @@ interface State {
   mouseIsOver: boolean;
   hoverWindowCount: number;
   hoverTabCount: number;
+  hoverObservations: HoverSample[];
   cursor: { x: number; y: number };
   canvasWidth: number;
   canvasHeight: number;
@@ -49,11 +63,13 @@ export class TimeSeries extends Component<Props, State> {
   leftBoundaryTime = Date.now();
   rightBoundaryTime = Date.now() + 1000;
   width = 300;
+  observationSeries: ObservationSeries[] = [];
 
   state: State = {
     mouseIsOver: false,
     hoverWindowCount: 0,
     hoverTabCount: 0,
+    hoverObservations: [],
     cursor: { x: 0, y: 0 },
     canvasWidth: 300,
     canvasHeight: 150,
@@ -88,17 +104,19 @@ export class TimeSeries extends Component<Props, State> {
 
   onMouseEnter = (): void => this.setState({ mouseIsOver: true });
 
-  onMouseLeave = (): void => this.setState({ mouseIsOver: false });
+  onMouseLeave = (): void => this.setState({ mouseIsOver: false, hoverObservations: [] });
 
   onMouseMove = (event: MouseEvent<HTMLCanvasElement>): void => {
     const { offsetX: x, offsetY: y } = event.nativeEvent;
     const time = this.pixelsToTime(x);
     const closestPoint = this.props.tabs.find(({ timestamp }) => time < timestamp);
+    const series = groupObservationSeries(this.props.observations);
 
     this.setState({
       cursor: { x, y },
       hoverWindowCount: closestPoint?.window_count ?? 0,
       hoverTabCount: closestPoint?.count ?? 0,
+      hoverObservations: hoverSamples(series, time),
     });
   };
 
@@ -141,6 +159,12 @@ export class TimeSeries extends Component<Props, State> {
           <div style={{ color: tabColor }}>
             tabs: {this.state.hoverTabCount}
           </div>
+          {this.state.hoverObservations.map(sample => (
+            <div key={sample.kind} style={{ color: sample.color }}>
+              {sample.kind}: {formatObservationValue(sample.value)}
+              {sample.unit ? ` ${sample.unit}` : ''}
+            </div>
+          ))}
         </CountsBar>
       </div>
     );
@@ -150,6 +174,7 @@ export class TimeSeries extends Component<Props, State> {
     this.leftBoundaryTime = leftBoundaryTime;
     this.rightBoundaryTime = rightBoundaryTime;
     this.width = width;
+    this.observationSeries = groupObservationSeries(this.props.observations);
 
     const { ctx } = this;
     if (!ctx || !this.canvas) return;
@@ -171,6 +196,7 @@ export class TimeSeries extends Component<Props, State> {
     );
     this.drawMantras();
     this.drawTabs();
+    this.drawObservations();
     this.drawSearchTerms();
     ctx.restore();
   }
@@ -253,6 +279,69 @@ export class TimeSeries extends Component<Props, State> {
       ctx.arc(this.state.cursor.x, this.countToY(this.state.hoverWindowCount, maxWindows), 2, 0, 2 * Math.PI);
       ctx.fill();
     }
+  }
+
+  drawObservations(): void {
+    const { ctx } = this;
+    if (!ctx) return;
+
+    const chartHeight = this.chartHeight();
+    const paddingY = TimeSeries.chartPadding.y;
+    const cursorTime = this.pixelsToTime(this.state.cursor.x);
+
+    this.observationSeries.forEach(series => {
+      const points = pathPoints(series, this.leftBoundaryTime, this.rightBoundaryTime);
+      if (points.length === 0) return;
+
+      const scale = independentScale(points.map(point => point.value));
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = series.color;
+      ctx.fillStyle = series.color;
+      ctx.beginPath();
+
+      let previousY = 0;
+      points.forEach((point, index) => {
+        const x = Math.max(0, Math.min(this.width, this.timeToPixels(point.time)));
+        const y = valueToY(point.value, scale.min, scale.max, chartHeight, paddingY);
+        if (index === 0) {
+          ctx.moveTo(point.time < this.leftBoundaryTime ? 0 : x, y);
+        } else if (series.dated) {
+          ctx.lineTo(x, previousY);
+          ctx.lineTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+        previousY = y;
+      });
+
+      if (series.dated) {
+        const last = points[points.length - 1];
+        const next = series.points.find(point => point.time > last.time);
+        const holdEnd = Math.min(
+          next?.time ?? nextLocalMidnight(last.time),
+          this.rightBoundaryTime,
+        );
+        ctx.lineTo(Math.max(0, Math.min(this.width, this.timeToPixels(holdEnd))), previousY);
+      }
+
+      ctx.stroke();
+
+      if (this.state.mouseIsOver) {
+        const hoverValue = sampleSeriesAtTime(series, cursorTime);
+        if (hoverValue !== null) {
+          ctx.beginPath();
+          ctx.arc(
+            this.state.cursor.x,
+            valueToY(hoverValue, scale.min, scale.max, chartHeight, paddingY),
+            2,
+            0,
+            2 * Math.PI,
+          );
+          ctx.fill();
+        }
+      }
+    });
   }
 
   pixelsToTime(x: number): number {
