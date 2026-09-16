@@ -17,6 +17,11 @@ defmodule FlambeNextWeb.CategorySettingsControllerTest do
     assert html =~ "Categories"
     assert html =~ ~s(name="_csrf_token")
     assert html =~ hd(Accounts.default_categories())["name"]
+    assert html =~ ~s(aria-label="Category name")
+    refute html =~ ~r/<label>\s*Name\s*<input/
+    toil = Enum.find(Accounts.default_categories(), &(&1["name"] == "toil"))
+    assert html =~ "background-color: #{toil["color_background"]}"
+    assert html =~ "color: #{toil["color_text"]}"
   end
 
   test "creates a category from the html form", %{conn: conn} do
