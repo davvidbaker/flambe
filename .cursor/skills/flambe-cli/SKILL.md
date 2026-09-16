@@ -64,5 +64,6 @@ Do not message for routine progress, and never instead of `start`/`end`. Default
 ## What to record
 
 - Start a new activity when the goal or scope meaningfully changes (a specific implementation, a discovered prerequisite, a concrete bug, focused tests, verification) — that is a stack push.
+- Do not start an activity for committing or pushing. Those are wrap-up of the current leaf; mention them in the end-message if useful. Exception: the assigned work *is* getting code onto a remote.
 - Name the concrete action and object (`Fix USERPROFILE config resolution`), not `Investigate` / `Implement` / `Work on tests`. Stay well under 255 characters; do not compensate with a long name or `--description`.
 - End-message: the outcome, not `done`. That records a resolution. Omitting the message is a plain end. No secrets, tokens, or transcripts. Ending the leaf is the pop; then resume the parent mentally and in the log.
