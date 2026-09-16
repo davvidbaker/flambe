@@ -17,14 +17,464 @@ defmodule FlambeNext.Reducer do
 
   import Ecto.Query
 
+  require Logger
+
   alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
   alias FlambeNext.Repo
+  alias FlambeNext.Reducer.{Model, Review}
   alias FlambeNext.Traces
   alias FlambeNext.Traces.{Activity, Event, Thread, Trace}
 
   @lifecycle_phases ~w(B R X S E J V)
   @open_phases ~w(B R X)
+
+  @type fold_result :: %{
+          activity: Activity.t() | nil,
+          event: Event.t() | nil,
+          notes: start_notes() | nil,
+          closed_descendants: [closed()],
+          actions_applied: [map()],
+          rules_fired: [map()],
+          extra_events: [Event.t()],
+          direction: String.t() | nil,
+          reply: String.t() | nil,
+          review: map() | nil
+        }
+
+  @doc """
+  Folds one worker proposal into the stack (ADR-014). Lifecycle commands are
+  deterministic. `message` runs the model review stage when a model is available.
+  """
+  @spec fold(User.t(), Trace.t(), map()) :: {:ok, fold_result()} | {:error, term()}
+  def fold(%User{} = user, %Trace{} = trace, proposal) when is_map(proposal) do
+    case Map.get(proposal, :command) do
+      "start" -> fold_start(user, trace, proposal)
+      command when command in ~w(end suspend resume) -> fold_lifecycle(trace, proposal)
+      "message" -> fold_message(user, proposal)
+      other -> {:error, {:invalid_input, "unknown command: #{other}"}}
+    end
+  end
+
+  defp fold_start(user, trace, proposal) do
+    params = Map.get(proposal, :params, %{})
+    activity_attrs = Map.get(params, "activity", %{})
+    agent_id = Map.get(params, :agent_id) || Map.get(activity_attrs, "agent_id")
+    name = Map.get(activity_attrs, "name")
+    timestamp = timestamp_integer(Map.get(params, "event", %{}))
+
+    case duplicate_activity(trace, agent_id, name) do
+      %Activity{} = existing ->
+        reuse_existing(trace, existing, timestamp)
+
+      nil ->
+        with {:ok, parent, _source} <-
+               resolve_parent(trace, Map.get(params, "thread_id"), activity_attrs, agent_id),
+             {:ok, resumed_events} <- resume_suspended_ancestors(trace, parent, timestamp),
+             {:ok, %{activity: activity, event: event, notes: notes}} <-
+               reduce_start(user, trace, params) do
+          resumed_ids = Enum.map(resumed_events, & &1.activity_id)
+
+          folded = %{
+            blank_fold()
+            | activity: activity,
+              event: event,
+              notes: notes,
+              actions_applied:
+                Enum.map(resumed_ids, &%{type: "resume_ancestor", activity_id: &1}),
+              rules_fired:
+                if(resumed_ids == [],
+                  do: [],
+                  else: [%{rule: "resume_ancestor", applied: resumed_ids}]
+                ),
+              extra_events: resumed_events
+          }
+
+          structure_review(user, trace, folded, agent_id)
+        end
+    end
+  end
+
+  defp fold_lifecycle(trace, proposal) do
+    activity = Map.fetch!(proposal, :activity)
+    event_attrs = Map.get(proposal, :event_attrs, %{})
+    open = if(phase(event_attrs) == "E", do: open_descendants(trace, activity), else: :not_end)
+
+    case reduce_event(trace, activity, event_attrs) do
+      {:ok, %{event: event, closed_descendants: closed}} ->
+        rules = pop_to_parent_rule(activity, open)
+
+        {:ok,
+         %{
+           blank_fold()
+           | activity: activity,
+             event: event,
+             closed_descendants: closed,
+             rules_fired: rules
+         }}
+
+      error ->
+        error
+    end
+  end
+
+  defp fold_message(user, proposal) do
+    opts = Map.get(proposal, :opts, [])
+
+    if Model.available?(opts) do
+      case Review.handle(user, Map.get(proposal, :attrs, %{}), opts) do
+        {:ok, review} ->
+          {:ok,
+           %{
+             blank_fold()
+             | direction: review.direction,
+               reply: review.reply,
+               actions_applied: review.actions_applied,
+               review: review
+           }}
+
+        error ->
+          error
+      end
+    else
+      {:error, :reducer_not_configured}
+    end
+  end
+
+  defp structure_review(user, trace, folded, agent_id) do
+    case structure_rule(trace, folded.activity, agent_id) do
+      nil ->
+        {:ok, folded}
+
+      rule ->
+        case structure_llm() do
+          nil ->
+            {:ok, note_structure(trace, folded, rule, %{type: "skipped"}, nil, nil)}
+
+          llm ->
+            judge_structure(user, trace, folded, rule, llm)
+        end
+    end
+  end
+
+  defp judge_structure(user, trace, folded, rule, llm) do
+    case Review.judge_structure(user, folded.activity, rule, llm: llm) do
+      {:ok, judgment} ->
+        apply_structure_judgment(user, trace, folded, rule, judgment)
+
+      {:error, reason} ->
+        Logger.warning(
+          "structure review skipped for activity #{folded.activity.id}: #{inspect(reason)}"
+        )
+
+        {:ok, note_structure(trace, folded, rule, %{type: "skipped"}, nil, nil)}
+    end
+  end
+
+  defp structure_rule(trace, %Activity{parent_id: nil} = activity, agent_id)
+       when is_binary(agent_id) do
+    case other_open_leaf(trace, agent_id, activity.id) do
+      nil ->
+        nil
+
+      leaf ->
+        root = root_of(leaf) || leaf
+
+        %{
+          name: "new_root_while_open",
+          open_leaf: %{id: leaf.id, name: leaf.name},
+          previous_root: %{id: root.id, name: root.name},
+          ancestors: [],
+          candidate_ids: Enum.uniq([leaf.id, root.id])
+        }
+    end
+  end
+
+  defp structure_rule(_trace, %Activity{parent_id: parent_id} = activity, _agent_id)
+       when is_integer(parent_id) do
+    ancestors = ancestor_activities(activity)
+
+    if name_unfit?(activity.name, Enum.map(ancestors, & &1.name)) do
+      %{
+        name: "name_unfit",
+        open_leaf: nil,
+        previous_root: nil,
+        ancestors: Enum.map(ancestors, &%{id: &1.id, name: &1.name}),
+        candidate_ids: Enum.map(ancestors, & &1.id)
+      }
+    else
+      nil
+    end
+  end
+
+  defp structure_rule(_trace, _activity, _agent_id), do: nil
+
+  defp structure_llm do
+    case Application.get_env(:flambe_next, :reducer_llm) do
+      llm when is_function(llm, 2) ->
+        llm
+
+      _ ->
+        if Mix.env() == :test or not Model.configured?(), do: nil, else: &Model.call/2
+    end
+  end
+
+  defp apply_structure_judgment(user, trace, folded, rule, judgment) do
+    case judgment.action do
+      %{type: "reparent", parent_activity_id: parent_id} ->
+        case reparent(user, trace, folded.activity, parent_id) do
+          {:ok, activity} ->
+            {:ok,
+             note_structure(
+               trace,
+               %{folded | activity: activity},
+               rule,
+               judgment.action,
+               judgment.direction,
+               judgment.reply
+             )}
+
+          {:error, reason} ->
+            Logger.warning("structure reparent skipped: #{inspect(reason)}")
+            {:ok, note_structure(trace, folded, rule, %{type: "skipped"}, nil, nil)}
+        end
+
+      %{type: "rename", name: name} ->
+        case rename_activity(folded.activity, name) do
+          {:ok, activity} ->
+            {:ok,
+             note_structure(
+               trace,
+               %{folded | activity: activity},
+               rule,
+               judgment.action,
+               judgment.direction,
+               judgment.reply
+             )}
+
+          {:error, reason} ->
+            Logger.warning("structure rename skipped: #{inspect(reason)}")
+            {:ok, note_structure(trace, folded, rule, %{type: "skipped"}, nil, nil)}
+        end
+
+      action ->
+        {:ok, note_structure(trace, folded, rule, action, judgment.direction, judgment.reply)}
+    end
+  end
+
+  defp note_structure(trace, folded, rule, action, direction, reply) do
+    {:ok, decision} =
+      Traces.create_event(trace, folded.activity, %{
+        "phase" => "reducer_decision",
+        "message" => "rule=#{rule.name} | applied=#{action.type}",
+        "timestamp_integer" => System.system_time(:millisecond)
+      })
+
+    %{
+      folded
+      | direction: direction,
+        reply: reply,
+        actions_applied: folded.actions_applied ++ [action],
+        rules_fired: folded.rules_fired ++ [%{rule: rule.name, applied: action}],
+        extra_events: folded.extra_events ++ [decision]
+    }
+  end
+
+  defp reparent(user, trace, activity, parent_id) do
+    parent = Traces.get_user_trace_activity!(user, trace.id, parent_id)
+    now = DateTime.utc_now(:second)
+
+    {1, _} =
+      from(a in Activity, where: a.id == ^activity.id)
+      |> Repo.update_all(
+        set: [parent_id: parent.id, thread_id: parent.thread_id, updated_at: now]
+      )
+
+    {:ok, Repo.get!(Activity, activity.id)}
+  rescue
+    Ecto.NoResultsError -> {:error, :not_found}
+  end
+
+  defp rename_activity(activity, name) do
+    activity = Repo.preload(activity, :categories)
+    Traces.update_activity(activity, %{"name" => name}, activity.categories)
+  end
+
+  defp other_open_leaf(%Trace{id: trace_id}, agent_id, except_id) do
+    from(a in Activity,
+      join: thread in assoc(a, :thread),
+      where: thread.trace_id == ^trace_id and a.agent_id == ^agent_id and a.id != ^except_id,
+      order_by: [desc: a.id]
+    )
+    |> Repo.all()
+    |> Enum.find(&(latest_phase(trace_id, &1.id) in @open_phases))
+  end
+
+  defp root_of(%Activity{parent_id: nil} = activity), do: activity
+
+  defp root_of(%Activity{parent_id: parent_id}) do
+    case Repo.get(Activity, parent_id) do
+      %Activity{} = parent -> root_of(parent)
+      nil -> nil
+    end
+  end
+
+  defp ancestor_activities(%Activity{parent_id: nil}), do: []
+
+  defp ancestor_activities(%Activity{parent_id: parent_id}) do
+    case Repo.get(Activity, parent_id) do
+      nil -> []
+      parent -> ancestor_activities(parent) ++ [parent]
+    end
+  end
+
+  @name_stopwords ~w(the and for with from into that this work task item stuff)
+
+  defp name_unfit?(name, ancestor_names) do
+    child = content_tokens(name)
+    ancestors = ancestor_names |> Enum.flat_map(&content_tokens/1) |> MapSet.new()
+    child != [] and MapSet.disjoint?(MapSet.new(child), ancestors)
+  end
+
+  defp content_tokens(name) when is_binary(name) do
+    name
+    |> String.downcase()
+    |> String.split(~r/[^a-z0-9]+/, trim: true)
+    |> Enum.reject(&(byte_size(&1) < 4 or &1 in @name_stopwords))
+  end
+
+  defp content_tokens(_name), do: []
+
+  defp blank_fold do
+    %{
+      activity: nil,
+      event: nil,
+      notes: nil,
+      closed_descendants: [],
+      actions_applied: [],
+      rules_fired: [],
+      extra_events: [],
+      direction: nil,
+      reply: nil,
+      review: nil
+    }
+  end
+
+  defp duplicate_activity(_trace, agent_id, name)
+       when not is_binary(agent_id) or not is_binary(name),
+       do: nil
+
+  defp duplicate_activity(%Trace{id: trace_id}, agent_id, name) do
+    name = String.trim(name)
+
+    from(a in Activity,
+      join: thread in assoc(a, :thread),
+      where: thread.trace_id == ^trace_id and a.agent_id == ^agent_id and a.name == ^name,
+      order_by: [desc: a.id],
+      limit: 8
+    )
+    |> Repo.all()
+    |> Enum.find(fn activity ->
+      latest_phase(trace_id, activity.id) in (@open_phases ++ ["S"])
+    end)
+  end
+
+  defp reuse_existing(trace, %Activity{} = existing, timestamp) do
+    phase = latest_phase(trace.id, existing.id)
+
+    {event, _action, applied} =
+      if phase == "S" do
+        {:ok, event} =
+          Traces.create_event(trace, existing, %{
+            "phase" => "R",
+            "message" => "Resumed by reducer: a start duplicated this suspended activity",
+            "timestamp_integer" => timestamp
+          })
+
+        {event, "resume_existing", %{type: "resume_existing", activity_id: existing.id}}
+      else
+        {latest_lifecycle_event(trace.id, existing.id), "no_op",
+         %{type: "no_op", activity_id: existing.id}}
+      end
+
+    {:ok, decision} =
+      Traces.create_event(trace, existing, %{
+        "phase" => "reducer_decision",
+        "message" => "rule=duplicate_open | applied=#{applied.type}",
+        "timestamp_integer" => timestamp
+      })
+
+    {:ok,
+     %{
+       blank_fold()
+       | activity: existing,
+         event: event,
+         actions_applied: [applied],
+         rules_fired: [%{rule: "duplicate_open", applied: applied}],
+         extra_events: [decision]
+     }}
+  end
+
+  defp resume_suspended_ancestors(_trace, nil, _timestamp), do: {:ok, []}
+
+  defp resume_suspended_ancestors(trace, %Activity{} = activity, timestamp) do
+    chain = suspended_chain(trace.id, activity, [])
+
+    Enum.reduce_while(Enum.reverse(chain), {:ok, []}, fn ancestor, {:ok, events} ->
+      case Traces.create_event(trace, ancestor, %{
+             "phase" => "R",
+             "message" => "Resumed by reducer: a child was started under suspended work",
+             "timestamp_integer" => timestamp
+           }) do
+        {:ok, event} -> {:cont, {:ok, [event | events]}}
+        {:error, changeset} -> {:halt, {:error, changeset}}
+      end
+    end)
+  end
+
+  defp suspended_chain(_trace_id, nil, acc), do: acc
+
+  defp suspended_chain(trace_id, %Activity{parent_id: nil} = activity, acc) do
+    if(latest_phase(trace_id, activity.id) == "S", do: [activity | acc], else: acc)
+  end
+
+  defp suspended_chain(trace_id, %Activity{} = activity, acc) do
+    acc = if(latest_phase(trace_id, activity.id) == "S", do: [activity | acc], else: acc)
+    suspended_chain(trace_id, Repo.get(Activity, activity.parent_id), acc)
+  end
+
+  defp pop_to_parent_rule(_activity, :not_end), do: []
+  defp pop_to_parent_rule(%Activity{parent_id: nil}, _open), do: []
+  defp pop_to_parent_rule(_activity, [_ | _]), do: []
+
+  defp pop_to_parent_rule(%Activity{parent_id: parent_id}, []) do
+    parent = Repo.get!(Activity, parent_id)
+    [%{rule: "pop_to_parent", applied: %{activity_id: parent.id, name: parent.name}}]
+  end
+
+  defp latest_phase(trace_id, activity_id) do
+    from(e in Event,
+      where:
+        e.trace_id == ^trace_id and e.activity_id == ^activity_id and
+          e.phase in @lifecycle_phases,
+      order_by: [desc: e.timestamp, desc: e.id],
+      limit: 1,
+      select: e.phase
+    )
+    |> Repo.one()
+  end
+
+  defp latest_lifecycle_event(trace_id, activity_id) do
+    from(e in Event,
+      where:
+        e.trace_id == ^trace_id and e.activity_id == ^activity_id and
+          e.phase in @lifecycle_phases,
+      order_by: [desc: e.timestamp, desc: e.id],
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
   # Reducer bookkeeping events (`reducer_*`) are annotations; they do not change whether
   # an activity is open.
 

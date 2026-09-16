@@ -126,7 +126,7 @@ defmodule FlambeNextWeb.McpController do
     tool(
       "flambe_start",
       "Start a Flambe Activity",
-      "Start work in a flame. Omit parent_id to infer this agent's active parent, or pass null to start at the thread root. The result includes thread state and recommended availableActions.",
+      "Start work in a flame. Omit parent_id to infer this agent's active parent, or pass null to start at the thread root. The reducer may rewrite the proposal (re-parent, rename, or resume an existing activity) and reports it in actions_applied; the result may also carry direction and reply. Act on a direction before continuing. Includes thread state and recommended availableActions.",
       common_properties()
       |> Map.merge(%{
         name: %{type: "string", minLength: 1, maxLength: 255, description: "Activity name"},
@@ -147,7 +147,7 @@ defmodule FlambeNextWeb.McpController do
     lifecycle_tool(
       "flambe_end",
       "End a Flambe Activity",
-      "End completed work. Open children must be closed first unless force is true; forced results list closed descendants. State availableActions are recommendations for the next command.",
+      "End completed work. Open children must be closed first unless force is true; forced results list closed descendants. The result may carry direction and reply, and actions_applied lists any reducer rewrites; act on a direction before continuing. State availableActions are recommendations for the next command.",
       %{force: %{type: "boolean", default: false, description: "Also close open descendants"}}
     )
   end
@@ -156,7 +156,7 @@ defmodule FlambeNextWeb.McpController do
     lifecycle_tool(
       "flambe_suspend",
       "Suspend a Flambe Activity",
-      "Suspend work that is explicitly being tabled. The returned state includes recommended availableActions.",
+      "Suspend work that is explicitly being tabled. The result may carry direction and reply, and actions_applied lists any reducer rewrites; act on a direction before continuing. The returned state includes recommended availableActions.",
       %{}
     )
   end
@@ -165,7 +165,7 @@ defmodule FlambeNextWeb.McpController do
     lifecycle_tool(
       "flambe_resume",
       "Resume a Flambe Activity",
-      "Resume suspended work. The returned state includes recommended availableActions.",
+      "Resume suspended work. The result may carry direction and reply, and actions_applied lists any reducer rewrites; act on a direction before continuing. The returned state includes recommended availableActions.",
       %{}
     )
   end

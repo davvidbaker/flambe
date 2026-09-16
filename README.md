@@ -143,9 +143,15 @@ omitted; pass `parent_id: null` for a root, or an ID to choose a parent explicit
 A child follows its parent's thread and inherits categories when none are supplied.
 
 Command results include current `state`, advisory `availableActions` on threads
-and activities, `actions_applied`, `closed_descendants`, and `direction`.
-Available actions describe sensible next operations and any requirements;
-they are distinct from the reducer's guidance about what work to pursue.
+and activities, `actions_applied`, `closed_descendants`, `direction`, and
+`reply`. Any tool result may carry a `direction` or a `reply` (sometimes a
+question about a name), not only `flambe_message`; agents should act on a
+direction before continuing. The reducer records each proposal and may rewrite
+the structure around it (re-parent, rename, treat a start as a resume, close
+descendants); `actions_applied` reports what changed, and the returned state is
+authoritative. Available actions describe sensible next operations and any
+requirements; they are distinct from the reducer's guidance about what work to
+pursue.
 Pass `thread_id` to `flambe_status` to inspect a particular thread.
 Routine lifecycle operations require no model configuration. Free-text
 `flambe_message` needs the backend's `OPENAI_API_KEY`.
@@ -155,7 +161,8 @@ stack, and inspect returned state and direction before continuing. MCP exposes
 the tools; these reporting habits still need to be part of the agent's instructions.
 
 MCP and the CLI's hosted command endpoint call the same backend service. Browser
-editing continues to use REST. See [ADR-013](docs/ADR-013-shared-agent-commands-and-mcp.md).
+editing continues to use REST. See [ADR-013](docs/ADR-013-shared-agent-commands-and-mcp.md)
+and [ADR-014](docs/ADR-014-reducer-enforces-structure.md).
 
 ### CLI: shell, local, and offline use
 

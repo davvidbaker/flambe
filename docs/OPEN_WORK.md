@@ -9,7 +9,15 @@ Observations (`kind` + `value` + `payload`) shipped on `main` in
 [ADR-008](ADR-008-generic-observations.md). Local Node+SQLite mode is
 [ADR-009](ADR-009-local-node-sqlite-and-on-demand-import.md).
 
-## Last left (2026-09-06)
+## Last left (2026-09-16)
+
+- [ADR-014](ADR-014-reducer-enforces-structure.md) accepted: one worker ingress,
+  one reducer, structure enforced by rewriting; every command may return
+  `direction` / `reply` / `actions_applied`. Implementation is in progress per
+  [PLAN-reducer-structure.md](PLAN-reducer-structure.md) (phases 1–4; skills,
+  README, and MCP descriptions updated first).
+
+## Previously left (2026-09-06)
 
 Paused for ~two weeks. Production is `https://flambe.fly.dev`. A push to
 `main` deploys after Modernization validation is green
@@ -31,8 +39,8 @@ Shipped on `main` the same day:
 - [ADR-011](ADR-011-reducer-owns-the-stack.md): the reducer owns the stack.
   Deterministic path behind `POST /api/events` for agents (ending a parent
   closes open descendants); `flambe message` allows stack changes again.
-  Not yet: model review when a structural rule fires, `direction` on lifecycle
-  events.
+  Model review when a structural rule fires and `direction` on lifecycle
+  events: in progress via ADR-014.
 - [ADR-012](ADR-012-reducer-places-work-and-names-agents.md): the reducer
   resolves `start` (agent-scoped parent inference, thread follows parent,
   category inheritance; local `flambe serve` too), places roots via the model
@@ -40,8 +48,8 @@ Shipped on `main` the same day:
   agents (`agents` table, `x-flambe-agent-name`, `flambe whoami`).
   `FLAMBE_AGENT_PLATFORM` (Cloud secret `Cursor Cloud`) is the shared product
   label, stored on the agent, not a lane name.
-  Not yet: re-placing an activity when its name changes; model review of
-  deterministic decisions.
+  Not yet: re-placing an activity when its name changes. Model review of
+  deterministic decisions: in progress via ADR-014.
 
 Optional Fly secrets: `FLAMBE_REDUCER_PRIMARY_MODEL` / `FLAMBE_REDUCER_ESCALATION_MODEL`
 (defaults `gpt-5.6-luna` / `gpt-5.6-terra`). Local Phoenix needs `OPENAI_API_KEY`
