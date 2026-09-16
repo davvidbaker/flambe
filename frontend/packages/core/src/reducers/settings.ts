@@ -7,6 +7,8 @@ export interface SettingsState {
   activityMuteOpacity: number;
   attentionDrivenThreadOrder: boolean;
   attentionFlows: boolean;
+  /** Shade nested flame-chart blocks darker at each deeper level. */
+  darkerAsWeGoDown: boolean;
   reactiveThreadHeight: boolean;
   /** Dev: paint activity ids on blocks instead of names. */
   showActivityIds: boolean;
@@ -20,6 +22,7 @@ const defaultState: SettingsState = {
   twelveHourClock: false,
   attentionDrivenThreadOrder: true,
   attentionFlows: false,
+  darkerAsWeGoDown: true,
   activityMuteOpacity: 0.1,
   activityMute: false,
   reactiveThreadHeight: true,

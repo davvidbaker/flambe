@@ -58,6 +58,11 @@ const SETTINGS: SettingDefinition[] = [
     description: 'In collapsed threads, all blocks are the same height.',
   },
   {
+    setting: 'darkerAsWeGoDown',
+    copy: 'Darker as we go down',
+    description: 'Shade nested activities darker at each deeper level.',
+  },
+  {
     setting: 'absoluteTimeLabels',
     copy: 'Absolute Time Labels',
     description:
