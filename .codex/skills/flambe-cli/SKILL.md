@@ -39,22 +39,27 @@ flambe message "Auth fix needs the session module refactored too; widening scope
 
 Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch threads or categories to decide placement; that is the reducer's job.
 
-`start` is a proposal. Without `--parent`/`--root`, the reducer nests the new activity under **your own** newest active activity (other agents' work is never your parent), puts a child on its parent's thread, and gives it the parent's categories; a new root gets its thread and categories chosen by the reducer a few seconds later. The CLI prints what was inferred on stderr (`reducer nested 43 under 42`). `FLAMBE_THREAD` (name, unique slug, or id) is sent as `--thread` when that flag is omitted; do not list threads and pick one by project name. Pass `--thread` / `--parent` / `--category` only when you are certain. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations.
+Every command is a proposal; the reducer owns the stack. Without `--parent`/`--root`, `start` nests under **your own** newest active activity (other agents' work is never your parent), puts a child on its parent's thread, and gives it the parent's categories; a new root gets its thread and categories chosen by the reducer a few seconds later. `FLAMBE_THREAD` (name, unique slug, or id) is sent as `--thread` when that flag is omitted; do not list threads and pick one by project name. Pass `--thread` / `--parent` / `--category` only when you are certain. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations. Offline or local-`serve` results carry no reducer output; nothing is dropped.
+
+## Read every result; the reducer may rewrite
+
+Any command (`start`, `end`, `suspend`, `resume`, `message`) may come back with `direction`, `reply`, and `actions_applied`, not only `message`. The reducer records what you proposed and then corrects the structure around it when needed: re-parent, rename, treat your `start` as a resume of an already-open same-name activity, resume a suspended ancestor before nesting under it, or close open descendants when you end a parent (`--force`). The CLI prints each rewrite on stderr (`reducer nested 43 under 42`, `actions`). The returned state is the truth: keep using the ids it gives you, do not undo a rewrite, and do not re-issue the proposal.
+
+The reducer may answer a proposal with a question in `reply`, usually when a name does not fit its ancestors. Answer before your next step: rename the activity, or reply with `flambe message`. The CLI reminds you on the next command if a question is still open; it never refuses.
+
+A returned `direction` is binding: act on it before doing more work. On `pause`, `stop`, or `escalate`, stop and surface the reply to David rather than deciding yourself. `direction -` or none means continue as you were. A model-judged `start` can take a few seconds; wait for it.
 
 ## Ask the reducer before you drift
 
-You propose stack transitions; the reducer owns the stack and global intent. `start`/`end` are proposals it records deterministically. If you end a parent with `--force` while descendants are open, the reducer ends them too and the CLI reports it on stderr. `flambe message "<update>"` sends your update plus the whole flame to the reducer, which answers with `assessment`, `direction`, and `reply`, and may make one change to the stack (a child under your activity, or a rename), listed in `actions_applied` and printed as `actions`. Treat that change as the new truth; do not undo it.
-
-Message the reducer when you are about to:
+`flambe message "<update>"` is your own channel: it sends your update plus the whole flame and answers with `assessment`, `direction`, `reply`, and at most one stack change. Message when you are about to:
 
 - widen scope beyond the activity you started
 - change approach after the plan stalled
 - end a root workstream
 - continue while suspecting the work has drifted from what David asked
+- answer a question the reducer asked
 
 Do not message for routine progress, and never instead of `start`/`end`. Defaults to your newest active activity; pass `--activity <id>` to target another. Needs a reachable server (not queued).
-
-A returned `direction` is binding: follow it before doing more work. On `pause`, `stop`, or `escalate`, stop and surface the reply to David rather than deciding yourself. `direction -` means continue as you were.
 
 ## What to record
 

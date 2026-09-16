@@ -1,37 +1,35 @@
-defmodule FlambeNext.ReducerAgent do
+defmodule FlambeNext.Reducer.Review do
   @moduledoc """
-  Reduces worker-agent messages into small, validated changes to the current flame
-  and a direction back to the worker.
+  Model review stage of the reducer. Reduces a worker message, or a lifecycle
+  proposal that a structural rule flagged, into a direction and at most one
+  validated stack change.
 
-  The database is the source of truth. The reducer itself is stateless.
-  Routine reductions use a low-cost primary model; ambiguous or off-track cases
-  are automatically reviewed by a stronger escalation model before actions apply.
+  The database is the source of truth. This stage is stateless. Routine cases use
+  a low-cost primary model; ambiguous or off-track cases are reviewed by a stronger
+  escalation model before actions apply.
   """
 
   import Ecto.Query
 
-  require Logger
-
-  alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
+  alias FlambeNext.Reducer.Model
   alias FlambeNext.Repo
   alias FlambeNext.Traces
   alias FlambeNext.Traces.Activity
-  alias FlambeNextWeb.EventStream
 
   @allowed_assessments ~w(on_track slightly_off_track off_track blocked uncertain)
   @allowed_directions ~w(continue narrow_scope investigate change_approach pause stop escalate)
   @escalating_assessments ~w(slightly_off_track off_track blocked uncertain)
   @escalating_directions ~w(narrow_scope investigate change_approach pause stop escalate)
 
-  def handle(%User{} = user, attrs) when is_map(attrs) do
+  def handle(%User{} = user, attrs, opts \\ []) when is_map(attrs) and is_list(opts) do
     with {:ok, trace_id} <- positive_id(attrs["trace_id"] || attrs[:trace_id]),
          {:ok, activity_id} <- positive_id(attrs["activity_id"] || attrs[:activity_id]),
          {:ok, message} <- required_string(attrs["message"] || attrs[:message]),
          agent_id <- optional_string(attrs["agent_id"] || attrs[:agent_id]),
          allow_changes? <- allow_stack_changes?(attrs),
          {:ok, context} <- build_context(user, trace_id, activity_id),
-         {:ok, decision, model_info} <- decide(context, agent_id, message, allow_changes?),
+         {:ok, decision, model_info} <- decide(context, agent_id, message, allow_changes?, opts),
          actions <- restrict_actions(decision["actions"] || [], allow_changes?),
          {:ok, applied} <- apply_actions(user, context, actions) do
       record_exchange(context, agent_id, message, decision, model_info)
@@ -52,200 +50,6 @@ defmodule FlambeNext.ReducerAgent do
   end
 
   @doc """
-  Places a freshly started root activity on the right thread with the right categories
-  (ADR-012), off the request path. Returns `:skipped` when there is nothing to decide or
-  no model is configured; the activity is already recorded either way.
-  """
-  def place_root_async(%User{} = user, %Activity{parent_id: nil} = activity) do
-    if configured?() do
-      Task.Supervisor.start_child(FlambeNext.TaskSupervisor, fn -> place_root(user, activity) end)
-      :started
-    else
-      :skipped
-    end
-  end
-
-  def place_root_async(_user, _activity), do: :skipped
-
-  @doc false
-  def place_root(%User{} = user, %Activity{parent_id: nil} = activity, opts \\ []) do
-    activity = Repo.preload(activity, [:categories, thread: :trace])
-    trace = Traces.get_user_trace!(user, activity.thread.trace_id)
-    threads = trace.threads
-    categories = Accounts.list_user_categories(user)
-
-    if length(threads) < 2 and categories == [] do
-      :skipped
-    else
-      context = placement_context(user, activity, threads, categories)
-      # Tests inject `:llm` to avoid the network; production uses the primary model.
-      llm = Keyword.get(opts, :llm, &llm/2)
-
-      case placement_decision(
-             llm,
-             primary_model(),
-             placement_prompt(context),
-             threads,
-             categories
-           ) do
-        {:ok, decision} ->
-          apply_placement(user, activity, decision, threads)
-
-        {:error, reason} ->
-          Logger.warning(
-            "reducer placement skipped for activity #{activity.id}: #{inspect(reason)}"
-          )
-
-          {:error, reason}
-      end
-    end
-  end
-
-  defp configured? do
-    case System.get_env("OPENAI_API_KEY") do
-      nil -> false
-      "" -> false
-      _ -> true
-    end
-  end
-
-  defp placement_context(user, activity, threads, categories) do
-    recent =
-      if activity.agent_id do
-        from(a in Activity,
-          join: thread in assoc(a, :thread),
-          where:
-            thread.trace_id == ^activity.thread.trace_id and a.agent_id == ^activity.agent_id and
-              a.id != ^activity.id,
-          order_by: [desc: a.id],
-          limit: 8,
-          preload: [:categories]
-        )
-        |> Repo.all()
-        |> Enum.map(
-          &%{
-            name: &1.name,
-            thread_id: &1.thread_id,
-            category_ids: Enum.map(&1.categories, fn c -> c.id end)
-          }
-        )
-      else
-        []
-      end
-
-    %{
-      activity: %{
-        id: activity.id,
-        name: activity.name,
-        description: activity.description,
-        agent_name: activity.agent_name,
-        agent_platform: agent_platform(user, activity.agent_id),
-        thread_id: activity.thread_id
-      },
-      threads: Enum.map(threads, &%{id: &1.id, name: &1.name}),
-      categories: Enum.map(categories, &%{id: &1.id, name: &1.name}),
-      recent_by_same_agent: recent,
-      user: user.username
-    }
-  end
-
-  defp agent_platform(_user, nil), do: nil
-
-  defp agent_platform(user, agent_id) do
-    case FlambeNext.Agents.get(user, agent_id) do
-      %{platform: platform} -> platform
-      nil -> nil
-    end
-  end
-
-  defp placement_prompt(context) do
-    """
-    You are Flambe's Reducer Agent. A worker just started a new top-level activity (a root)
-    and left the placement to you. Choose the thread (a workstream lane) and the categories
-    that fit it best.
-
-    Rules:
-    - thread_id MUST be one of the listed threads. Keep the current thread_id unless another
-      thread's name clearly matches the activity; the recent activities of the same agent
-      are a strong hint about which thread it works in.
-    - category_ids MUST be a subset of the listed categories. Pick zero or more; do not
-      force a category when none fits.
-    - Be conservative. When unsure, keep the current thread and pick no categories.
-
-    Return ONLY one JSON object with exactly these keys:
-    {"thread_id": INTEGER, "category_ids": ARRAY_OF_INTEGERS, "rationale": STRING}
-
-    Context:
-    #{Jason.encode!(context)}
-    """
-  end
-
-  defp placement_decision(llm, model, prompt, threads, categories) do
-    thread_ids = MapSet.new(threads, & &1.id)
-    category_ids = MapSet.new(categories, & &1.id)
-
-    with {:ok, raw} <- llm.(model, prompt),
-         {:ok, %{"thread_id" => thread_id, "category_ids" => ids, "rationale" => rationale}}
-         when is_integer(thread_id) and is_list(ids) and is_binary(rationale) <-
-           Jason.decode(raw),
-         true <- MapSet.member?(thread_ids, thread_id),
-         true <- Enum.all?(ids, &(is_integer(&1) and MapSet.member?(category_ids, &1))) do
-      {:ok,
-       %{thread_id: thread_id, category_ids: Enum.uniq(ids), rationale: rationale, model: model}}
-    else
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :invalid_model_response}
-    end
-  end
-
-  defp apply_placement(user, activity, decision, threads) do
-    from_thread = activity.thread
-    to_thread = Enum.find(threads, &(&1.id == decision.thread_id))
-    moved? = to_thread.id != from_thread.id
-
-    with {:ok, categories} <- Accounts.get_user_categories(user, decision.category_ids),
-         {:ok, activity} <-
-           if(moved?,
-             do: Traces.move_activity_subtree(user, activity, to_thread.id),
-             else: {:ok, activity}
-           ),
-         {:ok, activity} <-
-           Traces.update_activity(Repo.preload(activity, :categories), %{}, categories) do
-      trace = Repo.get!(FlambeNext.Traces.Trace, from_thread.trace_id)
-
-      summary =
-        [
-          "model=#{decision.model}",
-          moved? && "thread=#{from_thread.name}->#{to_thread.name}",
-          "categories=#{Enum.map_join(categories, ",", & &1.name)}",
-          "rationale=#{decision.rationale}"
-        ]
-        |> Enum.reject(&(&1 in [nil, false]))
-        |> Enum.join(" | ")
-
-      {:ok, decision_event} =
-        Traces.create_event(trace, activity, %{
-          "phase" => "reducer_decision",
-          "message" => "placed | " <> summary,
-          "timestamp_integer" => System.system_time(:millisecond)
-        })
-
-      # Re-broadcast the activity's existing events so the SPA picks up the new thread and
-      # categories; then the decision itself.
-      from(e in FlambeNext.Traces.Event,
-        where: e.activity_id == ^activity.id and e.id != ^decision_event.id
-      )
-      |> Repo.all()
-      |> Enum.each(&EventStream.broadcast_event(user, &1))
-
-      :ok = EventStream.broadcast_event(user, decision_event)
-
-      {:ok,
-       %{moved?: moved?, thread_id: to_thread.id, category_ids: Enum.map(categories, & &1.id)}}
-    end
-  end
-
-  @doc """
   Callers that pass `allow_stack_changes: false` want advice only. Their decisions keep
   `assessment`/`direction`/`reply`, but any stack mutation the model proposed is dropped.
   The default (ADR-011) is that the reducer is the single writer and applies them.
@@ -255,6 +59,118 @@ defmodule FlambeNext.ReducerAgent do
   def restrict_actions(actions, false) do
     Enum.filter(actions, &match?(%{"type" => "no_op"}, &1))
   end
+
+  @doc """
+  Synchronous review of a start that tripped a structural rule (ADR-014).
+  Returns a judgment. Callers record the start first and keep it if this fails.
+  """
+  def judge_structure(%User{} = _user, %Activity{} = activity, rule, opts \\ [])
+      when is_map(rule) and is_list(opts) do
+    if Model.available?(opts) do
+      prompt = structure_prompt(activity, rule)
+
+      with {:ok, raw} <- Model.resolve(opts).(Model.primary_model(), prompt),
+           {:ok, decoded} <- Jason.decode(raw),
+           {:ok, judgment} <- validate_structure(decoded, activity, rule) do
+        {:ok, judgment}
+      else
+        {:error, %Jason.DecodeError{}} -> {:error, :invalid_model_response}
+        {:error, reason} -> {:error, reason}
+        :error -> {:error, :invalid_model_response}
+      end
+    else
+      {:error, :reducer_not_configured}
+    end
+  end
+
+  defp structure_prompt(activity, rule) do
+    policy =
+      case rule.name do
+        "new_root_while_open" ->
+          """
+          This worker opened a new root while it already had an open leaf. Record it as a root
+          first. Staying a root is a valid answer. Re-parent only onto the open leaf or that
+          leaf's root. The root activity is the intent; do not invent a stored goal.
+          """
+
+        "name_unfit" ->
+          """
+          This child's name shares no words with its ancestors. A poor name is more likely
+          than a wrong parent. Prefer action type "ask". Rename only when the tree makes the
+          meaning obvious. Re-parent only when the name clearly duplicates another listed
+          activity. Otherwise keep it.
+          """
+      end
+
+    """
+    You are Flambe's Reducer Agent. The root activity is the intent. Judge one recorded start.
+    #{policy}
+    Return ONLY one JSON object:
+    {"assessment":"on_track|slightly_off_track|off_track|blocked|uncertain","direction":null|"continue"|"narrow_scope"|"investigate"|"change_approach"|"pause"|"stop"|"escalate","reply":null|STRING,"action":{"type":"keep"}|{"type":"reparent","parent_activity_id":INTEGER}|{"type":"rename","name":STRING}|{"type":"ask","question":STRING}}
+    Allowed parent ids: #{inspect(rule.candidate_ids)}
+    Rule: #{Jason.encode!(rule)}
+    Activity: #{Jason.encode!(%{id: activity.id, name: activity.name, parent_id: activity.parent_id, description: activity.description})}
+    """
+  end
+
+  defp validate_structure(decoded, activity, rule) when is_map(decoded) do
+    direction = decoded["direction"]
+    reply = decoded["reply"]
+    assessment = decoded["assessment"]
+    candidates = MapSet.new(rule.candidate_ids)
+
+    with true <- assessment in @allowed_assessments,
+         true <- is_nil(direction) or direction in @allowed_directions,
+         true <- is_nil(reply) or is_binary(reply),
+         {:ok, action, reply} <- structure_action(decoded["action"], activity, candidates, reply) do
+      {:ok, %{assessment: assessment, direction: direction, reply: reply, action: action}}
+    else
+      _ -> {:error, :invalid_model_response}
+    end
+  end
+
+  defp validate_structure(_, _, _), do: {:error, :invalid_model_response}
+
+  defp structure_action(%{"type" => "keep"}, _activity, _candidates, reply),
+    do: {:ok, %{type: "keep"}, reply}
+
+  defp structure_action(
+         %{"type" => "reparent", "parent_activity_id" => parent_id},
+         activity,
+         candidates,
+         reply
+       )
+       when is_integer(parent_id) and parent_id != activity.id do
+    if MapSet.member?(candidates, parent_id),
+      do:
+        {:ok, %{type: "reparent", parent_activity_id: parent_id, activity_id: activity.id}, reply},
+      else: :error
+  end
+
+  defp structure_action(%{"type" => "rename", "name" => name}, activity, _candidates, reply)
+       when is_binary(name) do
+    trimmed = String.trim(name)
+
+    if trimmed != "" and trimmed != activity.name,
+      do: {:ok, %{type: "rename", activity_id: activity.id, name: trimmed}, reply},
+      else: :error
+  end
+
+  defp structure_action(%{"type" => "ask", "question" => question}, activity, _candidates, reply)
+       when is_binary(question) do
+    trimmed = String.trim(question)
+
+    if trimmed == "" do
+      :error
+    else
+      {:ok, %{type: "ask", activity_id: activity.id}, reply_or(reply, trimmed)}
+    end
+  end
+
+  defp structure_action(_, _, _, _), do: :error
+
+  defp reply_or(reply, _fallback) when is_binary(reply) and reply != "", do: reply
+  defp reply_or(_reply, fallback), do: fallback
 
   defp allow_stack_changes?(attrs) do
     case Map.get(attrs, "allow_stack_changes", Map.get(attrs, :allow_stack_changes)) do
@@ -317,21 +233,23 @@ defmodule FlambeNext.ReducerAgent do
     }
   end
 
-  defp decide(context, agent_id, message, allow_changes?) do
+  defp decide(context, agent_id, message, allow_changes?, opts) do
     prompt = reducer_prompt(context, agent_id, message, allow_changes?)
-    primary_model = primary_model()
+    llm = Model.resolve(opts)
+    primary_model = Model.primary_model()
 
-    case model_decision(primary_model, prompt, context) do
+    case model_decision(llm, primary_model, prompt, context) do
       {:ok, primary_decision} ->
-        maybe_escalate(primary_decision, prompt, context, primary_model)
+        maybe_escalate(llm, primary_decision, prompt, context, primary_model)
 
       {:error, primary_error} ->
         # Invalid or unavailable cheap-model output should fail safe by asking the
         # stronger model rather than dropping a worker message or applying guesses.
-        escalation_model = escalation_model()
+        escalation_model = Model.escalation_model()
 
         with {:ok, final_decision} <-
                model_decision(
+                 llm,
                  escalation_model,
                  escalation_prompt(prompt, nil, primary_error),
                  context
@@ -347,12 +265,13 @@ defmodule FlambeNext.ReducerAgent do
     end
   end
 
-  defp maybe_escalate(primary_decision, prompt, context, primary_model) do
+  defp maybe_escalate(llm, primary_decision, prompt, context, primary_model) do
     if escalation_needed?(primary_decision) do
-      escalation_model = escalation_model()
+      escalation_model = Model.escalation_model()
 
       with {:ok, final_decision} <-
              model_decision(
+               llm,
                escalation_model,
                escalation_prompt(prompt, primary_decision, nil),
                context
@@ -473,77 +392,14 @@ defmodule FlambeNext.ReducerAgent do
     """
   end
 
-  defp model_decision(model, prompt, context) do
-    with {:ok, raw} <- llm(model, prompt),
+  defp model_decision(llm, model, prompt, context) do
+    with {:ok, raw} <- llm.(model, prompt),
          {:ok, decoded} <- Jason.decode(raw),
          :ok <- validate_decision(decoded, context) do
       {:ok, decoded}
     else
       {:error, %Jason.DecodeError{}} -> {:error, :invalid_model_response}
       {:error, reason} -> {:error, reason}
-    end
-  end
-
-  defp llm(model, prompt) do
-    case System.get_env("OPENAI_API_KEY") do
-      nil -> {:error, :reducer_not_configured}
-      "" -> {:error, :reducer_not_configured}
-      api_key -> call_openai(api_key, model, prompt)
-    end
-  end
-
-  defp primary_model do
-    System.get_env("FLAMBE_REDUCER_PRIMARY_MODEL") ||
-      System.get_env("FLAMBE_REDUCER_MODEL") ||
-      "gpt-5.6-luna"
-  end
-
-  defp escalation_model do
-    System.get_env("FLAMBE_REDUCER_ESCALATION_MODEL") || "gpt-5.6-terra"
-  end
-
-  defp call_openai(api_key, model, prompt) do
-    body =
-      Jason.encode!(%{
-        model: model,
-        input: prompt,
-        reasoning: %{effort: "low"},
-        text: %{format: %{type: "json_object"}}
-      })
-
-    request =
-      {~c"https://api.openai.com/v1/responses",
-       [
-         {~c"authorization", ~c"Bearer #{api_key}"},
-         {~c"content-type", ~c"application/json"}
-       ], ~c"application/json", body}
-
-    case :httpc.request(:post, request, [timeout: 60_000], body_format: :binary) do
-      {:ok, {{_http, status, _reason}, _headers, response_body}} when status in 200..299 ->
-        extract_output_text(response_body)
-
-      {:ok, {{_http, status, _reason}, _headers, response_body}} ->
-        {:error, {:model_http_error, status, response_body}}
-
-      {:error, reason} ->
-        {:error, {:model_transport_error, reason}}
-    end
-  end
-
-  defp extract_output_text(response_body) do
-    with {:ok, response} <- Jason.decode(response_body),
-         output when is_list(output) <- response["output"],
-         text when is_binary(text) <-
-           Enum.find_value(output, fn item ->
-             item["content"]
-             |> List.wrap()
-             |> Enum.find_value(fn content ->
-               if content["type"] == "output_text", do: content["text"]
-             end)
-           end) do
-      {:ok, text}
-    else
-      _ -> {:error, :missing_model_output}
     end
   end
 

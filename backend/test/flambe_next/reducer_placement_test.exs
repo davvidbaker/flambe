@@ -3,7 +3,8 @@ defmodule FlambeNext.ReducerPlacementTest do
 
   @moduletag :capture_log
 
-  alias FlambeNext.{Accounts, ReducerAgent, Traces}
+  alias FlambeNext.{Accounts, Traces}
+  alias FlambeNext.Reducer.Placement
 
   setup do
     key = System.get_env("OPENAI_API_KEY")
@@ -30,7 +31,7 @@ defmodule FlambeNext.ReducerPlacementTest do
   end
 
   test "does nothing without a model key", %{user: user, root: root} do
-    assert ReducerAgent.place_root_async(user, root) == :skipped
+    assert Placement.place_root_async(user, root) == :skipped
   end
 
   test "does nothing for non-roots", %{user: user, trace: trace, thread: thread, root: root} do
@@ -42,14 +43,14 @@ defmodule FlambeNext.ReducerPlacementTest do
         "timestamp_integer" => 1_723_465_600_001
       })
 
-    assert ReducerAgent.place_root_async(user, child) == :skipped
+    assert Placement.place_root_async(user, child) == :skipped
   end
 
   test "skips the model when there is only one thread and no categories", %{
     user: user,
     root: root
   } do
-    assert ReducerAgent.place_root(user, root) == :skipped
+    assert Placement.place_root(user, root) == :skipped
   end
 
   describe "with a choice to make" do
@@ -87,7 +88,7 @@ defmodule FlambeNext.ReducerPlacementTest do
       end
 
       assert {:ok, %{moved?: true, thread_id: side_id, category_ids: [backend_id]}} =
-               ReducerAgent.place_root(ctx.user, ctx.root, llm: answer)
+               Placement.place_root(ctx.user, ctx.root, llm: answer)
 
       assert side_id == ctx.side.id and backend_id == ctx.backend.id
 
@@ -121,7 +122,7 @@ defmodule FlambeNext.ReducerPlacementTest do
       end
 
       assert {:ok, %{moved?: false, category_ids: []}} =
-               ReducerAgent.place_root(ctx.user, ctx.root, llm: answer)
+               Placement.place_root(ctx.user, ctx.root, llm: answer)
 
       assert Traces.get_user_activity!(ctx.user, ctx.root.id).thread_id == ctx.thread.id
     end
@@ -132,7 +133,7 @@ defmodule FlambeNext.ReducerPlacementTest do
       end
 
       assert {:error, :invalid_model_response} =
-               ReducerAgent.place_root(ctx.user, ctx.root, llm: answer)
+               Placement.place_root(ctx.user, ctx.root, llm: answer)
 
       assert Traces.get_user_activity!(ctx.user, ctx.root.id).thread_id == ctx.thread.id
       {_trace, events} = Traces.get_user_trace_with_events!(ctx.user, ctx.trace.id)
@@ -141,7 +142,7 @@ defmodule FlambeNext.ReducerPlacementTest do
 
     test "a failed model call changes nothing", ctx do
       assert {:error, :boom} =
-               ReducerAgent.place_root(ctx.user, ctx.root, llm: fn _, _ -> {:error, :boom} end)
+               Placement.place_root(ctx.user, ctx.root, llm: fn _, _ -> {:error, :boom} end)
     end
   end
 end
