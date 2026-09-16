@@ -1,7 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import Modal from 'react-modal';
-import { BrowserRouter } from 'react-router-dom';
 
 import { ShareApp } from './ShareApp';
 
@@ -11,8 +10,6 @@ Modal.setAppElement(root);
 
 createRoot(root).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <ShareApp />
-    </BrowserRouter>
+    <ShareApp />
   </React.StrictMode>,
 );
