@@ -121,11 +121,42 @@ SSE connection to `/api/agent-status/stream`.
 - macOS: [`macos/FlambeMenuBar`](macos/FlambeMenuBar/README.md)
 - Windows: [`windows/FlambeTaskbar`](windows/FlambeTaskbar/README.md)
 
-## Coding-agent CLI
+## Coding-agent interfaces
 
 Flambe can accept user-scoped bearer tokens so coding agents can stream work
 into an open trace without knowing your account password. Raw tokens are shown
 once; the database stores only a SHA-256 hash.
+
+### Hosted agents: MCP
+
+The Phoenix backend exposes an authenticated MCP endpoint at `/mcp`. Configure
+your agent's MCP client with the hosted URL (for example,
+`https://your-app.fly.dev/mcp`) and `Authorization: Bearer <API_TOKEN>` using
+that client's secret configuration. The endpoint provides `flambe_status`,
+`flambe_start`, `flambe_end`, `flambe_suspend`, `flambe_resume`, and
+`flambe_message`.
+
+Give each worker its trace ID and a distinct `agent_id`; `agent_name` supplies
+the display name. Pass `trace_id` with each call. `flambe_start` infers a parent
+within that agent's running work in the selected thread when `parent_id` is
+omitted; pass `parent_id: null` for a root, or an ID to choose a parent explicitly.
+
+Command results include current `state`, advisory `availableActions` on threads
+and activities, `actions_applied`, `closed_descendants`, and `direction`.
+Available actions describe sensible next operations and any requirements;
+they are distinct from the reducer's guidance about what work to pursue.
+Pass `thread_id` to `flambe_status` to inspect a particular thread.
+Routine lifecycle operations require no model configuration. Free-text
+`flambe_message` needs the backend's `OPENAI_API_KEY`.
+
+Agents should report meaningful changes in work, maintain a nested activity
+stack, and inspect returned state and direction before continuing. MCP exposes
+the tools; these reporting habits still need to be part of the agent's instructions.
+
+MCP and the CLI's hosted command endpoint call the same backend service. Browser
+editing continues to use REST. See [ADR-012](docs/ADR-012-shared-agent-commands-and-mcp.md).
+
+### CLI: shell, local, and offline use
 
 Create a token from Settings → API tokens in the logged-in app, or from
 `backend` after running migrations (local Mix only):
@@ -187,7 +218,8 @@ flambe end "$ACTIVITY_ID" "Confirmed bearer-token path"
 
 Use `flambe threads` to list threads; the `default` row is the thread selected
 when `start` has no `--thread ID`. Use `--thread ID` to target another thread.
-By default, `start` makes the newest active activity in that thread its parent,
+On a command-capable backend, `start` makes this agent's newest active activity
+in that thread its parent. Older/local servers retain thread-wide inference,
 so an agent records a nested work tree. Use `--parent ID` to choose a parent
 explicitly, or `--root` to deliberately begin a top-level workstream.
 Use `flambe categories` to list category IDs, then repeat `--category ID` to
@@ -218,8 +250,9 @@ An agent can also ask the Reducer Agent whether it is still on track:
 flambe message "Auth fix needs the session module refactored too; widening scope"
 ```
 
-This posts the update and the current flame to `POST /mcp` (tool
-`flambe_message`) and prints `assessment`, `direction`, and `reply`. The reducer
+This sends the update to the backend, which loads the current flame, and prints
+`assessment`, `direction`, and `reply`. On command-capable servers the CLI uses
+`POST /api/agent-commands`; older servers use `POST /mcp` (`flambe_message`). The reducer
 is the single writer for the stack: it may apply one change (a child activity or
 a rename), printed as `actions`. A returned `direction` is meant to be followed.
 The server needs `OPENAI_API_KEY` for `message`; lifecycle events (`start`,
@@ -228,6 +261,12 @@ an agent ends a parent with `--force` while descendants are still open, the
 reducer ends those too and the CLI reports it on stderr. See
 [ADR-011](docs/ADR-011-reducer-owns-the-stack.md) and
 [ADR-010](docs/ADR-010-reducer-advises-worker-owned-stack.md).
+
+The CLI discovers `/api/agent-commands` support once per client. Supported
+servers own stack decisions; a 404, 405, or legacy HTML fallback discovery
+response selects the local/older-server path. Other failures do not trigger a second write
+path. Queued lifecycle operations retain their original timestamps and replay
+through the selected interface.
 
 Generic overlays (carbon intensity, moods, and similar) are observations, not
 activities. Record them with:
