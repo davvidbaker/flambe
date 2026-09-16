@@ -2,6 +2,11 @@ import { FlambeQueue } from './queue.mjs';
 import { defaultAgentNamesPath, rememberAgentName, rememberedAgentName } from './agentNames.mjs';
 
 const REQUIRED_AGENT_COMMANDS = ['start', 'end', 'suspend', 'resume', 'status', 'message'];
+const ENDED_PHASES = new Set(['E', 'J', 'V']);
+
+function endedPhase(phase) {
+  return ENDED_PHASES.has(phase);
+}
 
 export function hostConfigFromEnv(env = process.env) {
   const required = ['FLAMBE_URL', 'FLAMBE_API_TOKEN'];
@@ -489,7 +494,8 @@ export class FlambeClient {
   }
 
   async end({ activityId, message, force = false }) {
-    return this.lifecycleEvent({ activityId, message, phase: 'E', queueType: 'end', force, guardChildren: !force });
+    const phase = message ? 'V' : 'E';
+    return this.lifecycleEvent({ activityId, message, phase, queueType: 'end', force, guardChildren: !force });
   }
 
   /**
@@ -540,6 +546,7 @@ export class FlambeClient {
       activityId,
       message,
       timestamp,
+      phase,
       ...(queueType === 'end' ? { force } : {}),
     };
 
@@ -553,7 +560,7 @@ export class FlambeClient {
         await this.assertNoOpenChildren(id);
       }
       const eventId = await this.postLifecycleEvent({ ...input, activityId: id, phase, force });
-      if (phase === 'E') await this.queue.removeAlias(activityId);
+      if (endedPhase(phase)) await this.queue.removeAlias(activityId);
       return eventId;
     } catch (error) {
       if (!error?.retryable) throw error;
@@ -564,13 +571,13 @@ export class FlambeClient {
 
   async postLifecycleEvent({ activityId, message, timestamp, phase, force = false }) {
     if (await this.supportsAgentCommands()) {
-      const command = { E: 'end', S: 'suspend', R: 'resume' }[phase];
+      const command = { E: 'end', J: 'end', V: 'end', S: 'suspend', R: 'resume' }[phase];
       const result = await this.agentCommand(command, {
         ...this.commandIdentity(),
         activity_id: Number(activityId),
         ...(message ? { message } : {}),
         timestamp,
-        ...(command === 'end' ? { force } : {}),
+        ...(command === 'end' ? { force, ...(phase ? { phase } : {}) } : {}),
       });
       this.reportClosedDescendants(Number(activityId), result.closed_descendants ?? []);
       this.reportCommandResult(result);
@@ -629,7 +636,10 @@ export class FlambeClient {
   async flushQueue() {
     return this.queue.flush({
       start: input => this.postStart(input),
-      end: input => this.postLifecycleEvent({ ...input, phase: 'E' }),
+      end: input => this.postLifecycleEvent({
+        ...input,
+        phase: input.phase ?? (input.message ? 'V' : 'E'),
+      }),
       suspend: input => this.postLifecycleEvent({ ...input, phase: 'S' }),
       resume: input => this.postLifecycleEvent({ ...input, phase: 'R' }),
       observe: input => this.postObservation(input),

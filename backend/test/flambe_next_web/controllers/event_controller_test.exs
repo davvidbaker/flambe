@@ -59,7 +59,7 @@ defmodule FlambeNextWeb.EventControllerTest do
     assert %{
              "data" => %{
                "id" => root_end_id,
-               "phase" => "E",
+               "phase" => "V",
                "reducer" => %{
                  "closed_descendants" => [
                    %{
@@ -80,7 +80,7 @@ defmodule FlambeNextWeb.EventControllerTest do
     assert grandchild_end_id < child_end_id and child_end_id < root_end_id
 
     latest = latest_phases(ctx.user, ctx.trace.id)
-    assert latest[ctx.root.id] == {"E", "Shipped"}
+    assert latest[ctx.root.id] == {"V", "Shipped"}
 
     assert latest[ctx.child.id] ==
              {"E", "Ended by reducer: parent activity #{ctx.root.id} (Ship feature) ended"}
@@ -191,8 +191,32 @@ defmodule FlambeNextWeb.EventControllerTest do
     child_id = ctx.child.id
     expected = "Ended by reducer: parent activity #{child_id} (Fix bug) ended"
 
-    assert {"E", "Done via commands"} = latest_phases(ctx.user, ctx.trace.id)[child_id]
+    assert {"V", "Done via commands"} = latest_phases(ctx.user, ctx.trace.id)[child_id]
     assert {"E", ^expected} = latest_phases(ctx.user, ctx.trace.id)[grandchild_id]
+  end
+
+  test "an agent resolving a parent still closes open descendants", ctx do
+    conn =
+      ctx.conn
+      |> put_req_header("authorization", "Bearer #{ctx.raw_token}")
+      |> post(~p"/api/events", %{
+        "trace_id" => ctx.trace.id,
+        "activity_id" => ctx.child.id,
+        "event" => %{
+          "phase" => "V",
+          "timestamp_integer" => @t0 + 11_000,
+          "message" => "Bug fixed"
+        }
+      })
+
+    grandchild_id = ctx.grandchild.id
+
+    assert %{"data" => %{"phase" => "V", "reducer" => %{"closed_descendants" => closed}}} =
+             json_response(conn, 201)
+
+    assert [%{"activity_id" => ^grandchild_id}] = closed
+    assert {"V", "Bug fixed"} = latest_phases(ctx.user, ctx.trace.id)[ctx.child.id]
+    assert {"E", "Ended by reducer: " <> _} = latest_phases(ctx.user, ctx.trace.id)[grandchild_id]
   end
 
   defp start_activity(trace, thread, parent, name, timestamp) do
