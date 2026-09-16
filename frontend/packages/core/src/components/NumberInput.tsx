@@ -67,13 +67,11 @@ class NumberInput extends Component<Props, State> {
     const target = e.target;
 
     if (html.includes('<br>')) {
-      console.log('we shuold enter');
       this.input.innerHTML = this.state.html;
 
       return;
     }
     if (onlyNumbersRegex.test(html)) {
-      console.log(`🔥  only numbers`);
       this.setState({ html }, () => {
         target.selectionStart = target.selectionEnd = html.length;
       });

@@ -268,7 +268,6 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
       };
 
     case PROCESS_TIMELINE_TRACE:
-      console.log(`action.threads`, action.threads);
       const {
         activities,
         blocks,
@@ -280,8 +279,6 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         lastThread_id,
         events,
       } = processTrace(action.events, action.threads);
-
-      console.log('threads', threads);
 
       return {
         ...state,
@@ -404,7 +401,6 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
     case `${TODO_BEGIN}_SUCCEEDED`:
     case `${ACTIVITY_CREATE_B}_SUCCEEDED`:
     case `${ACTIVITY_CREATE_Q}_SUCCEEDED`:
-      console.log(`action.data`, action.data);
       return {
         ...state,
         blocks: state.blocks.map((block: any) =>

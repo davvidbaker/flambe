@@ -19,7 +19,6 @@ function isEndable(
   threadLevels: Record<string, ThreadLevelLike>,
 ): boolean {
   if (!activity.thread_id) {
-    console.warn('activity missing thread!', activity);
     return false;
   }
 
