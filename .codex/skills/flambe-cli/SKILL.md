@@ -51,7 +51,7 @@ A returned `direction` is binding: act on it before doing more work. On `pause`,
 
 ## Ask the reducer before you drift
 
-`flambe message "<update>"` is your own channel: it sends your update plus the whole flame and answers with `assessment`, `direction`, `reply`, and at most one stack change. Message when you are about to:
+`flambe message "<update>"` is your own channel: it sends your update plus the live flame (open and suspended work, the path to the current activity, and ended work from the last 21 days) and answers with `assessment`, `direction`, `reply`, and at most one stack change. Message when you are about to:
 
 - widen scope beyond the activity you started
 - change approach after the plan stalled
