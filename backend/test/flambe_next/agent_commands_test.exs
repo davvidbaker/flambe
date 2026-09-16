@@ -195,6 +195,53 @@ defmodule FlambeNext.AgentCommandsTest do
     assert_receive %Phoenix.Socket.Broadcast{event: "timeline_event"}
   end
 
+  test "end with a message records a resolution; without one it is a plain end", context do
+    %{user: user, trace: trace, thread: thread} = context
+
+    {:ok, resolved} = start(user, trace, thread, "Resolved work", 1000)
+
+    assert {:ok, _} =
+             AgentCommands.execute(user, "end", %{
+               "trace_id" => trace.id,
+               "activity_id" => resolved.activity_id,
+               "message" => "Shipped the fix",
+               "timestamp" => 2000
+             })
+
+    {:ok, plain} = start(user, trace, thread, "Plain end", 3000)
+
+    assert {:ok, _} =
+             AgentCommands.execute(user, "end", %{
+               "trace_id" => trace.id,
+               "activity_id" => plain.activity_id,
+               "timestamp" => 4000
+             })
+
+    {:ok, rejected} = start(user, trace, thread, "Rejected work", 5000)
+
+    assert {:ok, _} =
+             AgentCommands.execute(user, "end", %{
+               "trace_id" => trace.id,
+               "activity_id" => rejected.activity_id,
+               "phase" => "J",
+               "message" => "Wrong approach",
+               "timestamp" => 6000
+             })
+
+    {_trace, events} = Traces.get_user_trace_with_events!(user, trace.id)
+
+    latest =
+      events
+      |> Enum.sort_by(&{DateTime.to_unix(&1.timestamp, :microsecond), &1.id})
+      |> Enum.reduce(%{}, fn event, acc ->
+        Map.put(acc, event.activity_id, {event.phase, event.message})
+      end)
+
+    assert latest[resolved.activity_id] == {"V", "Shipped the fix"}
+    assert latest[plain.activity_id] == {"E", nil}
+    assert latest[rejected.activity_id] == {"J", "Wrong approach"}
+  end
+
   test "all referenced ids are tenant scoped and message needs reducer configuration", context do
     %{user: owner, trace: trace, thread: thread} = context
     {:ok, activity} = start(owner, trace, thread, "Private", 1000)

@@ -117,6 +117,12 @@ defmodule FlambeNextWeb.EventController do
         _ -> command_attrs
       end
 
+    command_attrs =
+      case phase(attrs) do
+        phase when is_binary(phase) -> Map.put(command_attrs, "phase", phase)
+        _ -> command_attrs
+      end
+
     case conn.assigns[:agent] do
       %{id: agent_id, name: name} = agent ->
         command_attrs
@@ -138,7 +144,7 @@ defmodule FlambeNextWeb.EventController do
     end)
   end
 
-  defp lifecycle_command("E"), do: "end"
+  defp lifecycle_command(phase) when phase in ~w(E J V), do: "end"
   defp lifecycle_command("S"), do: "suspend"
   defp lifecycle_command("R"), do: "resume"
   defp lifecycle_command(_phase), do: nil
