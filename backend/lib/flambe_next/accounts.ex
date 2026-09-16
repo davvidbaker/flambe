@@ -107,6 +107,8 @@ defmodule FlambeNext.Accounts do
     |> Repo.one!()
   end
 
+  def get_user_categories(%User{}, []), do: {:ok, []}
+
   def get_user_categories(%User{} = user, ids) when is_list(ids) do
     categories =
       from(category in Category, where: category.id in ^ids and category.user_id == ^user.id)

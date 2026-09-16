@@ -19,6 +19,17 @@ defmodule FlambeNextWeb do
 
   def static_paths, do: ~w(assets fonts images favicon.ico favicon.png favicon_dev.png robots.txt)
 
+  def html do
+    quote do
+      use Phoenix.Component
+
+      import Phoenix.Controller,
+        only: [get_csrf_token: 0, view_module: 1, view_template: 1]
+
+      unquote(verified_routes())
+    end
+  end
+
   def router do
     quote do
       use Phoenix.Router, helpers: false
@@ -37,7 +48,9 @@ defmodule FlambeNextWeb do
 
   def controller do
     quote do
-      use Phoenix.Controller, formats: [:html, :json]
+      use Phoenix.Controller,
+        formats: [:html, :json],
+        layouts: [html: {FlambeNextWeb.Layouts, :root}]
 
       import Plug.Conn
 

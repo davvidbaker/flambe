@@ -180,6 +180,8 @@ defmodule FlambeNext.Traces do
     |> Repo.one!()
   end
 
+  def get_user_activities(%User{}, []), do: {:ok, []}
+
   def get_user_activities(%User{} = user, ids) when is_list(ids) do
     activities =
       from(activity in Activity,

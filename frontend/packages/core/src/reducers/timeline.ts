@@ -668,10 +668,8 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
           name: key === String(action.id) && action.updates.name
             ? action.updates.name
             : current.name,
-          categories: key === String(action.id) && action.updates.category_ids
-            ? action.updates.category_ids.length > 0
-              ? [...current.categories, ...action.updates.category_ids]
-              : current.categories
+          categories: key === String(action.id) && Array.isArray(action.updates.category_ids)
+            ? action.updates.category_ids
             : current.categories,
           startTime: key === String(action.id) && action.updates.startTime
             ? action.updates.startTime
@@ -702,20 +700,24 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
       };
     }
     /** 😃 optimism */
-    case CATEGORY_CREATE:
+    case CATEGORY_CREATE: {
+      if (action.activity_id == null) return state;
+      const activity = state.activities[action.activity_id];
+      if (!activity) return state;
       return {
         ...state,
         activities: {
           ...state.activities,
           [action.activity_id]: {
-            ...state.activities[action.activity_id],
+            ...activity,
             categories: [
-              ...state.activities[action.activity_id].categories,
+              ...activity.categories,
               'optimisticCategory',
             ],
           },
         },
       };
+    }
 
     case `${CATEGORY_CREATE}_SUCCEEDED`:
       return {
