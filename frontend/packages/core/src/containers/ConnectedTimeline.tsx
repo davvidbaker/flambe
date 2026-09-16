@@ -25,6 +25,7 @@ export default connect(
       blocks: timeline.blocks,
       categories: getUser(state).categories,
       mantras: getUser(state).mantras,
+      observations: getUser(state).observations,
       minTime: timeline.minTime,
       maxTime: timeline.maxTime,
       modifiers: state.modifiers,
