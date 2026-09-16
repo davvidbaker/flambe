@@ -109,6 +109,7 @@ const connector = connect((state: RootState) => ({
   activityMuteOpacity: state.settings.activityMuteOpacity,
   uniformBlockHeight: state.settings.uniformBlockHeight,
   darkerAsWeGoDown: state.settings.darkerAsWeGoDown,
+  rightAlignTimelineText: state.settings.rightAlignTimelineText,
   reactiveThreadHeight: state.settings.reactiveThreadHeight,
   showActivityIds: state.settings.showActivityIds,
   showAttentionFlows: state.settings.attentionFlows,
@@ -1343,11 +1344,14 @@ export class FlameChart extends Component<Props, State> {
     } else {
       this.ctx.fillStyle = colors.text;
     }
-    this.ctx.fillText(
-      text,
-      blockX + FlameChart.textPadding.x,
-      blockY + Math.min(FlameChart.textPadding.y, blockHeight - 4),
-    );
+    const textY = blockY + Math.min(FlameChart.textPadding.y, blockHeight - 4);
+    if (this.props.rightAlignTimelineText) {
+      this.ctx.textAlign = 'right';
+      this.ctx.fillText(text, blockX + blockWidth - FlameChart.textPadding.x, textY);
+      this.ctx.textAlign = 'left';
+    } else {
+      this.ctx.fillText(text, blockX + FlameChart.textPadding.x, textY);
+    }
 
     // visually denote a resumed or resurrected activity
     if (block.beginning === 'R' || block.beginning === 'X') {

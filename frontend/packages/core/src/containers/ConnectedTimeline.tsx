@@ -39,6 +39,7 @@ export default connect(
       twelveHourClock: state.settings.twelveHourClock,
       attentionDrivenThreadOrder: state.settings.attentionDrivenThreadOrder,
       darkerAsWeGoDown: state.settings.darkerAsWeGoDown,
+      rightAlignTimelineText: state.settings.rightAlignTimelineText,
       tabs: getUser(state).tabs,
 
       // these are only used for overrides.

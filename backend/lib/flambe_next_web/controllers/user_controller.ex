@@ -18,4 +18,22 @@ defmodule FlambeNextWeb.UserController do
       observations: Accounts.list_user_observations(user)
     )
   end
+
+  def update(conn, %{"id" => id, "user" => attrs}) do
+    user = Accounts.get_current_user!(conn.assigns.current_user, id)
+
+    case Accounts.update_user_settings(user, attrs) do
+      {:ok, user} ->
+        json(conn, %{data: %{settings: user.settings}})
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: errors(changeset)})
+    end
+  end
+
+  defp errors(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {message, _options} -> message end)
+  end
 end
