@@ -19,6 +19,11 @@ async function withServer(fn) {
   });
   const origin = `http://127.0.0.1:${port}`;
   const { rawToken, traceId } = store.credentials();
+  const categories = store.listCategories(1);
+  assert.deepEqual(
+    categories.map(category => category.name),
+    ['coding', 'investigation', 'review', 'operations', 'failure'],
+  );
 
   try {
     await fn({ origin, rawToken, traceId, store, dbPath, directory });
@@ -75,6 +80,59 @@ test('local server binds loopback, seeds a token, and round-trips CLI activity e
   });
 });
 
+test('local server names nameless agents and applies the deterministic start rules', async () => {
+  await withServer(async ({ origin, rawToken, traceId }) => {
+    const headersFor = agentId => ({
+      authorization: `Bearer ${rawToken}`,
+      'content-type': 'application/json',
+      'x-flambe-agent-id': agentId,
+      'x-flambe-agent-platform': 'Cursor Cloud',
+    });
+    const start = (agentId, body) => fetch(`${origin}/api/activities`, {
+      method: 'POST',
+      headers: headersFor(agentId),
+      body: JSON.stringify({ trace_id: traceId, event: { timestamp_integer: 1_788_360_000_123, phase: 'B' }, ...body }),
+    });
+
+    const me = await fetch(`${origin}/api/agents/me`, { headers: headersFor('cursor:a') });
+    assert.equal(me.status, 200);
+    const identity = await me.json();
+    assert.equal(identity.data.name_assigned, true);
+    assert.equal(identity.data.platform, 'Cursor Cloud');
+    assert.equal(me.headers.get('x-flambe-agent-name'), identity.data.name);
+    assert.equal(me.headers.get('x-flambe-agent-name-assigned'), 'true');
+
+    const again = await fetch(`${origin}/api/agents/me`, { headers: headersFor('cursor:a') });
+    assert.equal((await again.json()).data.name_assigned, false);
+    assert.equal(again.headers.get('x-flambe-agent-name-assigned'), null);
+
+    const other = await fetch(`${origin}/api/agents/me`, { headers: headersFor('cursor:b') }).then(r => r.json());
+    assert.notEqual(other.data.name, identity.data.name);
+
+    // Roots without a thread go to the default thread; inference is per agent.
+    const rootA = await start('cursor:a', { activity: { name: 'A root' } }).then(r => r.json());
+    assert.equal(rootA.data.activity.parent_id, null);
+    assert.equal(rootA.data.activity.thread_id, 1);
+    assert.deepEqual(rootA.data.reducer, { parent_source: 'root', thread_source: 'default', categories_source: 'none' });
+
+    const rootB = await start('cursor:b', { activity: { name: 'B root' } }).then(r => r.json());
+    assert.equal(rootB.data.activity.parent_id, null);
+
+    const childA = await start('cursor:a', { thread_id: 999, activity: { name: 'A child' } }).then(r => r.json());
+    assert.equal(childA.data.activity.parent_id, rootA.data.activity.id);
+    assert.equal(childA.data.activity.thread_id, 1);
+    assert.equal(childA.data.reducer.parent_source, 'inferred');
+    assert.equal(childA.data.reducer.thread_source, 'parent');
+
+    const explicitRoot = await start('cursor:a', { activity: { name: 'A new root', parent_id: null } }).then(r => r.json());
+    assert.equal(explicitRoot.data.activity.parent_id, null);
+
+    const trace = await fetch(`${origin}/api/traces/${traceId}`, { headers: headersFor('cursor:a') }).then(r => r.json());
+    const names = new Set(trace.data.events.map(event => event.activity.agent_name));
+    assert.deepEqual([...names].sort(), [identity.data.name, other.data.name].sort());
+  });
+});
+
 test('login on the local server sets a session cookie and serves the user dashboard', async () => {
   await withServer(async ({ origin }) => {
     const login = await fetch(`${origin}/auth/identity/callback`, {
@@ -107,8 +165,7 @@ test('export writes a remappable bundle without tokens', async () => {
       threadId: 1,
       activity: { name: 'Company work' },
       event: { timestamp_integer: 1000, phase: 'B' },
-      agentId: 'agent-1',
-      agentName: 'Grok',
+      agent: { agent_id: 'agent-1', name: 'Grok' },
     });
     const out = join(directory, 'out.json');
     const chunks = [];

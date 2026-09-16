@@ -1,4 +1,5 @@
 import { FlambeQueue } from './queue.mjs';
+import { defaultAgentNamesPath, rememberAgentName, rememberedAgentName } from './agentNames.mjs';
 
 const REQUIRED_AGENT_COMMANDS = ['start', 'end', 'suspend', 'resume', 'status', 'message'];
 
@@ -29,11 +30,14 @@ export function configFromEnv(env = process.env) {
     throw new Error('FLAMBE_TRACE_ID must be a positive integer');
   }
 
+  const defaultThread = env.FLAMBE_THREAD?.trim() || undefined;
+
   return {
     baseUrl: env.FLAMBE_URL.replace(/\/+$/, ''),
     ...agentIdentityFromEnv(env),
     token: env.FLAMBE_API_TOKEN,
     traceId,
+    ...(defaultThread ? { defaultThread } : {}),
   };
 }
 
@@ -46,12 +50,25 @@ export function agentIdentityFromEnv(env = process.env) {
       ? `cursor:${env.CURSOR_CONVERSATION_ID.trim()}`
       : undefined)
     || claudeAgentId(env);
-  const agentName = env.FLAMBE_AGENT_NAME?.trim() || undefined;
+  const agentNamesPath = env.FLAMBE_AGENT_NAMES_PATH?.trim() || defaultAgentNamesPath();
+  // An explicit name is an override; otherwise reuse whatever the reducer named this agent.
+  const agentName = env.FLAMBE_AGENT_NAME?.trim() || rememberedAgentName(agentId, agentNamesPath);
+  // The product the agent runs on ("Cursor Cloud", "Codex"); many agents share one.
+  const agentPlatform = env.FLAMBE_AGENT_PLATFORM?.trim() || platformFromAgentId(agentId);
 
   return {
-    ...(agentId ? { agentId } : {}),
+    ...(agentId ? { agentId, agentNamesPath } : {}),
     ...(agentName ? { agentName } : {}),
+    ...(agentPlatform ? { agentPlatform } : {}),
   };
+}
+
+function platformFromAgentId(agentId) {
+  if (!agentId) return undefined;
+  if (agentId.startsWith('codex:')) return 'Codex';
+  if (agentId.startsWith('cursor:')) return 'Cursor';
+  if (agentId.startsWith('claude:')) return 'Claude Code';
+  return undefined;
 }
 
 function firstPresent(...values) {
@@ -74,6 +91,8 @@ function claudeAgentId(env) {
   return sessionId ? `claude:${sessionId}` : undefined;
 }
 
+const LIFECYCLE_PHASES = new Set(['B', 'E', 'S', 'R']);
+
 function errorDetail(payload) {
   if (!payload) return null;
   if (typeof payload.error === 'string') return payload.error;
@@ -93,12 +112,15 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, agentId, agentName, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
+  constructor({ baseUrl, token, traceId, threadId, defaultThread, agentId, agentName, agentPlatform, agentNamesPath, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.token = token;
     this.agentId = agentId;
     this.agentName = agentName;
+    this.agentPlatform = agentPlatform;
+    this.agentNamesPath = agentNamesPath;
     this.traceId = Number(traceId);
+    this.defaultThread = firstPresent(defaultThread, threadId == null ? undefined : String(threadId));
     this.fetch = fetchImpl;
     this.now = now;
     this.onReducerNote = onReducerNote;
@@ -142,6 +164,7 @@ export class FlambeClient {
       trace_id: this.traceId,
       ...(this.agentId ? { agent_id: this.agentId } : {}),
       ...(this.agentName ? { agent_name: this.agentName } : {}),
+      ...(this.agentPlatform ? { agent_platform: this.agentPlatform } : {}),
     };
   }
 
@@ -154,6 +177,7 @@ export class FlambeClient {
           authorization: `Bearer ${this.token}`,
           ...(this.agentId ? { 'x-flambe-agent-id': this.agentId } : {}),
           ...(this.agentId && this.agentName ? { 'x-flambe-agent-name': this.agentName } : {}),
+          ...(this.agentId && this.agentPlatform ? { 'x-flambe-agent-platform': this.agentPlatform } : {}),
           ...(body === undefined ? {} : { 'content-type': 'application/json' }),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -182,6 +206,7 @@ export class FlambeClient {
       throw error;
     }
 
+    this.adoptAgentName(response.headers);
     if (responseMetadata) {
       return {
         payload,
@@ -192,6 +217,37 @@ export class FlambeClient {
     return payload;
   }
 
+  /**
+   * The reducer names agents that arrive without a name and echoes the name on every
+   * response (ADR-012). Keep it for the rest of this process, remember it for future
+   * ones, and tell the worker the first time.
+   */
+  adoptAgentName(headers) {
+    if (!this.agentId || !headers?.get) return;
+    const name = headers.get('x-flambe-agent-name')?.trim();
+    if (!name) return;
+
+    const assigned = headers.get('x-flambe-agent-name-assigned') === 'true';
+    if (name !== this.agentName) {
+      this.agentName = name;
+      if (this.agentNamesPath) rememberAgentName(this.agentId, name, this.agentNamesPath);
+    }
+    if (assigned) this.onReducerNote?.({ type: 'agent_named', agentId: this.agentId, name });
+  }
+
+  async whoami() {
+    if (!this.agentId) {
+      throw new Error('No agent id for this process; set FLAMBE_AGENT_ID (Cursor, Codex, and Claude Code sessions derive one automatically)');
+    }
+    const payload = await this.request('/api/agents/me');
+    return {
+      agentId: payload.data.agent_id,
+      name: payload.data.name,
+      platform: payload.data.platform ?? null,
+      nameAssigned: payload.data.name_assigned === true,
+    };
+  }
+
   async getTrace() {
     const payload = await this.request(`/api/traces/${this.traceId}`);
     return payload.data;
@@ -199,14 +255,16 @@ export class FlambeClient {
 
   async threads() {
     const trace = await this.getTrace();
-    const threads = [...(trace.threads ?? [])]
-      .sort((a, b) => (a.rank - b.rank) || (a.id - b.id));
+    const threads = sortedThreads(trace);
+    const defaultId = this.defaultThread
+      ? matchThread(threads, this.defaultThread, this.traceId).id
+      : threads[0]?.id;
 
-    return threads.map((thread, index) => ({
+    return threads.map(thread => ({
       id: thread.id,
       name: thread.name,
       rank: thread.rank,
-      default: index === 0,
+      default: thread.id === defaultId,
     }));
   }
 
@@ -236,6 +294,8 @@ export class FlambeClient {
 
     for (const event of trace.events ?? []) {
       if (!event.activity) continue;
+      // Reducer annotations (reducer_incoming / reducer_decision) do not change state.
+      if (!LIFECYCLE_PHASES.has(event.phase)) continue;
 
       if (event.phase === 'B') {
         const startedAt = startedAtByActivity.get(event.activity.id);
@@ -286,16 +346,20 @@ export class FlambeClient {
     };
   }
 
-  resolveThreadId(explicitThreadId, trace) {
-    if (explicitThreadId !== undefined && explicitThreadId !== null) {
-      const id = Number(explicitThreadId);
-      if (!Number.isInteger(id) || id <= 0) throw new Error('--thread must be a positive integer');
+  async resolveThreadId(explicitThreadId) {
+    const hasExplicit = explicitThreadId != null && String(explicitThreadId).trim() !== '';
+    const selector = hasExplicit ? explicitThreadId : this.defaultThread;
+    if (selector == null || String(selector).trim() === '') return undefined;
+
+    const raw = String(selector).trim();
+    if (/^\d+$/.test(raw)) {
+      const id = Number(raw);
+      if (id <= 0) throw new Error('--thread must be a positive integer');
       return id;
     }
 
-    const threads = [...(trace.threads ?? [])].sort((a, b) => (a.rank - b.rank) || (a.id - b.id));
-    if (threads.length === 0) throw new Error(`Trace ${this.traceId} has no threads`);
-    return threads[0].id;
+    const trace = await this.getTrace();
+    return matchThread(sortedThreads(trace), raw, this.traceId).id;
   }
 
   resolveCategoryIds(categoryIds = []) {
@@ -336,7 +400,7 @@ export class FlambeClient {
     const input = {
       name: name.trim(),
       description,
-      threadId,
+      threadId: await this.resolveThreadId(threadId),
       parentId: this.resolveParentId(parentId),
       categoryIds: resolvedCategoryIds,
       timestamp,
@@ -350,10 +414,16 @@ export class FlambeClient {
     }
   }
 
+  /**
+   * `start` is a proposal (ADR-012): the reducer picks the parent (this agent's newest
+   * active activity unless `--parent`/`--root` said otherwise), puts a child on its
+   * parent's thread, inherits categories, and places roots asynchronously. So the CLI
+   * sends only what the worker actually said: `parent_id` absent = infer, `null` = root.
+   */
   async postStart({ name, description, threadId, parentId, categoryIds, timestamp }) {
     if (await this.supportsAgentCommands()) {
-      const resolvedParentId = parentId === undefined
-        ? undefined
+      const resolvedParentId = parentId === undefined || parentId === null
+        ? parentId
         : await this.queue.resolveActivityId(parentId);
       if (String(resolvedParentId).startsWith('offline-')) {
         const error = new Error('Parent activity is queued for offline delivery');
@@ -372,14 +442,8 @@ export class FlambeClient {
       return result.activity_id;
     }
 
-    const trace = await this.getTrace();
-    const resolvedThreadId = this.resolveThreadId(threadId, trace);
-    const activeActivities = this.statusFromTrace(trace, { activeOnly: true }).activities;
-    const inferredParentId = activeActivities
-      .filter(activity => activity.threadId === resolvedThreadId)
-      .at(-1)?.id;
-    const resolvedParentId = parentId === undefined
-      ? inferredParentId
+    const resolvedParentId = parentId === undefined || parentId === null
+      ? parentId
       : await this.queue.resolveActivityId(parentId);
 
     if (String(resolvedParentId).startsWith('offline-')) {
@@ -392,11 +456,11 @@ export class FlambeClient {
       method: 'POST',
       body: {
         trace_id: this.traceId,
-        thread_id: resolvedThreadId,
+        ...(threadId === undefined ? {} : { thread_id: threadId }),
         activity: {
           name,
           ...(description ? { description } : {}),
-          ...(resolvedParentId ? { parent_id: resolvedParentId } : {}),
+          ...(resolvedParentId === undefined ? {} : { parent_id: resolvedParentId }),
           categories: categoryIds,
         },
         event: {
@@ -406,7 +470,21 @@ export class FlambeClient {
       },
     });
 
-    return payload.data.activity.id;
+    const { activity, reducer } = payload.data;
+    if (reducer) {
+      this.onReducerNote?.({
+        type: 'start_reduced',
+        activityId: activity.id,
+        parentId: activity.parent_id ?? null,
+        threadId: activity.thread_id,
+        requestedThreadId: threadId,
+        parentSource: reducer.parent_source,
+        threadSource: reducer.thread_source,
+        categoriesSource: reducer.categories_source,
+      });
+    }
+
+    return activity.id;
   }
 
   async end({ activityId, message, force = false }) {
@@ -679,4 +757,53 @@ export function clientFromHostEnv(env = process.env, overrides = {}) {
 function compareEvents(a, b) {
   const timestampDifference = Date.parse(a.timestamp) - Date.parse(b.timestamp);
   return timestampDifference || (a.id - b.id);
+}
+
+function sortedThreads(trace) {
+  return [...(trace.threads ?? [])].sort((a, b) => (a.rank - b.rank) || (a.id - b.id));
+}
+
+export function threadSlug(name) {
+  return String(name)
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function matchThread(threads, selector, traceId) {
+  const raw = String(selector).trim();
+  const available = threads.map(thread => thread.name).join(', ');
+  const notFound = label => new Error(
+    `Thread ${label} not found in trace ${traceId}${available ? ` (threads: ${available})` : ''}`,
+  );
+
+  if (/^\d+$/.test(raw)) {
+    const id = Number(raw);
+    const byId = threads.find(thread => thread.id === id);
+    if (byId) return byId;
+    throw notFound(raw);
+  }
+
+  const exact = threads.filter(thread => thread.name === raw);
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) {
+    throw new Error(`Thread name "${raw}" is ambiguous in trace ${traceId}`);
+  }
+
+  const caseInsensitive = threads.filter(thread => thread.name.toLowerCase() === raw.toLowerCase());
+  if (caseInsensitive.length === 1) return caseInsensitive[0];
+  if (caseInsensitive.length > 1) {
+    throw new Error(`Thread name "${raw}" is ambiguous in trace ${traceId}`);
+  }
+
+  const slug = threadSlug(raw);
+  if (!slug) throw notFound(`"${raw}"`);
+  const bySlug = threads.filter(thread => threadSlug(thread.name) === slug);
+  if (bySlug.length === 1) return bySlug[0];
+  if (bySlug.length > 1) {
+    throw new Error(`Thread "${raw}" is ambiguous in trace ${traceId} (matches: ${bySlug.map(thread => thread.name).join(', ')})`);
+  }
+
+  throw notFound(`"${raw}"`);
 }
