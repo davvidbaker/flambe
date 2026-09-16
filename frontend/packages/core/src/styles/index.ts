@@ -15,3 +15,11 @@ export const colors = {
 export const layout = {
   headerHeight: '40px',
 } as const;
+
+/** Flame-chart activity names (canvas) and the HTML hover card. */
+export const timelineActivityFontFamily = 'sans-serif';
+export const timelineActivityFontSizePx = 11;
+
+export function timelineActivityCanvasFont(bold = false): string {
+  return `${bold ? 'bold ' : ''}${timelineActivityFontSizePx}px ${timelineActivityFontFamily}`;
+}

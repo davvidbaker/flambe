@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import day from 'dayjs';
 import type { EventPhase } from '../types/TraceEvent';
 import type { ActivityBlock } from './ActivityEventFlow';
+import { timelineActivityFontFamily, timelineActivityFontSizePx } from '../styles';
 
 interface EventStyleProps {
   message?: string;
@@ -17,8 +18,8 @@ const Div = styled.div<EventStyleProps>`
   width: 100%;
   overflow-x: scroll;
 
-  font-size: 11px;
-  margin: 0;
+  font-size: ${timelineActivityFontSizePx}px;
+  font-family: ${timelineActivityFontFamily};
 
   p {
     margin: 0;

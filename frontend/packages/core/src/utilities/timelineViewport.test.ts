@@ -41,10 +41,10 @@ describe('savedRangeIsUsable', () => {
 });
 
 describe('datetime-local helpers', () => {
-  it('round-trips local minutes', () => {
-    const ms = new Date(2026, 8, 16, 17, 6).getTime();
+  it('round-trips local seconds', () => {
+    const ms = new Date(2026, 8, 16, 17, 6, 42).getTime();
     const value = toDatetimeLocalValue(ms);
-    expect(value).toBe('2026-09-16T17:06');
+    expect(value).toBe('2026-09-16T17:06:42');
     expect(fromDatetimeLocalValue(value)).toBe(ms);
   });
 

@@ -44,7 +44,7 @@ import {
   shouldOpenActivityDetailsOnSelect,
 } from '../utilities/activityDetailGesture';
 import { showActivityDetails } from '../actions';
-import { colors } from '../styles';
+import { colors, timelineActivityCanvasFont } from '../styles';
 import type { RootState } from '../rootReducer';
 import type { EntityId } from '../types/ids';
 import type { Category } from '../types/Category';
@@ -892,7 +892,7 @@ export class FlameChart extends Component<Props, State> {
     for (let i = 0; i < this.props.blocks.length; i++) {
       const block = this.props.blocks[i];
       const activity = this.props.activities[String(block.activity_id)];
-      this.ctx.font = `${block.endTime ? '' : 'bold'} 11px sans-serif`;
+      this.ctx.font = timelineActivityCanvasFont(!block.endTime);
 
       if (activity) {
         this.drawBlock(block, activity);
