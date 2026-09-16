@@ -38,6 +38,7 @@ export default connect(
       absoluteTimeLabels: state.settings.absoluteTimeLabels,
       twelveHourClock: state.settings.twelveHourClock,
       attentionDrivenThreadOrder: state.settings.attentionDrivenThreadOrder,
+      darkerAsWeGoDown: state.settings.darkerAsWeGoDown,
       tabs: getUser(state).tabs,
 
       // these are only used for overrides.
