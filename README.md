@@ -63,6 +63,22 @@ Open http://localhost:5173, create an account, and you will be taken to its
 default `Main` trace. Vite proxies API, authentication, and socket requests to
 Phoenix at http://localhost:4001.
 
+### Frontend against Fly (no local Mix)
+
+To work on the SPA with production data, skip Phoenix and Postgres. Copy
+[`frontend/.env.example`](frontend/.env.example) to `frontend/.env.local` and
+uncomment:
+
+```text
+VITE_API_URL=https://flambe.fly.dev
+```
+
+Then `cd frontend && npm run dev`. Log in with a Fly account. The local UI
+**writes production rows**; do not run `mix ecto.*` against Fly. Settings →
+Developer shows the remote `/api/health` `git_sha`, which will not match an
+uncommitted local checkout. Staging later uses the same variable with a
+different URL.
+
 To build the Phoenix-served production frontend, run `npm run build` from
 `frontend`. This produces hashed assets and a manifest in
 `backend/priv/static/assets`; Phoenix serves the resulting SPA and its
