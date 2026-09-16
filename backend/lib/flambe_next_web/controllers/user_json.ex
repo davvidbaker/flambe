@@ -17,6 +17,7 @@ defmodule FlambeNextWeb.UserJSON do
         id: user.id,
         name: user.name,
         username: user.username,
+        settings: user.settings || %{},
         traces: Enum.map(traces, &trace_data/1),
         categories: Enum.map(categories, &category_data/1),
         todos: Enum.map(todos, &todo_data/1),

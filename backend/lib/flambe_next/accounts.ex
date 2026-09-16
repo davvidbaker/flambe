@@ -42,6 +42,19 @@ defmodule FlambeNext.Accounts do
       else: raise(Ecto.NoResultsError, queryable: User)
   end
 
+  def update_user_settings(%User{} = user, attrs) do
+    incoming = Map.get(attrs, "settings") || Map.get(attrs, :settings) || %{}
+
+    if is_map(incoming) do
+      user
+      |> User.settings_changeset(incoming)
+      |> Repo.update()
+    else
+      {:error,
+       Ecto.Changeset.add_error(Ecto.Changeset.change(user), :settings, "must be a JSON object")}
+    end
+  end
+
   def list_user_categories(%User{} = user) do
     from(category in Category, where: category.user_id == ^user.id, order_by: [asc: category.id])
     |> Repo.all()

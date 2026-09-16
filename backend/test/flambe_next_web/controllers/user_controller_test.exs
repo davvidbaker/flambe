@@ -18,6 +18,7 @@ defmodule FlambeNextWeb.UserControllerTest do
     assert payload["name"] == "Dashboard User"
     assert payload["username"] == "dashboard-user"
     assert payload["traces"] == [%{"id" => trace.id, "name" => "Dashboard trace"}]
+    assert payload["settings"] == %{}
     assert payload["observations"] == []
 
     assert %{
@@ -45,6 +46,39 @@ defmodule FlambeNextWeb.UserControllerTest do
 
     assert json_response(conn, 200)["data"]["traces"] == [
              %{"id" => trace.id, "name" => "Existing trace"}
+           ]
+  end
+
+  test "updates persisted user settings for the signed-in user", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Settings User", username: "settings-user"})
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/users/#{user}", %{
+        "user" => %{"settings" => %{"rightAlignTimelineText" => true}}
+      })
+
+    assert json_response(conn, 200)["data"]["settings"] == %{
+             "rightAlignTimelineText" => true
+           }
+
+    conn = conn |> recycle() |> authenticated_as(user) |> get(~p"/api/users/#{user}")
+    assert json_response(conn, 200)["data"]["settings"]["rightAlignTimelineText"] == true
+  end
+
+  test "rejects non-boolean user settings", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Bad Settings", username: "bad-settings"})
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/users/#{user}", %{
+        "user" => %{"settings" => %{"rightAlignTimelineText" => "yes"}}
+      })
+
+    assert json_response(conn, 422)["errors"]["settings"] == [
+             "rightAlignTimelineText must be a boolean"
            ]
   end
 
