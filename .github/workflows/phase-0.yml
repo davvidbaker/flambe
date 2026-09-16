@@ -9,7 +9,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_backend: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.ci_config == 'true' }}
+      run_cli: ${{ steps.filter.outputs.cli == 'true' || steps.filter.outputs.ci_config == 'true' }}
+      run_smoke: ${{ steps.filter.outputs.frontend == 'true' || steps.filter.outputs.backend == 'true' || steps.filter.outputs.ci_config == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            cli:
+              - 'cli/**'
+            frontend:
+              - 'frontend/**'
+            ci_config:
+              - '.github/workflows/phase-0.yml'
+              - 'fly.toml'
+              - 'Dockerfile'
+
   backend:
+    needs: changes
+    if: needs.changes.outputs.run_backend == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -40,6 +65,8 @@ jobs:
           MIX_ENV=test mix precommit
 
   cli:
+    needs: changes
+    if: needs.changes.outputs.run_cli == 'true'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -57,6 +84,8 @@ jobs:
         run: npm pack --dry-run
 
   browser-smoke:
+    needs: changes
+    if: needs.changes.outputs.run_smoke == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -129,6 +158,8 @@ jobs:
             /tmp/flambe-next-phoenix.log
 
   prod-mode-smoke:
+    needs: changes
+    if: needs.changes.outputs.run_smoke == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -208,11 +239,51 @@ jobs:
           path: |
             /tmp/flambe-next-phoenix-prod.log
 
+  ci-ok:
+    name: CI
+    runs-on: ubuntu-latest
+    needs: [changes, backend, cli, browser-smoke, prod-mode-smoke]
+    if: always()
+    steps:
+      - name: Require each job to succeed or skip
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          BACKEND: ${{ needs.backend.result }}
+          CLI: ${{ needs.cli.result }}
+          BROWSER_SMOKE: ${{ needs.browser-smoke.result }}
+          PROD_SMOKE: ${{ needs.prod-mode-smoke.result }}
+        run: |
+          acceptable() {
+            case "$1" in
+              success|skipped) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+          if [ "$CHANGES" != success ]; then
+            echo "changes job result: $CHANGES"
+            exit 1
+          fi
+          for result in "$BACKEND" "$CLI" "$BROWSER_SMOKE" "$PROD_SMOKE"; do
+            if ! acceptable "$result"; then
+              echo "job results: backend=$BACKEND cli=$CLI browser-smoke=$BROWSER_SMOKE prod-mode-smoke=$PROD_SMOKE"
+              exit 1
+            fi
+          done
+
   deploy-fly:
     name: Deploy to Fly
     runs-on: ubuntu-latest
     needs: [backend, cli, browser-smoke, prod-mode-smoke]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      !cancelled() &&
+      (needs.backend.result == 'success' || needs.backend.result == 'skipped') &&
+      (needs.cli.result == 'success' || needs.cli.result == 'skipped') &&
+      (needs.browser-smoke.result == 'success' || needs.browser-smoke.result == 'skipped') &&
+      (needs.prod-mode-smoke.result == 'success' || needs.prod-mode-smoke.result == 'skipped') &&
+      (needs.backend.result == 'success' || needs.browser-smoke.result == 'success' || needs.prod-mode-smoke.result == 'success')
     concurrency:
       group: fly-deploy-flambe
       cancel-in-progress: false
