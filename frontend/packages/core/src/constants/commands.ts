@@ -18,6 +18,7 @@ import {
   THREADS_EXPAND_ALL,
   TODOS_TOGGLE,
   SETTINGS_SHOW,
+  KEYBOARD_SHORTCUTS_SHOW,
   VIEW_CHANGE,
 } from '../actions';
 import {
@@ -196,6 +197,11 @@ const COMMANDS: Command[] = [
     action: SETTINGS_SHOW,
     copy: 'open settings',
     shortcut: '⌘ ,',
+  },
+  {
+    action: KEYBOARD_SHORTCUTS_SHOW,
+    copy: 'keyboard shortcuts',
+    shortcut: '⌘ /',
   },
   {
     action: VIEW_CHANGE,
