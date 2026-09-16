@@ -15,12 +15,16 @@ defmodule FlambeNext.Reducer.Review do
   alias FlambeNext.Reducer.Model
   alias FlambeNext.Repo
   alias FlambeNext.Traces
-  alias FlambeNext.Traces.Activity
+  alias FlambeNext.Traces.{Activity, Event}
 
   @allowed_assessments ~w(on_track slightly_off_track off_track blocked uncertain)
   @allowed_directions ~w(continue narrow_scope investigate change_approach pause stop escalate)
   @escalating_assessments ~w(slightly_off_track off_track blocked uncertain)
   @escalating_directions ~w(narrow_scope investigate change_approach pause stop escalate)
+  @lifecycle_phases ~w(B R X S E J V)
+  @live_phases ~w(B R X S)
+  @ended_phases ~w(E J V)
+  @closed_history_days 21
 
   def handle(%User{} = user, attrs, opts \\ []) when is_map(attrs) and is_list(opts) do
     with {:ok, trace_id} <- positive_id(attrs["trace_id"] || attrs[:trace_id]),
@@ -198,23 +202,49 @@ defmodule FlambeNext.Reducer.Review do
       )
       |> Repo.all()
 
-    by_parent = Enum.group_by(activities, & &1.parent_id)
-    ancestors = ancestors(activity, Map.new(activities, &{&1.id, &1}))
-    children = Map.get(by_parent, activity.id, [])
+    by_id = Map.new(activities, &{&1.id, &1})
+    ancestors = ancestors(activity, by_id)
+    latest_by_id = latest_lifecycle_by_activity(trace_id)
+    path_ids = MapSet.new([activity.id | Enum.map(ancestors, & &1.id)])
+    cutoff = DateTime.add(DateTime.utc_now(), -@closed_history_days, :day)
 
-    siblings =
-      Map.get(by_parent, activity.parent_id, [])
-      |> Enum.reject(&(&1.id == activity.id))
+    stack =
+      Enum.filter(activities, &visible_in_message_context?(&1, latest_by_id, path_ids, cutoff))
 
     {:ok,
      %{
        trace: %{id: trace.id, name: trace.name},
        current: activity_view(activity),
        ancestors: Enum.map(ancestors, &activity_view/1),
-       children: Enum.map(children, &activity_view/1),
-       siblings: Enum.map(siblings, &activity_view/1),
-       stack: Enum.map(activities, &activity_view/1)
+       stack: Enum.map(stack, &activity_view/1)
      }}
+  end
+
+  defp latest_lifecycle_by_activity(trace_id) do
+    from(e in Event,
+      where: e.trace_id == ^trace_id and e.phase in ^@lifecycle_phases,
+      distinct: e.activity_id,
+      order_by: [asc: e.activity_id, desc: e.timestamp, desc: e.id]
+    )
+    |> Repo.all()
+    |> Map.new(&{&1.activity_id, &1})
+  end
+
+  defp visible_in_message_context?(activity, latest_by_id, path_ids, cutoff) do
+    MapSet.member?(path_ids, activity.id) or
+      case Map.get(latest_by_id, activity.id) do
+        nil ->
+          true
+
+        %{phase: phase} when phase in @live_phases ->
+          true
+
+        %{phase: phase, timestamp: timestamp} when phase in @ended_phases ->
+          DateTime.compare(timestamp, cutoff) != :lt
+
+        _ ->
+          false
+      end
   end
 
   defp ancestors(%Activity{parent_id: nil}, _by_id), do: []
@@ -231,12 +261,15 @@ defmodule FlambeNext.Reducer.Review do
       id: activity.id,
       parent_id: activity.parent_id,
       thread_id: activity.thread_id,
-      name: activity.name,
-      description: activity.description,
-      agent_id: activity.agent_id,
-      agent_name: activity.agent_name
+      name: activity.name
     }
+    |> maybe_put(:description, blank_to_nil(activity.description))
+    |> maybe_put(:agent_id, activity.agent_id)
+    |> maybe_put(:agent_name, activity.agent_name)
   end
+
+  defp blank_to_nil(value) when value in [nil, ""], do: nil
+  defp blank_to_nil(value), do: value
 
   defp decide(context, agent_id, message, allow_changes?, opts) do
     prompt = reducer_prompt(context, agent_id, message, allow_changes?)
@@ -334,9 +367,11 @@ defmodule FlambeNext.Reducer.Review do
     You are Flambe's Reducer Agent. You preserve the global intent of the current flame.
     #{stack_policy}
 
-    A flame is the CURRENT STACK represented below. Worker agents see local branches; you
-    must judge each incoming message against the whole stack and steer the worker back
-    toward global intent when it drifts.
+    A flame is the CURRENT STACK represented below: every non-ended activity, the path to
+    the activity being judged, and ended work whose last lifecycle event is within
+    #{@closed_history_days} days. Older closed subtrees are omitted. Worker agents see
+    local branches; you must judge each incoming message against this stack and steer the
+    worker back toward global intent when it drifts.
 
     Rules:
     - Treat the persisted stack as source of truth. Do not invent work that is not justified.
