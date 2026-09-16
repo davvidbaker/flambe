@@ -5,6 +5,15 @@ export type PannedTimeline = TimeRange & {
   topOffset: number;
 };
 
+/** Keep the flame-chart vertical scroll between 0 and the overflow height. */
+export function clampTopOffset(topOffset: number, maxTopOffset: number): number {
+  const max = Number.isFinite(maxTopOffset)
+    ? Math.max(0, maxTopOffset)
+    : Number.POSITIVE_INFINITY;
+  const next = Number.isFinite(topOffset) ? topOffset : 0;
+  return Math.min(Math.max(0, next), max);
+}
+
 function pan(
   deltaX: number,
   deltaY: number,
@@ -14,6 +23,7 @@ function pan(
   topOffset: number,
   nowTime: number,
   minTime: number,
+  maxTopOffset: number = Number.POSITIVE_INFINITY,
 ): PannedTimeline {
   const widthTime = rightBoundaryTime - leftBoundaryTime;
   let newRightBoundaryTime = rightBoundaryTime + deltaX * (widthTime / width);
@@ -28,7 +38,7 @@ function pan(
   return {
     leftBoundaryTime: newLeftBoundaryTime,
     rightBoundaryTime: newRightBoundaryTime,
-    topOffset: Math.max(topOffset + deltaY, 0),
+    topOffset: clampTopOffset(topOffset + deltaY, maxTopOffset),
   };
 }
 

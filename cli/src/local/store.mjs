@@ -3,7 +3,10 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { agentDisplayName } from './agents.mjs';
+import { pickName, usableName } from './agents.mjs';
+
+const LIFECYCLE_PHASES = ['B', 'E', 'S', 'R'];
+const OPEN_PHASES = ['B', 'R'];
 
 const SCHEMA = `
 PRAGMA foreign_keys = ON;
@@ -112,6 +115,17 @@ CREATE TABLE IF NOT EXISTS search_terms (
   timestamp_ms INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS agents (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  agent_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  name_source TEXT NOT NULL,
+  platform TEXT,
+  last_seen_ms INTEGER NOT NULL,
+  UNIQUE (user_id, agent_id)
+);
+
 CREATE TABLE IF NOT EXISTS observations (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -126,6 +140,14 @@ CREATE TABLE IF NOT EXISTS observations (
 
 export const EXPORT_FORMAT = 'flambe-local-export';
 export const EXPORT_VERSION = 1;
+
+export const DEFAULT_CATEGORIES = [
+  { name: 'coding', color_background: '#efc360', color_text: '#000000' },
+  { name: 'investigation', color_background: '#60a5fa', color_text: '#000000' },
+  { name: 'review', color_background: '#a78bfa', color_text: '#ffffff' },
+  { name: 'operations', color_background: '#34d399', color_text: '#000000' },
+  { name: 'failure', color_background: '#fb7185', color_text: '#000000' },
+];
 
 export function hashToken(rawToken) {
   return createHash('sha256').update(rawToken).digest('hex');
@@ -225,6 +247,7 @@ export class LocalStore {
     this.db.prepare(
       'INSERT INTO threads (trace_id, name, rank, export_id) VALUES (?, ?, 0, ?)',
     ).run(traceId, 'Main', randomUUID());
+    this.#ensureDefaultCategories(userId);
     return this.getTrace(userId, traceId);
   }
 
@@ -329,34 +352,122 @@ export class LocalStore {
     return result.changes > 0;
   }
 
-  createActivity(userId, { traceId, threadId, activity, event, agentId, agentName, tokenName }) {
-    const thread = this.db.prepare(`
-      SELECT threads.id, threads.trace_id
-      FROM threads
-      JOIN traces ON traces.id = threads.trace_id
-      WHERE threads.id = ? AND threads.trace_id = ? AND traces.user_id = ?
-    `).get(Number(threadId), Number(traceId), userId);
-    if (!thread) return { error: 'not_found' };
+  /**
+   * Resolve (and if needed name) the agent behind `agentId` for this user, mirroring
+   * FlambeNext.Agents.identify. `assigned` is true only when a name was coined now.
+   */
+  identifyAgent(userId, agentId, providedName, providedPlatform) {
+    if (typeof agentId !== 'string' || agentId.length === 0 || agentId.length > 200) return null;
+    const provided = usableName(providedName) ? providedName.trim() : null;
+    const platformGiven = usableName(providedPlatform) ? providedPlatform.trim() : null;
+    const now = Date.now();
+    const existing = this.db.prepare('SELECT * FROM agents WHERE user_id = ? AND agent_id = ?').get(userId, agentId);
 
-    let parentId = activity.parent_id ?? null;
-    if (parentId != null) {
-      const parent = this.db.prepare(
-        'SELECT id FROM activities WHERE id = ? AND thread_id = ?',
-      ).get(Number(parentId), thread.id);
-      if (!parent) return { error: 'not_found' };
-      parentId = parent.id;
+    if (existing) {
+      const name = provided && provided !== existing.name ? provided : existing.name;
+      const platform = platformGiven ?? existing.platform ?? null;
+      this.db.prepare('UPDATE agents SET name = ?, name_source = ?, platform = ?, last_seen_ms = ? WHERE id = ?')
+        .run(name, provided && provided !== existing.name ? 'provided' : existing.name_source, platform, now, existing.id);
+      return { agent_id: agentId, name, platform, assigned: false };
     }
 
-    const categoryIds = Array.isArray(activity.categories) ? activity.categories.map(Number) : [];
+    const taken = this.db.prepare('SELECT name FROM agents WHERE user_id = ?').all(userId).map(row => row.name);
+    const name = provided ?? pickName(agentId, taken);
+    this.db.prepare('INSERT INTO agents (user_id, agent_id, name, name_source, platform, last_seen_ms) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(userId, agentId, name, provided ? 'provided' : 'assigned', platformGiven, now);
+    return { agent_id: agentId, name, platform: platformGiven, assigned: provided === null };
+  }
+
+  listAgents(userId) {
+    return this.db.prepare('SELECT agent_id, name, name_source, platform, last_seen_ms FROM agents WHERE user_id = ? ORDER BY last_seen_ms DESC, id')
+      .all(userId);
+  }
+
+  /** Newest activity in the trace whose latest lifecycle event is B/R, optionally for one agent or thread. */
+  newestActiveActivity(traceId, { agentId, threadId } = {}) {
+    const placeholders = LIFECYCLE_PHASES.map(() => '?').join(',');
+    const open = OPEN_PHASES.map(() => '?').join(',');
+    const rows = this.db.prepare(`
+      WITH latest AS (
+        SELECT activity_id, phase, timestamp_ms, id,
+               ROW_NUMBER() OVER (PARTITION BY activity_id ORDER BY timestamp_ms DESC, id DESC) AS rn
+        FROM events
+        WHERE trace_id = ? AND activity_id IS NOT NULL AND phase IN (${placeholders})
+      )
+      SELECT activities.id, activities.parent_id, activities.thread_id, activities.agent_id
+      FROM latest
+      JOIN activities ON activities.id = latest.activity_id
+      WHERE latest.rn = 1 AND latest.phase IN (${open})
+        ${agentId ? 'AND activities.agent_id = ?' : ''}
+        ${threadId ? 'AND activities.thread_id = ?' : ''}
+      ORDER BY latest.timestamp_ms DESC, latest.id DESC
+      LIMIT 1
+    `).all(
+      Number(traceId), ...LIFECYCLE_PHASES, ...OPEN_PHASES,
+      ...(agentId ? [agentId] : []), ...(threadId ? [Number(threadId)] : []),
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Create an activity. With `reduce` (agent requests, ADR-012) the deterministic reducer
+   * rules apply: an absent parent_id infers this agent's newest active activity, a child
+   * lives in its parent's thread and inherits categories, and thread_id may be omitted.
+   */
+  createActivity(userId, { traceId, threadId, activity, event, agent, reduce = false }) {
+    const trace = this.db.prepare('SELECT id FROM traces WHERE id = ? AND user_id = ?').get(Number(traceId), userId);
+    if (!trace) return { error: 'not_found' };
+
+    const notes = { parent_source: 'root', thread_source: 'request', categories_source: 'none' };
+    let parentRow = null;
+    let parentId = null;
+
+    if (Object.hasOwn(activity, 'parent_id') && activity.parent_id != null) {
+      parentRow = this.db.prepare(`
+        SELECT activities.id, activities.thread_id FROM activities
+        JOIN threads ON threads.id = activities.thread_id
+        WHERE activities.id = ? AND threads.trace_id = ?
+      `).get(Number(activity.parent_id), trace.id);
+      if (!parentRow) return { error: 'not_found' };
+      notes.parent_source = 'explicit';
+    } else if (reduce && !Object.hasOwn(activity, 'parent_id')) {
+      const requestedThread = threadId == null ? this.#defaultThread(trace.id)?.id : Number(threadId);
+      parentRow = agent?.agent_id
+        ? this.newestActiveActivity(trace.id, { agentId: agent.agent_id })
+        : this.newestActiveActivity(trace.id, { threadId: requestedThread });
+      if (parentRow) notes.parent_source = 'inferred';
+    }
+
+    let thread;
+    if (parentRow) {
+      thread = this.db.prepare('SELECT id, trace_id FROM threads WHERE id = ?').get(parentRow.thread_id);
+      notes.thread_source = 'parent';
+      parentId = parentRow.id;
+    } else if (threadId == null) {
+      if (!reduce) return { error: 'not_found' };
+      thread = this.#defaultThread(trace.id);
+      notes.thread_source = 'default';
+    } else {
+      thread = this.db.prepare('SELECT id, trace_id FROM threads WHERE id = ? AND trace_id = ?').get(Number(threadId), trace.id);
+    }
+    if (!thread) return { error: 'not_found' };
+    if (!reduce && parentRow && parentRow.thread_id !== thread.id) return { error: 'not_found' };
+
+    let categoryIds = Array.isArray(activity.categories) ? activity.categories.map(Number) : [];
     if (categoryIds.length > 0) {
       const found = this.db.prepare(
         `SELECT id FROM categories WHERE user_id = ? AND id IN (${categoryIds.map(() => '?').join(',')})`,
       ).all(userId, ...categoryIds);
       if (found.length !== new Set(categoryIds).size) return { error: 'not_found' };
+      notes.categories_source = 'request';
+    } else if (reduce && parentId != null) {
+      categoryIds = this.db.prepare('SELECT category_id FROM activities_categories WHERE activity_id = ?')
+        .all(parentId).map(row => row.category_id);
+      if (categoryIds.length > 0) notes.categories_source = 'parent';
     }
 
-    const agent = agentId
-      ? { agent_id: agentId, agent_name: agentDisplayName(agentId, agentName, tokenName) }
+    const agentColumns = agent?.agent_id
+      ? { agent_id: agent.agent_id, agent_name: agent.name }
       : { agent_id: null, agent_name: null };
 
     const inserted = this.db.prepare(`
@@ -368,8 +479,8 @@ export class LocalStore {
       activity.name,
       activity.description ?? null,
       activity.weight ?? null,
-      agent.agent_id,
-      agent.agent_name,
+      agentColumns.agent_id,
+      agentColumns.agent_name,
       randomUUID(),
     );
     const activityId = Number(inserted.lastInsertRowid);
@@ -395,7 +506,12 @@ export class LocalStore {
         thread_id: thread.id,
       },
       event: { id: Number(eventRow.lastInsertRowid), phase: event.phase },
+      ...(reduce ? { reducer: notes } : {}),
     };
+  }
+
+  #defaultThread(traceId) {
+    return this.db.prepare('SELECT id, trace_id FROM threads WHERE trace_id = ? ORDER BY rank, id LIMIT 1').get(traceId) ?? null;
   }
 
   getActivity(userId, id) {
@@ -713,6 +829,26 @@ export class LocalStore {
     };
   }
 
+  #ensureDefaultCategories(userId) {
+    const existing = this.db.prepare(
+      'SELECT COUNT(*) AS count FROM categories WHERE user_id = ?',
+    ).get(userId);
+    if (existing.count > 0) return;
+
+    const insert = this.db.prepare(
+      'INSERT INTO categories (user_id, name, color_background, color_text, export_id) VALUES (?, ?, ?, ?, ?)',
+    );
+    for (const category of DEFAULT_CATEGORIES) {
+      insert.run(
+        userId,
+        category.name,
+        category.color_background,
+        category.color_text,
+        randomUUID(),
+      );
+    }
+  }
+
   #seed() {
     const user = this.db.prepare('SELECT id FROM users WHERE id = 1').get();
     if (user) return;
@@ -730,6 +866,7 @@ export class LocalStore {
       this.db.prepare(
         'INSERT INTO threads (trace_id, name, rank, export_id) VALUES (?, ?, 0, ?)',
       ).run(Number(trace.lastInsertRowid), 'Main', randomUUID());
+      this.#ensureDefaultCategories(1);
       this.db.exec('COMMIT');
     } catch (error) {
       this.db.exec('ROLLBACK');
