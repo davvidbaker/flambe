@@ -1,4 +1,4 @@
-import { call, put, takeLatest, select } from 'redux-saga/effects';
+import { put, takeLatest, select } from 'redux-saga/effects';
 import type { SagaIterator } from 'redux-saga';
 
 import { getTimeline, type TimelineState } from '../reducers/timeline';
@@ -17,8 +17,13 @@ import {
   SEARCH_BLOCK_INCREMENT_RESULT,
   SET_THREAD_INCLUDE_LIST,
   SET_THREAD_EXCLUDE_LIST,
+  TOGGLE_SEARCH_OPTION,
 } from '../actions';
 import circularIncrement from '../utilities/circularIncrement';
+import {
+  compileSearchRegex,
+  InvalidSearchRegexError,
+} from '../utilities/activityMatchesSearch';
 
 interface RootState {
   search: SearchState;
@@ -36,31 +41,44 @@ interface IncrementAction {
   type: string;
 }
 
-/* ⚠️ TODO options */
 function* handleSearch({ searchTerm }: SearchAction): SagaIterator {
   if (searchTerm.length <= 0) return;
   const timeline: TimelineState = yield select(getTimeline);
-  const { advancedOptions }: SearchState = yield select((state: RootState) => state.search);
+  const { advancedOptions, options }: SearchState = yield select((state: RootState) => state.search);
   const { threadIncludeList, threadExcludeList } = advancedOptions;
 
   const { activities, blocks } = timeline;
 
-  const matches: SearchMatch[] = Object.entries(activities).filter(([_key, activity]) => {
-    const threadId = activity.thread_id;
-    if (threadIncludeList.length > 0 && !threadIncludeList.includes(threadId ?? '')) return false;
-    if (threadExcludeList.length > 0 && threadExcludeList.includes(threadId ?? '')) return false;
-    return activity.name?.includes(searchTerm) ?? false;
-  });
+  try {
+    const matcher = compileSearchRegex(searchTerm, options);
+    const matches: SearchMatch[] = Object.entries(activities).filter(([_key, activity]) => {
+      const threadId = activity.thread_id;
+      if (threadIncludeList.length > 0 && !threadIncludeList.includes(threadId ?? '')) return false;
+      if (threadExcludeList.length > 0 && threadExcludeList.includes(threadId ?? '')) return false;
+      return Boolean(activity.name && matcher.test(activity.name));
+    });
 
-  if (matches.length > 0) {
-    const match = matches[0];
-    const activity_id = match[0];
+    if (matches.length > 0) {
+      const match = matches[0];
+      const activity_id = match[0];
 
-    const blocksForMatch = blocksForActivityWithIndices(activity_id, blocks);
+      const blocksForMatch = blocksForActivityWithIndices(activity_id, blocks);
 
-    yield put({ type: SEARCH_RESULT, matches, blocksForMatch });
-  } else {
-    yield put({ type: SEARCH_RESULT, matches, blocksForMatch: [] });
+      yield put({ type: SEARCH_RESULT, matches, blocksForMatch });
+    } else {
+      yield put({ type: SEARCH_RESULT, matches, blocksForMatch: [] });
+    }
+  } catch (error) {
+    if (error instanceof InvalidSearchRegexError) {
+      yield put({
+        type: SEARCH_RESULT,
+        matches: [],
+        blocksForMatch: [],
+        searchError: error.message,
+      });
+      return;
+    }
+    throw error;
   }
 }
 
@@ -141,7 +159,6 @@ function* focusSearchResult(): SagaIterator {
 
 function* handleFilter(): SagaIterator {
   const { searchStack, options }: SearchState = yield select((state: RootState) => state.search);
-  /* ⚠️ TODO options */
   yield put(search(searchStack[0] ?? '', options));
 }
 
@@ -151,6 +168,7 @@ function* searchSaga(): SagaIterator {
   yield takeLatest(SEARCH_BLOCK_INCREMENT, handleBlockIncrement);
   yield takeLatest(SET_THREAD_INCLUDE_LIST, handleFilter);
   yield takeLatest(SET_THREAD_EXCLUDE_LIST, handleFilter);
+  yield takeLatest(TOGGLE_SEARCH_OPTION, handleFilter);
   yield takeLatest(
     ({ type }: { type: string }) => /SEARCH.*RESULT/.test(type),
     focusSearchResult,
