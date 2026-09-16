@@ -1,7 +1,7 @@
 defmodule FlambeNextWeb.McpControllerTest do
   use FlambeNextWeb.ConnCase, async: true
 
-  alias FlambeNext.{Accounts, Traces}
+  alias FlambeNext.{Accounts, Agents, Traces}
   alias FlambeNextWeb.Endpoint
 
   setup %{conn: conn} do
@@ -218,6 +218,45 @@ defmodule FlambeNextWeb.McpControllerTest do
       })
 
     assert %{"id" => 7, "error" => %{"code" => -32602}} = json_response(unknown_tool, 200)
+  end
+
+  test "accepts and persists direct MCP agent identity arguments", %{
+    conn: conn,
+    trace: trace,
+    user: user
+  } do
+    conn =
+      conn
+      |> modern_headers("tools/call", "flambe_start")
+      |> post(~p"/mcp", %{
+        "jsonrpc" => "2.0",
+        "id" => 10,
+        "method" => "tools/call",
+        "params" => %{
+          "name" => "flambe_start",
+          "arguments" => %{
+            "trace_id" => trace.id,
+            "name" => "Direct MCP identity",
+            "agent_id" => "direct-mcp-agent",
+            "agent_name" => "Direct Agent",
+            "platform" => "MCP Host"
+          }
+        }
+      })
+
+    assert %{
+             "result" => %{
+               "isError" => false,
+               "structuredContent" => %{"activity_id" => activity_id}
+             }
+           } = json_response(conn, 200)
+
+    activity = Traces.get_user_activity!(user, activity_id)
+    assert activity.agent_id == "direct-mcp-agent"
+    assert activity.agent_name == "Direct Agent"
+
+    assert %{name: "Direct Agent", platform: "MCP Host"} =
+             Agents.get(user, "direct-mcp-agent")
   end
 
   test "supports ping and rejects malformed initialization parameters", %{conn: conn} do
