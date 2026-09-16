@@ -9,7 +9,14 @@
       <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
       <label>
         New category
-        <input type="text" name="category[name]" required placeholder="Name" />
+        <input
+          type="text"
+          name="category[name]"
+          required
+          placeholder="Name"
+          class="category-name"
+          style="background-color: #efc360; color: #000000"
+        />
       </label>
       <label>
         Background
@@ -29,10 +36,15 @@
     <form class="row" action={~p"/settings/categories/#{category}"} method="post">
       <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
       <input type="hidden" name="_method" value="put" />
-      <label>
-        Name
-        <input type="text" name="category[name]" required value={category.name} />
-      </label>
+      <input
+        type="text"
+        name="category[name]"
+        required
+        value={category.name}
+        aria-label="Category name"
+        class="category-name"
+        style={"background-color: #{hex(category.color_background, "#efc360")}; color: #{hex(category.color_text, "#000000")}"}
+      />
       <label>
         Background
         <input
@@ -60,3 +72,19 @@
     </form>
   </section>
 </main>
+<script>
+  document.querySelectorAll("form.row").forEach((form) => {
+    const name = form.querySelector('input[name="category[name]"]');
+    const background = form.querySelector('input[name="category[color_background]"]');
+    const text = form.querySelector('input[name="category[color_text]"]');
+    if (!name || !background || !text) return;
+
+    const preview = () => {
+      name.style.backgroundColor = background.value;
+      name.style.color = text.value;
+    };
+
+    background.addEventListener("input", preview);
+    text.addEventListener("input", preview);
+  });
+</script>
