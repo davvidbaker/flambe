@@ -1,11 +1,10 @@
-/* ⚠️ todo strip warnings in production build */
 import type { Command, CommandParameter } from '../../../constants/commands';
 
 type Parameters = Record<string, unknown>;
 type Selector = NonNullable<CommandParameter['selector']>;
 
 function warning(fn: () => void): void {
-  fn();
+  if (NODE_ENV !== 'production') fn();
 }
 function warn(...args: unknown[]): void {
   console.warn('😲', ...args);

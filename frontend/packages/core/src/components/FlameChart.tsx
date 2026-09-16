@@ -378,14 +378,12 @@ export class FlameChart extends Component<Props, State> {
 
   onContextMenu = (e: MouseEvent<HTMLCanvasElement>): void => {
     e.preventDefault();
-    console.log('oncontext menu e', e);
   };
 
   onClick = (e: MouseEvent<HTMLCanvasElement>): void => {
     const hit = this.hitTest(e);
 
     if (hit) {
-      console.log('hit', hit);
       switch (hit.type) {
         case 'thread_ellipsis':
           this.props.showThreadDetail(hit.value);
@@ -592,7 +590,6 @@ export class FlameChart extends Component<Props, State> {
   onMouseDown = (e: MouseEvent<HTMLCanvasElement>): void => {
     // e.preventDefault();
     const eTimeX = this.pixelsToTime(e.nativeEvent.offsetX);
-    console.log(`🔥  eTimeX`, eTimeX);
     this.setFlamechartState({ mousedown: true, mousedownX: eTimeX });
     if (this.props.modifiers.shift) {
       this.setFlamechartState({
@@ -630,7 +627,6 @@ export class FlameChart extends Component<Props, State> {
   };
 
   onMouseUp = () => {
-    console.log(`🔥  this.resizing`, this.resizing);
     if (this.resizing && this.resizingBlock) {
       /* ⚠️ should do like an adjust activity thing that updates redux blocks */
       this.props.updateEvent(
@@ -653,8 +649,6 @@ export class FlameChart extends Component<Props, State> {
   };
 
   render() {
-    console.log('trying to render fc');
-
     // debugger;
     const maxThreadLevels = Object.values(this.threadLevels || {}).map(({ max }) => max);
     this.maxThreadLevels = maxThreadLevels.length > 0
@@ -896,7 +890,6 @@ export class FlameChart extends Component<Props, State> {
     for (let i = 0; i < this.props.blocks.length; i++) {
       const block = this.props.blocks[i];
       const activity = this.props.activities[String(block.activity_id)];
-      if (!activity) console.log('block missing activity 😲', block);
       this.ctx.font = `${block.endTime ? '' : 'bold'} 11px sans-serif`;
 
       if (activity) {

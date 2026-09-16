@@ -785,8 +785,6 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   }, 1000);
 
   render() {
-    console.log('trying to render timeline');
-
     const { props } = this;
 
     const rightBoundaryTime = this.rightBoundaryTime || props.maxTime;
@@ -850,7 +848,6 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                     this.zoomTo(zoomChord);
                     this.setState({ zoomChord });
                   } else if (e.key.match(/\d/)) {
-                    console.log(`🔥e.key`, e.key, Number(e.key));
                     this.setState({ zoomChordMultiplier: Number(e.key) });
                     this.setState({ composingZoomChord: false });
                   } else {

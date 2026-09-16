@@ -62,8 +62,6 @@ import type { TimelineState } from '../reducers/timeline';
 
 Modal.setAppElement('#app-root');
 
-console.log(`🔥  React.version`, React.version);
-
 const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }: {
   children: React.ReactNode;
   hideSidePanel: () => unknown;
@@ -179,7 +177,6 @@ class App extends React.Component<AppProps, AppState> {
 
   submitCommand = (command: { action: Command['action'] } & Record<string, unknown>): void => {
     this.hideCommander();
-    console.log(`🔥  command`, command);
     this.props.runCommand(this.props.operand, command);
   };
 
@@ -333,7 +330,6 @@ class App extends React.Component<AppProps, AppState> {
             switch (this.props.operand.type) {
               case 'activity':
                 if (e.code === 'Space') {
-                  console.log(`🔥  space`, this.props);
                   this.props.showActivityDetails();
                 } else {
                   switch (e.key) {
