@@ -18,6 +18,13 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
+      {
+        name: 'flambe-env-favicon',
+        transformIndexHtml(html) {
+          if (mode !== 'development') return html;
+          return html.replace('href="/favicon.png"', 'href="/favicon_dev.png"');
+        },
+      },
       react({
         babel: {
           babelrc: false,
