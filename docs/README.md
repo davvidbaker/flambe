@@ -4,6 +4,7 @@
 |-----|------------|
 | [PRODUCT_PRINCIPLES.md](PRODUCT_PRINCIPLES.md) | Product boundary: Flambe owns intent/control/observability, not generic agent orchestration |
 | [OPEN_WORK.md](OPEN_WORK.md) | **Start here for unfinished work** — uncommitted commit slices, carbon/Pulse follow-ups, parked ideas |
+| [ADR-015-bounded-message-context.md](ADR-015-bounded-message-context.md) | Accepted: `flambe message` prompt is the live stack plus ended work from the last 21 days |
 | [ADR-014-reducer-enforces-structure.md](ADR-014-reducer-enforces-structure.md) | Accepted: one worker ingress, one reducer; structure enforced by rewriting; intent is the root activity; sync model review on two rules |
 | [PLAN-reducer-structure.md](PLAN-reducer-structure.md) | Phasing and ownership for ADR-014 |
 | [ADR-013-shared-agent-commands-and-mcp.md](ADR-013-shared-agent-commands-and-mcp.md) | Accepted: shared backend agent commands, MCP for hosted agents, compatible CLI, advisory next actions |
