@@ -97,7 +97,16 @@ defmodule FlambeNext.AgentCommandsTest do
     {:ok, other_thread} = Traces.create_thread(trace, %{name: "Other", rank: 1})
     {:ok, parent} = start(user, trace, thread, "Parent", 1000)
     {:ok, child} = start(user, trace, thread, "Child", 2000)
-    {:ok, _other} = start(user, trace, other_thread, "Elsewhere", 3000)
+
+    {:ok, _other} =
+      AgentCommands.execute(user, "start", %{
+        "trace_id" => trace.id,
+        "thread_id" => other_thread.id,
+        "parent_id" => nil,
+        "name" => "Elsewhere",
+        "agent_id" => "other-agent",
+        "timestamp" => 3000
+      })
 
     assert {:ok, result} =
              AgentCommands.execute(user, "status", %{

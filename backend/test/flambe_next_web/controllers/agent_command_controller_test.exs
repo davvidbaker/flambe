@@ -1,7 +1,7 @@
 defmodule FlambeNextWeb.AgentCommandControllerTest do
   use FlambeNextWeb.ConnCase, async: true
 
-  alias FlambeNext.{Accounts, Traces}
+  alias FlambeNext.{Accounts, Agents, Traces}
 
   setup %{conn: conn} do
     suffix = System.unique_integer([:positive])
@@ -34,13 +34,15 @@ defmodule FlambeNextWeb.AgentCommandControllerTest do
       conn
       |> put_req_header("x-flambe-agent-id", "header-agent")
       |> put_req_header("x-flambe-agent-name", "Header Agent")
+      |> put_req_header("x-flambe-agent-platform", "Codex")
       |> post(~p"/api/agent-commands", %{
         "command" => "start",
         "arguments" => %{
           "trace_id" => trace.id,
           "name" => "Transport work",
           "agent_id" => "body-agent",
-          "agent_name" => "Body Agent"
+          "agent_name" => "Body Agent",
+          "platform" => "Body Platform"
         }
       })
 
@@ -64,6 +66,8 @@ defmodule FlambeNextWeb.AgentCommandControllerTest do
     activity = Traces.get_user_activity!(user, activity_id)
     assert activity.agent_id == "header-agent"
     assert activity.agent_name == "Header Agent"
+
+    assert %{name: "Header Agent", platform: "Codex"} = Agents.get(user, "header-agent")
   end
 
   test "maps validation and authorization failures without leaking internals", %{

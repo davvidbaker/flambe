@@ -1,9 +1,10 @@
-# ADR-012: Shared agent commands with MCP for hosted agents
+# ADR-013: Shared agent commands with MCP for hosted agents
 
 ## Status
 
 Accepted. Supersedes ADR-010's choice of the CLI as the primary hosted agent
 adapter. Keeps ADR-009's local runtime and ADR-011's reducer ownership.
+Integrates ADR-012's parent/thread/category placement and durable agent naming.
 
 ## Context
 
