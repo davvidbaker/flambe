@@ -11,7 +11,8 @@ config :flambe_next,
   ecto_repos: [FlambeNext.Repo],
   generators: [timestamp_type: :utc_datetime],
   session_cookie_secure: false,
-  invite_code: nil
+  invite_code: nil,
+  share_store: FlambeNext.Shares.VercelBlob
 
 # Configure the endpoint
 config :flambe_next, FlambeNextWeb.Endpoint,

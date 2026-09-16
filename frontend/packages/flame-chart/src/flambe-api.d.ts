@@ -72,12 +72,26 @@ export type AppChartFixtureOptions = {
   now?: number;
 };
 
+export type SnapshotViewport = {
+  leftBoundaryTime: number;
+  rightBoundaryTime: number;
+};
+
+export type TimelineSnapshot = {
+  version: 1;
+  exportedAt: number;
+  viewport: SnapshotViewport;
+  fixture: AppChartFixture;
+};
+
 export type ChartHarnessProps = {
   fixture: AppChartFixture;
   className?: string;
   style?: CSSProperties;
   /** CSS height of the chart shell. Storybook fullscreen uses the default `100vh`. */
   height?: number | string;
+  viewport?: SnapshotViewport;
+  demoOverlays?: boolean;
 };
 
 export function ChartHarness(props: ChartHarnessProps): ReactElement;
@@ -85,3 +99,5 @@ export function ChartHarness(props: ChartHarnessProps): ReactElement;
 export function createAppChartFixture(
   options?: AppChartFixtureOptions,
 ): AppChartFixture;
+
+export function isTimelineSnapshot(value: unknown): value is TimelineSnapshot;

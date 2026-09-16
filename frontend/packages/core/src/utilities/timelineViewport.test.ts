@@ -1,4 +1,4 @@
-import { savedRangeIsUsable } from './timelineViewport';
+import { fromDatetimeLocalValue, savedRangeIsUsable, toDatetimeLocalValue } from './timelineViewport';
 
 describe('savedRangeIsUsable', () => {
   const dayStart = 1_000;
@@ -37,5 +37,18 @@ describe('savedRangeIsUsable', () => {
       null,
       'trace-1',
     )).toBe(true);
+  });
+});
+
+describe('datetime-local helpers', () => {
+  it('round-trips local minutes', () => {
+    const ms = new Date(2026, 8, 16, 17, 6).getTime();
+    const value = toDatetimeLocalValue(ms);
+    expect(value).toBe('2026-09-16T17:06');
+    expect(fromDatetimeLocalValue(value)).toBe(ms);
+  });
+
+  it('rejects empty input', () => {
+    expect(fromDatetimeLocalValue('')).toBeNull();
   });
 });

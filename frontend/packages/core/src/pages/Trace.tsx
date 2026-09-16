@@ -18,6 +18,7 @@ import SearchBar from '../containers/SearchBar';
 import WithEventListeners, { type EventListenerTuple } from '../components/WithEventListeners';
 import CategoryManager from '../components/CategoryManager';
 import Settings from '../components/Settings';
+import ShareTimeline from '../components/ShareTimeline';
 import KeyboardShortcuts from '../components/KeyboardShortcuts';
 import {
   collapseAllThreads,
@@ -476,6 +477,7 @@ class App extends React.Component<AppProps, AppState> {
               )}
               <CategoryManager />
               <Settings />
+              <ShareTimeline />
               <KeyboardShortcuts />
               <Commander
                 field={this.state.field}
@@ -502,6 +504,7 @@ const ConnectedTrace = connect(
       return {
       aModalIsOpen:
         state.settingsVisible ||
+        state.shareTimelineVisible ||
         state.keyboardShortcutsVisible ||
         state.activityDetailModalVisible ||
         state.todosVisible,

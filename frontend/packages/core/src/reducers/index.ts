@@ -13,6 +13,8 @@ import {
   KEYBOARD_SHORTCUTS_SHOW,
   KEYBOARD_SHORTCUTS_HIDE,
   KEYBOARD_SHORTCUTS_TOGGLE,
+  SHARE_TIMELINE_SHOW,
+  SHARE_TIMELINE_HIDE,
   VIEW_CHANGE,
 } from '../actions';
 
@@ -69,6 +71,17 @@ function settingsVisible(state = false, action: RootAction): boolean {
     case SETTINGS_SHOW:
       return true;
     case SETTINGS_HIDE:
+      return false;
+    default:
+      return state;
+  }
+}
+
+function shareTimelineVisible(state = false, action: RootAction): boolean {
+  switch (action.type) {
+    case SHARE_TIMELINE_SHOW:
+      return true;
+    case SHARE_TIMELINE_HIDE:
       return false;
     default:
       return state;
@@ -140,6 +153,7 @@ export {
   search,
   settings,
   settingsVisible,
+  shareTimelineVisible,
   keyboardShortcutsVisible,
   timeline,
   todosVisible,

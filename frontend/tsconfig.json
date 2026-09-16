@@ -22,6 +22,10 @@
     "packages/flame-chart/src/**/*.tsx",
     "playwright/**/*.ts",
     "playwright.config.ts",
+    "packages/share-viewer/src/**/*.ts",
+    "packages/share-viewer/src/**/*.tsx",
+    "packages/share-viewer/src/vite-env.d.ts",
+    "packages/share-viewer/vite.config.ts",
     "vitest.config.mts",
     ".storybook/**/*.ts",
     ".storybook/**/*.tsx"

@@ -8,6 +8,7 @@ import { setTimeline } from '../actions';
 import ConnectedTimeline from '../containers/ConnectedTimeline';
 import { colors } from '../styles';
 import { createChartStore, seedChartViewport, viewportForFixture } from './createChartStore';
+import type { SnapshotViewport } from '../utilities/timelineSnapshot';
 import type { AppChartFixture } from './fixtureTrace';
 
 export type ChartHarnessProps = {
@@ -19,6 +20,9 @@ export type ChartHarnessProps = {
   /** Optional app chrome (header, etc.) above the chart, sharing this store. */
   chrome?: ReactNode;
   storeExtras?: Parameters<typeof createChartStore>[2];
+  viewport?: SnapshotViewport;
+  /** Storybook seeds fake mantras/observations. Share pages should pass false. */
+  demoOverlays?: boolean;
 };
 
 export function ChartHarness({
@@ -28,14 +32,17 @@ export function ChartHarness({
   height = '100vh',
   chrome,
   storeExtras,
+  viewport,
+  demoOverlays = true,
 }: ChartHarnessProps) {
-  const [store] = useState(() => createChartStore(fixture, Date.now(), storeExtras));
+  const extras = { ...storeExtras, viewport, demoOverlays };
+  const [store] = useState(() => createChartStore(fixture, Date.now(), extras));
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    seedChartViewport(fixture);
+    seedChartViewport(fixture, Date.now(), viewport);
     setMounted(true);
-  }, [fixture]);
+  }, [fixture, viewport]);
 
   useEffect(() => {
     if (!mounted) return undefined;
@@ -43,15 +50,15 @@ export function ChartHarness({
     const frame = window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         if (cancelled) return;
-        const { minTime, maxTime } = viewportForFixture(fixture);
-        store.dispatch(setTimeline(minTime, maxTime + 1));
+        const { minTime, maxTime } = viewportForFixture(fixture, Date.now(), viewport);
+        store.dispatch(setTimeline(minTime, viewport ? maxTime : maxTime + 1));
       });
     });
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(frame);
     };
-  }, [fixture, mounted, store]);
+  }, [fixture, mounted, store, viewport]);
 
   const shellStyle: CSSProperties = {
     background: colors.background,
