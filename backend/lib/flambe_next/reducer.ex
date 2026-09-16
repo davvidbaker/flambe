@@ -28,6 +28,7 @@ defmodule FlambeNext.Reducer do
 
   @lifecycle_phases ~w(B R X S E J V)
   @open_phases ~w(B R X)
+  @ended_phases ~w(E J V)
 
   @type fold_result :: %{
           activity: Activity.t() | nil,
@@ -98,7 +99,9 @@ defmodule FlambeNext.Reducer do
   defp fold_lifecycle(trace, proposal) do
     activity = Map.fetch!(proposal, :activity)
     event_attrs = Map.get(proposal, :event_attrs, %{})
-    open = if(phase(event_attrs) == "E", do: open_descendants(trace, activity), else: :not_end)
+
+    open =
+      if(ended_phase?(phase(event_attrs)), do: open_descendants(trace, activity), else: :not_end)
 
     case reduce_event(trace, activity, event_attrs) do
       {:ok, %{event: event, closed_descendants: closed}} ->
@@ -688,7 +691,7 @@ defmodule FlambeNext.Reducer do
           {:ok, result()} | {:error, Ecto.Changeset.t()}
   def reduce_event(%Trace{} = trace, %Activity{} = activity, attrs) when is_map(attrs) do
     case phase(attrs) do
-      "E" -> end_with_descendants(trace, activity, attrs)
+      ended when ended in @ended_phases -> end_with_descendants(trace, activity, attrs)
       _ -> plain(trace, activity, attrs)
     end
   end
@@ -778,6 +781,8 @@ defmodule FlambeNext.Reducer do
   end
 
   defp phase(attrs), do: Map.get(attrs, "phase") || Map.get(attrs, :phase)
+
+  defp ended_phase?(phase), do: phase in @ended_phases
 
   defp timestamp_integer(attrs) do
     case Map.get(attrs, "timestamp_integer") || Map.get(attrs, :timestamp_integer) do

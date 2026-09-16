@@ -147,7 +147,7 @@ defmodule FlambeNextWeb.McpController do
     lifecycle_tool(
       "flambe_end",
       "End a Flambe Activity",
-      "End completed work. Open children must be closed first unless force is true; forced results list closed descendants. The result may carry direction and reply, and actions_applied lists any reducer rewrites; act on a direction before continuing. State availableActions are recommendations for the next command.",
+      "End completed work. A message records a resolution (phase V); omitting it is a plain end (phase E). Open children must be closed first unless force is true; forced results list closed descendants. The result may carry direction and reply, and actions_applied lists any reducer rewrites; act on a direction before continuing. State availableActions are recommendations for the next command.",
       %{force: %{type: "boolean", default: false, description: "Also close open descendants"}}
     )
   end
