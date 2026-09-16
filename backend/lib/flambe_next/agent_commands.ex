@@ -9,7 +9,8 @@ defmodule FlambeNext.AgentCommands do
   import Ecto.Query
 
   alias FlambeNext.Accounts.User
-  alias FlambeNext.{AgentTransitions, Agents, Reducer, ReducerAgent, Repo, Traces}
+  alias FlambeNext.{AgentTransitions, Agents, Reducer, Repo, Traces}
+  alias FlambeNext.Reducer.Placement
   alias FlambeNext.Traces.{Activity, Event}
   alias FlambeNextWeb.EventStream
 
@@ -39,16 +40,31 @@ defmodule FlambeNext.AgentCommands do
          {:ok, thread_id} <- optional_id(attrs["thread_id"], "thread_id"),
          {:ok, parent_id} <- optional_parent_id(attrs),
          activity_attrs <- activity_attrs(attrs, name, parent_id, category_ids),
-         {:ok, %{activity: activity, event: event, notes: notes}} <-
-           Reducer.reduce_start(user, trace, %{
-             "thread_id" => thread_id,
-             "activity" => activity_attrs,
-             "event" => %{"phase" => "B", "timestamp_integer" => timestamp},
-             agent_id: optional_string(attrs["agent_id"])
+         {:ok, folded} <-
+           Reducer.fold(user, trace, %{
+             command: "start",
+             params: %{
+               "thread_id" => thread_id,
+               "activity" => activity_attrs,
+               "event" => %{"phase" => "B", "timestamp_integer" => timestamp},
+               agent_id: optional_string(attrs["agent_id"])
+             }
            }) do
-      :ok = EventStream.broadcast_event(user, event)
-      if is_nil(activity.parent_id), do: ReducerAgent.place_root_async(user, activity)
-      result(user, trace, activity.id, event.id, reducer: notes)
+      folded.extra_events
+      |> Kernel.++([folded.event])
+      |> Enum.reject(&is_nil/1)
+      |> Enum.each(&EventStream.broadcast_event(user, &1))
+
+      if is_nil(folded.activity.parent_id) and folded.actions_applied == [],
+        do: Placement.place_root_async(user, folded.activity)
+
+      result(user, trace, folded.activity.id, folded.event.id,
+        reducer: folded.notes,
+        rules_fired: folded.rules_fired,
+        actions_applied: folded.actions_applied,
+        direction: folded.direction,
+        reply: folded.reply
+      )
     else
       {:error, %Ecto.Changeset{} = changeset} -> invalid_changeset(changeset)
       other -> other
@@ -63,17 +79,26 @@ defmodule FlambeNext.AgentCommands do
          open <- Reducer.open_descendants(trace, activity),
          :ok <- allow_end(command, open, attrs["force"]),
          {:ok, timestamp} <- timestamp(attrs["timestamp"]),
-         {:ok, reduction} <-
-           Reducer.reduce_event(trace, activity, %{
-             "phase" => phase,
-             "message" => optional_string(attrs["message"]),
-             "timestamp_integer" => timestamp
+         {:ok, folded} <-
+           Reducer.fold(user, trace, %{
+             command: command,
+             activity: activity,
+             event_attrs: %{
+               "phase" => phase,
+               "message" => optional_string(attrs["message"]),
+               "timestamp_integer" => timestamp
+             }
            }) do
-      written = Enum.map(reduction.closed_descendants, & &1.event) ++ [reduction.event]
+      written =
+        Enum.map(folded.closed_descendants, & &1.event) ++
+          folded.extra_events ++ [folded.event]
+
       Enum.each(written, &EventStream.broadcast_event(user, &1))
 
-      result(user, trace, activity.id, reduction.event.id,
-        closed_descendants: closed_descendants(reduction.closed_descendants)
+      result(user, trace, activity.id, folded.event.id,
+        closed_descendants: closed_descendants(folded.closed_descendants),
+        rules_fired: folded.rules_fired,
+        actions_applied: folded.actions_applied
       )
     else
       {:error, %Ecto.Changeset{} = changeset} -> invalid_changeset(changeset)
@@ -94,20 +119,24 @@ defmodule FlambeNext.AgentCommands do
          {:ok, allow_changes} <-
            boolean(attrs["allow_stack_changes"], true, "allow_stack_changes"),
          before_id <- latest_event_id(trace),
-         {:ok, reducer_result} <-
-           call_reducer(user, %{
-             "trace_id" => trace.id,
-             "activity_id" => activity.id,
-             "agent_id" => optional_string(attrs["agent_id"]),
-             "message" => message,
-             "allow_stack_changes" => allow_changes
+         {:ok, folded} <-
+           Reducer.fold(user, trace, %{
+             command: "message",
+             attrs: %{
+               "trace_id" => trace.id,
+               "activity_id" => activity.id,
+               "agent_id" => optional_string(attrs["agent_id"]),
+               "message" => message,
+               "allow_stack_changes" => allow_changes
+             }
            }) do
       broadcast_events_since(user, trace, before_id)
       {:ok, current_state} = state(user, trace)
 
       {:ok,
        base_result(current_state)
-       |> Map.merge(reducer_result)
+       |> Map.merge(folded.review)
+       |> Map.put(:rules_fired, folded.rules_fired)
        |> Map.put(:activity_id, activity.id)}
     end
   end
@@ -119,6 +148,10 @@ defmodule FlambeNext.AgentCommands do
        |> Map.put(:activity_id, activity_id)
        |> Map.put(:event_id, event_id)
        |> Map.put(:closed_descendants, Keyword.get(options, :closed_descendants, []))
+       |> Map.put(:rules_fired, Keyword.get(options, :rules_fired, []))
+       |> Map.put(:actions_applied, Keyword.get(options, :actions_applied, []))
+       |> Map.put(:direction, Keyword.get(options, :direction))
+       |> Map.put(:reply, Keyword.get(options, :reply))
        |> maybe_put(:reducer, Keyword.get(options, :reducer))}
     end
   end
@@ -127,7 +160,9 @@ defmodule FlambeNext.AgentCommands do
     %{
       state: state,
       direction: nil,
+      reply: nil,
       actions_applied: [],
+      rules_fired: [],
       closed_descendants: []
     }
   end
@@ -389,19 +424,6 @@ defmodule FlambeNext.AgentCommands do
     |> Enum.each(&EventStream.broadcast_event(user, &1))
   end
 
-  defp call_reducer(user, arguments) do
-    case System.get_env("OPENAI_API_KEY") do
-      key when key in [nil, ""] ->
-        {:error, :reducer_not_configured}
-
-      _key ->
-        case Application.ensure_all_started(:inets) do
-          {:ok, _apps} -> ReducerAgent.handle(user, arguments)
-          {:error, reason} -> {:error, {:reducer_http_runtime_failed, reason}}
-        end
-    end
-  end
-
   defp activity_attrs(attrs, name, parent_id, category_ids) do
     agent_id = optional_string(attrs["agent_id"])
 
@@ -424,7 +446,7 @@ defmodule FlambeNext.AgentCommands do
                  user,
                  agent_id,
                  optional_string(attrs["agent_name"]),
-                 optional_string(attrs["agent_platform"])
+                 optional_string(attrs["agent_platform"] || attrs["platform"])
                ) do
           {:ok,
            attrs

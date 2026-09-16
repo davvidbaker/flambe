@@ -1,7 +1,7 @@
 defmodule FlambeNextWeb.ActivityController do
   use FlambeNextWeb, :controller
 
-  alias FlambeNext.{Accounts, Reducer, ReducerAgent, Traces}
+  alias FlambeNext.{Accounts, AgentCommands, Traces}
   alias FlambeNextWeb.EventStream
 
   # Agents (bearer token) propose a start and the reducer resolves parent, thread, and
@@ -12,38 +12,99 @@ defmodule FlambeNextWeb.ActivityController do
       ) do
     user = conn.assigns.current_user
     trace = Traces.get_user_trace!(user, trace_id)
-    activity_attrs = agent_identity(conn, activity_attrs)
 
-    result =
-      if Map.has_key?(conn.assigns, :api_token) do
-        Reducer.reduce_start(user, trace, %{
-          "thread_id" => Map.get(params, "thread_id"),
-          "activity" => activity_attrs,
-          "event" => event_attrs,
-          agent_id: Map.get(activity_attrs, "agent_id")
-        })
-      else
-        direct_create(user, trace, params, activity_attrs, event_attrs)
+    if Map.has_key?(conn.assigns, :api_token) do
+      agent_create(conn, user, params, activity_attrs, event_attrs)
+    else
+      activity_attrs = agent_identity(conn, activity_attrs)
+
+      case direct_create(user, trace, params, activity_attrs, event_attrs) do
+        {:ok, %{activity: activity, event: event, notes: notes}} ->
+          :ok = EventStream.broadcast_event(user, event)
+
+          conn
+          |> put_status(:created)
+          |> render(:show, activity: activity, event: event, reducer: notes)
+
+        {:error, :not_found} ->
+          conn
+          |> put_status(:not_found)
+          |> json(%{error: "NOT_FOUND"})
+
+        {:error, changeset} ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{errors: errors(changeset)})
       end
+    end
+  end
 
-    case result do
-      {:ok, %{activity: activity, event: event, notes: notes}} ->
-        :ok = EventStream.broadcast_event(user, event)
-        if notes && is_nil(activity.parent_id), do: ReducerAgent.place_root_async(user, activity)
+  defp agent_create(conn, user, params, activity_attrs, event_attrs) do
+    case AgentCommands.execute(
+           user,
+           "start",
+           start_command_attrs(conn, params, activity_attrs, event_attrs)
+         ) do
+      {:ok, result} ->
+        activity = Traces.get_user_trace_activity!(user, params["trace_id"], result.activity_id)
+        event = Traces.get_user_event!(user, result.event_id)
 
         conn
         |> put_status(:created)
-        |> render(:show, activity: activity, event: event, reducer: notes)
+        |> render(:show, activity: activity, event: event, reducer: Map.get(result, :reducer))
 
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
         |> json(%{error: "NOT_FOUND"})
 
-      {:error, changeset} ->
+      {:error, {:invalid_input, message}} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: %{activity: [message]}})
+
+      {:error, %Ecto.Changeset{} = changeset} ->
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{errors: errors(changeset)})
+    end
+  end
+
+  defp start_command_attrs(conn, params, activity_attrs, event_attrs) do
+    attrs = %{
+      "trace_id" => params["trace_id"],
+      "name" => Map.get(activity_attrs, "name"),
+      "category_ids" => Map.get(activity_attrs, "categories", []),
+      "timestamp" => Map.get(event_attrs, "timestamp_integer")
+    }
+
+    attrs =
+      case Map.get(params, "thread_id") do
+        nil -> attrs
+        thread_id -> Map.put(attrs, "thread_id", thread_id)
+      end
+
+    attrs =
+      case Map.fetch(activity_attrs, "parent_id") do
+        :error -> attrs
+        {:ok, parent_id} -> Map.put(attrs, "parent_id", parent_id)
+      end
+
+    attrs =
+      case Map.get(activity_attrs, "description") do
+        description when is_binary(description) -> Map.put(attrs, "description", description)
+        _ -> attrs
+      end
+
+    case conn.assigns[:agent] do
+      %{id: agent_id, name: name} = agent ->
+        attrs
+        |> Map.put("agent_id", agent_id)
+        |> Map.put("agent_name", name)
+        |> Map.put("agent_platform", Map.get(agent, :platform))
+
+      _ ->
+        attrs
     end
   end
 

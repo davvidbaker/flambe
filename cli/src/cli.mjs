@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { clientFromEnv, clientFromHostEnv } from './client.mjs';
+import { clearQuestion, readOpenQuestion, rememberQuestion } from './questions.mjs';
 
 // `node:sqlite` still prints an ExperimentalWarning on import in some Node 22 releases.
 // Only serve/export need it, so load those modules on demand and keep every other
@@ -275,6 +276,14 @@ function parseImport(args) {
 function formatAction(action) {
   if (action.type === 'create_child') return `created child ${action.activity_id} under ${action.parent_activity_id}`;
   if (action.type === 'update_activity') return `updated activity ${action.activity_id}`;
+  if (action.type === 'reparent') return `reparented ${action.activity_id} under ${action.parent_activity_id}`;
+  if (action.type === 'rename') return `renamed ${action.activity_id} to ${action.name}`;
+  if (action.type === 'ask') return `asked about ${action.activity_id}`;
+  if (action.type === 'resume_existing') return `resumed existing ${action.activity_id}`;
+  if (action.type === 'resume_ancestor') return `resumed ancestor ${action.activity_id}`;
+  if (action.type === 'no_op') return `left ${action.activity_id} as it was`;
+  if (action.type === 'keep') return 'kept the recorded structure';
+  if (action.type === 'skipped') return 'recorded the proposal; model review skipped';
   return JSON.stringify(action);
 }
 
@@ -285,6 +294,15 @@ function formatReducerNote(note) {
   }
   if (note.type === 'agent_named') {
     return `reducer named this agent "${note.name}"; the CLI will use it from now on\n`;
+  }
+  if (note.type === 'command_result') {
+    const lines = [];
+    if (note.direction) lines.push(`direction\t${note.direction}\n`);
+    if (note.reply) lines.push(`reply\t${note.reply}\n`);
+    if (note.actionsApplied?.length) {
+      lines.push(`actions\t${note.actionsApplied.map(formatAction).join('; ')}\n`);
+    }
+    return lines.join('');
   }
   if (note.type === 'start_reduced') {
     const parts = [];
@@ -298,7 +316,7 @@ function formatReducerNote(note) {
   return `reducer: ${JSON.stringify(note)}\n`;
 }
 
-export async function run(argv, { env = process.env, stdout = process.stdout, stderr = process.stderr, client } = {}) {
+export async function run(argv, { env = process.env, stdout = process.stdout, stderr = process.stderr, client, questionsPath } = {}) {
   const [command, ...args] = argv;
 
   if (!command || command === 'help' || command === '--help' || command === '-h') {
@@ -347,9 +365,21 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
   }
 
   // Reducer notes go to stderr so stdout stays a machine-friendly id.
+  const questionFile = questionsPath ?? (client ? undefined : env.FLAMBE_QUESTIONS_PATH);
+  const persistQuestions = Boolean(questionsPath) || !client;
+  const traceId = env.FLAMBE_TRACE_ID;
+  const pendingQuestion = !persistQuestions || command === 'message'
+    ? undefined
+    : readOpenQuestion(traceId, questionFile);
+  if (pendingQuestion) {
+    stderr.write(`reducer still waiting on activity ${pendingQuestion.activityId}: ${pendingQuestion.reply}\n`);
+  }
   const onReducerNote = note => {
     const text = formatReducerNote(note);
     if (text) stderr.write(text);
+    if (persistQuestions && note.type === 'command_result' && note.asked) {
+      rememberQuestion(traceId, { activityId: note.activityId, reply: note.reply }, questionFile);
+    }
   };
   const flambe = client ?? clientFromEnv(env, { onReducerNote });
   flambe.onReducerNote ??= onReducerNote;
@@ -439,6 +469,7 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
   if (command === 'message') {
     const { text, activityId, json } = parseMessage(args);
     const decision = await flambe.message({ activityId, text });
+    if (persistQuestions) clearQuestion(traceId, questionFile);
     if (json) {
       stdout.write(`${JSON.stringify(decision)}\n`);
     } else {

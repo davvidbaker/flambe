@@ -439,6 +439,7 @@ export class FlambeClient {
         category_ids: categoryIds,
         timestamp,
       });
+      this.reportCommandResult(result);
       return result.activity_id;
     }
 
@@ -572,6 +573,7 @@ export class FlambeClient {
         ...(command === 'end' ? { force } : {}),
       });
       this.reportClosedDescendants(Number(activityId), result.closed_descendants ?? []);
+      this.reportCommandResult(result);
       return result.event_id;
     }
 
@@ -592,6 +594,22 @@ export class FlambeClient {
     this.reportClosedDescendants(Number(activityId), closed);
 
     return payload.data.id;
+  }
+
+  reportCommandResult(result) {
+    if (!result) return;
+    const actions = result.actions_applied ?? [];
+    const direction = result.direction ?? null;
+    const reply = result.reply ?? null;
+    if (!direction && !reply && actions.length === 0) return;
+    this.onReducerNote?.({
+      type: 'command_result',
+      activityId: result.activity_id,
+      direction,
+      reply,
+      actionsApplied: actions,
+      asked: actions.some(action => action.type === 'ask'),
+    });
   }
 
   reportClosedDescendants(activityId, closed) {
@@ -669,7 +687,9 @@ export class FlambeClient {
         ...(resolvedActivityId === undefined ? {} : { activity_id: resolvedActivityId }),
         message: text.trim(),
       });
-      return { activityId: result.activity_id ?? resolvedActivityId, ...result };
+      const decision = { activityId: result.activity_id ?? resolvedActivityId, ...result };
+      this.reportCommandResult(result);
+      return decision;
     }
 
     const resolvedActivityId = activityId === undefined

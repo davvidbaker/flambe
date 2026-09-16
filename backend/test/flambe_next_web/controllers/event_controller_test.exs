@@ -162,6 +162,39 @@ defmodule FlambeNextWeb.EventControllerTest do
     assert {"B", nil} = latest_phases(ctx.user, ctx.trace.id)[ctx.root.id]
   end
 
+  test "agent-commands end closes the same open descendants as bearer REST", ctx do
+    grandchild_id = ctx.grandchild.id
+
+    conn =
+      ctx.conn
+      |> put_req_header("authorization", "Bearer #{ctx.raw_token}")
+      |> post(~p"/api/agent-commands", %{
+        "command" => "end",
+        "arguments" => %{
+          "trace_id" => ctx.trace.id,
+          "activity_id" => ctx.child.id,
+          "timestamp" => @t0 + 20_000,
+          "force" => true,
+          "message" => "Done via commands"
+        }
+      })
+
+    assert %{
+             "data" => %{
+               "closed_descendants" => [%{"activity_id" => ^grandchild_id}],
+               "direction" => nil,
+               "reply" => nil,
+               "rules_fired" => []
+             }
+           } = json_response(conn, 200)
+
+    child_id = ctx.child.id
+    expected = "Ended by reducer: parent activity #{child_id} (Fix bug) ended"
+
+    assert {"E", "Done via commands"} = latest_phases(ctx.user, ctx.trace.id)[child_id]
+    assert {"E", ^expected} = latest_phases(ctx.user, ctx.trace.id)[grandchild_id]
+  end
+
   defp start_activity(trace, thread, parent, name, timestamp) do
     {:ok, activity, _event} =
       Traces.create_activity(trace, thread, parent, %{"name" => name}, %{

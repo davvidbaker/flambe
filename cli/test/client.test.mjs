@@ -1452,6 +1452,47 @@ test('whoami reports the reducer-side identity and needs an agent id', async () 
   await assert.rejects(nameless.whoami(), /FLAMBE_AGENT_ID/);
 });
 
+test('CLI prints direction and reply on stderr and reminds about an unanswered question', async () => {
+  const stdout = [];
+  const stderr = [];
+  const questionsPath = `/tmp/flambe-questions-${process.pid}.json`;
+  const env = { FLAMBE_TRACE_ID: '7' };
+  const client = {
+    flushQueue: async () => {},
+    async start() {
+      this.onReducerNote({
+        type: 'command_result',
+        activityId: 4,
+        direction: 'investigate',
+        reply: 'What is this about?',
+        actionsApplied: [{ type: 'ask', activity_id: 4 }],
+        asked: true,
+      });
+      return 4;
+    },
+    async end() {
+      return 9;
+    },
+  };
+  const io = {
+    client,
+    env,
+    questionsPath,
+    stdout: { write: chunk => stdout.push(chunk) },
+    stderr: { write: chunk => stderr.push(chunk) },
+  };
+
+  await run(['start', 'Thing'], io);
+  assert.deepEqual(stdout, ['4\n']);
+  assert.ok(stderr.some(line => line.includes('direction\tinvestigate')));
+  assert.ok(stderr.some(line => line.includes('reply\tWhat is this about?')));
+
+  stdout.length = 0;
+  stderr.length = 0;
+  await run(['end', '4', 'done'], io);
+  assert.ok(stderr.some(line => line.includes('reducer still waiting on activity 4: What is this about?')));
+});
+
 test('CLI prints reducer start and naming notes on stderr, ids on stdout', async () => {
   const stdout = [];
   const stderr = [];
