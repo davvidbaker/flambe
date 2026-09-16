@@ -2,7 +2,7 @@
 
 The active frontend is the React/Vite SPA in `packages/core`. It is served by
 Vite on port 5173 during development and proxies API, auth, and WebSocket
-requests to Phoenix 1.8 on port 4001.
+requests to Phoenix 1.8 on port 4001 (or to Fly when `VITE_API_URL` is set).
 
 Use Node 22 on Windows, macOS, or Linux, then run:
 
@@ -10,6 +10,11 @@ Use Node 22 on Windows, macOS, or Linux, then run:
 npm ci
 npm run dev
 ```
+
+To use production data without Mix, copy `.env.example` to `.env.local`, set
+`VITE_API_URL=https://flambe.fly.dev`, and start only Vite. Log in with a Fly
+account. Local UI writes go to the remote database. Staging later is the same
+variable with a different host.
 
 Use `npm run build` to place the production bundle in
 `../backend/priv/static/assets`, then visit http://localhost:4001.

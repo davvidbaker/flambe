@@ -3,12 +3,14 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
+import { viteDevProxy } from './viteRemoteProxy.mjs';
+
 const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
-  // Phoenix 1.8 is the application backend. VITE_API_URL can target another
-  // local instance when needed.
+  // Phoenix 1.8 is the application backend. VITE_API_URL defaults to local Mix
+  // and can target Fly (or later staging) for frontend-only work.
   const apiTarget = env.VITE_API_URL || 'http://127.0.0.1:4001';
   const socketTarget = env.VITE_SOCKET_URL || apiTarget;
   const useDevProxy = mode === 'development';
@@ -118,11 +120,7 @@ export default defineConfig(({ mode }) => {
       host: 'localhost',
       port: 5173,
       strictPort: true,
-      proxy: {
-        '/api': { target: apiTarget, changeOrigin: true },
-        '/auth': { target: apiTarget, changeOrigin: true },
-        '/socket': { target: socketTarget, changeOrigin: true, ws: true },
-      },
+      proxy: viteDevProxy(apiTarget, socketTarget),
     },
     build: {
       outDir: path.resolve(configDirectory, phoenixStaticDir),
