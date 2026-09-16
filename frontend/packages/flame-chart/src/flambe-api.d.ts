@@ -77,10 +77,16 @@ export type SnapshotViewport = {
   rightBoundaryTime: number;
 };
 
+export type SnapshotTimeLabels = {
+  absoluteTimeLabels: boolean;
+  twelveHourClock: boolean;
+};
+
 export type TimelineSnapshot = {
   version: 1;
   exportedAt: number;
   viewport: SnapshotViewport;
+  timeLabels?: SnapshotTimeLabels;
   fixture: AppChartFixture;
 };
 
@@ -91,6 +97,7 @@ export type ChartHarnessProps = {
   /** CSS height of the chart shell. Storybook fullscreen uses the default `100vh`. */
   height?: number | string;
   viewport?: SnapshotViewport;
+  timeLabels?: SnapshotTimeLabels;
   demoOverlays?: boolean;
 };
 

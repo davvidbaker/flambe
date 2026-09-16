@@ -103,27 +103,35 @@ export function createShareThreadDrafts(
 }
 
 interface Props {
+  absoluteTimeLabels: boolean;
   attentionDrivenThreadOrder: boolean;
   attentionShifts: { thread_id: EntityId; timestamp: number }[];
   categories: RootState['user']['categories'];
   events: RootState['timeline']['events'];
   filterExcludes: EntityId[];
   hideShareTimeline: () => unknown;
+  leftBoundaryTime: number;
+  rightBoundaryTime: number;
   shareTimelineVisible: boolean;
   threads: Record<string, Thread>;
+  twelveHourClock: boolean;
   traceId: EntityId | null;
   traceName: string | null;
 }
 
 function ShareTimeline({
+  absoluteTimeLabels,
   attentionDrivenThreadOrder,
   attentionShifts,
   categories,
   events,
   filterExcludes,
   hideShareTimeline,
+  leftBoundaryTime: viewLeftBoundaryTime,
+  rightBoundaryTime: viewRightBoundaryTime,
   shareTimelineVisible,
   threads,
+  twelveHourClock,
   traceId,
   traceName,
 }: Props) {
@@ -136,10 +144,20 @@ function ShareTimeline({
 
   useEffect(() => {
     if (!shareTimelineVisible) return;
-    const viewport = readSavedTimelineViewport();
+    const saved = readSavedTimelineViewport();
     const now = Date.now();
-    setStartValue(toDatetimeLocalValue(viewport?.leftBoundaryTime ?? now - 60 * 60 * 1000));
-    setEndValue(toDatetimeLocalValue(viewport?.rightBoundaryTime ?? now));
+    const left = (
+      Number.isFinite(viewLeftBoundaryTime) && viewLeftBoundaryTime > 0
+        ? viewLeftBoundaryTime
+        : saved?.leftBoundaryTime
+    ) ?? now - 60 * 60 * 1000;
+    const right = (
+      Number.isFinite(viewRightBoundaryTime) && viewRightBoundaryTime > 0
+        ? viewRightBoundaryTime
+        : saved?.rightBoundaryTime
+    ) ?? now;
+    setStartValue(toDatetimeLocalValue(left));
+    setEndValue(toDatetimeLocalValue(right));
     setDraftThreads(
       createShareThreadDrafts(
         threads,
@@ -187,6 +205,8 @@ function ShareTimeline({
         rightBoundaryTime,
         includedThreadIds: included.map(thread => thread.id),
         collapsedThreadIds: included.filter(thread => thread.collapsed).map(thread => thread.id),
+        absoluteTimeLabels,
+        twelveHourClock,
       },
     );
     setBusy(true);
@@ -230,6 +250,7 @@ function ShareTimeline({
         <input
           id="share-start"
           type="datetime-local"
+          step="1"
           value={startValue}
           onChange={event => setStartValue(event.target.value)}
         />
@@ -237,6 +258,7 @@ function ShareTimeline({
         <input
           id="share-end"
           type="datetime-local"
+          step="1"
           value={endValue}
           onChange={event => setEndValue(event.target.value)}
         />
@@ -302,11 +324,15 @@ export default connect(
   (state: RootState) => {
     const timeline = getTimeline(state);
     return {
+      absoluteTimeLabels: (state.settings as SettingsState).absoluteTimeLabels,
       attentionDrivenThreadOrder: (state.settings as SettingsState).attentionDrivenThreadOrder,
+      twelveHourClock: (state.settings as SettingsState).twelveHourClock,
       attentionShifts: getUser(state).attentionShifts,
       categories: getUser(state).categories,
       events: timeline.events,
       filterExcludes: timeline.trace?.filterExcludes ?? EMPTY_IDS,
+      leftBoundaryTime: timeline.leftBoundaryTime,
+      rightBoundaryTime: timeline.rightBoundaryTime,
       shareTimelineVisible: state.shareTimelineVisible,
       threads: timeline.threads,
       traceId: timeline.trace?.id ?? null,

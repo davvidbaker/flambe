@@ -310,4 +310,14 @@ describe('createChartStore share path', () => {
     expect(state.user.observations).toEqual([]);
     expect(state.user.mantras).toEqual([]);
   });
+
+  it('applies frozen time label settings', () => {
+    const fixture = createAppChartFixture({ now: 1_700_000_000_000 });
+    const store = createChartStore(fixture, 1_700_000_000_000, {
+      demoOverlays: false,
+      timeLabels: { absoluteTimeLabels: true, twelveHourClock: true },
+    });
+    expect(store.getState().settings.absoluteTimeLabels).toBe(true);
+    expect(store.getState().settings.twelveHourClock).toBe(true);
+  });
 });
