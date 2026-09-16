@@ -36,3 +36,7 @@ config :phoenix,
   sort_verified_routes_query_params: true
 
 config :flambe_next, invite_code: System.get_env("FLAMBE_INVITE_CODE") || "test-invite"
+
+config :flambe_next,
+  share_store: FlambeNext.Shares.FakeStore,
+  share_viewer_url: "https://share.test"

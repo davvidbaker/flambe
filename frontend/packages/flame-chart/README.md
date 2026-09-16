@@ -65,7 +65,7 @@ export function Demo() {
 }
 ```
 
-`createAppChartFixture()` and `createFrontiersFixture()` are also exported for the Storybook samples.
+`createAppChartFixture()` and `createFrontiersFixture()` are also exported for the Storybook samples. Pass `viewport` and `demoOverlays={false}` when rendering a frozen share snapshot.
 
 Next.js: import from a Client Component (or `next/dynamic` with `ssr: false`). The chart will not render during SSR.
 

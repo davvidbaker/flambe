@@ -1,0 +1,194 @@
+import { createAppChartFixture } from '../storybook/fixtureTrace';
+import {
+  buildTimelineSnapshot,
+  isTimelineSnapshot,
+} from './timelineSnapshot';
+
+const now = 1_700_000_000_000;
+
+function sourceFromFixture() {
+  const fixture = createAppChartFixture({ now, collapsedThreadIds: [2] });
+  return {
+    fixture,
+    source: {
+      traceId: fixture.traceId,
+      traceName: fixture.traceName,
+      threads: fixture.threads,
+      events: fixture.events,
+      categories: fixture.categories,
+      attentionShifts: fixture.attentionShifts,
+    },
+  };
+}
+
+describe('buildTimelineSnapshot', () => {
+  it('omits hidden threads and preserves collapse on included ones', () => {
+    const { source } = sourceFromFixture();
+    const snapshot = buildTimelineSnapshot(source, {
+      leftBoundaryTime: now - 60 * 60 * 1000,
+      rightBoundaryTime: now,
+      includedThreadIds: [1],
+      collapsedThreadIds: [1],
+      exportedAt: now,
+    });
+
+    expect(snapshot.version).toBe(1);
+    expect(snapshot.fixture.threads.map(thread => [thread.id, thread.collapsed, thread.rank])).toEqual([
+      [1, true, 0],
+    ]);
+    expect(snapshot.fixture.events.every(event => event.activity?.thread_id === 1)).toBe(true);
+  });
+
+  it('keeps a begin event before the window when the activity intersects it', () => {
+    const thread = { id: 1, name: 'main', rank: 0 };
+    const activity = {
+      id: 10,
+      name: 'Long task',
+      categories: [1],
+      thread,
+      thread_id: 1,
+    };
+    const snapshot = buildTimelineSnapshot(
+      {
+        traceId: 1,
+        traceName: 'clip',
+        threads: [thread],
+        categories: [{ id: 1, name: 'coding', color_background: '#efc360', color_text: '#000000' }],
+        attentionShifts: [],
+        events: [
+          { id: 1, timestamp: 1_000, phase: 'B', activity },
+          { id: 2, timestamp: 5_000, phase: 'E', activity, message: 'done' },
+        ],
+      },
+      {
+        leftBoundaryTime: 3_000,
+        rightBoundaryTime: 4_000,
+        includedThreadIds: [1],
+        collapsedThreadIds: [],
+        exportedAt: 4_000,
+      },
+    );
+
+    expect(snapshot.fixture.events.map(event => event.id)).toEqual([1, 2]);
+  });
+
+  it('drops activities that ended before the window', () => {
+    const thread = { id: 1, name: 'main', rank: 0 };
+    const early = {
+      id: 10,
+      name: 'Early',
+      categories: [],
+      thread,
+      thread_id: 1,
+    };
+    const late = {
+      id: 11,
+      name: 'Late',
+      categories: [],
+      thread,
+      thread_id: 1,
+    };
+    const snapshot = buildTimelineSnapshot(
+      {
+        traceId: 1,
+        traceName: 'clip',
+        threads: [thread],
+        categories: [],
+        attentionShifts: [],
+        events: [
+          { id: 1, timestamp: 1_000, phase: 'B', activity: early },
+          { id: 2, timestamp: 2_000, phase: 'E', activity: early },
+          { id: 3, timestamp: 8_000, phase: 'B', activity: late },
+          { id: 4, timestamp: 9_000, phase: 'E', activity: late },
+        ],
+      },
+      {
+        leftBoundaryTime: 7_000,
+        rightBoundaryTime: 10_000,
+        includedThreadIds: [1],
+        collapsedThreadIds: [],
+      },
+    );
+
+    expect(snapshot.fixture.events.map(event => event.activity?.id)).toEqual([11, 11]);
+  });
+
+  it('keeps same-thread ancestors of an intersecting child', () => {
+    const thread = { id: 1, name: 'main', rank: 0 };
+    const parent = {
+      id: 10,
+      name: 'Parent',
+      categories: [],
+      thread,
+      thread_id: 1,
+    };
+    const child = {
+      id: 11,
+      name: 'Child',
+      categories: [],
+      thread,
+      thread_id: 1,
+      parent_id: 10,
+    };
+    const snapshot = buildTimelineSnapshot(
+      {
+        traceId: 1,
+        traceName: 'nest',
+        threads: [thread],
+        categories: [],
+        attentionShifts: [],
+        events: [
+          { id: 1, timestamp: 1_000, phase: 'B', activity: parent },
+          { id: 2, timestamp: 8_000, phase: 'B', activity: child },
+          { id: 3, timestamp: 9_000, phase: 'E', activity: child },
+        ],
+      },
+      {
+        leftBoundaryTime: 7_500,
+        rightBoundaryTime: 9_500,
+        includedThreadIds: [1],
+        collapsedThreadIds: [],
+      },
+    );
+
+    expect(new Set(snapshot.fixture.events.map(event => event.activity?.id))).toEqual(new Set([10, 11]));
+  });
+
+  it('filters attention shifts to the window and included threads', () => {
+    const { source } = sourceFromFixture();
+    const snapshot = buildTimelineSnapshot(
+      {
+        ...source,
+        attentionShifts: [
+          { thread_id: 1, timestamp: now - 1_000 },
+          { thread_id: 2, timestamp: now - 1_000 },
+          { thread_id: 1, timestamp: now - 3 * 60 * 60 * 1000 },
+        ],
+      },
+      {
+        leftBoundaryTime: now - 60 * 60 * 1000,
+        rightBoundaryTime: now,
+        includedThreadIds: [1],
+        collapsedThreadIds: [],
+        exportedAt: now,
+      },
+    );
+
+    expect(snapshot.fixture.attentionShifts).toEqual([{ thread_id: 1, timestamp: now - 1_000 }]);
+  });
+});
+
+describe('isTimelineSnapshot', () => {
+  it('accepts a built snapshot and rejects junk', () => {
+    const { source } = sourceFromFixture();
+    const snapshot = buildTimelineSnapshot(source, {
+      leftBoundaryTime: now - 1000,
+      rightBoundaryTime: now,
+      includedThreadIds: [1, 2],
+      collapsedThreadIds: [2],
+    });
+    expect(isTimelineSnapshot(snapshot)).toBe(true);
+    expect(isTimelineSnapshot({})).toBe(false);
+    expect(isTimelineSnapshot({ version: 1, viewport: {}, fixture: { events: [], threads: [] } })).toBe(false);
+  });
+});
