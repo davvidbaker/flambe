@@ -100,7 +100,7 @@ defmodule FlambeNextWeb.McpController do
        })
        when not is_nil(id) and command in ~w(start end suspend resume status message) and
               is_map(arguments) do
-    arguments = AgentCommandController.put_agent_headers(conn, arguments)
+    arguments = AgentCommandController.put_agent_identity(conn, arguments)
 
     case AgentCommands.execute(conn.assigns.current_user, command, arguments) do
       {:ok, result} -> {:ok, rpc_result(id, tool_result(result))}
@@ -245,6 +245,12 @@ defmodule FlambeNextWeb.McpController do
         minLength: 1,
         maxLength: 200,
         description: "Agent display name"
+      },
+      platform: %{
+        type: "string",
+        minLength: 1,
+        maxLength: 100,
+        description: "Agent host product, for example Codex or Cursor Cloud"
       }
     }
   end
