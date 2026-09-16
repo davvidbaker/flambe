@@ -124,10 +124,13 @@ const CategoryRow = ({
         });
       }}
     >
-      <label>
-        Name
-        <input value={name} onChange={event => setName(event.target.value)} />
-      </label>
+      <input
+        aria-label="Category name"
+        type="text"
+        value={name}
+        onChange={event => setName(event.target.value)}
+        style={{ backgroundColor: background, color: text }}
+      />
       <label>
         Background
         <input type="color" value={background} onChange={event => setBackground(event.target.value)} />
@@ -179,6 +182,7 @@ const CategoryManager = ({
             value={name}
             onChange={event => setName(event.target.value)}
             placeholder="Name"
+            style={{ backgroundColor: background, color: text }}
           />
         </label>
         <label>
