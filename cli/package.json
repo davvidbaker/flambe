@@ -1,13 +1,19 @@
 {
   "name": "@davvidbaker/flambe-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI for streaming coding-agent activity into Flambe",
   "type": "module",
   "bin": {
     "flambe": "./bin/flambe.mjs"
   },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "prepublishOnly": "npm test"
   },
   "engines": {
     "node": ">=22"
@@ -15,6 +21,14 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/davvidbaker/flambe.git"
+    "url": "git+https://github.com/davvidbaker/flambe.git",
+    "directory": "cli"
+  },
+  "homepage": "https://github.com/davvidbaker/flambe/tree/main/cli",
+  "bugs": {
+    "url": "https://github.com/davvidbaker/flambe/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

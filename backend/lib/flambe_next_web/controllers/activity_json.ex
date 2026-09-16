@@ -1,8 +1,13 @@
 defmodule FlambeNextWeb.ActivityJSON do
   alias FlambeNext.Traces.Activity
 
-  def show(%{activity: %Activity{} = activity, event: event}) do
-    %{data: %{activity: activity_data(activity), event: event_data(event)}}
+  def show(%{activity: %Activity{} = activity, event: event} = assigns) do
+    data = %{activity: activity_data(activity), event: event_data(event)}
+
+    case Map.get(assigns, :reducer) do
+      nil -> %{data: data}
+      notes -> %{data: Map.put(data, :reducer, notes)}
+    end
   end
 
   def show(%{activity: %Activity{} = activity}) do

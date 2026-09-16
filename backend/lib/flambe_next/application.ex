@@ -13,6 +13,7 @@ defmodule FlambeNext.Application do
       {DNSCluster, query: Application.get_env(:flambe_next, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: FlambeNext.PubSub},
       FlambeNext.AgentPresence,
+      {Task.Supervisor, name: FlambeNext.TaskSupervisor},
       # Start a worker by calling: FlambeNext.Worker.start_link(arg)
       # {FlambeNext.Worker, arg},
       # Start to serve requests, typically the last entry
