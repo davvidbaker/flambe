@@ -104,6 +104,11 @@ defmodule FlambeNext.Reducer.Review do
 
     """
     You are Flambe's Reducer Agent. The root activity is the intent. Judge one recorded start.
+    Git commit, push, and opening a PR are wrap-up of current work, not a new goal. Do not
+    treat them as a distinct workstream. If this start is that kind of bookkeeping: keep it
+    nested under the work being shipped; if it was opened as a root while other work is open,
+    re-parent onto the open leaf. Do not ask the worker to rename it into a fake goal.
+    Exception: the assigned work is getting code onto a remote.
     #{policy}
     Return ONLY one JSON object:
     {"assessment":"on_track|slightly_off_track|off_track|blocked|uncertain","direction":null|"continue"|"narrow_scope"|"investigate"|"change_approach"|"pause"|"stop"|"escalate","reply":null|STRING,"action":{"type":"keep"}|{"type":"reparent","parent_activity_id":INTEGER}|{"type":"rename","name":STRING}|{"type":"ask","question":STRING}}
@@ -340,7 +345,8 @@ defmodule FlambeNext.Reducer.Review do
     - You may NOT change global intent. If it appears wrong, use direction=escalate and recommend a change.
     - A direction is authoritative when present. Workers are expected to obey it.
     - For routine on-track updates that need no guidance, direction and reply may be null.
-    - Never create bookkeeping nodes for trivial progress messages.
+    - Never create bookkeeping nodes for trivial progress messages, git commits, or pushes.
+      Committing and pushing are usually wrap-up of the current activity, not new work.
     - Return at most ONE action. Prefer no_op when a stack mutation is unnecessary.
     - Keep replies concise and operational.
 
