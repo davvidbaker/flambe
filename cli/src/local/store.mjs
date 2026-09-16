@@ -142,11 +142,25 @@ export const EXPORT_FORMAT = 'flambe-local-export';
 export const EXPORT_VERSION = 1;
 
 export const DEFAULT_CATEGORIES = [
-  { name: 'coding', color_background: '#efc360', color_text: '#000000' },
-  { name: 'investigation', color_background: '#60a5fa', color_text: '#000000' },
-  { name: 'review', color_background: '#a78bfa', color_text: '#ffffff' },
-  { name: 'operations', color_background: '#34d399', color_text: '#000000' },
-  { name: 'failure', color_background: '#fb7185', color_text: '#000000' },
+  { name: 'bug fixing', color_background: '#ff4747', color_text: '#000000' },
+  { name: 'research', color_background: '#cd94f1', color_text: '#000000' },
+  { name: 'cleaning', color_background: '#ffbd69', color_text: '#000000' },
+  { name: 'bug hunting', color_background: '#ef60ab', color_text: '#000000' },
+  { name: 'design', color_background: '#dce7ea', color_text: '#000000' },
+  { name: 'writing tests', color_background: '#50f035', color_text: '#000000' },
+  { name: 'toil', color_background: '#8b6125', color_text: '#ffffff' },
+  { name: 'analytics', color_background: '#f9f9f9', color_text: '#4598d6' },
+  { name: 'oss', color_background: '#60ef6c', color_text: '#000000' },
+  { name: 'enhancements', color_background: '#55defb', color_text: '#ffffff' },
+  { name: 'refactoring components', color_background: '#ffd368', color_text: '#000000' },
+  { name: 'Fundamentals', color_background: '#acefdb', color_text: '#000000' },
+  { name: 'jarring ui', color_background: '#f22d6a', color_text: '#ffffff' },
+  { name: 'writing', color_background: '#ffefce', color_text: '#000000' },
+  { name: 'risky', color_background: '#ff2a22', color_text: '#ffffff' },
+  { name: 'dependency upgrades', color_background: '#b58e38', color_text: '#ffffff' },
+  { name: 'shiny', color_background: '#f5ff86', color_text: '#000000' },
+  { name: 'performance', color_background: '#60efc7', color_text: '#000000' },
+  { name: 'learning', color_background: '#d3f791', color_text: '#000000' },
 ];
 
 export function hashToken(rawToken) {
@@ -317,6 +331,7 @@ export class LocalStore {
   }
 
   listCategories(userId) {
+    this.#ensureDefaultCategories(userId);
     return this.db.prepare(
       'SELECT id, name, color_background, color_text FROM categories WHERE user_id = ? ORDER BY id',
     ).all(userId);
@@ -830,15 +845,16 @@ export class LocalStore {
   }
 
   #ensureDefaultCategories(userId) {
-    const existing = this.db.prepare(
-      'SELECT COUNT(*) AS count FROM categories WHERE user_id = ?',
-    ).get(userId);
-    if (existing.count > 0) return;
-
+    const have = new Set(
+      this.db.prepare('SELECT lower(name) AS name FROM categories WHERE user_id = ?')
+        .all(userId)
+        .map(row => row.name),
+    );
     const insert = this.db.prepare(
       'INSERT INTO categories (user_id, name, color_background, color_text, export_id) VALUES (?, ?, ?, ?, ?)',
     );
     for (const category of DEFAULT_CATEGORIES) {
+      if (have.has(category.name.toLowerCase())) continue;
       insert.run(
         userId,
         category.name,

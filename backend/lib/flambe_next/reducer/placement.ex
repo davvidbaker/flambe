@@ -124,9 +124,12 @@ defmodule FlambeNext.Reducer.Placement do
     - thread_id MUST be one of the listed threads. Keep the current thread_id unless another
       thread's name clearly matches the activity; the recent activities of the same agent
       are a strong hint about which thread it works in.
-    - category_ids MUST be a subset of the listed categories. Pick zero or more; do not
-      force a category when none fits.
-    - Be conservative. When unsure, keep the current thread and pick no categories.
+    - category_ids MUST be a subset of the listed categories. Assign every label that fits
+      the activity (typically 1-3). These are work-kind labels (bug fixing, research,
+      design, writing tests, toil, …), not project names.
+    - Prefer a close match over leaving the activity uncategorized. Return an empty
+      category_ids list only when none of the listed labels apply at all.
+    - When unsure about the thread, keep the current thread_id; still assign categories.
 
     Return ONLY one JSON object with exactly these keys:
     {"thread_id": INTEGER, "category_ids": ARRAY_OF_INTEGERS, "rationale": STRING}
