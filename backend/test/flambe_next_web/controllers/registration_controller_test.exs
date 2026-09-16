@@ -1,6 +1,8 @@
 defmodule FlambeNextWeb.RegistrationControllerTest do
   use FlambeNextWeb.ConnCase, async: true
 
+  alias FlambeNext.Accounts
+
   test "registers a local user with a Main trace that can be logged into", %{conn: conn} do
     conn =
       post(conn, ~p"/api/register", %{
@@ -80,7 +82,7 @@ defmodule FlambeNextWeb.RegistrationControllerTest do
       json_response(conn, 200)["data"]
       |> Enum.map(& &1["name"])
 
-    assert names == ["coding", "investigation", "review", "operations", "failure"]
+    assert names == Enum.map(Accounts.default_categories(), & &1["name"])
   end
 
   test "rejects registration without a valid invite code", %{conn: conn} do
