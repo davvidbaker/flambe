@@ -90,6 +90,7 @@ export interface TimelineProps {
   addCommand: (command: Command) => unknown;
   attentionDrivenThreadOrder: boolean;
   attentionShifts: AttentionShift[];
+  darkerAsWeGoDown: boolean;
   blocks: TraceBlock[];
   categories: Category[];
   focusBlock: (input: { index: number | null; activity_id: EntityId | null; activityStatus?: string | null; thread_id: EntityId | null }) => unknown;

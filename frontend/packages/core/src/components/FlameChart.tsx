@@ -108,6 +108,7 @@ const connector = connect((state: RootState) => ({
   activityMute: state.settings.activityMute,
   activityMuteOpacity: state.settings.activityMuteOpacity,
   uniformBlockHeight: state.settings.uniformBlockHeight,
+  darkerAsWeGoDown: state.settings.darkerAsWeGoDown,
   reactiveThreadHeight: state.settings.reactiveThreadHeight,
   showActivityIds: state.settings.showActivityIds,
   showAttentionFlows: state.settings.attentionFlows,
@@ -1285,7 +1286,9 @@ export class FlameChart extends Component<Props, State> {
         element => element.id === activity.categories[0],
       );
       if (cat) {
-        this.ctx.fillStyle = shade(0.1 * block.level, cat.color_background);
+        this.ctx.fillStyle = this.props.darkerAsWeGoDown
+          ? shade(0.1 * block.level, cat.color_background)
+          : cat.color_background;
       }
     }
 
