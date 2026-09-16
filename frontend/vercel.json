@@ -1,0 +1,7 @@
+{
+  "buildCommand": "npm run build:share-viewer",
+  "outputDirectory": "packages/share-viewer/dist",
+  "rewrites": [
+    { "source": "/s/:id", "destination": "/index.html" }
+  ]
+}

@@ -8,7 +8,9 @@
   "description": "Flambe timeline application",
   "scripts": {
     "dev": "vite --config vite.config.mjs",
+    "dev:share-viewer": "vite --config packages/share-viewer/vite.config.ts",
     "build": "vite build --config vite.config.mjs",
+    "build:share-viewer": "vite build --config packages/share-viewer/vite.config.ts",
     "preview": "vite preview --config vite.config.mjs",
     "test": "npm run test:smoke",
     "test:unit": "vitest run",

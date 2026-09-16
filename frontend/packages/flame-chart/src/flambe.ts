@@ -4,6 +4,7 @@ export {
   ChartHarness,
   createAppChartFixture,
   createFrontiersFixture,
+  isTimelineSnapshot,
   type Activity,
   type ActivityStatus,
   type AppChartFixture,
@@ -13,6 +14,8 @@ export {
   type ChartHarnessProps,
   type EntityId,
   type EventPhase,
+  type SnapshotViewport,
   type Thread,
+  type TimelineSnapshot,
   type TraceEvent,
 } from '../../core/src/chart';

@@ -28,6 +28,14 @@ config :flambe_next, FlambeNextWeb.Endpoint,
 # Fly/CI sets GIT_SHA at image build. Local Mix falls back to `git rev-parse`.
 config :flambe_next, git_sha: FlambeNext.BuildInfo.detect_git_sha()
 
+if viewer_url = System.get_env("FLAMBE_SHARE_VIEWER_URL") do
+  config :flambe_next, share_viewer_url: viewer_url
+end
+
+if blob_token = System.get_env("VERCEL_BLOB_READ_WRITE_TOKEN") do
+  config :flambe_next, vercel_blob_token: blob_token
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

@@ -42,6 +42,7 @@ erl_crash.dump
 /backend/vendor/
 /frontend/dist/
 /frontend/packages/flame-chart/dist/
+/frontend/packages/share-viewer/dist/
 *.tgz
 /frontend/storybook-static/
 /frontend/cypress/screenshots/

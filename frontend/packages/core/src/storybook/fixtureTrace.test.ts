@@ -5,7 +5,7 @@ import {
   projectActorFlames,
   projectActorLaneLayout,
 } from '../utilities/actorFlames';
-import { viewportForFixture } from './createChartStore';
+import { createChartStore, viewportForFixture } from './createChartStore';
 import { createAppChartFixture } from './fixtureTrace';
 import { createFrontiersFixture } from './frontiersFixture';
 import { createWinterStormUriFixture } from './winterStormUriFixture';
@@ -294,5 +294,20 @@ describe('app chart Storybook fixture', () => {
     expect(oncor && centerpoint && oncor.rowStart < centerpoint.rowStart).toBe(true);
     expect(projectActorFlames(processed.activities).length).toBeGreaterThan(8);
     expect(() => coalesceActorLaneChrome(layout, processed.blocks, 60 * 60 * 1000)).not.toThrow();
+  });
+});
+
+describe('createChartStore share path', () => {
+  it('honors an explicit viewport and skips demo observations', () => {
+    const fixture = createAppChartFixture({ now: 1_700_000_000_000 });
+    const store = createChartStore(fixture, 1_700_000_000_000, {
+      demoOverlays: false,
+      viewport: { leftBoundaryTime: 100, rightBoundaryTime: 200 },
+    });
+    const state = store.getState();
+    expect(state.timeline.leftBoundaryTime).toBe(100);
+    expect(state.timeline.rightBoundaryTime).toBe(200);
+    expect(state.user.observations).toEqual([]);
+    expect(state.user.mantras).toEqual([]);
   });
 });

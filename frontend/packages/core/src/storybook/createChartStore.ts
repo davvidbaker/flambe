@@ -10,6 +10,12 @@ import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import { rootReducer } from '../rootReducer';
 import type { Observation } from '../reducers/user';
 import { DAY, HOUR } from '../utilities/time';
+import type { SnapshotViewport } from '../utilities/timelineSnapshot';
+import {
+  LEFT_BOUNDARY_STORAGE_KEY,
+  RIGHT_BOUNDARY_STORAGE_KEY,
+  VIEWPORT_TRACE_STORAGE_KEY,
+} from '../utilities/timelineViewport';
 import type { AppChartFixture } from './fixtureTrace';
 
 function pad2(value: number): string {
@@ -62,7 +68,25 @@ function seedObservations(minTime: number, now: number): Observation[] {
   return observations;
 }
 
-export function viewportForFixture(fixture: AppChartFixture, now = Date.now()) {
+export type ChartStoreExtras = {
+  demoOverlays?: boolean;
+  mantras?: { name: string; timestamp: number }[];
+  observations?: Observation[];
+  traces?: { id: AppChartFixture['traceId']; name: string }[];
+  viewport?: SnapshotViewport;
+};
+
+export function viewportForFixture(
+  fixture: AppChartFixture,
+  now = Date.now(),
+  viewport?: SnapshotViewport,
+) {
+  if (viewport) {
+    return {
+      minTime: viewport.leftBoundaryTime,
+      maxTime: viewport.rightBoundaryTime,
+    };
+  }
   const timestamps = fixture.events.map(event => event.timestamp);
   const minTime = timestamps.length > 0
     ? Math.min(...timestamps) - 5 * 60 * 1000
@@ -71,26 +95,27 @@ export function viewportForFixture(fixture: AppChartFixture, now = Date.now()) {
   return { minTime, maxTime };
 }
 
-export function seedChartViewport(fixture: AppChartFixture, now = Date.now()) {
+export function seedChartViewport(
+  fixture: AppChartFixture,
+  now = Date.now(),
+  viewport?: SnapshotViewport,
+) {
   if (typeof window === 'undefined') return;
-  const { minTime, maxTime } = viewportForFixture(fixture, now);
-  window.localStorage.setItem('lbt', String(minTime));
-  window.localStorage.setItem('rbt', String(maxTime));
-  window.localStorage.setItem('flambe.timeline.viewport-trace-id.v1', String(fixture.traceId));
+  const { minTime, maxTime } = viewportForFixture(fixture, now, viewport);
+  window.localStorage.setItem(LEFT_BOUNDARY_STORAGE_KEY, String(minTime));
+  window.localStorage.setItem(RIGHT_BOUNDARY_STORAGE_KEY, String(maxTime));
+  window.localStorage.setItem(VIEWPORT_TRACE_STORAGE_KEY, String(fixture.traceId));
 }
 
 export function createChartStore(
   fixture: AppChartFixture,
   now = Date.now(),
-  extras: {
-    mantras?: { name: string; timestamp: number }[];
-    observations?: Observation[];
-    traces?: { id: AppChartFixture['traceId']; name: string }[];
-  } = {},
+  extras: ChartStoreExtras = {},
 ) {
   const store = createStore(rootReducer);
-  const { minTime, maxTime } = viewportForFixture(fixture, now);
+  const { minTime, maxTime } = viewportForFixture(fixture, now, extras.viewport);
   const traces = extras.traces ?? [{ id: fixture.traceId, name: fixture.traceName }];
+  const demoOverlays = extras.demoOverlays !== false;
 
   store.dispatch({
     type: `${USER_FETCH}_SUCCEEDED`,
@@ -100,8 +125,8 @@ export function createChartStore(
       username: 'storybook',
       categories: fixture.categories,
       attentionShifts: fixture.attentionShifts,
-      mantras: extras.mantras ?? [{ name: 'Ship the favicon', timestamp: now }],
-      observations: extras.observations ?? seedObservations(minTime, now),
+      mantras: extras.mantras ?? (demoOverlays ? [{ name: 'Ship the favicon', timestamp: now }] : []),
+      observations: extras.observations ?? (demoOverlays ? seedObservations(minTime, now) : []),
       traces,
     },
   });
