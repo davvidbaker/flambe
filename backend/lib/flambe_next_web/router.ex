@@ -62,6 +62,7 @@ defmodule FlambeNextWeb.Router do
     get "/agent-commands", AgentCommandController, :index
     post "/agent-commands", AgentCommandController, :create
     post "/imports", ImportController, :create
+    post "/timeline-shares", TimelineShareController, :create
     get "/users/:id", UserController, :show
     put "/users/:id", UserController, :update
     resources "/api-tokens", ApiTokenController, only: [:index, :create, :delete]

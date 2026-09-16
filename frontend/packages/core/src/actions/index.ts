@@ -76,6 +76,9 @@ export const SETTING_TOGGLE = 'SETTING_TOGGLE';
 export const SETTINGS_SHOW = 'SETTINGS_SHOW';
 export const SETTINGS_HIDE = 'SETTINGS_HIDE';
 
+export const SHARE_TIMELINE_SHOW = 'SHARE_TIMELINE_SHOW';
+export const SHARE_TIMELINE_HIDE = 'SHARE_TIMELINE_HIDE';
+
 export const KEYBOARD_SHORTCUTS_SHOW = 'KEYBOARD_SHORTCUTS_SHOW';
 export const KEYBOARD_SHORTCUTS_HIDE = 'KEYBOARD_SHORTCUTS_HIDE';
 export const KEYBOARD_SHORTCUTS_TOGGLE = 'KEYBOARD_SHORTCUTS_TOGGLE';
@@ -480,6 +483,18 @@ export function showSettings() {
 export function hideSettings() {
   return {
     type: SETTINGS_HIDE,
+  };
+}
+
+export function showShareTimeline() {
+  return {
+    type: SHARE_TIMELINE_SHOW,
+  };
+}
+
+export function hideShareTimeline() {
+  return {
+    type: SHARE_TIMELINE_HIDE,
   };
 }
 

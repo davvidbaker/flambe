@@ -19,6 +19,7 @@ import {
   TODOS_TOGGLE,
   SETTINGS_SHOW,
   KEYBOARD_SHORTCUTS_SHOW,
+  SHARE_TIMELINE_SHOW,
   VIEW_CHANGE,
 } from '../actions';
 import {
@@ -197,6 +198,10 @@ const COMMANDS: Command[] = [
     action: SETTINGS_SHOW,
     copy: 'open settings',
     shortcut: '⌘ ,',
+  },
+  {
+    action: SHARE_TIMELINE_SHOW,
+    copy: 'share timeline...',
   },
   {
     action: KEYBOARD_SHORTCUTS_SHOW,

@@ -1,0 +1,306 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { connect } from 'react-redux';
+import styled from 'styled-components';
+
+import AppModal from './AppModal';
+import { hideShareTimeline as hideShareTimelineAction } from '../actions';
+import type { RootState } from '../rootReducer';
+import { getTimeline } from '../reducers/timeline';
+import { getUser } from '../reducers/user';
+import type { SettingsState } from '../reducers/settings';
+import type { Thread } from '../types/Thread';
+import type { EntityId } from '../types/ids';
+import { rankThreadsByAttention, sortThreadsByRank } from '../utilities/timelineGeometry';
+import { buildTimelineSnapshot } from '../utilities/timelineSnapshot';
+import {
+  fromDatetimeLocalValue,
+  readSavedTimelineViewport,
+  toDatetimeLocalValue,
+} from '../utilities/timelineViewport';
+
+type ThreadDraft = {
+  collapsed: boolean;
+  id: EntityId;
+  included: boolean;
+  name: string;
+};
+
+const Wrapper = styled.form`
+  min-width: min(90vw, 420px);
+  h1 {
+    margin-top: 0;
+    font-size: 1.2em;
+  }
+  p {
+    color: #555;
+    line-height: 1.4;
+  }
+  label {
+    display: block;
+    margin: 0.6em 0 0.2em;
+    font-weight: 600;
+  }
+  input[type='datetime-local'] {
+    width: 100%;
+  }
+  button {
+    margin-right: 0.5em;
+  }
+`;
+
+const ThreadRow = styled.li`
+  display: flex;
+  gap: 0.75em;
+  align-items: center;
+  list-style: none;
+  margin: 0.35em 0;
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    margin: 0;
+    font-weight: 400;
+  }
+`;
+
+const UrlBox = styled.div`
+  display: flex;
+  gap: 0.5em;
+  input {
+    flex: 1;
+  }
+`;
+
+function orderedThreads(
+  threads: Record<string, Thread>,
+  attentionShifts: { thread_id: EntityId }[],
+  attentionDriven: boolean,
+): Thread[] {
+  const copy = Object.fromEntries(
+    Object.entries(threads).map(([id, thread]) => [id, { ...thread }]),
+  );
+  const ranked = attentionDriven
+    ? rankThreadsByAttention(attentionShifts, copy)
+    : copy;
+  return sortThreadsByRank(ranked).map(([, thread]) => thread);
+}
+
+interface Props {
+  attentionDrivenThreadOrder: boolean;
+  attentionShifts: { thread_id: EntityId; timestamp: number }[];
+  categories: RootState['user']['categories'];
+  events: RootState['timeline']['events'];
+  filterExcludes: EntityId[];
+  hideShareTimeline: () => unknown;
+  shareTimelineVisible: boolean;
+  threads: Record<string, Thread>;
+  traceId: EntityId | null;
+  traceName: string | null;
+}
+
+function ShareTimeline({
+  attentionDrivenThreadOrder,
+  attentionShifts,
+  categories,
+  events,
+  filterExcludes,
+  hideShareTimeline,
+  shareTimelineVisible,
+  threads,
+  traceId,
+  traceName,
+}: Props) {
+  const visibleIds = useMemo(() => {
+    const hidden = new Set(filterExcludes.map(String));
+    return orderedThreads(threads, attentionShifts, attentionDrivenThreadOrder)
+      .filter(thread => !hidden.has(String(thread.id)))
+      .map(thread => thread.id);
+  }, [attentionDrivenThreadOrder, attentionShifts, filterExcludes, threads]);
+
+  const [startValue, setStartValue] = useState('');
+  const [endValue, setEndValue] = useState('');
+  const [draftThreads, setDraftThreads] = useState<ThreadDraft[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!shareTimelineVisible) return;
+    const viewport = readSavedTimelineViewport();
+    const now = Date.now();
+    setStartValue(toDatetimeLocalValue(viewport?.leftBoundaryTime ?? now - 60 * 60 * 1000));
+    setEndValue(toDatetimeLocalValue(viewport?.rightBoundaryTime ?? now));
+    setDraftThreads(
+      orderedThreads(threads, attentionShifts, attentionDrivenThreadOrder).map(thread => ({
+        id: thread.id,
+        name: thread.name,
+        included: visibleIds.some(id => String(id) === String(thread.id)),
+        collapsed: Boolean(thread.collapsed),
+      })),
+    );
+    setBusy(false);
+    setError(null);
+    setShareUrl(null);
+  }, [attentionDrivenThreadOrder, attentionShifts, shareTimelineVisible, threads, visibleIds]);
+
+  const publish = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (traceId === null || !traceName) {
+      setError('Open a trace before sharing.');
+      return;
+    }
+    const leftBoundaryTime = fromDatetimeLocalValue(startValue);
+    const rightBoundaryTime = fromDatetimeLocalValue(endValue);
+    if (leftBoundaryTime === null || rightBoundaryTime === null || rightBoundaryTime <= leftBoundaryTime) {
+      setError('Choose a start time before the end time.');
+      return;
+    }
+    const included = draftThreads.filter(thread => thread.included);
+    if (included.length === 0) {
+      setError('Include at least one thread.');
+      return;
+    }
+    const snapshot = buildTimelineSnapshot(
+      {
+        traceId,
+        traceName,
+        threads: Object.values(threads),
+        events,
+        categories,
+        attentionShifts,
+      },
+      {
+        leftBoundaryTime,
+        rightBoundaryTime,
+        includedThreadIds: included.map(thread => thread.id),
+        collapsedThreadIds: included.filter(thread => thread.collapsed).map(thread => thread.id),
+      },
+    );
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`${SERVER}/api/timeline-shares`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ snapshot }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof body.error === 'string' ? body.error : `Share failed (${response.status})`);
+      }
+      if (typeof body.url !== 'string') {
+        throw new Error('Share succeeded but no URL was returned.');
+      }
+      setShareUrl(body.url);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Share failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AppModal
+      contentLabel="Share timeline"
+      isOpen={shareTimelineVisible}
+      onRequestClose={hideShareTimeline}
+      wide
+    >
+      <Wrapper onSubmit={publish}>
+        <h1>Share timeline</h1>
+        <p>
+          Anyone with the link can see this frozen slice — activity names and
+          event messages in range. It will not update as the live trace changes.
+        </p>
+        <label htmlFor="share-start">Start</label>
+        <input
+          id="share-start"
+          type="datetime-local"
+          value={startValue}
+          onChange={event => setStartValue(event.target.value)}
+        />
+        <label htmlFor="share-end">End</label>
+        <input
+          id="share-end"
+          type="datetime-local"
+          value={endValue}
+          onChange={event => setEndValue(event.target.value)}
+        />
+        <label>Threads</label>
+        <ul>
+          {draftThreads.map(thread => (
+            <ThreadRow key={String(thread.id)}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={thread.included}
+                  onChange={() => setDraftThreads(current => current.map(item => (
+                    String(item.id) === String(thread.id)
+                      ? { ...item, included: !item.included }
+                      : item
+                  )))}
+                />
+                {thread.name}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={thread.collapsed}
+                  disabled={!thread.included}
+                  onChange={() => setDraftThreads(current => current.map(item => (
+                    String(item.id) === String(thread.id)
+                      ? { ...item, collapsed: !item.collapsed }
+                      : item
+                  )))}
+                />
+                collapsed
+              </label>
+            </ThreadRow>
+          ))}
+        </ul>
+        {error ? <p role="alert">{error}</p> : null}
+        {shareUrl ? (
+          <UrlBox>
+            <input readOnly value={shareUrl} aria-label="Share URL" />
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard.writeText(shareUrl);
+              }}
+            >
+              Copy URL
+            </button>
+          </UrlBox>
+        ) : (
+          <button type="submit" disabled={busy}>
+            {busy ? 'Publishing…' : 'Publish public URL'}
+          </button>
+        )}
+        <button type="button" onClick={hideShareTimeline}>
+          Close
+        </button>
+      </Wrapper>
+    </AppModal>
+  );
+}
+
+export default connect(
+  (state: RootState) => {
+    const timeline = getTimeline(state);
+    return {
+      attentionDrivenThreadOrder: (state.settings as SettingsState).attentionDrivenThreadOrder,
+      attentionShifts: getUser(state).attentionShifts,
+      categories: getUser(state).categories,
+      events: timeline.events,
+      filterExcludes: timeline.trace?.filterExcludes ?? [],
+      shareTimelineVisible: state.shareTimelineVisible,
+      threads: timeline.threads,
+      traceId: timeline.trace?.id ?? null,
+      traceName: timeline.trace?.name ?? null,
+    };
+  },
+  dispatch => ({
+    hideShareTimeline: () => dispatch(hideShareTimelineAction()),
+  }),
+)(ShareTimeline);

@@ -14,6 +14,7 @@ import {
   COMMAND_RUN,
   SETTINGS_SHOW,
   KEYBOARD_SHORTCUTS_SHOW,
+  SHARE_TIMELINE_SHOW,
   THREAD_CREATE,
   THREADS_COLLAPSE_ALL,
   THREADS_EXPAND_ALL,
@@ -35,6 +36,7 @@ import {
   showCategoryManager,
   showSettings,
   showKeyboardShortcuts,
+  showShareTimeline,
   suspendActivity,
   toggleTodos,
 } from '../actions';
@@ -195,6 +197,10 @@ function* handleCommand({ operand, command }: CommandRunAction): SagaIterator {
 
       case SETTINGS_SHOW:
         yield put(showSettings());
+        break;
+
+      case SHARE_TIMELINE_SHOW:
+        yield put(showShareTimeline());
         break;
 
       case KEYBOARD_SHORTCUTS_SHOW:
