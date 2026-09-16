@@ -9,7 +9,7 @@ defmodule FlambeNextWeb.CategoryJSON do
     %{data: data(category)}
   end
 
-  defp data(category) do
+  def data(%Category{} = category) do
     %{
       id: category.id,
       name: category.name,

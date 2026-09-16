@@ -69,6 +69,7 @@ interface NetworkAction {
   activity_id?: EntityId;
   category_id?: EntityId | null;
   color_background?: string;
+  color_text?: string;
   data?: IncomingTrace;
   description?: string | null;
   eventFlavor?: EventPhase;
@@ -274,7 +275,7 @@ function* deleteEvent({ type, id }: NetworkAction): SagaIterator {
   }
 }
 
-function* createCategory({ type, activity_id, name, color_background }: NetworkAction): SagaIterator {
+function* createCategory({ type, activity_id, name, color_background, color_text }: NetworkAction): SagaIterator {
   const user: UserState = yield select(getUser);
   yield* fetchResource(type, {
     resource: { path: 'categories' },
@@ -282,9 +283,12 @@ function* createCategory({ type, activity_id, name, color_background }: NetworkA
       method: 'POST',
       body: JSON.stringify({
         user_id: user.id,
-        /** 🔮 <-(first crystal ball use) if you want to be able to set a bunch of activities to a new category, this will have to change, like with highlighting a big section */
-        activity_ids: [activity_id],
-        category: { name, color_background },
+        activity_ids: activity_id == null ? [] : [activity_id],
+        category: {
+          name,
+          color_background,
+          color_text: color_text ?? '#000000',
+        },
       }),
     },
   });
