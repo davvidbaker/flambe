@@ -392,7 +392,7 @@ describe('nested actor sublane layout', () => {
 });
 
 describe('coalesceActorLaneChrome', () => {
-  it('merges same-agent flames when the gap is within one grid tick', () => {
+  it('paints one sustained wash across same-agent bursts regardless of the gap', () => {
     const activities = {
       1: activity({ id: 1 }),
       2: activity({ id: 2, parent_id: 1, agent_id: 'claude:miles', agent_name: 'Miles' }),
@@ -403,6 +403,7 @@ describe('coalesceActorLaneChrome', () => {
       block(1, 0, 200),
       block(2, 10, 20),
       block(3, 25, 35),
+      // Far-apart burst that used to fall outside the one-grid-tick threshold.
       block(4, 100, 110),
     ];
     const layout = projectActorLaneLayout(activities, blocks);
@@ -412,20 +413,14 @@ describe('coalesceActorLaneChrome', () => {
       {
         actorName: 'Miles',
         providerKey: 'claude',
-        rootActivityIds: [2, 3],
+        rootActivityIds: [2, 3, 4],
         startTime: 10,
-        endTime: 35,
-      },
-      {
-        actorName: 'Miles',
-        rootActivityIds: [4],
-        startTime: 100,
         endTime: 110,
       },
     ]);
   });
 
-  it('keeps separate chrome when the gap exceeds one grid tick', () => {
+  it('sustains the wash across a large temporal gap independent of grid tick', () => {
     const activities = {
       1: activity({ id: 1 }),
       2: activity({ id: 2, parent_id: 1, agent_id: 'cursor:steve', agent_name: 'Steve' }),
@@ -437,11 +432,14 @@ describe('coalesceActorLaneChrome', () => {
       block(3, 40, 50),
     ];
     const layout = projectActorLaneLayout(activities, blocks);
-    expect(coalesceActorLaneChrome(layout, blocks, 10)).toHaveLength(2);
-    expect(coalesceActorLaneChrome(layout, blocks, 30)).toHaveLength(1);
+    for (const tick of [10, 30]) {
+      const chrome = coalesceActorLaneChrome(layout, blocks, tick);
+      expect(chrome).toHaveLength(1);
+      expect(chrome[0]).toMatchObject({ rootActivityIds: [2, 3], startTime: 10, endTime: 50 });
+    }
   });
 
-  it('does not coalesce parentless same-agent roots even when the gap is small', () => {
+  it('keeps independent same-agent roots as separate washes (workstream boundary)', () => {
     const activities = {
       339: activity({ id: 339, agent_id: 'cursor:a', agent_name: 'Grok' }),
       340: activity({ id: 340, agent_id: 'cursor:a', agent_name: 'Grok' }),
