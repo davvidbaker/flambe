@@ -17,6 +17,7 @@ import {
   createQuestionOutcomesFixture,
   createResumeDuringConcurrentWorkFixture,
   createHumanResumeDuringConcurrentWorkFixture,
+  createIndependentAgentRootsFixture,
   createResurrectionFixture,
   createSparseTraceFixture,
   createStrangeSequenceFixture,
@@ -294,6 +295,24 @@ describe('app chart Storybook fixture', () => {
     expect(oncor && centerpoint && oncor.rowStart < centerpoint.rowStart).toBe(true);
     expect(projectActorFlames(processed.activities).length).toBeGreaterThan(8);
     expect(() => coalesceActorLaneChrome(layout, processed.blocks, 60 * 60 * 1000)).not.toThrow();
+  });
+
+  it('washes independent --root bursts of the same agent as one presence', () => {
+    const fixture = createIndependentAgentRootsFixture(1_700_000_000_000);
+    const processed = processTrace(fixture.events, fixture.threads);
+    const chrome = coalesceActorLaneChrome(
+      projectActorLaneLayout(processed.activities, processed.blocks),
+      processed.blocks,
+      10 * 60 * 1000,
+    );
+    const byAgent = Object.fromEntries(
+      chrome.map(band => [band.actorName, band.rootActivityIds.length]),
+    );
+    expect(byAgent.Otto).toBe(3);
+    expect(byAgent.CG4).toBe(2);
+    expect(byAgent.Theo).toBe(1);
+    expect(chrome.filter(band => band.actorName === 'Otto')).toHaveLength(1);
+    expect(chrome.filter(band => band.actorName === 'CG4')).toHaveLength(1);
   });
 });
 
