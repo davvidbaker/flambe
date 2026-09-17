@@ -393,7 +393,20 @@ function rowsOverlap(
 }
 
 /**
- * Coalesce lane chrome when same-agent flames are within one grid tick (ADR-005 S5).
+ * Coalesce lane chrome into a **sustained wash**: every same-actor flame within
+ * one lane group is painted as a single continuous band from the earliest to
+ * the latest owned block, regardless of the temporal gap between bursts. This
+ * supersedes the original one-grid-tick merge threshold (ADR-005 S5) — see the
+ * "Sustained wash" addendum in docs/ADR-005-actor-lane-chrome.md.
+ *
+ * Two boundaries are preserved:
+ * - Independent `--root` workstreams of the same agent stay separate (grouping
+ *   key), so distinct top-level efforts do not blur into one wash.
+ * - The row-overlap guard prevents a rectangular "hull" from swallowing another
+ *   agent's rows that sit between a suspend and a later resume on a lower row.
+ *
+ * `gridTickMs` is retained for signature/call-site compatibility but no longer
+ * gates merging.
  */
 export function coalesceActorLaneChrome(
   layout: ActorLaneLayout,
@@ -401,7 +414,8 @@ export function coalesceActorLaneChrome(
   gridTickMs: number,
   nowMs: number = Date.now(),
 ): ActorLaneChrome[] {
-  const tick = Number.isFinite(gridTickMs) && gridTickMs > 0 ? gridTickMs : 0;
+  void gridTickMs;
+  void nowMs;
   const withBounds = layout.lanes.flatMap(lane => chromeSlicesForLane(lane, layout, blocks))
     .filter(entry => Number.isFinite(entry.startTime));
 
@@ -450,13 +464,10 @@ export function coalesceActorLaneChrome(
 
     for (let index = 1; index < entries.length; index += 1) {
       const next = entries[index]!;
-      const currentEnd = endTime === null ? nowMs : endTime;
-      const gap = next.startTime - currentEnd;
-      if (
-        tick > 0
-        && gap <= tick
-        && rowsOverlap(rowStart, rowEnd, next.lane.rowStart, next.lane.rowEnd)
-      ) {
+      // Sustained wash: merge across any temporal gap. The row-overlap guard is
+      // all that separates bands, so a suspend/resume that lands on a different
+      // row stays a distinct slice instead of hulling the rows in between.
+      if (rowsOverlap(rowStart, rowEnd, next.lane.rowStart, next.lane.rowEnd)) {
         roots.push(next.lane.rootActivityId);
         rowStart = Math.min(rowStart, next.lane.rowStart);
         rowEnd = Math.max(rowEnd, next.lane.rowEnd);

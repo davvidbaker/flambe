@@ -42,7 +42,7 @@ or parentage.
 - **Single-row flame:** label stays rotated 90° CCW in the fixed gutter, drawn in tiny type so more of the name fits; wash still spans the full root activity duration.
 - **Multi-row flame:** label may be rotated 90° CCW in the gutter when height allows; otherwise shorten while staying vertical.
 - **Nested delegation:** child flame chrome is inset (deeper gutter/rail) inside the parent flame’s vertical band; fork remains.
-- **Sequential same-agent bursts:** if the gap between one flame’s end and the next same-agent flame’s start is at most **one timeline grid tick** (the current axis step for the visible window), treat them as **one** flame for chrome (one wash, one label, one rail). Larger gaps stay separate flames.
+- **Sequential same-agent bursts:** ~~if the gap between one flame’s end and the next same-agent flame’s start is at most **one timeline grid tick** (the current axis step for the visible window), treat them as **one** flame for chrome (one wash, one label, one rail). Larger gaps stay separate flames.~~ **Superseded by the "Sustained wash" addendum below:** all of an agent's bursts within a lane group share one continuous wash regardless of gap.
 
 ## Rationale
 
@@ -68,6 +68,51 @@ David chose “one grid tick” as the merge threshold so closeness tracks the s
 - `actorAccentColor` (or successor) should key off provider, not display name.
 - Flame projection may coalesce temporally close same-agent roots before painting chrome.
 - Category bar fill remains independent of rail/wash color.
+
+## Addendum: sustained wash (supersedes the one-grid-tick merge)
+
+### Status
+
+Accepted (supersedes the "sequential same-agent bursts" rule above)
+
+### Decision
+
+An agent's owned activities within one lane group are painted as a **single
+sustained wash** that spans from the earliest to the latest owned block,
+**regardless of the temporal gap between bursts**. The gap between two same-agent
+bursts is washed through, so a lane reads as one continuous "this region belongs
+to agent X" band instead of fragmenting into a wash per burst.
+
+Two boundaries are deliberately kept:
+
+- **Independent `--root` workstreams of the same agent stay separate.** Distinct
+  top-level efforts remain distinct washes rather than blurring into one. This is
+  the grouping-key boundary, not a time boundary.
+- **No cross-row hull.** The wash still merges only when the adjacent slices'
+  rows overlap, so a suspend on one row and a resume on a lower row do not paint a
+  rectangle over another agent's rows sitting between them.
+
+### Rationale
+
+David asked for agent-owned activities to appear "all in a sustained wash." The
+original one-grid-tick threshold fragmented a single agent's timeline into
+several washes with visible unwashed gaps, which read as several disconnected
+presences rather than one agent working over a stretch of time. Zoom-independent
+continuity communicates ownership more directly than a zoom-dependent merge
+threshold.
+
+### Consequences
+
+- `coalesceActorLaneChrome` no longer gates merging on `gridTickMs`; the argument
+  is retained for call-site compatibility but unused. Merging is governed only by
+  lane grouping and the row-overlap guard.
+- The wash now covers gap time where no activity block is drawn, so during a gap
+  the translucent band appears on its own.
+
+### Open question for a future pass
+
+- Whether independent `--root` flames of the same agent should also share one
+  sustained wash. Kept separate for now to preserve `--root` workstream identity.
 
 ## Follow-ups
 

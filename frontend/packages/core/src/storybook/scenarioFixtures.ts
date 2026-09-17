@@ -344,7 +344,7 @@ export function createSparseTraceFixture(now = Date.now()): AppChartFixture {
   ]);
 }
 
-/** Short same-agent flames — close bursts coalesce; distant ones stay separate. */
+/** Short same-agent flames — all of one agent's bursts share a sustained wash. */
 export function createShortAgentFlamesFixture(now = Date.now()): AppChartFixture {
   const app = thread(1, 'flambe🔥');
   const root = activity(app, 800, 'Ship lane chrome', { category: 3 });
@@ -354,14 +354,14 @@ export function createShortAgentFlamesFixture(now = Date.now()): AppChartFixture
     category: 1,
     parentId: root.id,
   });
-  // Ends early; mid starts 3 minutes later (within a typical grid tick → coalesce).
+  // Ends early; mid starts a few minutes later — same sustained wash.
   const mid = activity(app, 802, 'Tighten fork clearance', {
     agentName: 'Miles',
     agentProvider: 'claude',
     category: 2,
     parentId: root.id,
   });
-  // Farther burst stays a separate flame.
+  // Farther burst is joined into the same sustained wash across the gap.
   const late = activity(app, 803, 'Check Storybook', {
     agentName: 'Miles',
     agentProvider: 'claude',
