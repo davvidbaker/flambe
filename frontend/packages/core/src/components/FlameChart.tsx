@@ -1017,7 +1017,8 @@ export class FlameChart extends Component<Props, State> {
       const washRight = Math.min(contentRight, this.width + 2);
       const washWidth = Math.max(0, washRight - washLeft);
 
-      // Time-bounded wash behind the flame rows (ADR-005).
+      // Sustained wash behind the flame rows: one continuous band across an
+      // agent's owned bursts, including the gaps between them (ADR-005 addendum).
       if (washWidth > 0) {
         this.ctx.globalAlpha = 0.10;
         this.ctx.fillStyle = accent;
