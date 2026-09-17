@@ -6,7 +6,7 @@ import type { TraceBlock } from './processTrace';
  * Actor-flame projection and lane layout (presentation only).
  *
  * Chrome vocabulary — **activity block**, **rail**, **wash**, **gutter**, **fork** —
- * and labeling rules (display name vs model-provider color, temporal merge) live in
+ * and labeling rules (display name vs model-provider color, sustained wash) live in
  * docs/ADR-005-actor-lane-chrome.md.
  */
 
@@ -76,6 +76,12 @@ export interface ActorLaneLayout {
   maxRowsByThread: Record<string, number>;
 }
 
+/** Contiguous display-row run painted as one wash rectangle. */
+export interface ActorWashRowRange {
+  rowEnd: number;
+  rowStart: number;
+}
+
 /** Painted chrome envelope for one or more coalesced actor flames (ADR-005). */
 export interface ActorLaneChrome {
   actorKey: string;
@@ -85,10 +91,17 @@ export interface ActorLaneChrome {
   parentLaneRootId: EntityId | null;
   providerKey: string;
   rootActivityIds: EntityId[];
+  /** Inclusive max row across wash ranges (rail/label fallback). */
   rowEnd: number;
+  /** Inclusive min row across wash ranges (rail/label fallback). */
   rowStart: number;
   startTime: number;
   threadId: EntityId;
+  /**
+   * Occupied row runs for the wash. Same-agent owned work shares one time
+   * span; unused rows between a suspend and a later resume stay unwashed.
+   */
+  washRowRanges: ActorWashRowRange[];
 }
 
 function keyFor(id: EntityId): string {
@@ -329,156 +342,117 @@ export function actorLaneTimeBounds(
 
 type TimeInterval = { start: number; end: number };
 
-/**
- * One chrome slice per root lifecycle segment. Nested same-actor rows during
- * that segment stay in the band; a resume on another row does not get a hull
- * wash covering the rows in between.
- */
-function chromeSlicesForLane(
-  lane: ActorLaneBand,
+/** Collapse sorted unique rows into inclusive contiguous runs. */
+export function contiguousRowRanges(rows: number[]): ActorWashRowRange[] {
+  const unique = [...new Set(rows.filter(row => Number.isFinite(row)))].sort((left, right) => left - right);
+  if (!unique.length) return [];
+
+  const ranges: ActorWashRowRange[] = [];
+  let rowStart = unique[0]!;
+  let rowEnd = unique[0]!;
+  for (const row of unique.slice(1)) {
+    if (row === rowEnd + 1) {
+      rowEnd = row;
+      continue;
+    }
+    ranges.push({ rowStart, rowEnd });
+    rowStart = row;
+    rowEnd = row;
+  }
+  ranges.push({ rowStart, rowEnd });
+  return ranges;
+}
+
+function washRowsForRoots(
+  rootActivityIds: EntityId[],
   layout: ActorLaneLayout,
   blocks: TraceBlock[],
-): Array<{ lane: ActorLaneBand; startTime: number; endTime: number | null }> {
-  const rootBlocks = blocks
-    .filter(block => String(block.activity_id) === String(lane.rootActivityId))
-    .sort((left, right) => left.startTime - right.startTime);
+): number[] {
+  const rootSet = new Set(rootActivityIds.map(String));
+  const rows: number[] = [];
 
-  if (!rootBlocks.length) {
-    const bounds = actorLaneTimeBounds(lane, layout.rootIdByActivity, blocks);
-    if (!bounds) return [];
-    return [{
-      lane,
-      startTime: bounds.startTime,
-      endTime: bounds.endTime,
-    }];
+  for (const block of blocks) {
+    const root = layout.rootIdByActivity[String(block.activity_id)];
+    if (root === null || root === undefined || !rootSet.has(String(root))) continue;
+    const row = layout.rowByBlock[blockLayoutKey(block)];
+    if (row !== undefined) rows.push(row);
   }
 
-  return rootBlocks.map(rootBlock => {
-    const interval: TimeInterval = {
-      start: rootBlock.startTime,
-      end: rootBlock.endTime ?? Number.POSITIVE_INFINITY,
-    };
-    const rows = [layout.rowByBlock?.[blockLayoutKey(rootBlock)] ?? lane.rowStart];
-    for (const block of blocks) {
-      if (String(layout.rootIdByActivity[String(block.activity_id)]) !== String(lane.rootActivityId)) {
-        continue;
-      }
-      const other: TimeInterval = {
-        start: block.startTime,
-        end: block.endTime ?? Number.POSITIVE_INFINITY,
-      };
-      if (!intervalsOverlap(interval, other)) continue;
-      const row = layout.rowByBlock?.[blockLayoutKey(block)];
-      if (row !== undefined) rows.push(row);
+  // Nested delegated lanes sit inside the parent actor band (ADR-004).
+  for (const lane of layout.lanes) {
+    if (lane.parentLaneRootId === null || !rootSet.has(String(lane.parentLaneRootId))) continue;
+    for (let row = lane.rowStart; row <= lane.rowEnd; row += 1) {
+      rows.push(row);
     }
-    return {
-      lane: {
-        ...lane,
-        rowStart: Math.min(...rows),
-        rowEnd: Math.max(...rows),
-      },
-      startTime: rootBlock.startTime,
-      endTime: rootBlock.endTime === undefined ? null : rootBlock.endTime,
-    };
-  });
-}
+  }
 
-function rowsOverlap(
-  leftStart: number,
-  leftEnd: number,
-  rightStart: number,
-  rightEnd: number,
-): boolean {
-  return leftStart <= rightEnd && rightStart <= leftEnd;
+  return rows;
 }
 
 /**
- * Coalesce lane chrome when same-agent flames are within one grid tick (ADR-005 S5).
+ * One sustained wash per agent on a thread (ADR-005). Same-actor owned work —
+ * including independent `--root` flames and idle gaps — shares one time span.
+ * Unused rows between a suspend and a later resume stay unwashed.
+ *
+ * `gridTickMs` is accepted for call-site compatibility; wash coalescing is no
+ * longer zoom-dependent.
  */
 export function coalesceActorLaneChrome(
   layout: ActorLaneLayout,
   blocks: TraceBlock[],
-  gridTickMs: number,
-  nowMs: number = Date.now(),
+  _gridTickMs: number = 0,
+  _nowMs: number = Date.now(),
 ): ActorLaneChrome[] {
-  const tick = Number.isFinite(gridTickMs) && gridTickMs > 0 ? gridTickMs : 0;
-  const withBounds = layout.lanes.flatMap(lane => chromeSlicesForLane(lane, layout, blocks))
-    .filter(entry => Number.isFinite(entry.startTime));
-
-  const groups = new Map<string, typeof withBounds>();
-  for (const entry of withBounds) {
+  const groups = new Map<string, ActorLaneBand[]>();
+  for (const lane of layout.lanes) {
     const key = [
-      String(entry.lane.threadId),
-      entry.lane.actorKey,
-      String(entry.lane.parentLaneRootId ?? ''),
-      // Independent `--root` flames stay separate; bursts that share a parent
-      // still coalesce (ADR-005).
-      String(entry.lane.parentActivityId ?? entry.lane.rootActivityId),
-      String(entry.lane.depth),
+      String(lane.threadId),
+      lane.actorKey,
+      String(lane.parentLaneRootId ?? ''),
+      String(lane.depth),
     ].join('|');
     const list = groups.get(key) ?? [];
-    list.push(entry);
+    list.push(lane);
     groups.set(key, list);
   }
 
   const chrome: ActorLaneChrome[] = [];
-  for (const entries of groups.values()) {
-    entries.sort((left, right) => left.startTime - right.startTime
-      || Number(left.lane.rootActivityId) - Number(right.lane.rootActivityId));
+  for (const lanes of groups.values()) {
+    const first = lanes[0]!;
+    const rootActivityIds = lanes.map(lane => lane.rootActivityId);
+    const bounds = laneTimeBoundsForRoots(rootActivityIds, layout.rootIdByActivity, blocks);
+    if (!bounds || !Number.isFinite(bounds.startTime)) continue;
 
-    let current = entries[0]!;
-    let roots = [current.lane.rootActivityId];
-    let rowStart = current.lane.rowStart;
-    let rowEnd = current.lane.rowEnd;
-    let endTime = current.endTime;
-
-    const flush = () => {
-      chrome.push({
-        actorKey: current.lane.actorKey,
-        actorName: current.lane.actorName,
-        depth: current.lane.depth,
-        endTime,
-        parentLaneRootId: current.lane.parentLaneRootId,
-        providerKey: modelProviderFromAgentId(current.lane.actorKey),
-        rootActivityIds: roots.slice(),
-        rowEnd,
-        rowStart,
-        startTime: current.startTime,
-        threadId: current.lane.threadId,
+    const washRowRanges = contiguousRowRanges(
+      washRowsForRoots(rootActivityIds, layout, blocks),
+    );
+    rootActivityIds.sort((left, right) => Number(left) - Number(right));
+    if (!washRowRanges.length) {
+      washRowRanges.push({
+        rowStart: Math.min(...lanes.map(lane => lane.rowStart)),
+        rowEnd: Math.max(...lanes.map(lane => lane.rowEnd)),
       });
-    };
-
-    for (let index = 1; index < entries.length; index += 1) {
-      const next = entries[index]!;
-      const currentEnd = endTime === null ? nowMs : endTime;
-      const gap = next.startTime - currentEnd;
-      if (
-        tick > 0
-        && gap <= tick
-        && rowsOverlap(rowStart, rowEnd, next.lane.rowStart, next.lane.rowEnd)
-      ) {
-        roots.push(next.lane.rootActivityId);
-        rowStart = Math.min(rowStart, next.lane.rowStart);
-        rowEnd = Math.max(rowEnd, next.lane.rowEnd);
-        if (endTime === null || next.endTime === null) {
-          endTime = null;
-        } else {
-          endTime = Math.max(endTime, next.endTime);
-        }
-        continue;
-      }
-      flush();
-      current = next;
-      roots = [next.lane.rootActivityId];
-      rowStart = next.lane.rowStart;
-      rowEnd = next.lane.rowEnd;
-      endTime = next.endTime;
     }
-    flush();
+
+    chrome.push({
+      actorKey: first.actorKey,
+      actorName: first.actorName,
+      depth: first.depth,
+      endTime: bounds.endTime,
+      parentLaneRootId: first.parentLaneRootId,
+      providerKey: modelProviderFromAgentId(first.actorKey),
+      rootActivityIds,
+      rowEnd: Math.max(...washRowRanges.map(range => range.rowEnd)),
+      rowStart: Math.min(...washRowRanges.map(range => range.rowStart)),
+      startTime: bounds.startTime,
+      threadId: first.threadId,
+      washRowRanges,
+    });
   }
 
   return chrome.sort((left, right) => left.depth - right.depth
-    || left.startTime - right.startTime);
+    || left.startTime - right.startTime
+    || left.rowStart - right.rowStart);
 }
 
 function parentLaneRootId(

@@ -13,7 +13,7 @@ Without that vocabulary, Storybook and production iteration kept conflating band
 gutters, labels, and model identity.
 
 David walked through situation-specific chrome options and locked treatments for
-single-row flames, nested delegation, sequential same-agent bursts, label text, and
+single-row flames, nested delegation, same-agent owned work, label text, and
 accent color.
 
 ## Decision
@@ -28,7 +28,7 @@ or parentage.
 | **Activity** (or activity **block**) | A lifecycle segment drawn as a category-colored bar. Fill stays category-based (ADR-004). |
 | **Actor flame** | Presentation root that begins when an activity’s actor differs from its nearest parent actor (ADR-004). |
 | **Rail** | Thin vertical accent at the left of a flame’s chrome. Color encodes **model provider**. |
-| **Wash** | Translucent fill behind a flame’s rows. Horizontally it spans the flame’s root time range (start of earliest same-actor block through end of latest, including open ends). It is not full chart width. |
+| **Wash** | Translucent fill behind a flame’s rows. Horizontally it is **sustained**: start of the earliest same-actor owned block through end of the latest, including open ends and idle gaps. It is not full chart width. Vertically it paints only occupied row runs — unused rows between a suspend and a later resume stay unwashed. |
 | **Gutter** | Fixed screen-space strip immediately left of the flame’s first block, holding the rail and the agent label. |
 | **Fork** | Curve from a parent activity into a child flame’s first block; join sits on the block edge past the gutter. |
 
@@ -39,10 +39,10 @@ or parentage.
 
 ### Situation rules (locked)
 
-- **Single-row flame:** label stays rotated 90° CCW in the fixed gutter, drawn in tiny type so more of the name fits; wash still spans the full root activity duration.
+- **Single-row flame:** label stays rotated 90° CCW in the fixed gutter, drawn in tiny type so more of the name fits; wash still spans the full owned duration.
 - **Multi-row flame:** label may be rotated 90° CCW in the gutter when height allows; otherwise shorten while staying vertical.
 - **Nested delegation:** child flame chrome is inset (deeper gutter/rail) inside the parent flame’s vertical band; fork remains.
-- **Sequential same-agent bursts:** if the gap between one flame’s end and the next same-agent flame’s start is at most **one timeline grid tick** (the current axis step for the visible window), treat them as **one** flame for chrome (one wash, one label, one rail). Larger gaps stay separate flames.
+- **All same-agent owned work:** every flame for the same agent on a thread — including independent `--root` workstreams and bursts with large idle gaps — shares **one sustained wash**, one rail, and one label. Nested delegated agents stay their own inset chrome.
 
 ## Rationale
 
@@ -50,7 +50,7 @@ David chose display name vs provider color so “who” and “what model” sta
 
 David chose a time-bounded wash (not a full-width band) so chrome follows the work without covering the whole thread.
 
-David chose “one grid tick” as the merge threshold so closeness tracks the same zoom-dependent scale the user already reads on the axis.
+David chose a sustained wash across all of an agent’s owned activities so short `--root` flames and later bursts still read as one presence, instead of a constellation of labeled islands. Unused rows between a suspend and a later resume stay unwashed so a concurrent agent in the gap is not covered.
 
 ## Alternatives considered
 
@@ -59,14 +59,15 @@ David chose “one grid tick” as the merge threshold so closeness tracks the s
 - Label text = model provider; color = agent identity (inverted from the decision above).
 - Horizontal labels in a widened gutter on single-row flames (S1b).
 - Always-vertical labels with initials-only on single-row flames.
-- Merging sequential flames with a fixed wall-clock gap (e.g. 2 or 5 minutes) instead of one grid tick.
-- Deduping labels across all flames of the same agent in view regardless of time gap.
+- Merging sequential flames with a fixed wall-clock gap (e.g. 2 or 5 minutes) or one grid tick.
+- One label per flame, even when those flames share a sustained wash.
+- Keeping independent `--root` flames as separate chrome even when they share an agent.
 
 ## Consequences
 
 - Frontend chrome helpers and Storybook fixtures should use **rail / wash / gutter / activity block / fork** consistently in comments and names.
 - `actorAccentColor` (or successor) should key off provider, not display name.
-- Flame projection may coalesce temporally close same-agent roots before painting chrome.
+- Flame projection coalesces all same-agent roots on a thread into one wash before painting chrome.
 - Category bar fill remains independent of rail/wash color.
 
 ## Follow-ups
