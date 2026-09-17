@@ -7,7 +7,22 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <style>
-      html, body, #app-root { margin: 0; height: 100%; background: #111; color: #eee; }
+      html, body, #app-root {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        overflow: hidden;
+        overscroll-behavior: none;
+        background: #111;
+        color: #eee;
+        font-family: sans-serif;
+      }
+      body {
+        position: fixed;
+        inset: 0;
+      }
     </style>
   </head>
   <body>

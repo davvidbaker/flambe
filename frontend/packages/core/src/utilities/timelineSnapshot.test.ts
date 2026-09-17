@@ -37,9 +37,13 @@ describe('buildTimelineSnapshot', () => {
       [1, true, 0],
     ]);
     expect(snapshot.fixture.events.every(event => event.activity?.thread_id === 1)).toBe(true);
+    expect(snapshot.timeLabels).toEqual({
+      absoluteTimeLabels: false,
+      twelveHourClock: false,
+    });
   });
 
-  it('keeps a begin event before the window when the activity intersects it', () => {
+  it('clips a straddling activity to the window instead of keeping the whole span', () => {
     const thread = { id: 1, name: 'main', rank: 0 };
     const activity = {
       id: 10,
@@ -69,7 +73,44 @@ describe('buildTimelineSnapshot', () => {
       },
     );
 
-    expect(snapshot.fixture.events.map(event => event.id)).toEqual([1, 2]);
+    expect(snapshot.fixture.events.map(event => event.timestamp)).toEqual([3_000, 4_000]);
+    expect(snapshot.fixture.events.map(event => event.phase)).toEqual(['B', 'E']);
+  });
+
+  it('keeps API-shaped activities that only expose thread.id', () => {
+    const thread = { id: 7, name: 'api', rank: 0 };
+    const activity = {
+      id: 10,
+      name: 'From network',
+      categories: [],
+      thread: { id: 7 },
+    };
+    const snapshot = buildTimelineSnapshot(
+      {
+        traceId: 1,
+        traceName: 'api',
+        threads: [thread],
+        categories: [],
+        attentionShifts: [],
+        events: [
+          { id: 1, timestamp: 1_000, phase: 'B', activity },
+          { id: 2, timestamp: 2_000, phase: 'E', activity },
+        ],
+      },
+      {
+        leftBoundaryTime: 500,
+        rightBoundaryTime: 3_000,
+        includedThreadIds: [7],
+        collapsedThreadIds: [],
+      },
+    );
+
+    expect(snapshot.fixture.events).toHaveLength(2);
+    expect(snapshot.fixture.events[0]?.activity).toMatchObject({
+      id: 10,
+      thread_id: 7,
+      thread: { id: 7 },
+    });
   });
 
   it('drops activities that ended before the window', () => {
@@ -152,6 +193,9 @@ describe('buildTimelineSnapshot', () => {
     );
 
     expect(new Set(snapshot.fixture.events.map(event => event.activity?.id))).toEqual(new Set([10, 11]));
+    expect(snapshot.fixture.events.every(event => (
+      event.timestamp >= 7_500 && event.timestamp <= 9_500
+    ))).toBe(true);
   });
 
   it('filters attention shifts to the window and included threads', () => {
@@ -175,6 +219,23 @@ describe('buildTimelineSnapshot', () => {
     );
 
     expect(snapshot.fixture.attentionShifts).toEqual([{ thread_id: 1, timestamp: now - 1_000 }]);
+  });
+
+  it('freezes the applied time label settings', () => {
+    const { source } = sourceFromFixture();
+    const snapshot = buildTimelineSnapshot(source, {
+      leftBoundaryTime: now - 1000,
+      rightBoundaryTime: now,
+      includedThreadIds: [1],
+      collapsedThreadIds: [],
+      absoluteTimeLabels: true,
+      twelveHourClock: true,
+    });
+
+    expect(snapshot.timeLabels).toEqual({
+      absoluteTimeLabels: true,
+      twelveHourClock: true,
+    });
   });
 });
 

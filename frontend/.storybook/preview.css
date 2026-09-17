@@ -4,6 +4,8 @@ body {
 
 html,
 body,
-#storybook-root {
+#storybook-root,
+.sb-show-main {
   height: 100%;
+  font-family: sans-serif !important;
 }

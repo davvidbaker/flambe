@@ -79,6 +79,7 @@ export function ShareApp() {
     <ChartHarness
       demoOverlays={false}
       fixture={snapshot.fixture}
+      timeLabels={snapshot.timeLabels}
       viewport={snapshot.viewport}
     />
   );

@@ -3,6 +3,7 @@ import { createStore } from 'redux';
 import {
   processTimelineTrace,
   selectTrace,
+  setSetting,
   setTimeline,
   USER_FETCH,
 } from '../actions';
@@ -10,7 +11,7 @@ import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import { rootReducer } from '../rootReducer';
 import type { Observation } from '../reducers/user';
 import { DAY, HOUR } from '../utilities/time';
-import type { SnapshotViewport } from '../utilities/timelineSnapshot';
+import type { SnapshotTimeLabels, SnapshotViewport } from '../utilities/timelineSnapshot';
 import {
   LEFT_BOUNDARY_STORAGE_KEY,
   RIGHT_BOUNDARY_STORAGE_KEY,
@@ -74,6 +75,7 @@ export type ChartStoreExtras = {
   observations?: Observation[];
   traces?: { id: AppChartFixture['traceId']; name: string }[];
   viewport?: SnapshotViewport;
+  timeLabels?: SnapshotTimeLabels;
 };
 
 export function viewportForFixture(
@@ -133,6 +135,10 @@ export function createChartStore(
   store.dispatch(selectTrace({ id: fixture.traceId, name: fixture.traceName }));
   store.dispatch(processTimelineTrace(fixture.events, fixture.threads));
   store.dispatch(setTimeline(minTime, maxTime));
+  if (extras.timeLabels) {
+    store.dispatch(setSetting('absoluteTimeLabels', extras.timeLabels.absoluteTimeLabels));
+    store.dispatch(setSetting('twelveHourClock', extras.timeLabels.twelveHourClock));
+  }
 
   return store;
 }
