@@ -392,7 +392,7 @@ describe('nested actor sublane layout', () => {
 });
 
 describe('coalesceActorLaneChrome', () => {
-  it('merges same-agent flames when the gap is within one grid tick', () => {
+  it('puts all same-agent owned flames in one sustained wash, including large gaps', () => {
     const activities = {
       1: activity({ id: 1 }),
       2: activity({ id: 2, parent_id: 1, agent_id: 'claude:miles', agent_name: 'Miles' }),
@@ -407,41 +407,39 @@ describe('coalesceActorLaneChrome', () => {
     ];
     const layout = projectActorLaneLayout(activities, blocks);
     const chrome = coalesceActorLaneChrome(layout, blocks, 10);
+    const miles = chrome.filter(band => band.actorName === 'Miles');
 
-    expect(chrome).toMatchObject([
-      {
-        actorName: 'Miles',
-        providerKey: 'claude',
-        rootActivityIds: [2, 3],
-        startTime: 10,
-        endTime: 35,
-      },
-      {
-        actorName: 'Miles',
-        rootActivityIds: [4],
-        startTime: 100,
-        endTime: 110,
-      },
-    ]);
+    expect(miles).toMatchObject([{
+      actorName: 'Miles',
+      providerKey: 'claude',
+      rootActivityIds: [2, 3, 4],
+      startTime: 10,
+      endTime: 110,
+    }]);
   });
 
-  it('keeps separate chrome when the gap exceeds one grid tick', () => {
+  it('keeps a nested delegated agent as its own inset chrome', () => {
     const activities = {
       1: activity({ id: 1 }),
       2: activity({ id: 2, parent_id: 1, agent_id: 'cursor:steve', agent_name: 'Steve' }),
-      3: activity({ id: 3, parent_id: 1, agent_id: 'cursor:steve', agent_name: 'Steve' }),
+      3: activity({ id: 3, parent_id: 2, agent_id: 'codex:nora', agent_name: 'Nora' }),
     };
     const blocks = [
       block(1, 0, 100),
-      block(2, 10, 20),
-      block(3, 40, 50),
+      block(2, 10, 80),
+      block(3, 20, 40),
     ];
-    const layout = projectActorLaneLayout(activities, blocks);
-    expect(coalesceActorLaneChrome(layout, blocks, 10)).toHaveLength(2);
-    expect(coalesceActorLaneChrome(layout, blocks, 30)).toHaveLength(1);
+    const chrome = coalesceActorLaneChrome(projectActorLaneLayout(activities, blocks), blocks, 10);
+    expect(chrome.map(band => band.actorName)).toEqual(['Steve', 'Nora']);
+    const steve = chrome.find(band => band.actorName === 'Steve')!;
+    const nora = chrome.find(band => band.actorName === 'Nora')!;
+    expect(steve.startTime).toBe(10);
+    expect(steve.endTime).toBe(80);
+    expect(nora.depth).toBe(1);
+    expect(nora.parentLaneRootId).toBe(2);
   });
 
-  it('does not coalesce parentless same-agent roots even when the gap is small', () => {
+  it('washes independent --root flames of the same agent as one presence', () => {
     const activities = {
       339: activity({ id: 339, agent_id: 'cursor:a', agent_name: 'Grok' }),
       340: activity({ id: 340, agent_id: 'cursor:a', agent_name: 'Grok' }),
@@ -451,11 +449,16 @@ describe('coalesceActorLaneChrome', () => {
       block(340, 12, 22),
     ];
     const chrome = coalesceActorLaneChrome(projectActorLaneLayout(activities, blocks), blocks, 10);
-    expect(chrome).toHaveLength(2);
-    expect(chrome.map(band => band.rootActivityIds)).toEqual([[339], [340]]);
+    expect(chrome).toHaveLength(1);
+    expect(chrome[0]).toMatchObject({
+      actorName: 'Grok',
+      rootActivityIds: [339, 340],
+      startTime: 0,
+      endTime: 22,
+    });
   });
 
-  it('does not paint a hull wash across rows between a suspend and a later resume', () => {
+  it('does not paint a hull wash across unused rows between a suspend and a later resume', () => {
     const begin = { ...block(2, 0, 10), beginning: 'B' as const, ending: 'S' as const };
     const gap = block(3, 15, 70);
     const resume = { ...block(2, 50, 80), beginning: 'R' as const, ending: 'E' as const };
@@ -473,15 +476,22 @@ describe('coalesceActorLaneChrome', () => {
     const chrome = coalesceActorLaneChrome(layout, blocks, 1);
 
     const claude = chrome.filter(band => band.rootActivityIds.some(id => Number(id) === 2));
-    expect(claude.length).toBeGreaterThanOrEqual(2);
-    const rows = claude.flatMap(band => [band.rowStart, band.rowEnd]);
+    expect(claude).toHaveLength(1);
+    expect(claude[0]).toMatchObject({ startTime: 0, endTime: 80 });
+
     const beginRow = layout.rowByBlock[blockLayoutKey(begin)];
     const resumeRow = layout.rowByBlock[blockLayoutKey(resume)];
     expect(resumeRow).toBeGreaterThan(beginRow);
-    expect(Math.max(...rows) - Math.min(...rows)).toBeGreaterThanOrEqual(resumeRow - beginRow);
-    claude.forEach(band => {
-      expect(band.rowEnd - band.rowStart).toBeLessThan(resumeRow - beginRow);
+
+    const washed = new Set<number>();
+    claude[0]!.washRowRanges.forEach(range => {
+      for (let row = range.rowStart; row <= range.rowEnd; row += 1) washed.add(row);
     });
+    expect(washed.has(beginRow)).toBe(true);
+    expect(washed.has(resumeRow)).toBe(true);
+    for (let row = beginRow + 1; row < resumeRow; row += 1) {
+      expect(washed.has(row)).toBe(false);
+    }
   });
 });
 
