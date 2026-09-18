@@ -901,9 +901,12 @@ export class FlameChart extends Component<Props, State> {
   }
 
   ensureActorLaneLayout(): ActorLaneLayout {
+    // Lay out only agents currently in view: their bands (and the chart height)
+    // reflect the visible window and reflow as the user pans or zooms.
+    const visibleBlocks = this.props.blocks.filter(block => this.isVisible(block));
     this.actorLaneLayout = projectActorLaneLayout(
       this.props.activities,
-      this.props.blocks,
+      visibleBlocks,
     );
     return this.actorLaneLayout;
   }

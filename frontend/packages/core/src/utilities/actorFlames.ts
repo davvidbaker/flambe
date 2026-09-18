@@ -684,28 +684,6 @@ export function projectActorLaneLayout(
       ?? null;
   };
 
-  const threadRootId = (activityId: EntityId): EntityId => {
-    let current = activities[keyFor(activityId)];
-    const seen = new Set<string>();
-    while (current && current.parent_id != null && !seen.has(keyFor(current.id))) {
-      seen.add(keyFor(current.id));
-      const parent = activities[keyFor(current.parent_id)];
-      if (!parent || String(parent.thread_id) !== String(current.thread_id)) break;
-      current = parent;
-    }
-    return current?.id ?? activityId;
-  };
-
-  const rootOwnRow = (rootId: EntityId): number => {
-    let max = -1;
-    for (const block of blocks) {
-      if (String(block.activity_id) !== String(rootId)) continue;
-      const row = rowByBlock[blockLayoutKey(block)];
-      if (row !== undefined) max = Math.max(max, row);
-    }
-    return max;
-  };
-
   const blocksByThread = new Map<string, TraceBlock[]>();
   for (const block of blocks) {
     const activity = activities[keyFor(block.activity_id)];
@@ -725,79 +703,72 @@ export function projectActorLaneLayout(
       || forestDepth(left.activity_id) - forestDepth(right.activity_id)
       || Number(left.activity_id) - Number(right.activity_id));
 
+    // Group every block under its top-level actor (human work → the shared
+    // human owner). Each owner gets a contiguous band of rows so an agent's
+    // work never shares a row with another actor — one clean, non-overlapping
+    // wash per agent, and a delegated child sits contiguously inside its
+    // parent's band rather than forcing a hole or an overlap.
+    // Band owner = the top-level actor (by actor key), so every independent
+    // root of the same agent shares one band and a delegated child folds into
+    // its parent agent's band.
+    const ownerKeyOf = (activityId: EntityId): string => {
+      const ownerRoot = depth0Owner(activityId);
+      if (ownerRoot === null) return HUMAN_ACTOR_KEY;
+      const ownerActivity = activities[keyFor(ownerRoot)];
+      return ownerActivity ? actorKey(ownerActivity) : HUMAN_ACTOR_KEY;
+    };
+
+    const ownerFirstStart = new Map<string, number>();
     for (const block of ordered) {
-      const activity = activities[keyFor(block.activity_id)];
-      if (!activity) continue;
-      const interval: TimeInterval = {
-        start: block.startTime,
-        end: block.endTime ?? Number.POSITIVE_INFINITY,
-      };
+      const key = ownerKeyOf(block.activity_id);
+      const prev = ownerFirstStart.get(key) ?? Number.POSITIVE_INFINITY;
+      ownerFirstStart.set(key, Math.min(prev, block.startTime));
+    }
 
-      const parentId = activity.parent_id ?? null;
-      const parentOnThread = parentId !== null
-        && activities[keyFor(parentId)]
-        && String(activities[keyFor(parentId)]?.thread_id) === threadKey;
-      let minRow = 0;
-      if (parentOnThread && parentId !== null) {
-        const parentBlock = coveringParentBlock(parentId, block.startTime);
-        if (parentBlock) {
-          const parentRow = rowByBlock[blockLayoutKey(parentBlock)]
-            ?? rowByActivity[keyFor(parentId)]
-            ?? 0;
-          minRow = parentRow + 1;
+    // Human base stack first, then agents in order of first appearance.
+    const ownerOrder = [...ownerFirstStart.keys()].sort((left, right) => {
+      if (left === HUMAN_ACTOR_KEY) return right === HUMAN_ACTOR_KEY ? 0 : -1;
+      if (right === HUMAN_ACTOR_KEY) return 1;
+      return (ownerFirstStart.get(left)! - ownerFirstStart.get(right)!)
+        || left.localeCompare(right);
+    });
+
+    let bandBase = 0;
+    for (const ownerKey of ownerOrder) {
+      let bandMax = bandBase - 1;
+      for (const block of ordered) {
+        if (ownerKeyOf(block.activity_id) !== ownerKey) continue;
+        const activity = activities[keyFor(block.activity_id)];
+        if (!activity) continue;
+        const interval: TimeInterval = {
+          start: block.startTime,
+          end: block.endTime ?? Number.POSITIVE_INFINITY,
+        };
+
+        // Nest under a covering parent only when it shares this band (same
+        // owner); a cross-owner parent (e.g. a human root delegating to an
+        // agent) does not push the child down — the child starts its own band.
+        const parentId = activity.parent_id ?? null;
+        const parentSameOwner = parentId !== null
+          && String(activities[keyFor(parentId)]?.thread_id) === threadKey
+          && ownerKeyOf(parentId) === ownerKey;
+        let minRow = bandBase;
+        if (parentSameOwner && parentId !== null) {
+          const parentBlock = coveringParentBlock(parentId, block.startTime);
+          if (parentBlock) {
+            const parentRow = rowByBlock[blockLayoutKey(parentBlock)]
+              ?? rowByActivity[keyFor(parentId)]
+              ?? bandBase;
+            minRow = Math.max(bandBase, parentRow + 1);
+          }
         }
+
+        const row = firstFreeRow(threadId, minRow, [interval], 1);
+        rowByBlock[blockLayoutKey(block)] = row;
+        occupyRows(threadId, row, row, [interval]);
+        bandMax = Math.max(bandMax, row);
       }
-
-      const flame = flameByRoot[keyFor(activity.id)];
-      const isDepth0AgentBlock = flame !== undefined
-        && parentLaneRootId(flame, rootIdByActivity) === null;
-      const hasEarlierSegment = ordered.some(other =>
-        String(other.activity_id) === String(activity.id)
-        && other.startTime < block.startTime);
-
-      if (isDepth0AgentBlock && flame && !hasEarlierSegment) {
-        let overlapMax = -1;
-        for (const other of ordered) {
-          const otherRow = rowByBlock[blockLayoutKey(other)];
-          if (otherRow === undefined) continue;
-          const otherInterval: TimeInterval = {
-            start: other.startTime,
-            end: other.endTime ?? Number.POSITIVE_INFINITY,
-          };
-          if (!intervalsOverlap(interval, otherInterval)) continue;
-          const owner = depth0Owner(other.activity_id);
-          if (owner === null || String(owner) === String(flame.rootActivityId)) continue;
-          overlapMax = Math.max(overlapMax, otherRow);
-        }
-        if (overlapMax >= 0) {
-          minRow = Math.max(minRow, overlapMax + 2);
-        }
-      }
-
-      // Resume (or later segment) of a root sits directly under the overlapping
-      // sibling root — not under that sibling's nested children.
-      if (!parentOnThread && hasEarlierSegment) {
-        let otherMax = -1;
-        for (const other of ordered) {
-          const otherRow = rowByBlock[blockLayoutKey(other)];
-          if (otherRow === undefined) continue;
-          const otherInterval: TimeInterval = {
-            start: other.startTime,
-            end: other.endTime ?? Number.POSITIVE_INFINITY,
-          };
-          if (!intervalsOverlap(interval, otherInterval)) continue;
-          const otherRoot = threadRootId(other.activity_id);
-          if (String(otherRoot) === String(activity.id)) continue;
-          otherMax = Math.max(otherMax, rootOwnRow(otherRoot));
-        }
-        if (otherMax >= 0) {
-          minRow = Math.max(minRow, otherMax + 1);
-        }
-      }
-
-      const row = firstFreeRow(threadId, minRow, [interval], 1);
-      rowByBlock[blockLayoutKey(block)] = row;
-      occupyRows(threadId, row, row, [interval]);
+      bandBase = bandMax + 1;
     }
 
     const threadFlames = flames.filter(flame => {

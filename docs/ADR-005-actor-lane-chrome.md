@@ -68,8 +68,44 @@ David chose a sustained wash across all of an agent’s owned activities so shor
 - Frontend chrome helpers and Storybook fixtures should use **rail / wash / gutter / activity block / fork** consistently in comments and names.
 - `actorAccentColor` (or successor) should key off provider, not display name.
 - Flame projection coalesces all same-agent roots on a thread into one wash before painting chrome.
-- The wash is emitted as `washRects` clipped to each row's actual occupancy, so it never covers a neighbour or human block sharing a row at another time, and **no two washes overlap** — every row is washed by at most one agent (a delegated child's rows are the child's alone). When an agent's independent roots are interleaved onto rows shared with others, its single presence reads as several aligned rectangles under one rail/label rather than one solid block.
+- The wash is emitted as `washRects` clipped to each row's actual occupancy, so it never covers a neighbour or human block sharing a row at another time, and **no two washes overlap** — every row is washed by at most one agent (a delegated child's rows are the child's alone).
 - Category bar fill remains independent of rail/wash color.
+
+## Addendum: per-agent row bands, scoped to the viewport
+
+### Status
+
+Accepted (row layout, `projectActorLaneLayout`)
+
+### Decision
+
+Rows are packed into **per-agent contiguous bands** instead of the compact,
+time-interleaved flame-chart packing. Human work forms the base stack; each
+agent (keyed by actor) then gets its own contiguous band, ordered by first
+appearance, with all of that agent's independent roots grouped into the band and
+a delegated child folded in directly below its parent. Because an agent's rows
+are now exclusive to it, one clean sustained wash per agent falls out with no
+scatter, no cross-agent bleed, and no cut-out — the earlier per-rectangle
+clipping becomes a safety net rather than the mechanism.
+
+The layout is computed over **only the blocks currently in view**: bands (and the
+chart height) reflect the visible window and reflow as the user pans or zooms, so
+a long trace does not accumulate a permanent swimlane for every agent that ever
+ran.
+
+### Rationale
+
+A single sustained presence for an agent is only achievable without painting over
+other actors if the agent's work is contiguous; that is a row-layout property, not
+a wash-painting trick. Scoping to the viewport keeps the vertical cost of per-agent
+bands bounded to what is on screen.
+
+### Consequences
+
+- `projectActorLaneLayout` groups blocks by top-level actor and assigns each a
+  disjoint row band; concurrent agents no longer share a row by time.
+- Chrome/height derive from visible blocks, so the layout is viewport-dependent
+  and recomputes on pan/zoom.
 
 ## Follow-ups
 
