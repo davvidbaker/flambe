@@ -432,34 +432,81 @@ defmodule FlambeNext.Reducer.Review do
           "review" =>
             "Any ambiguity, drift, blocker, possible stack mutation, clarification, or operational guidance could be useful."
         }
+      },
+      "assessment" => %{
+        type: "choice",
+        instructions: "Assess this worker update against the current flame.",
+        criteria: %{
+          "on_track" => "The update advances the current activity and root intent.",
+          "slightly_off_track" => "The update drifts somewhat but is easy to correct.",
+          "off_track" => "The update materially diverges from the current root intent.",
+          "blocked" => "The worker is blocked from making useful progress.",
+          "uncertain" => "The available state is insufficient to judge confidently."
+        }
+      },
+      "direction" => %{
+        type: "choice",
+        instructions:
+          "Choose the smallest authoritative direction the worker needs. Choose none when no direction is needed.",
+        criteria: %{
+          "none" => "No steering is needed.",
+          "continue" => "Continue the current approach.",
+          "narrow_scope" => "Reduce scope to the essential current work.",
+          "investigate" => "Investigate before making further changes.",
+          "change_approach" => "Change the current implementation approach.",
+          "pause" => "Pause this work temporarily.",
+          "stop" => "Stop this work.",
+          "escalate" => "Human judgment is required."
+        }
       }
     }
 
     with {:ok, response} <- Jev.evaluate(state, questions, opts),
          answers when is_map(answers) <- response["answers"] || response[:answers],
-         %{} = answer <- answers["route"] || answers[:route],
-         choice when is_binary(choice) <- answer["choice"] || answer[:choice] do
-      case choice do
-        "routine" ->
-          model = response["model"] || response[:model] || Jev.model()
+         %{} = route_answer <- answers["route"] || answers[:route],
+         route when is_binary(route) <- route_answer["choice"] || route_answer[:choice],
+         %{} = assessment_answer <- answers["assessment"] || answers[:assessment],
+         assessment when assessment in @allowed_assessments <-
+           assessment_answer["choice"] || assessment_answer[:choice],
+         %{} = direction_answer <- answers["direction"] || answers[:direction],
+         direction_choice when is_binary(direction_choice) <-
+           direction_answer["choice"] || direction_answer[:choice],
+         true <- direction_choice == "none" or direction_choice in @allowed_directions do
+      direction = if direction_choice == "none", do: nil, else: direction_choice
+      model = response["model"] || response[:model] || Jev.model()
 
+      model_info = %{
+        primary_model: model,
+        final_model: model,
+        escalated: false,
+        escalation_reason: nil
+      }
+
+      case route do
+        "routine" ->
           {:ok,
            %{
-             "assessment" => "on_track",
-             "direction" => nil,
+             "assessment" => assessment,
+             "direction" => direction,
              "reply" => nil,
-             "rationale" => "Jev classified this as routine on-track work.",
+             "rationale" => "Jev classified this as routine reducer work.",
              "actions" => [%{"type" => "no_op"}]
-           },
-           %{
-             primary_model: model,
-             final_model: model,
-             escalated: false,
-             escalation_reason: nil
-           }}
+           }, model_info}
 
         "review" ->
-          :fallback
+          if Model.available?(opts) do
+            :fallback
+          else
+            {:ok,
+             %{
+               "assessment" => assessment,
+               "direction" => direction,
+               "reply" => nil,
+               "rationale" =>
+                 "Jev returned a typed decision; no generative reducer was configured for a richer review.",
+               "actions" => [%{"type" => "no_op"}]
+             }, model_info}
+          end
 
         _ ->
           {:error, :invalid_jev_response}
