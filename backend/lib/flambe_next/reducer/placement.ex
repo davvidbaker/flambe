@@ -10,7 +10,7 @@ defmodule FlambeNext.Reducer.Placement do
 
   alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
-  alias FlambeNext.Reducer.Model
+  alias FlambeNext.Reducer.{Jev, Model}
   alias FlambeNext.Repo
   alias FlambeNext.Traces
   alias FlambeNext.Traces.{Activity, Event, Trace}
@@ -21,7 +21,7 @@ defmodule FlambeNext.Reducer.Placement do
   decide or no model is configured; the activity is already recorded either way.
   """
   def place_root_async(%User{} = user, %Activity{parent_id: nil} = activity) do
-    if Model.configured?() do
+    if Jev.configured?() or Model.configured?() do
       Task.Supervisor.start_child(FlambeNext.TaskSupervisor, fn -> place_root(user, activity) end)
       :started
     else
@@ -42,16 +42,7 @@ defmodule FlambeNext.Reducer.Placement do
       :skipped
     else
       context = placement_context(user, activity, threads, categories)
-      # Tests inject `:llm` to avoid the network; production uses the primary model.
-      llm = Keyword.get(opts, :llm, &Model.call/2)
-
-      case placement_decision(
-             llm,
-             Model.primary_model(),
-             placement_prompt(context),
-             threads,
-             categories
-           ) do
+      case placement_decision_for(context, threads, categories, opts) do
         {:ok, decision} ->
           apply_placement(user, activity, decision, threads)
 
@@ -62,6 +53,99 @@ defmodule FlambeNext.Reducer.Placement do
 
           {:error, reason}
       end
+    end
+  end
+
+  defp placement_decision_for(context, threads, categories, opts) do
+    if Jev.available?(opts) do
+      case placement_decision_jev(context, threads, categories, opts) do
+        {:ok, decision} ->
+          {:ok, decision}
+
+        {:error, jev_error} ->
+          Logger.warning("Jev placement failed; falling back to the generative reducer: #{inspect(jev_error)}")
+          placement_decision_llm(context, threads, categories, opts)
+      end
+    else
+      placement_decision_llm(context, threads, categories, opts)
+    end
+  end
+
+  defp placement_decision_llm(context, threads, categories, opts) do
+    llm = Keyword.get(opts, :llm, &Model.call/2)
+
+    placement_decision(
+      llm,
+      Model.primary_model(),
+      placement_prompt(context),
+      threads,
+      categories
+    )
+  end
+
+  defp placement_decision_jev(context, threads, categories, opts) do
+    questions =
+      %{
+        "thread" => %{
+          type: "choice",
+          instructions:
+            "Choose the workstream thread that best fits this root activity. Keep the current thread unless another thread clearly fits better.",
+          criteria:
+            Map.new(threads, fn thread ->
+              {"thread_#{thread.id}", thread.name}
+            end)
+        }
+      }
+      |> Map.merge(
+        Map.new(categories, fn category ->
+          {"category_#{category.id}",
+           %{
+             type: "noul",
+             instructions:
+               "Does the work-kind category '#{category.name}' fit this activity? Project names alone are not work-kind categories.",
+             criteria: %{
+               true: "This category materially describes the kind of work being done.",
+               false: "This category does not materially describe the kind of work being done."
+             }
+           }}
+        end)
+      )
+
+    with {:ok, response} <- Jev.evaluate(context, questions, opts),
+         answers when is_map(answers) <- response["answers"] || response[:answers],
+         %{} = thread_answer <- answers["thread"] || answers[:thread],
+         thread_choice when is_binary(thread_choice) <-
+           thread_answer["choice"] || thread_answer[:choice],
+         {:ok, thread_id} <- parse_choice_id(thread_choice, "thread_"),
+         true <- Enum.any?(threads, &(&1.id == thread_id)) do
+      category_ids =
+        categories
+        |> Enum.filter(fn category ->
+          case answers["category_#{category.id}"] do
+            %{"noul" => probability} when is_number(probability) -> probability >= 0.5
+            %{noul: probability} when is_number(probability) -> probability >= 0.5
+            _ -> false
+          end
+        end)
+        |> Enum.map(& &1.id)
+
+      {:ok,
+       %{
+         thread_id: thread_id,
+         category_ids: category_ids,
+         rationale: "typed Jev placement decision",
+         model: response["model"] || response[:model] || Jev.model()
+       }}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_jev_response}
+    end
+  end
+
+  defp parse_choice_id(choice, prefix) do
+    case String.replace_prefix(choice, prefix, "") |> Integer.parse() do
+      {id, ""} when id > 0 -> {:ok, id}
+      _ -> {:error, :invalid_jev_response}
     end
   end
 
