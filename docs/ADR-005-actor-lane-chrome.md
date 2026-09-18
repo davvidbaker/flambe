@@ -28,7 +28,7 @@ or parentage.
 | **Activity** (or activity **block**) | A lifecycle segment drawn as a category-colored bar. Fill stays category-based (ADR-004). |
 | **Actor flame** | Presentation root that begins when an activity’s actor differs from its nearest parent actor (ADR-004). |
 | **Rail** | Thin vertical accent at the left of a flame’s chrome. Color encodes **model provider**. |
-| **Wash** | Translucent fill behind a flame’s rows. Horizontally it is **sustained**: start of the earliest same-actor owned block through end of the latest, including open ends and idle gaps. It is not full chart width. Vertically it paints only occupied row runs — unused rows between a suspend and a later resume stay unwashed. |
+| **Wash** | Translucent fill behind a flame’s rows. It is **sustained** so all of an agent’s owned work reads as one presence, but it is painted as rectangles **clipped to the (row × time) cells the agent actually occupies**. On a row, an agent’s idle gap is bridged into one rectangle only when no other actor’s block sits in that gap; a row the agent shares with a neighbour or human block at a different time is never washed over. Vertically it paints only occupied row runs — unused rows between a suspend and a later resume stay unwashed. It is not full chart width. |
 | **Gutter** | Fixed screen-space strip immediately left of the flame’s first block, holding the rail and the agent label. |
 | **Fork** | Curve from a parent activity into a child flame’s first block; join sits on the block edge past the gutter. |
 
@@ -68,6 +68,7 @@ David chose a sustained wash across all of an agent’s owned activities so shor
 - Frontend chrome helpers and Storybook fixtures should use **rail / wash / gutter / activity block / fork** consistently in comments and names.
 - `actorAccentColor` (or successor) should key off provider, not display name.
 - Flame projection coalesces all same-agent roots on a thread into one wash before painting chrome.
+- The wash is emitted as `washRects` clipped to each row's actual occupancy, so it never covers a neighbour or human block sharing a row at another time. When an agent's independent roots are interleaved onto rows shared with others, its single presence reads as several aligned rectangles under one rail/label rather than one solid block.
 - Category bar fill remains independent of rail/wash color.
 
 ## Follow-ups

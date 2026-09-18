@@ -458,6 +458,34 @@ describe('coalesceActorLaneChrome', () => {
     });
   });
 
+  it('clips the wash so it never covers a foreign block that shares a row at another time', () => {
+    // Ada owns two independent roots; a human block lands between them on the
+    // same row (row reuse). The sustained wash must skip the human's cell.
+    const activities = {
+      2: activity({ id: 2, agent_id: 'cursor:ada', agent_name: 'Ada' }),
+      3: activity({ id: 3 }),
+      4: activity({ id: 4, agent_id: 'cursor:ada', agent_name: 'Ada' }),
+    };
+    const blocks = [block(2, 0, 10), block(3, 20, 30), block(4, 40, 50)];
+    const layout = projectActorLaneLayout(activities, blocks);
+    const humanRow = layout.rowByBlock[blockLayoutKey(block(3, 20, 30))];
+    const chrome = coalesceActorLaneChrome(layout, blocks, 10);
+
+    const ada = chrome.filter(band => band.actorName === 'Ada');
+    expect(ada).toHaveLength(1);
+    // Still one presence spanning the full range...
+    expect(ada[0]).toMatchObject({ rootActivityIds: [2, 4], startTime: 0, endTime: 50 });
+    // ...but no painted rectangle covers the human's (row, time) cell.
+    const covers = ada[0]!.washRects.some(rect =>
+      rect.rowStart <= humanRow
+      && humanRow <= rect.rowEnd
+      && rect.startTime < 30
+      && 20 < (rect.endTime ?? Number.POSITIVE_INFINITY));
+    expect(covers).toBe(false);
+    // The gap around the human block splits the wash into two rectangles.
+    expect(ada[0]!.washRects.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('does not paint a hull wash across unused rows between a suspend and a later resume', () => {
     const begin = { ...block(2, 0, 10), beginning: 'B' as const, ending: 'S' as const };
     const gap = block(3, 15, 70);
