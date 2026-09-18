@@ -17,6 +17,7 @@ import {
   createQuestionOutcomesFixture,
   createResumeDuringConcurrentWorkFixture,
   createHumanResumeDuringConcurrentWorkFixture,
+  createIndependentAgentRootsFixture,
   createResurrectionFixture,
   createSparseTraceFixture,
   createStrangeSequenceFixture,
@@ -115,8 +116,13 @@ describe('app chart Storybook fixture', () => {
     );
     const composerBlock = processed.blocks.find(block => block.activity_id === 251);
     expect(claudeResume && composerBlock).toBeTruthy();
-    expect(layout.rowByBlock[blockLayoutKey(claudeResume!)]).toBe(
-      layout.rowByBlock[blockLayoutKey(composerBlock!)] + 1,
+    // Each agent owns a separate contiguous band: Claude's resume stays on
+    // Claude's band, above Composer's band — never sharing Composer's row.
+    expect(layout.rowByBlock[blockLayoutKey(claudeResume!)]).not.toBe(
+      layout.rowByBlock[blockLayoutKey(composerBlock!)],
+    );
+    expect(layout.rowByBlock[blockLayoutKey(claudeResume!)]).toBeLessThan(
+      layout.rowByBlock[blockLayoutKey(composerBlock!)],
     );
   });
 
@@ -291,9 +297,33 @@ describe('app chart Storybook fixture', () => {
     expect(oncor).toMatchObject({ depth: 0, parentLaneRootId: null });
     expect(centerpoint).toMatchObject({ depth: 0, parentLaneRootId: null });
     expect(austin).toMatchObject({ depth: 0, parentLaneRootId: null });
-    expect(oncor && centerpoint && oncor.rowStart < centerpoint.rowStart).toBe(true);
+    // Each agent occupies its own contiguous band; the three bands are disjoint.
+    const bands = [oncor!, centerpoint!, austin!]
+      .map(lane => ({ start: lane.rowStart, end: lane.rowEnd }))
+      .sort((a, b) => a.start - b.start);
+    for (let i = 1; i < bands.length; i += 1) {
+      expect(bands[i].start).toBeGreaterThan(bands[i - 1].end);
+    }
     expect(projectActorFlames(processed.activities).length).toBeGreaterThan(8);
     expect(() => coalesceActorLaneChrome(layout, processed.blocks, 60 * 60 * 1000)).not.toThrow();
+  });
+
+  it('washes independent --root bursts of the same agent as one presence', () => {
+    const fixture = createIndependentAgentRootsFixture(1_700_000_000_000);
+    const processed = processTrace(fixture.events, fixture.threads);
+    const chrome = coalesceActorLaneChrome(
+      projectActorLaneLayout(processed.activities, processed.blocks),
+      processed.blocks,
+      10 * 60 * 1000,
+    );
+    const byAgent = Object.fromEntries(
+      chrome.map(band => [band.actorName, band.rootActivityIds.length]),
+    );
+    expect(byAgent.Otto).toBe(3);
+    expect(byAgent.CG4).toBe(2);
+    expect(byAgent.Theo).toBe(1);
+    expect(chrome.filter(band => band.actorName === 'Otto')).toHaveLength(1);
+    expect(chrome.filter(band => band.actorName === 'CG4')).toHaveLength(1);
   });
 });
 
