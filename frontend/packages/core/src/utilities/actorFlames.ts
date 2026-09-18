@@ -381,32 +381,6 @@ export function contiguousRowRanges(rows: number[]): ActorWashRowRange[] {
   return ranges;
 }
 
-function washRowsForRoots(
-  rootActivityIds: EntityId[],
-  layout: ActorLaneLayout,
-  blocks: TraceBlock[],
-): number[] {
-  const rootSet = new Set(rootActivityIds.map(String));
-  const rows: number[] = [];
-
-  for (const block of blocks) {
-    const root = layout.rootIdByActivity[String(block.activity_id)];
-    if (root === null || root === undefined || !rootSet.has(String(root))) continue;
-    const row = layout.rowByBlock[blockLayoutKey(block)];
-    if (row !== undefined) rows.push(row);
-  }
-
-  // Nested delegated lanes sit inside the parent actor band (ADR-004).
-  for (const lane of layout.lanes) {
-    if (lane.parentLaneRootId === null || !rootSet.has(String(lane.parentLaneRootId))) continue;
-    for (let row = lane.rowStart; row <= lane.rowEnd; row += 1) {
-      rows.push(row);
-    }
-  }
-
-  return rows;
-}
-
 /**
  * Wash rectangles for one agent group, clipped to the (row × time) cells the
  * agent actually owns. On each row the agent's own blocks are unioned and a gap
@@ -414,6 +388,10 @@ function washRowsForRoots(
  * occupies that row inside the gap. This keeps the "one sustained presence"
  * reading where the agent has a row to itself, while never painting over a
  * neighbour or human block that shares a row at a different time.
+ *
+ * Washes never overlap: only the agent's own roots count as owned, so a nested
+ * delegated child's rows belong to the child's wash alone (its inset rail and
+ * label still convey the nesting). Every row is washed by at most one agent.
  */
 function washRectsForGroup(
   rootActivityIds: EntityId[],
@@ -421,17 +399,11 @@ function washRectsForGroup(
   blocks: TraceBlock[],
 ): ActorWashRect[] {
   const rootSet = new Set(rootActivityIds.map(String));
-  const nestedRootSet = new Set<string>();
-  for (const lane of layout.lanes) {
-    if (lane.parentLaneRootId !== null && rootSet.has(String(lane.parentLaneRootId))) {
-      nestedRootSet.add(String(lane.rootActivityId));
-    }
-  }
 
   const ownsBlock = (activityId: EntityId): boolean => {
     const root = layout.rootIdByActivity[String(activityId)];
     if (root === null || root === undefined) return false;
-    return rootSet.has(String(root)) || nestedRootSet.has(String(root));
+    return rootSet.has(String(root));
   };
 
   const ownedByRow = new Map<number, TimeInterval[]>();
@@ -517,28 +489,24 @@ export function coalesceActorLaneChrome(
     if (!bounds || !Number.isFinite(bounds.startTime)) continue;
 
     const washRects = washRectsForGroup(rootActivityIds, layout, blocks);
-    // Row ranges are derived from the painted rectangles so the vertical extent
-    // never claims a row the agent does not actually occupy.
-    const washRowRanges = contiguousRowRanges(
-      washRects.length
-        ? washRects.map(rect => rect.rowStart)
-        : washRowsForRoots(rootActivityIds, layout, blocks),
-    );
-    rootActivityIds.sort((left, right) => Number(left) - Number(right));
-    if (!washRowRanges.length) {
-      washRowRanges.push({
-        rowStart: Math.min(...lanes.map(lane => lane.rowStart)),
-        rowEnd: Math.max(...lanes.map(lane => lane.rowEnd)),
-      });
-    }
     if (!washRects.length) {
       washRects.push({
-        rowStart: washRowRanges[0]!.rowStart,
-        rowEnd: washRowRanges[washRowRanges.length - 1]!.rowEnd,
+        rowStart: Math.min(...lanes.map(lane => lane.rowStart)),
+        rowEnd: Math.max(...lanes.map(lane => lane.rowEnd)),
         startTime: bounds.startTime,
         endTime: bounds.endTime,
       });
     }
+    // Row ranges are derived from the painted rectangles so the vertical extent
+    // never claims a row the agent does not actually occupy.
+    const washRowRanges = contiguousRowRanges(
+      washRects.flatMap(rect => {
+        const rows: number[] = [];
+        for (let row = rect.rowStart; row <= rect.rowEnd; row += 1) rows.push(row);
+        return rows;
+      }),
+    );
+    rootActivityIds.sort((left, right) => Number(left) - Number(right));
 
     chrome.push({
       actorKey: first.actorKey,

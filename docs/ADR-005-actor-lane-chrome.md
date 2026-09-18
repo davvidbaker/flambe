@@ -41,7 +41,7 @@ or parentage.
 
 - **Single-row flame:** label stays rotated 90° CCW in the fixed gutter, drawn in tiny type so more of the name fits; wash still spans the full owned duration.
 - **Multi-row flame:** label may be rotated 90° CCW in the gutter when height allows; otherwise shorten while staying vertical.
-- **Nested delegation:** child flame chrome is inset (deeper gutter/rail) inside the parent flame’s vertical band; fork remains.
+- **Nested delegation:** a delegated child owns its own rows outright — the parent’s wash does **not** extend over them, so washes never overlap. The child reads as nested through its inset (deeper) gutter/rail, label, and fork rather than by sitting under the parent’s fill.
 - **All same-agent owned work:** every flame for the same agent on a thread — including independent `--root` workstreams and bursts with large idle gaps — shares **one sustained wash**, one rail, and one label. Nested delegated agents stay their own inset chrome.
 
 ## Rationale
@@ -68,7 +68,7 @@ David chose a sustained wash across all of an agent’s owned activities so shor
 - Frontend chrome helpers and Storybook fixtures should use **rail / wash / gutter / activity block / fork** consistently in comments and names.
 - `actorAccentColor` (or successor) should key off provider, not display name.
 - Flame projection coalesces all same-agent roots on a thread into one wash before painting chrome.
-- The wash is emitted as `washRects` clipped to each row's actual occupancy, so it never covers a neighbour or human block sharing a row at another time. When an agent's independent roots are interleaved onto rows shared with others, its single presence reads as several aligned rectangles under one rail/label rather than one solid block.
+- The wash is emitted as `washRects` clipped to each row's actual occupancy, so it never covers a neighbour or human block sharing a row at another time, and **no two washes overlap** — every row is washed by at most one agent (a delegated child's rows are the child's alone). When an agent's independent roots are interleaved onto rows shared with others, its single presence reads as several aligned rectangles under one rail/label rather than one solid block.
 - Category bar fill remains independent of rail/wash color.
 
 ## Follow-ups
