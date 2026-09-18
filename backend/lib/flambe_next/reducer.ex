@@ -150,18 +150,18 @@ defmodule FlambeNext.Reducer do
         {:ok, folded}
 
       rule ->
-        case structure_llm() do
+        case structure_review_opts() do
           nil ->
             {:ok, note_structure(trace, folded, rule, %{type: "skipped"}, nil, nil)}
 
-          llm ->
-            judge_structure(user, trace, folded, rule, llm)
+          opts ->
+            judge_structure(user, trace, folded, rule, opts)
         end
     end
   end
 
-  defp judge_structure(user, trace, folded, rule, llm) do
-    case Review.judge_structure(user, folded.activity, rule, llm: llm) do
+  defp judge_structure(user, trace, folded, rule, opts) do
+    case Review.judge_structure(user, folded.activity, rule, opts) do
       {:ok, judgment} ->
         apply_structure_judgment(user, trace, folded, rule, judgment)
 
@@ -212,13 +212,17 @@ defmodule FlambeNext.Reducer do
 
   defp structure_rule(_trace, _activity, _agent_id), do: nil
 
-  defp structure_llm do
+  defp structure_review_opts do
     case Application.get_env(:flambe_next, :reducer_llm) do
       llm when is_function(llm, 2) ->
-        llm
+        [llm: llm]
 
       _ ->
-        if Mix.env() == :test or not Model.configured?(), do: nil, else: &Model.call/2
+        cond do
+          Mix.env() == :test -> nil
+          Jev.configured?() or Model.configured?() -> []
+          true -> nil
+        end
     end
   end
 
