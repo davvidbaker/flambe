@@ -82,6 +82,17 @@ export interface ActorWashRowRange {
   rowStart: number;
 }
 
+/**
+ * A single wash rectangle clipped to the (rows × time) an agent actually
+ * occupies, so the wash never covers a row at a time owned by another actor.
+ */
+export interface ActorWashRect {
+  rowStart: number;
+  rowEnd: number;
+  startTime: number;
+  endTime: number | null;
+}
+
 /** Painted chrome envelope for one or more coalesced actor flames (ADR-005). */
 export interface ActorLaneChrome {
   actorKey: string;
@@ -102,6 +113,13 @@ export interface ActorLaneChrome {
    * span; unused rows between a suspend and a later resume stay unwashed.
    */
   washRowRanges: ActorWashRowRange[];
+  /**
+   * Wash rectangles clipped to the actual (row × time) cells the agent owns.
+   * A single agent still reads as one presence (one rail/label), but the paint
+   * only covers where the agent actually was — so an interleaved neighbour or
+   * human block sharing a row is never washed over.
+   */
+  washRects: ActorWashRect[];
 }
 
 function keyFor(id: EntityId): string {
@@ -390,6 +408,81 @@ function washRowsForRoots(
 }
 
 /**
+ * Wash rectangles for one agent group, clipped to the (row × time) cells the
+ * agent actually owns. On each row the agent's own blocks are unioned and a gap
+ * between two of them is bridged into one rectangle only when no foreign block
+ * occupies that row inside the gap. This keeps the "one sustained presence"
+ * reading where the agent has a row to itself, while never painting over a
+ * neighbour or human block that shares a row at a different time.
+ */
+function washRectsForGroup(
+  rootActivityIds: EntityId[],
+  layout: ActorLaneLayout,
+  blocks: TraceBlock[],
+): ActorWashRect[] {
+  const rootSet = new Set(rootActivityIds.map(String));
+  const nestedRootSet = new Set<string>();
+  for (const lane of layout.lanes) {
+    if (lane.parentLaneRootId !== null && rootSet.has(String(lane.parentLaneRootId))) {
+      nestedRootSet.add(String(lane.rootActivityId));
+    }
+  }
+
+  const ownsBlock = (activityId: EntityId): boolean => {
+    const root = layout.rootIdByActivity[String(activityId)];
+    if (root === null || root === undefined) return false;
+    return rootSet.has(String(root)) || nestedRootSet.has(String(root));
+  };
+
+  const ownedByRow = new Map<number, TimeInterval[]>();
+  const foreignByRow = new Map<number, TimeInterval[]>();
+  for (const block of blocks) {
+    const row = layout.rowByBlock[blockLayoutKey(block)];
+    if (row === undefined) continue;
+    const interval: TimeInterval = {
+      start: block.startTime,
+      end: block.endTime ?? Number.POSITIVE_INFINITY,
+    };
+    const target = ownsBlock(block.activity_id) ? ownedByRow : foreignByRow;
+    const list = target.get(row) ?? [];
+    list.push(interval);
+    target.set(row, list);
+  }
+
+  const rects: ActorWashRect[] = [];
+  for (const [row, ownedRaw] of ownedByRow) {
+    const owned = ownedRaw.slice().sort((left, right) => left.start - right.start);
+    const foreign = foreignByRow.get(row) ?? [];
+    let start = owned[0]!.start;
+    let end = owned[0]!.end;
+
+    const flush = () => rects.push({
+      rowStart: row,
+      rowEnd: row,
+      startTime: start,
+      endTime: Number.isFinite(end) ? end : null,
+    });
+
+    for (let index = 1; index < owned.length; index += 1) {
+      const next = owned[index]!;
+      const foreignInGap = Number.isFinite(end)
+        && foreign.some(entry => entry.start < next.start && entry.end > end);
+      if (!foreignInGap && Number.isFinite(end)) {
+        end = Math.max(end, next.end);
+      } else {
+        flush();
+        start = next.start;
+        end = next.end;
+      }
+    }
+    flush();
+  }
+
+  return rects.sort((left, right) => left.startTime - right.startTime
+    || left.rowStart - right.rowStart);
+}
+
+/**
  * One sustained wash per agent on a thread (ADR-005). Same-actor owned work —
  * including independent `--root` flames and idle gaps — shares one time span.
  * Unused rows between a suspend and a later resume stay unwashed.
@@ -423,14 +516,27 @@ export function coalesceActorLaneChrome(
     const bounds = laneTimeBoundsForRoots(rootActivityIds, layout.rootIdByActivity, blocks);
     if (!bounds || !Number.isFinite(bounds.startTime)) continue;
 
+    const washRects = washRectsForGroup(rootActivityIds, layout, blocks);
+    // Row ranges are derived from the painted rectangles so the vertical extent
+    // never claims a row the agent does not actually occupy.
     const washRowRanges = contiguousRowRanges(
-      washRowsForRoots(rootActivityIds, layout, blocks),
+      washRects.length
+        ? washRects.map(rect => rect.rowStart)
+        : washRowsForRoots(rootActivityIds, layout, blocks),
     );
     rootActivityIds.sort((left, right) => Number(left) - Number(right));
     if (!washRowRanges.length) {
       washRowRanges.push({
         rowStart: Math.min(...lanes.map(lane => lane.rowStart)),
         rowEnd: Math.max(...lanes.map(lane => lane.rowEnd)),
+      });
+    }
+    if (!washRects.length) {
+      washRects.push({
+        rowStart: washRowRanges[0]!.rowStart,
+        rowEnd: washRowRanges[washRowRanges.length - 1]!.rowEnd,
+        startTime: bounds.startTime,
+        endTime: bounds.endTime,
       });
     }
 
@@ -447,6 +553,7 @@ export function coalesceActorLaneChrome(
       startTime: bounds.startTime,
       threadId: first.threadId,
       washRowRanges,
+      washRects,
     });
   }
 

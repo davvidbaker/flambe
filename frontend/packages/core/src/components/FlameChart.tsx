@@ -984,14 +984,7 @@ export class FlameChart extends Component<Props, State> {
     chromeBands.forEach(chrome => {
       if (this.threadCollapsed(chrome.threadId)) return;
 
-      const contentLeft = this.timeToPixels(chrome.startTime);
-      const contentRight = this.timeToPixels(
-        chrome.endTime === null ? this.rightBoundaryTime : chrome.endTime,
-      );
       const depthInset = chrome.depth * FlameChart.actorLaneDepthInset;
-      const railX = contentLeft - gutter + depthInset;
-      if (contentRight < 0 || railX > this.width) return;
-
       const threadOffset = this.offsets[String(chrome.threadId)] ?? 0;
       const threadIds = Object.keys(this.offsets).sort(
         (left, right) => (this.offsets[left] ?? 0) - (this.offsets[right] ?? 0),
@@ -1004,66 +997,93 @@ export class FlameChart extends Component<Props, State> {
       const nestedPad = chrome.depth > 0 ? FlameChart.actorLaneNestedPad : 0;
       const topBleed = nestedPad > 0 ? 0 : 2;
       const accent = actorAccentColor(chrome.actorKey);
-      const washLeft = Math.max(railX, -2);
-      const washRight = Math.min(contentRight, this.width + 2);
-      const washWidth = Math.max(0, washRight - washLeft);
-      const ranges = chrome.washRowRanges.length
-        ? chrome.washRowRanges
-        : [{ rowStart: chrome.rowStart, rowEnd: chrome.rowEnd }];
 
-      let labeled = false;
-      ranges.forEach(range => {
-        const rowCount = range.rowEnd - range.rowStart + 1;
+      const rects = chrome.washRects.length
+        ? chrome.washRects
+        : [{
+            rowStart: chrome.rowStart,
+            rowEnd: chrome.rowEnd,
+            startTime: chrome.startTime,
+            endTime: chrome.endTime,
+          }];
+
+      // Anchor the single rail + label at the agent's earliest wash rectangle.
+      const anchor = rects.reduce((best, rect) => (
+        rect.startTime < best.startTime
+        || (rect.startTime === best.startTime && rect.rowStart < best.rowStart)
+          ? rect
+          : best
+      ), rects[0]!);
+
+      const rowGeometry = (rowStart: number, rowEnd: number) => {
+        const rowCount = rowEnd - rowStart + 1;
         const top = threadOffset
           + FlameChart.threadHeaderHeight
-          + range.rowStart * rowHeight
+          + rowStart * rowHeight
           - topBleed
           + nestedPad;
         const unclampedHeight = Math.max(4, rowCount * rowHeight + topBleed - nestedPad * 2);
         const height = Math.max(0, Math.min(unclampedHeight, nextOffset - top));
-        if (height <= 0) return;
+        return { rowCount, top, height };
+      };
 
-        // Sustained wash behind all owned rows for this agent (ADR-005).
-        if (washWidth > 0) {
-          this.ctx.globalAlpha = 0.16;
-          this.ctx.fillStyle = accent;
-          this.ctx.beginPath();
-          if (typeof this.ctx.roundRect === 'function') {
-            this.ctx.roundRect(washLeft, top, washWidth, height, 3);
-          } else {
-            this.ctx.rect(washLeft, top, washWidth, height);
-          }
-          this.ctx.fill();
-        }
-
-        this.ctx.globalAlpha = 0.95;
-        this.ctx.fillStyle = accent;
-        this.ctx.fillRect(railX, top, 3, height);
-
-        const label = chrome.actorName;
-        if (labeled || !label || height < 8) return;
-
-        const singleRow = rowCount === 1;
-        this.ctx.font = singleRow ? 'bold 7px sans-serif' : 'bold 10px sans-serif';
-        const maxVertical = Math.max(0, height - (singleRow ? 4 : 10));
-        const drawn = fitActorLaneLabel(
-          label,
-          maxVertical,
-          text => this.ctx.measureText(text).width,
+      // Time-clipped wash rectangles: paint only where the agent actually was.
+      this.ctx.globalAlpha = 0.16;
+      this.ctx.fillStyle = accent;
+      rects.forEach(rect => {
+        const isAnchor = rect === anchor;
+        const rectLeft = this.timeToPixels(rect.startTime) + depthInset;
+        const rectRight = this.timeToPixels(
+          rect.endTime === null ? this.rightBoundaryTime : rect.endTime,
         );
-        if (!drawn) return;
-
-        this.ctx.save();
-        this.ctx.globalAlpha = 0.95;
-        this.ctx.fillStyle = accent;
-        this.ctx.textAlign = 'left';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.translate(railX + gutter / 2 + 1, top + height - (singleRow ? 2 : 5));
-        this.ctx.rotate(-Math.PI / 2);
-        this.ctx.fillText(drawn, 0, 0);
-        this.ctx.restore();
-        labeled = true;
+        // The anchor rectangle extends left under the gutter so the rail sits on it.
+        const washLeft = Math.max(isAnchor ? rectLeft - gutter : rectLeft, -2);
+        const washRight = Math.min(rectRight, this.width + 2);
+        const washWidth = Math.max(0, washRight - washLeft);
+        if (washWidth <= 0 || washRight < 0 || washLeft > this.width) return;
+        const { top, height } = rowGeometry(rect.rowStart, rect.rowEnd);
+        if (height <= 0) return;
+        this.ctx.beginPath();
+        if (typeof this.ctx.roundRect === 'function') {
+          this.ctx.roundRect(washLeft, top, washWidth, height, 3);
+        } else {
+          this.ctx.rect(washLeft, top, washWidth, height);
+        }
+        this.ctx.fill();
       });
+
+      // One rail + label per agent, on the anchor rectangle's rows.
+      const railX = this.timeToPixels(anchor.startTime) - gutter + depthInset;
+      if (railX > this.width) return;
+      const { rowCount, top, height } = rowGeometry(anchor.rowStart, anchor.rowEnd);
+      if (height <= 0) return;
+
+      this.ctx.globalAlpha = 0.95;
+      this.ctx.fillStyle = accent;
+      this.ctx.fillRect(railX, top, 3, height);
+
+      const label = chrome.actorName;
+      if (!label || height < 8) return;
+
+      const singleRow = rowCount === 1;
+      this.ctx.font = singleRow ? 'bold 7px sans-serif' : 'bold 10px sans-serif';
+      const maxVertical = Math.max(0, height - (singleRow ? 4 : 10));
+      const drawn = fitActorLaneLabel(
+        label,
+        maxVertical,
+        text => this.ctx.measureText(text).width,
+      );
+      if (!drawn) return;
+
+      this.ctx.save();
+      this.ctx.globalAlpha = 0.95;
+      this.ctx.fillStyle = accent;
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.translate(railX + gutter / 2 + 1, top + height - (singleRow ? 2 : 5));
+      this.ctx.rotate(-Math.PI / 2);
+      this.ctx.fillText(drawn, 0, 0);
+      this.ctx.restore();
     });
 
     this.ctx.restore();
