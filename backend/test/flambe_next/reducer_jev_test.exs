@@ -28,7 +28,11 @@ defmodule FlambeNext.Reducer.JevIntegrationTest do
       {:ok,
        %{
          "model" => "jev-test",
-         "answers" => %{"route" => %{"type" => "choice", "choice" => "routine"}}
+         "answers" => %{
+           "route" => %{"type" => "choice", "choice" => "routine"},
+           "assessment" => %{"type" => "choice", "choice" => "on_track"},
+           "direction" => %{"type" => "choice", "choice" => "none"}
+         }
        }}
     end
 
@@ -58,7 +62,11 @@ defmodule FlambeNext.Reducer.JevIntegrationTest do
       {:ok,
        %{
          "model" => "jev-test",
-         "answers" => %{"route" => %{"type" => "choice", "choice" => "review"}}
+         "answers" => %{
+           "route" => %{"type" => "choice", "choice" => "review"},
+           "assessment" => %{"type" => "choice", "choice" => "uncertain"},
+           "direction" => %{"type" => "choice", "choice" => "investigate"}
+         }
        }}
     end
 
