@@ -116,8 +116,13 @@ describe('app chart Storybook fixture', () => {
     );
     const composerBlock = processed.blocks.find(block => block.activity_id === 251);
     expect(claudeResume && composerBlock).toBeTruthy();
-    expect(layout.rowByBlock[blockLayoutKey(claudeResume!)]).toBe(
-      layout.rowByBlock[blockLayoutKey(composerBlock!)] + 1,
+    // Each agent owns a separate contiguous band: Claude's resume stays on
+    // Claude's band, above Composer's band — never sharing Composer's row.
+    expect(layout.rowByBlock[blockLayoutKey(claudeResume!)]).not.toBe(
+      layout.rowByBlock[blockLayoutKey(composerBlock!)],
+    );
+    expect(layout.rowByBlock[blockLayoutKey(claudeResume!)]).toBeLessThan(
+      layout.rowByBlock[blockLayoutKey(composerBlock!)],
     );
   });
 
@@ -292,7 +297,13 @@ describe('app chart Storybook fixture', () => {
     expect(oncor).toMatchObject({ depth: 0, parentLaneRootId: null });
     expect(centerpoint).toMatchObject({ depth: 0, parentLaneRootId: null });
     expect(austin).toMatchObject({ depth: 0, parentLaneRootId: null });
-    expect(oncor && centerpoint && oncor.rowStart < centerpoint.rowStart).toBe(true);
+    // Each agent occupies its own contiguous band; the three bands are disjoint.
+    const bands = [oncor!, centerpoint!, austin!]
+      .map(lane => ({ start: lane.rowStart, end: lane.rowEnd }))
+      .sort((a, b) => a.start - b.start);
+    for (let i = 1; i < bands.length; i += 1) {
+      expect(bands[i].start).toBeGreaterThan(bands[i - 1].end);
+    }
     expect(projectActorFlames(processed.activities).length).toBeGreaterThan(8);
     expect(() => coalesceActorLaneChrome(layout, processed.blocks, 60 * 60 * 1000)).not.toThrow();
   });
