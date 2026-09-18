@@ -429,7 +429,8 @@ describe('coalesceActorLaneChrome', () => {
       block(2, 10, 80),
       block(3, 20, 40),
     ];
-    const chrome = coalesceActorLaneChrome(projectActorLaneLayout(activities, blocks), blocks, 10);
+    const layout = projectActorLaneLayout(activities, blocks);
+    const chrome = coalesceActorLaneChrome(layout, blocks, 10);
     expect(chrome.map(band => band.actorName)).toEqual(['Steve', 'Nora']);
     const steve = chrome.find(band => band.actorName === 'Steve')!;
     const nora = chrome.find(band => band.actorName === 'Nora')!;
@@ -437,6 +438,13 @@ describe('coalesceActorLaneChrome', () => {
     expect(steve.endTime).toBe(80);
     expect(nora.depth).toBe(1);
     expect(nora.parentLaneRootId).toBe(2);
+
+    // Washes must not overlap: the parent does not wash the delegated child's row.
+    const noraRow = layout.rowByBlock[blockLayoutKey(block(3, 20, 40))];
+    const steveCoversNora = steve.washRects.some(rect =>
+      rect.rowStart <= noraRow && noraRow <= rect.rowEnd);
+    expect(steveCoversNora).toBe(false);
+    expect(nora.washRects.some(rect => rect.rowStart <= noraRow && noraRow <= rect.rowEnd)).toBe(true);
   });
 
   it('washes independent --root flames of the same agent as one presence', () => {
