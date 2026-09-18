@@ -22,7 +22,7 @@ defmodule FlambeNext.Reducer do
   alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
   alias FlambeNext.Repo
-  alias FlambeNext.Reducer.{Model, Review}
+  alias FlambeNext.Reducer.{Jev, Model, Review}
   alias FlambeNext.Traces
   alias FlambeNext.Traces.{Activity, Event, Thread, Trace}
 
@@ -124,7 +124,7 @@ defmodule FlambeNext.Reducer do
   defp fold_message(user, proposal) do
     opts = Map.get(proposal, :opts, [])
 
-    if Model.available?(opts) do
+    if Model.available?(opts) or Jev.available?(opts) do
       case Review.handle(user, Map.get(proposal, :attrs, %{}), opts) do
         {:ok, review} ->
           {:ok,
