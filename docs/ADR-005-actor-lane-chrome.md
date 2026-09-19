@@ -88,11 +88,12 @@ whole span, one clean sustained wash per agent falls out with no scatter, no
 cross-agent bleed, and no cut-out — the earlier per-rectangle clipping becomes a
 safety net rather than the mechanism.
 
-Each agent band is then **floated to the highest row where its time span
-collides with neither human work nor another agent band** (reserving the band's
-full bounding span across its rows keeps the wash from fragmenting). Agents whose
-spans do not overlap therefore share rows and pack tightly upward, so short late
-agents rise to fill empty space near the top instead of cascading down.
+Each agent band is then placed on the **highest row at or below the human stack**
+where its time span collides with no other agent band (reserving the band's full
+bounding span across its rows keeps the wash from fragmenting). Human work keeps
+the top rows of the thread for the whole visible window — agents do not rise into
+those rows even when their times do not overlap. Agents whose spans do not overlap
+**each other** may still share rows below that human floor.
 
 The layout is computed over **only the blocks currently in view**: bands (and the
 chart height) reflect the visible window and reflow as the user pans or zooms, so
@@ -106,11 +107,16 @@ other actors if the agent's work is contiguous; that is a row-layout property, n
 a wash-painting trick. Scoping to the viewport keeps the vertical cost of per-agent
 bands bounded to what is on screen.
 
+David later made the vertical order explicit: **all agent work appears below
+human work**. Time-disjoint packing among agents remains; agents do not occupy
+the human stack's rows.
+
 ### Consequences
 
-- `projectActorLaneLayout` groups blocks by top-level actor and floats each
-  band to the highest non-colliding row, reserving its full span; agents that
-  overlap in time land on separate rows, while time-disjoint agents share one.
+- `projectActorLaneLayout` groups blocks by top-level actor, packs the human
+  stack first, and places each agent band at or below that stack, reserving the
+  band's full span. Agents that overlap in time land on separate rows; time-disjoint
+  agents may share a row with each other, never with human work.
 - Chrome/height derive from visible blocks, so the layout is viewport-dependent
   and recomputes on pan/zoom.
 
