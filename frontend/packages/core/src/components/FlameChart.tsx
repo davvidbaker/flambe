@@ -147,6 +147,9 @@ export class FlameChart extends Component<Props, State> {
   /** Vertical margin inset on each agent swimlane (wash + bars) so adjacent bands don't touch. */
   static actorLaneVerticalMargin = 2;
 
+  /** Extra inset on agent bars beyond the wash, so a thin strip of wash pads each bar. */
+  static actorLaneWashPad = 2;
+
   state = {
     canvasHeight: 150,
   };
@@ -949,9 +952,10 @@ export class FlameChart extends Component<Props, State> {
     if (rootId === null || rootId === undefined) return 0; // human work fills its row
     const lane = layout.lanes.find(entry => String(entry.rootActivityId) === String(rootId));
     if (lane === undefined) return 0;
-    // Inset agent bars by the same margin as the swimlane wash so a bar always
-    // sits inside its wash, plus the nested inset for delegated lanes.
+    // Inset agent bars a little more than the swimlane wash so a thin strip of
+    // wash pads the bar, plus the nested inset for delegated lanes.
     return FlameChart.actorLaneVerticalMargin
+      + FlameChart.actorLaneWashPad
       + (lane.depth > 0 ? FlameChart.actorLaneNestedPad : 0);
   }
 
