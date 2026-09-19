@@ -13,7 +13,7 @@ Without that vocabulary, Storybook and production iteration kept conflating band
 gutters, labels, and model identity.
 
 David walked through situation-specific chrome options and locked treatments for
-single-row flames, nested delegation, sequential same-agent bursts, label text, and
+single-row flames, nested delegation, same-agent owned work, label text, and
 accent color.
 
 ## Decision
@@ -28,7 +28,7 @@ or parentage.
 | **Activity** (or activity **block**) | A lifecycle segment drawn as a category-colored bar. Fill stays category-based (ADR-004). |
 | **Actor flame** | Presentation root that begins when an activity’s actor differs from its nearest parent actor (ADR-004). |
 | **Rail** | Thin vertical accent at the left of a flame’s chrome. Color encodes **model provider**. |
-| **Wash** | Translucent fill behind a flame’s rows. Horizontally it spans the flame’s root time range (start of earliest same-actor block through end of latest, including open ends). It is not full chart width. |
+| **Wash** | Translucent fill behind a flame’s rows. It is **sustained** so all of an agent’s owned work reads as one presence, but it is painted as rectangles **clipped to the (row × time) cells the agent actually occupies**. On a row, an agent’s idle gap is bridged into one rectangle only when no other actor’s block sits in that gap; a row the agent shares with a neighbour or human block at a different time is never washed over. Vertically it paints only occupied row runs — unused rows between a suspend and a later resume stay unwashed. It is not full chart width. |
 | **Gutter** | Fixed screen-space strip immediately left of the flame’s first block, holding the rail and the agent label. |
 | **Fork** | Curve from a parent activity into a child flame’s first block; join sits on the block edge past the gutter. |
 
@@ -39,10 +39,10 @@ or parentage.
 
 ### Situation rules (locked)
 
-- **Single-row flame:** label stays rotated 90° CCW in the fixed gutter, drawn in tiny type so more of the name fits; wash still spans the full root activity duration.
+- **Single-row flame:** label stays rotated 90° CCW in the fixed gutter, drawn in tiny type so more of the name fits; wash still spans the full owned duration.
 - **Multi-row flame:** label may be rotated 90° CCW in the gutter when height allows; otherwise shorten while staying vertical.
-- **Nested delegation:** child flame chrome is inset (deeper gutter/rail) inside the parent flame’s vertical band; fork remains.
-- **Sequential same-agent bursts:** if the gap between one flame’s end and the next same-agent flame’s start is at most **one timeline grid tick** (the current axis step for the visible window), treat them as **one** flame for chrome (one wash, one label, one rail). Larger gaps stay separate flames.
+- **Nested delegation:** a delegated child owns its own rows outright — the parent’s wash does **not** extend over them, so washes never overlap. The child reads as nested through its inset (deeper) gutter/rail, label, and fork rather than by sitting under the parent’s fill.
+- **All same-agent owned work:** every flame for the same agent on a thread — including independent `--root` workstreams and bursts with large idle gaps — shares **one sustained wash**, one rail, and one label. Nested delegated agents stay their own inset chrome.
 
 ## Rationale
 
@@ -50,7 +50,7 @@ David chose display name vs provider color so “who” and “what model” sta
 
 David chose a time-bounded wash (not a full-width band) so chrome follows the work without covering the whole thread.
 
-David chose “one grid tick” as the merge threshold so closeness tracks the same zoom-dependent scale the user already reads on the axis.
+David chose a sustained wash across all of an agent’s owned activities so short `--root` flames and later bursts still read as one presence, instead of a constellation of labeled islands. Unused rows between a suspend and a later resume stay unwashed so a concurrent agent in the gap is not covered.
 
 ## Alternatives considered
 
@@ -59,15 +59,53 @@ David chose “one grid tick” as the merge threshold so closeness tracks the s
 - Label text = model provider; color = agent identity (inverted from the decision above).
 - Horizontal labels in a widened gutter on single-row flames (S1b).
 - Always-vertical labels with initials-only on single-row flames.
-- Merging sequential flames with a fixed wall-clock gap (e.g. 2 or 5 minutes) instead of one grid tick.
-- Deduping labels across all flames of the same agent in view regardless of time gap.
+- Merging sequential flames with a fixed wall-clock gap (e.g. 2 or 5 minutes) or one grid tick.
+- One label per flame, even when those flames share a sustained wash.
+- Keeping independent `--root` flames as separate chrome even when they share an agent.
 
 ## Consequences
 
 - Frontend chrome helpers and Storybook fixtures should use **rail / wash / gutter / activity block / fork** consistently in comments and names.
 - `actorAccentColor` (or successor) should key off provider, not display name.
-- Flame projection may coalesce temporally close same-agent roots before painting chrome.
+- Flame projection coalesces all same-agent roots on a thread into one wash before painting chrome.
+- The wash is emitted as `washRects` clipped to each row's actual occupancy, so it never covers a neighbour or human block sharing a row at another time, and **no two washes overlap** — every row is washed by at most one agent (a delegated child's rows are the child's alone).
 - Category bar fill remains independent of rail/wash color.
+
+## Addendum: per-agent row bands, scoped to the viewport
+
+### Status
+
+Accepted (row layout, `projectActorLaneLayout`)
+
+### Decision
+
+Rows are packed into **per-agent contiguous bands** instead of the compact,
+time-interleaved flame-chart packing. Human work forms the base stack; each
+agent (keyed by actor) then gets its own contiguous band, ordered by first
+appearance, with all of that agent's independent roots grouped into the band and
+a delegated child folded in directly below its parent. Because an agent's rows
+are now exclusive to it, one clean sustained wash per agent falls out with no
+scatter, no cross-agent bleed, and no cut-out — the earlier per-rectangle
+clipping becomes a safety net rather than the mechanism.
+
+The layout is computed over **only the blocks currently in view**: bands (and the
+chart height) reflect the visible window and reflow as the user pans or zooms, so
+a long trace does not accumulate a permanent swimlane for every agent that ever
+ran.
+
+### Rationale
+
+A single sustained presence for an agent is only achievable without painting over
+other actors if the agent's work is contiguous; that is a row-layout property, not
+a wash-painting trick. Scoping to the viewport keeps the vertical cost of per-agent
+bands bounded to what is on screen.
+
+### Consequences
+
+- `projectActorLaneLayout` groups blocks by top-level actor and assigns each a
+  disjoint row band; concurrent agents no longer share a row by time.
+- Chrome/height derive from visible blocks, so the layout is viewport-dependent
+  and recomputes on pan/zoom.
 
 ## Follow-ups
 
