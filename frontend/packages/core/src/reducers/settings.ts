@@ -14,6 +14,8 @@ export interface SettingsState {
   reactiveThreadHeight: boolean;
   /** Dev: paint activity ids on blocks instead of names. */
   showActivityIds: boolean;
+  /** Dev: overlay the Swyzzle WebGL melt on the flame chart. */
+  swyzzle: boolean;
   suspendResumeFlows: boolean;
   suspendResumeFlowsOnlyForFocusedActivity: boolean;
   uniformBlockHeight: boolean;
@@ -37,6 +39,7 @@ const defaultState: SettingsState = {
   activityMute: false,
   reactiveThreadHeight: true,
   showActivityIds: false,
+  swyzzle: false,
   suspendResumeFlows: true,
   suspendResumeFlowsOnlyForFocusedActivity: false,
   uniformBlockHeight: false,
