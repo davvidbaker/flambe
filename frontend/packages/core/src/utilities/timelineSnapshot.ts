@@ -285,6 +285,45 @@ export function buildTimelineSnapshot(
   };
 }
 
+export function formatTimelineSnapshotJson(snapshot: TimelineSnapshot): string {
+  return `${JSON.stringify(snapshot, null, 2)}\n`;
+}
+
+export function timelineSnapshotDownloadName(traceName: string, exportedAt: number): string {
+  const slug = traceName
+    .trim()
+    .replace(/[/\\?%*:|"<>]/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80);
+  const stamp = new Date(exportedAt).toISOString().slice(0, 10);
+  return `${slug || 'timeline'}-${stamp}.json`;
+}
+
+export function downloadTimelineSnapshot(
+  snapshot: TimelineSnapshot,
+  download: (filename: string, text: string) => void = downloadTextFile,
+): void {
+  download(
+    timelineSnapshotDownloadName(snapshot.fixture.traceName, snapshot.exportedAt),
+    formatTimelineSnapshotJson(snapshot),
+  );
+}
+
+function downloadTextFile(filename: string, text: string): void {
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function isTimelineSnapshot(value: unknown): value is TimelineSnapshot {
   if (value === null || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
