@@ -75,8 +75,8 @@ export class SwyzzleIdleGate {
     private readonly idleMs: number,
     private readonly onChange: (showing: boolean) => void,
     private readonly timeouts: {
-      setTimeout: typeof setTimeout;
-      clearTimeout: typeof clearTimeout;
+      setTimeout: (handler: () => void, timeout?: number) => TimeoutHandle;
+      clearTimeout: (handle: TimeoutHandle) => void;
     } = {
       // Call through globalThis so browser host setTimeout is not invoked as a method.
       setTimeout: (handler, timeout) => globalThis.setTimeout(handler, timeout),
