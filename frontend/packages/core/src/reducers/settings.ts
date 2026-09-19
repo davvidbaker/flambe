@@ -1,4 +1,9 @@
 import { SETTING_SET, SETTING_TOGGLE, USER_FETCH } from '../actions';
+import {
+  DEFAULT_SWYZZLE_EFFECT,
+  resolveSwyzzleEffect,
+  type SwyzzleEffect,
+} from '../vendor/swyzzle';
 
 export interface SettingsState {
   absoluteTimeLabels: boolean;
@@ -16,6 +21,8 @@ export interface SettingsState {
   showActivityIds: boolean;
   /** Dev: overlay the Swyzzle WebGL melt on the flame chart. */
   swyzzle: boolean;
+  /** Dev: which Swyzzle shader to run; session-only like other developer settings. */
+  swyzzleEffect: SwyzzleEffect;
   suspendResumeFlows: boolean;
   suspendResumeFlowsOnlyForFocusedActivity: boolean;
   uniformBlockHeight: boolean;
@@ -40,6 +47,7 @@ const defaultState: SettingsState = {
   reactiveThreadHeight: true,
   showActivityIds: false,
   swyzzle: false,
+  swyzzleEffect: DEFAULT_SWYZZLE_EFFECT,
   suspendResumeFlows: true,
   suspendResumeFlowsOnlyForFocusedActivity: false,
   uniformBlockHeight: false,
@@ -48,7 +56,7 @@ const defaultState: SettingsState = {
 type SettingsAction = {
   setting?: keyof SettingsState;
   type: string;
-  value?: boolean;
+  value?: boolean | string;
   data?: { settings?: Partial<Record<UserSettingKey, unknown>> };
 };
 
@@ -62,13 +70,20 @@ function settings(state: SettingsState = defaultState, action: SettingsAction): 
   }
 
   const setting = action.setting;
-  if (!setting || typeof state[setting] !== 'boolean') return state;
+  if (!setting || !(setting in state)) return state;
 
   if (action.type === SETTING_SET) {
-    return { ...state, [setting]: Boolean(action.value) } as SettingsState;
+    if (setting === 'swyzzleEffect') {
+      return { ...state, swyzzleEffect: resolveSwyzzleEffect(action.value) };
+    }
+    if (typeof state[setting] === 'boolean') {
+      return { ...state, [setting]: Boolean(action.value) } as SettingsState;
+    }
+    return state;
   }
 
   if (action.type !== SETTING_TOGGLE) return state;
+  if (typeof state[setting] !== 'boolean') return state;
   return { ...state, [setting]: !state[setting] } as SettingsState;
 }
 

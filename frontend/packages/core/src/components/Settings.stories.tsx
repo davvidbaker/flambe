@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import Settings from './Settings';
-import { showSettings } from '../actions';
+import { setSetting, showSettings } from '../actions';
 import { createChartStore } from '../storybook/createChartStore';
 import { createAppChartFixture } from '../storybook/fixtureTrace';
 
@@ -22,10 +22,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function OpenSettings() {
+function OpenSettings({ swyzzle = false }: { swyzzle?: boolean }) {
   const [store] = useState(() => {
     const next = createChartStore(fixture);
     next.dispatch(showSettings());
+    if (swyzzle) next.dispatch(setSetting('swyzzle', true));
     return next;
   });
 
@@ -41,4 +42,8 @@ function OpenSettings() {
 
 export const Open: Story = {
   render: () => <OpenSettings />,
+};
+
+export const SwyzzleOn: Story = {
+  render: () => <OpenSettings swyzzle />,
 };
