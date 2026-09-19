@@ -1,13 +1,14 @@
 import React, { type ReactNode } from 'react';
 import styled from 'styled-components';
 
-const Shell = styled.div`
+/** Orange/yellow inset frame used on login and the public share playground. */
+export const AuthFrame = styled.div<{ $overflowY?: 'auto' | 'hidden' }>`
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
   height: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: ${props => props.$overflowY ?? 'hidden'};
   border: 5px solid #ff5826;
   /* Inset frame — outline + invalid outline-box sizing overflowed the
      phone viewport and clipped the right edge. */
@@ -58,9 +59,9 @@ export const AuthLogoWrap = styled.div`
 `;
 
 const AuthShell = ({ children }: { children: ReactNode }) => (
-  <Shell data-auth-shell="true">
+  <AuthFrame data-auth-shell="true" $overflowY="auto">
     <Inner>{children}</Inner>
-  </Shell>
+  </AuthFrame>
 );
 
 export default AuthShell;
