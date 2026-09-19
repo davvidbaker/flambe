@@ -264,7 +264,7 @@ describe('nested actor sublane layout', () => {
     expect(layout.rowByActivity['270']).toBe(1);
   });
 
-  it('floats an agent up to a shared row when its span does not collide', () => {
+  it('keeps a later agent below the human stack even when times do not overlap', () => {
     const activities = {
       1: activity({ id: 1, name: 'Morning' }),
       2: activity({ id: 2, name: 'Afternoon' }),
@@ -278,14 +278,36 @@ describe('nested actor sublane layout', () => {
 
     const layout = projectActorLaneLayout(activities, blocks);
 
-    // Steve's span (40–50) collides with neither human block on row 0, so his
-    // swimlane floats all the way up and shares that row — as high as possible.
+    // Human work keeps row 0. Steve does not float onto it just because 40–50
+    // is empty there — agent work sits below the human stack.
     expect(layout.rowByActivity).toMatchObject({
       1: 0,
       2: 0,
-      3: 0,
+      3: 1,
     });
-    expect(layout.maxRowsByThread['1']).toBe(1);
+    expect(layout.maxRowsByThread['1']).toBe(2);
+  });
+
+  it('lets time-disjoint agents share a row with each other below humans', () => {
+    const activities = {
+      1: activity({ id: 1, name: 'Notes' }),
+      2: activity({ id: 2, name: 'Early', agent_id: 'steve', agent_name: 'Steve' }),
+      3: activity({ id: 3, name: 'Late', agent_id: 'belinda', agent_name: 'Belinda' }),
+    };
+    const blocks = [
+      block(1, 0, 10),
+      block(2, 20, 30),
+      block(3, 40, 50),
+    ];
+
+    const layout = projectActorLaneLayout(activities, blocks);
+
+    expect(layout.rowByActivity).toMatchObject({
+      1: 0,
+      2: 1,
+      3: 1,
+    });
+    expect(layout.maxRowsByThread['1']).toBe(2);
   });
 
   it('reuses a row for sequential siblings under an overlapping parent', () => {
