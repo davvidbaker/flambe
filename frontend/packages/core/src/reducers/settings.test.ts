@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { SETTING_SET, SETTING_TOGGLE, USER_FETCH } from '../actions';
 import { createChartStore } from '../storybook/createChartStore';
 import { createAppChartFixture } from '../storybook/fixtureTrace';
-import settings from './settings';
+import settings, { isUserSettingKey } from './settings';
 
 describe('settings', () => {
   it('hydrates right-align from the user payload', () => {
@@ -78,6 +78,55 @@ describe('settings', () => {
     expect(next.swyzzle).toBe(true);
     expect(next.swyzzleEffect).toBe('swyzzle');
   });
+
+  it('defaults Swyzzle idle seconds to 7 and keeps it session-only', () => {
+    const initial = settings(undefined, { type: '@@INIT' });
+    expect(initial.swyzzleIdleSeconds).toBe(7);
+    expect(isUserSettingKey('swyzzleIdleSeconds')).toBe(false);
+
+    const next = settings(initial, {
+      type: SETTING_SET,
+      setting: 'swyzzleIdleSeconds',
+      value: 12,
+    });
+    expect(next.swyzzleIdleSeconds).toBe(12);
+
+    const afterUserFetch = settings(next, {
+      type: `${USER_FETCH}_SUCCEEDED`,
+      data: { settings: {} },
+    });
+    expect(afterUserFetch.swyzzleIdleSeconds).toBe(12);
+  });
+
+  it('clamps Swyzzle idle seconds to 1–60', () => {
+    const initial = settings(undefined, { type: '@@INIT' });
+    expect(
+      settings(initial, { type: SETTING_SET, setting: 'swyzzleIdleSeconds', value: 0 })
+        .swyzzleIdleSeconds,
+    ).toBe(1);
+    expect(
+      settings(initial, { type: SETTING_SET, setting: 'swyzzleIdleSeconds', value: 90 })
+        .swyzzleIdleSeconds,
+    ).toBe(60);
+    expect(
+      settings(initial, { type: SETTING_SET, setting: 'swyzzleIdleSeconds', value: 7.6 })
+        .swyzzleIdleSeconds,
+    ).toBe(8);
+    expect(
+      settings(initial, {
+        type: SETTING_SET,
+        setting: 'swyzzleIdleSeconds',
+        value: '15',
+      }).swyzzleIdleSeconds,
+    ).toBe(15);
+  });
+
+  it('does not toggle idle seconds', () => {
+    const initial = settings(undefined, { type: '@@INIT' });
+    const next = settings(initial, { type: SETTING_TOGGLE, setting: 'swyzzleIdleSeconds' });
+    expect(next.swyzzleIdleSeconds).toBe(7);
+    expect(next).toBe(initial);
+  });
 });
 
 describe('createChartStore swyzzle extras', () => {
@@ -89,5 +138,15 @@ describe('createChartStore swyzzle extras', () => {
     });
     expect(store.getState().settings.swyzzle).toBe(true);
     expect(store.getState().settings.swyzzleEffect).toBe('fluid');
+  });
+
+  it('applies Swyzzle idle seconds from story extras', () => {
+    const fixture = createAppChartFixture({ now: 1_700_000_000_000 });
+    const store = createChartStore(fixture, 1_700_000_000_000, {
+      demoOverlays: false,
+      settings: { swyzzle: true, swyzzleIdleSeconds: 3 },
+    });
+    expect(store.getState().settings.swyzzle).toBe(true);
+    expect(store.getState().settings.swyzzleIdleSeconds).toBe(3);
   });
 });

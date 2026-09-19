@@ -1,5 +1,9 @@
 import { SETTING_SET, SETTING_TOGGLE, USER_FETCH } from '../actions';
 import {
+  clampSwyzzleIdleSeconds,
+  SWYZZLE_IDLE_SECONDS_DEFAULT,
+} from '../utilities/swyzzleIdle';
+import {
   DEFAULT_SWYZZLE_EFFECT,
   resolveSwyzzleEffect,
   type SwyzzleEffect,
@@ -23,6 +27,8 @@ export interface SettingsState {
   swyzzle: boolean;
   /** Dev: which Swyzzle shader to run; session-only like other developer settings. */
   swyzzleEffect: SwyzzleEffect;
+  /** Dev: idle seconds before the Swyzzle overlay appears; session-only. */
+  swyzzleIdleSeconds: number;
   suspendResumeFlows: boolean;
   suspendResumeFlowsOnlyForFocusedActivity: boolean;
   uniformBlockHeight: boolean;
@@ -48,6 +54,7 @@ const defaultState: SettingsState = {
   showActivityIds: false,
   swyzzle: false,
   swyzzleEffect: DEFAULT_SWYZZLE_EFFECT,
+  swyzzleIdleSeconds: SWYZZLE_IDLE_SECONDS_DEFAULT,
   suspendResumeFlows: true,
   suspendResumeFlowsOnlyForFocusedActivity: false,
   uniformBlockHeight: false,
@@ -56,7 +63,7 @@ const defaultState: SettingsState = {
 type SettingsAction = {
   setting?: keyof SettingsState;
   type: string;
-  value?: boolean | string;
+  value?: boolean | string | number;
   data?: { settings?: Partial<Record<UserSettingKey, unknown>> };
 };
 
@@ -75,6 +82,9 @@ function settings(state: SettingsState = defaultState, action: SettingsAction): 
   if (action.type === SETTING_SET) {
     if (setting === 'swyzzleEffect') {
       return { ...state, swyzzleEffect: resolveSwyzzleEffect(action.value) };
+    }
+    if (setting === 'swyzzleIdleSeconds') {
+      return { ...state, swyzzleIdleSeconds: clampSwyzzleIdleSeconds(action.value) };
     }
     if (typeof state[setting] === 'boolean') {
       return { ...state, [setting]: Boolean(action.value) } as SettingsState;
