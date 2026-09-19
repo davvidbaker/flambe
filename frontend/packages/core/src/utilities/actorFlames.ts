@@ -6,7 +6,7 @@ import type { TraceBlock } from './processTrace';
  * Actor-flame projection and lane layout (presentation only).
  *
  * Chrome vocabulary — **activity block**, **rail**, **wash**, **gutter**, **fork** —
- * and labeling rules (display name vs model-provider color, temporal merge) live in
+ * and labeling rules (display name vs model-provider color, sustained wash) live in
  * docs/ADR-005-actor-lane-chrome.md.
  */
 
@@ -76,6 +76,23 @@ export interface ActorLaneLayout {
   maxRowsByThread: Record<string, number>;
 }
 
+/** Contiguous display-row run painted as one wash rectangle. */
+export interface ActorWashRowRange {
+  rowEnd: number;
+  rowStart: number;
+}
+
+/**
+ * A single wash rectangle clipped to the (rows × time) an agent actually
+ * occupies, so the wash never covers a row at a time owned by another actor.
+ */
+export interface ActorWashRect {
+  rowStart: number;
+  rowEnd: number;
+  startTime: number;
+  endTime: number | null;
+}
+
 /** Painted chrome envelope for one or more coalesced actor flames (ADR-005). */
 export interface ActorLaneChrome {
   actorKey: string;
@@ -85,10 +102,24 @@ export interface ActorLaneChrome {
   parentLaneRootId: EntityId | null;
   providerKey: string;
   rootActivityIds: EntityId[];
+  /** Inclusive max row across wash ranges (rail/label fallback). */
   rowEnd: number;
+  /** Inclusive min row across wash ranges (rail/label fallback). */
   rowStart: number;
   startTime: number;
   threadId: EntityId;
+  /**
+   * Occupied row runs for the wash. Same-agent owned work shares one time
+   * span; unused rows between a suspend and a later resume stay unwashed.
+   */
+  washRowRanges: ActorWashRowRange[];
+  /**
+   * Wash rectangles clipped to the actual (row × time) cells the agent owns.
+   * A single agent still reads as one presence (one rail/label), but the paint
+   * only covers where the agent actually was — so an interleaved neighbour or
+   * human block sharing a row is never washed over.
+   */
+  washRects: ActorWashRect[];
 }
 
 function keyFor(id: EntityId): string {
@@ -329,156 +360,174 @@ export function actorLaneTimeBounds(
 
 type TimeInterval = { start: number; end: number };
 
-/**
- * One chrome slice per root lifecycle segment. Nested same-actor rows during
- * that segment stay in the band; a resume on another row does not get a hull
- * wash covering the rows in between.
- */
-function chromeSlicesForLane(
-  lane: ActorLaneBand,
-  layout: ActorLaneLayout,
-  blocks: TraceBlock[],
-): Array<{ lane: ActorLaneBand; startTime: number; endTime: number | null }> {
-  const rootBlocks = blocks
-    .filter(block => String(block.activity_id) === String(lane.rootActivityId))
-    .sort((left, right) => left.startTime - right.startTime);
+/** Collapse sorted unique rows into inclusive contiguous runs. */
+export function contiguousRowRanges(rows: number[]): ActorWashRowRange[] {
+  const unique = [...new Set(rows.filter(row => Number.isFinite(row)))].sort((left, right) => left - right);
+  if (!unique.length) return [];
 
-  if (!rootBlocks.length) {
-    const bounds = actorLaneTimeBounds(lane, layout.rootIdByActivity, blocks);
-    if (!bounds) return [];
-    return [{
-      lane,
-      startTime: bounds.startTime,
-      endTime: bounds.endTime,
-    }];
-  }
-
-  return rootBlocks.map(rootBlock => {
-    const interval: TimeInterval = {
-      start: rootBlock.startTime,
-      end: rootBlock.endTime ?? Number.POSITIVE_INFINITY,
-    };
-    const rows = [layout.rowByBlock?.[blockLayoutKey(rootBlock)] ?? lane.rowStart];
-    for (const block of blocks) {
-      if (String(layout.rootIdByActivity[String(block.activity_id)]) !== String(lane.rootActivityId)) {
-        continue;
-      }
-      const other: TimeInterval = {
-        start: block.startTime,
-        end: block.endTime ?? Number.POSITIVE_INFINITY,
-      };
-      if (!intervalsOverlap(interval, other)) continue;
-      const row = layout.rowByBlock?.[blockLayoutKey(block)];
-      if (row !== undefined) rows.push(row);
+  const ranges: ActorWashRowRange[] = [];
+  let rowStart = unique[0]!;
+  let rowEnd = unique[0]!;
+  for (const row of unique.slice(1)) {
+    if (row === rowEnd + 1) {
+      rowEnd = row;
+      continue;
     }
-    return {
-      lane: {
-        ...lane,
-        rowStart: Math.min(...rows),
-        rowEnd: Math.max(...rows),
-      },
-      startTime: rootBlock.startTime,
-      endTime: rootBlock.endTime === undefined ? null : rootBlock.endTime,
-    };
-  });
-}
-
-function rowsOverlap(
-  leftStart: number,
-  leftEnd: number,
-  rightStart: number,
-  rightEnd: number,
-): boolean {
-  return leftStart <= rightEnd && rightStart <= leftEnd;
+    ranges.push({ rowStart, rowEnd });
+    rowStart = row;
+    rowEnd = row;
+  }
+  ranges.push({ rowStart, rowEnd });
+  return ranges;
 }
 
 /**
- * Coalesce lane chrome when same-agent flames are within one grid tick (ADR-005 S5).
+ * Wash rectangles for one agent group, clipped to the (row × time) cells the
+ * agent actually owns. On each row the agent's own blocks are unioned and a gap
+ * between two of them is bridged into one rectangle only when no foreign block
+ * occupies that row inside the gap. This keeps the "one sustained presence"
+ * reading where the agent has a row to itself, while never painting over a
+ * neighbour or human block that shares a row at a different time.
+ *
+ * Washes never overlap: only the agent's own roots count as owned, so a nested
+ * delegated child's rows belong to the child's wash alone (its inset rail and
+ * label still convey the nesting). Every row is washed by at most one agent.
  */
-export function coalesceActorLaneChrome(
+function washRectsForGroup(
+  rootActivityIds: EntityId[],
   layout: ActorLaneLayout,
   blocks: TraceBlock[],
-  gridTickMs: number,
-  nowMs: number = Date.now(),
-): ActorLaneChrome[] {
-  const tick = Number.isFinite(gridTickMs) && gridTickMs > 0 ? gridTickMs : 0;
-  const withBounds = layout.lanes.flatMap(lane => chromeSlicesForLane(lane, layout, blocks))
-    .filter(entry => Number.isFinite(entry.startTime));
+): ActorWashRect[] {
+  const rootSet = new Set(rootActivityIds.map(String));
 
-  const groups = new Map<string, typeof withBounds>();
-  for (const entry of withBounds) {
-    const key = [
-      String(entry.lane.threadId),
-      entry.lane.actorKey,
-      String(entry.lane.parentLaneRootId ?? ''),
-      // Independent `--root` flames stay separate; bursts that share a parent
-      // still coalesce (ADR-005).
-      String(entry.lane.parentActivityId ?? entry.lane.rootActivityId),
-      String(entry.lane.depth),
-    ].join('|');
-    const list = groups.get(key) ?? [];
-    list.push(entry);
-    groups.set(key, list);
+  const ownsBlock = (activityId: EntityId): boolean => {
+    const root = layout.rootIdByActivity[String(activityId)];
+    if (root === null || root === undefined) return false;
+    return rootSet.has(String(root));
+  };
+
+  const ownedByRow = new Map<number, TimeInterval[]>();
+  const foreignByRow = new Map<number, TimeInterval[]>();
+  for (const block of blocks) {
+    const row = layout.rowByBlock[blockLayoutKey(block)];
+    if (row === undefined) continue;
+    const interval: TimeInterval = {
+      start: block.startTime,
+      end: block.endTime ?? Number.POSITIVE_INFINITY,
+    };
+    const target = ownsBlock(block.activity_id) ? ownedByRow : foreignByRow;
+    const list = target.get(row) ?? [];
+    list.push(interval);
+    target.set(row, list);
   }
 
-  const chrome: ActorLaneChrome[] = [];
-  for (const entries of groups.values()) {
-    entries.sort((left, right) => left.startTime - right.startTime
-      || Number(left.lane.rootActivityId) - Number(right.lane.rootActivityId));
+  const rects: ActorWashRect[] = [];
+  for (const [row, ownedRaw] of ownedByRow) {
+    const owned = ownedRaw.slice().sort((left, right) => left.start - right.start);
+    const foreign = foreignByRow.get(row) ?? [];
+    let start = owned[0]!.start;
+    let end = owned[0]!.end;
 
-    let current = entries[0]!;
-    let roots = [current.lane.rootActivityId];
-    let rowStart = current.lane.rowStart;
-    let rowEnd = current.lane.rowEnd;
-    let endTime = current.endTime;
+    const flush = () => rects.push({
+      rowStart: row,
+      rowEnd: row,
+      startTime: start,
+      endTime: Number.isFinite(end) ? end : null,
+    });
 
-    const flush = () => {
-      chrome.push({
-        actorKey: current.lane.actorKey,
-        actorName: current.lane.actorName,
-        depth: current.lane.depth,
-        endTime,
-        parentLaneRootId: current.lane.parentLaneRootId,
-        providerKey: modelProviderFromAgentId(current.lane.actorKey),
-        rootActivityIds: roots.slice(),
-        rowEnd,
-        rowStart,
-        startTime: current.startTime,
-        threadId: current.lane.threadId,
-      });
-    };
-
-    for (let index = 1; index < entries.length; index += 1) {
-      const next = entries[index]!;
-      const currentEnd = endTime === null ? nowMs : endTime;
-      const gap = next.startTime - currentEnd;
-      if (
-        tick > 0
-        && gap <= tick
-        && rowsOverlap(rowStart, rowEnd, next.lane.rowStart, next.lane.rowEnd)
-      ) {
-        roots.push(next.lane.rootActivityId);
-        rowStart = Math.min(rowStart, next.lane.rowStart);
-        rowEnd = Math.max(rowEnd, next.lane.rowEnd);
-        if (endTime === null || next.endTime === null) {
-          endTime = null;
-        } else {
-          endTime = Math.max(endTime, next.endTime);
-        }
-        continue;
+    for (let index = 1; index < owned.length; index += 1) {
+      const next = owned[index]!;
+      const foreignInGap = Number.isFinite(end)
+        && foreign.some(entry => entry.start < next.start && entry.end > end);
+      if (!foreignInGap && Number.isFinite(end)) {
+        end = Math.max(end, next.end);
+      } else {
+        flush();
+        start = next.start;
+        end = next.end;
       }
-      flush();
-      current = next;
-      roots = [next.lane.rootActivityId];
-      rowStart = next.lane.rowStart;
-      rowEnd = next.lane.rowEnd;
-      endTime = next.endTime;
     }
     flush();
   }
 
+  return rects.sort((left, right) => left.startTime - right.startTime
+    || left.rowStart - right.rowStart);
+}
+
+/**
+ * One sustained wash per agent on a thread (ADR-005). Same-actor owned work —
+ * including independent `--root` flames and idle gaps — shares one time span.
+ * Unused rows between a suspend and a later resume stay unwashed.
+ *
+ * `gridTickMs` is accepted for call-site compatibility; wash coalescing is no
+ * longer zoom-dependent.
+ */
+export function coalesceActorLaneChrome(
+  layout: ActorLaneLayout,
+  blocks: TraceBlock[],
+  _gridTickMs: number = 0,
+  _nowMs: number = Date.now(),
+): ActorLaneChrome[] {
+  const groups = new Map<string, ActorLaneBand[]>();
+  for (const lane of layout.lanes) {
+    const key = [
+      String(lane.threadId),
+      lane.actorKey,
+      String(lane.parentLaneRootId ?? ''),
+      String(lane.depth),
+    ].join('|');
+    const list = groups.get(key) ?? [];
+    list.push(lane);
+    groups.set(key, list);
+  }
+
+  const chrome: ActorLaneChrome[] = [];
+  for (const lanes of groups.values()) {
+    const first = lanes[0]!;
+    const rootActivityIds = lanes.map(lane => lane.rootActivityId);
+    const bounds = laneTimeBoundsForRoots(rootActivityIds, layout.rootIdByActivity, blocks);
+    if (!bounds || !Number.isFinite(bounds.startTime)) continue;
+
+    const washRects = washRectsForGroup(rootActivityIds, layout, blocks);
+    if (!washRects.length) {
+      washRects.push({
+        rowStart: Math.min(...lanes.map(lane => lane.rowStart)),
+        rowEnd: Math.max(...lanes.map(lane => lane.rowEnd)),
+        startTime: bounds.startTime,
+        endTime: bounds.endTime,
+      });
+    }
+    // Row ranges are derived from the painted rectangles so the vertical extent
+    // never claims a row the agent does not actually occupy.
+    const washRowRanges = contiguousRowRanges(
+      washRects.flatMap(rect => {
+        const rows: number[] = [];
+        for (let row = rect.rowStart; row <= rect.rowEnd; row += 1) rows.push(row);
+        return rows;
+      }),
+    );
+    rootActivityIds.sort((left, right) => Number(left) - Number(right));
+
+    chrome.push({
+      actorKey: first.actorKey,
+      actorName: first.actorName,
+      depth: first.depth,
+      endTime: bounds.endTime,
+      parentLaneRootId: first.parentLaneRootId,
+      providerKey: modelProviderFromAgentId(first.actorKey),
+      rootActivityIds,
+      rowEnd: Math.max(...washRowRanges.map(range => range.rowEnd)),
+      rowStart: Math.min(...washRowRanges.map(range => range.rowStart)),
+      startTime: bounds.startTime,
+      threadId: first.threadId,
+      washRowRanges,
+      washRects,
+    });
+  }
+
   return chrome.sort((left, right) => left.depth - right.depth
-    || left.startTime - right.startTime);
+    || left.startTime - right.startTime
+    || left.rowStart - right.rowStart);
 }
 
 function parentLaneRootId(
@@ -635,28 +684,6 @@ export function projectActorLaneLayout(
       ?? null;
   };
 
-  const threadRootId = (activityId: EntityId): EntityId => {
-    let current = activities[keyFor(activityId)];
-    const seen = new Set<string>();
-    while (current && current.parent_id != null && !seen.has(keyFor(current.id))) {
-      seen.add(keyFor(current.id));
-      const parent = activities[keyFor(current.parent_id)];
-      if (!parent || String(parent.thread_id) !== String(current.thread_id)) break;
-      current = parent;
-    }
-    return current?.id ?? activityId;
-  };
-
-  const rootOwnRow = (rootId: EntityId): number => {
-    let max = -1;
-    for (const block of blocks) {
-      if (String(block.activity_id) !== String(rootId)) continue;
-      const row = rowByBlock[blockLayoutKey(block)];
-      if (row !== undefined) max = Math.max(max, row);
-    }
-    return max;
-  };
-
   const blocksByThread = new Map<string, TraceBlock[]>();
   for (const block of blocks) {
     const activity = activities[keyFor(block.activity_id)];
@@ -676,79 +703,72 @@ export function projectActorLaneLayout(
       || forestDepth(left.activity_id) - forestDepth(right.activity_id)
       || Number(left.activity_id) - Number(right.activity_id));
 
+    // Group every block under its top-level actor (human work → the shared
+    // human owner). Each owner gets a contiguous band of rows so an agent's
+    // work never shares a row with another actor — one clean, non-overlapping
+    // wash per agent, and a delegated child sits contiguously inside its
+    // parent's band rather than forcing a hole or an overlap.
+    // Band owner = the top-level actor (by actor key), so every independent
+    // root of the same agent shares one band and a delegated child folds into
+    // its parent agent's band.
+    const ownerKeyOf = (activityId: EntityId): string => {
+      const ownerRoot = depth0Owner(activityId);
+      if (ownerRoot === null) return HUMAN_ACTOR_KEY;
+      const ownerActivity = activities[keyFor(ownerRoot)];
+      return ownerActivity ? actorKey(ownerActivity) : HUMAN_ACTOR_KEY;
+    };
+
+    const ownerFirstStart = new Map<string, number>();
     for (const block of ordered) {
-      const activity = activities[keyFor(block.activity_id)];
-      if (!activity) continue;
-      const interval: TimeInterval = {
-        start: block.startTime,
-        end: block.endTime ?? Number.POSITIVE_INFINITY,
-      };
+      const key = ownerKeyOf(block.activity_id);
+      const prev = ownerFirstStart.get(key) ?? Number.POSITIVE_INFINITY;
+      ownerFirstStart.set(key, Math.min(prev, block.startTime));
+    }
 
-      const parentId = activity.parent_id ?? null;
-      const parentOnThread = parentId !== null
-        && activities[keyFor(parentId)]
-        && String(activities[keyFor(parentId)]?.thread_id) === threadKey;
-      let minRow = 0;
-      if (parentOnThread && parentId !== null) {
-        const parentBlock = coveringParentBlock(parentId, block.startTime);
-        if (parentBlock) {
-          const parentRow = rowByBlock[blockLayoutKey(parentBlock)]
-            ?? rowByActivity[keyFor(parentId)]
-            ?? 0;
-          minRow = parentRow + 1;
+    // Human base stack first, then agents in order of first appearance.
+    const ownerOrder = [...ownerFirstStart.keys()].sort((left, right) => {
+      if (left === HUMAN_ACTOR_KEY) return right === HUMAN_ACTOR_KEY ? 0 : -1;
+      if (right === HUMAN_ACTOR_KEY) return 1;
+      return (ownerFirstStart.get(left)! - ownerFirstStart.get(right)!)
+        || left.localeCompare(right);
+    });
+
+    let bandBase = 0;
+    for (const ownerKey of ownerOrder) {
+      let bandMax = bandBase - 1;
+      for (const block of ordered) {
+        if (ownerKeyOf(block.activity_id) !== ownerKey) continue;
+        const activity = activities[keyFor(block.activity_id)];
+        if (!activity) continue;
+        const interval: TimeInterval = {
+          start: block.startTime,
+          end: block.endTime ?? Number.POSITIVE_INFINITY,
+        };
+
+        // Nest under a covering parent only when it shares this band (same
+        // owner); a cross-owner parent (e.g. a human root delegating to an
+        // agent) does not push the child down — the child starts its own band.
+        const parentId = activity.parent_id ?? null;
+        const parentSameOwner = parentId !== null
+          && String(activities[keyFor(parentId)]?.thread_id) === threadKey
+          && ownerKeyOf(parentId) === ownerKey;
+        let minRow = bandBase;
+        if (parentSameOwner && parentId !== null) {
+          const parentBlock = coveringParentBlock(parentId, block.startTime);
+          if (parentBlock) {
+            const parentRow = rowByBlock[blockLayoutKey(parentBlock)]
+              ?? rowByActivity[keyFor(parentId)]
+              ?? bandBase;
+            minRow = Math.max(bandBase, parentRow + 1);
+          }
         }
+
+        const row = firstFreeRow(threadId, minRow, [interval], 1);
+        rowByBlock[blockLayoutKey(block)] = row;
+        occupyRows(threadId, row, row, [interval]);
+        bandMax = Math.max(bandMax, row);
       }
-
-      const flame = flameByRoot[keyFor(activity.id)];
-      const isDepth0AgentBlock = flame !== undefined
-        && parentLaneRootId(flame, rootIdByActivity) === null;
-      const hasEarlierSegment = ordered.some(other =>
-        String(other.activity_id) === String(activity.id)
-        && other.startTime < block.startTime);
-
-      if (isDepth0AgentBlock && flame && !hasEarlierSegment) {
-        let overlapMax = -1;
-        for (const other of ordered) {
-          const otherRow = rowByBlock[blockLayoutKey(other)];
-          if (otherRow === undefined) continue;
-          const otherInterval: TimeInterval = {
-            start: other.startTime,
-            end: other.endTime ?? Number.POSITIVE_INFINITY,
-          };
-          if (!intervalsOverlap(interval, otherInterval)) continue;
-          const owner = depth0Owner(other.activity_id);
-          if (owner === null || String(owner) === String(flame.rootActivityId)) continue;
-          overlapMax = Math.max(overlapMax, otherRow);
-        }
-        if (overlapMax >= 0) {
-          minRow = Math.max(minRow, overlapMax + 2);
-        }
-      }
-
-      // Resume (or later segment) of a root sits directly under the overlapping
-      // sibling root — not under that sibling's nested children.
-      if (!parentOnThread && hasEarlierSegment) {
-        let otherMax = -1;
-        for (const other of ordered) {
-          const otherRow = rowByBlock[blockLayoutKey(other)];
-          if (otherRow === undefined) continue;
-          const otherInterval: TimeInterval = {
-            start: other.startTime,
-            end: other.endTime ?? Number.POSITIVE_INFINITY,
-          };
-          if (!intervalsOverlap(interval, otherInterval)) continue;
-          const otherRoot = threadRootId(other.activity_id);
-          if (String(otherRoot) === String(activity.id)) continue;
-          otherMax = Math.max(otherMax, rootOwnRow(otherRoot));
-        }
-        if (otherMax >= 0) {
-          minRow = Math.max(minRow, otherMax + 1);
-        }
-      }
-
-      const row = firstFreeRow(threadId, minRow, [interval], 1);
-      rowByBlock[blockLayoutKey(block)] = row;
-      occupyRows(threadId, row, row, [interval]);
+      bandBase = bandMax + 1;
     }
 
     const threadFlames = flames.filter(flame => {
