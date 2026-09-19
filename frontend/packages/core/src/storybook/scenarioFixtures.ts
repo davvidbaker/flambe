@@ -498,6 +498,80 @@ export function createIndependentAgentRootsFixture(now = Date.now()): AppChartFi
   ]);
 }
 
+/**
+ * Several agents each running a deep, simultaneous same-agent stack (root →
+ * child → grandchild), all concurrent. Each agent's wash should contain its
+ * whole stack as one envelope, and the bands should not overlap.
+ */
+export function createStackedAgentWorkFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'flambe🔥');
+  const humanRoot = activity(app, 1000, 'Ship the reducer rewrite', { category: 3 });
+
+  const adaRoot = activity(app, 1100, 'Refactor reducer core', {
+    agentName: 'Ada', agentProvider: 'cursor', category: 1, parentId: humanRoot.id,
+  });
+  const adaMid = activity(app, 1101, 'Extract action handlers', {
+    agentName: 'Ada', agentProvider: 'cursor', category: 1, parentId: adaRoot.id,
+  });
+  const adaDeep = activity(app, 1102, 'Rewrite dispatch loop', {
+    agentName: 'Ada', agentProvider: 'cursor', category: 2, parentId: adaMid.id,
+  });
+
+  const boRoot = activity(app, 1200, 'Harden socket layer', {
+    agentName: 'Bo', agentProvider: 'claude', category: 1, parentId: humanRoot.id,
+  });
+  const boMid = activity(app, 1201, 'Add reconnect backoff', {
+    agentName: 'Bo', agentProvider: 'claude', category: 5, parentId: boRoot.id,
+  });
+  const boDeep = activity(app, 1202, 'Probe the race window', {
+    agentName: 'Bo', agentProvider: 'claude', category: 2, parentId: boMid.id,
+  });
+
+  const cyRoot = activity(app, 1300, 'Migrate the schema', {
+    agentName: 'Cy', agentProvider: 'codex', category: 4, parentId: humanRoot.id,
+  });
+  const cyMid = activity(app, 1301, 'Backfill rows', {
+    agentName: 'Cy', agentProvider: 'codex', category: 4, parentId: cyRoot.id,
+  });
+  const cyDeep = activity(app, 1302, 'Verify constraints', {
+    agentName: 'Cy', agentProvider: 'codex', category: 2, parentId: cyMid.id,
+  });
+
+  const deeRoot = activity(app, 1400, 'Audit telemetry', {
+    agentName: 'Dee', agentProvider: 'grok', category: 3, parentId: humanRoot.id,
+  });
+  const deeMid = activity(app, 1401, 'Tag spans', {
+    agentName: 'Dee', agentProvider: 'grok', category: 3, parentId: deeRoot.id,
+  });
+
+  return fixture(9930, 'Stacked agent work', [app], [
+    { id: 9301, timestamp: minutesAgo(now, 60), phase: 'B', activity: humanRoot },
+    { id: 9302, timestamp: minutesAgo(now, 55), phase: 'B', activity: adaRoot },
+    { id: 9303, timestamp: minutesAgo(now, 54), phase: 'B', activity: boRoot },
+    { id: 9304, timestamp: minutesAgo(now, 53), phase: 'B', activity: cyRoot },
+    { id: 9305, timestamp: minutesAgo(now, 52), phase: 'B', activity: deeRoot },
+    { id: 9306, timestamp: minutesAgo(now, 51), phase: 'B', activity: adaMid },
+    { id: 9307, timestamp: minutesAgo(now, 50), phase: 'B', activity: boMid },
+    { id: 9308, timestamp: minutesAgo(now, 50), phase: 'B', activity: cyMid },
+    { id: 9309, timestamp: minutesAgo(now, 49), phase: 'B', activity: deeMid },
+    { id: 9310, timestamp: minutesAgo(now, 48), phase: 'B', activity: adaDeep },
+    { id: 9311, timestamp: minutesAgo(now, 47), phase: 'B', activity: boDeep },
+    { id: 9312, timestamp: minutesAgo(now, 46), phase: 'B', activity: cyDeep },
+    { id: 9313, timestamp: minutesAgo(now, 24), phase: 'E', activity: adaDeep },
+    { id: 9314, timestamp: minutesAgo(now, 23), phase: 'E', activity: boDeep },
+    { id: 9315, timestamp: minutesAgo(now, 22), phase: 'E', activity: cyDeep },
+    { id: 9316, timestamp: minutesAgo(now, 21), phase: 'E', activity: deeMid },
+    { id: 9317, timestamp: minutesAgo(now, 20), phase: 'E', activity: adaMid },
+    { id: 9318, timestamp: minutesAgo(now, 19), phase: 'E', activity: boMid },
+    { id: 9319, timestamp: minutesAgo(now, 18), phase: 'E', activity: cyMid },
+    { id: 9320, timestamp: minutesAgo(now, 17), phase: 'E', activity: deeRoot },
+    { id: 9321, timestamp: minutesAgo(now, 16), phase: 'E', activity: adaRoot },
+    { id: 9322, timestamp: minutesAgo(now, 15), phase: 'E', activity: boRoot },
+    { id: 9323, timestamp: minutesAgo(now, 14), phase: 'E', activity: cyRoot },
+    { id: 9324, timestamp: minutesAgo(now, 6), phase: 'E', activity: humanRoot },
+  ]);
+}
+
 export function createEmptyTraceFixture(): AppChartFixture {
   return fixture(9800, 'Empty trace', [thread(1, 'nothing yet')], []);
 }
