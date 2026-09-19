@@ -9,7 +9,7 @@ import {
   rememberSwyzzleClearKey,
   takeSwyzzleClearKey,
 } from '../utilities/swyzzleIdle';
-import { SwyzzleRenderer } from '../vendor/swyzzle';
+import { resolveSwyzzleEffect, SwyzzleRenderer } from '../vendor/swyzzle';
 
 const SOURCE_SELECTOR = '#chart-wrapper canvas';
 const REFRESH_MS = 400;
@@ -29,7 +29,7 @@ function syncOverlay(overlay: HTMLCanvasElement, source: HTMLElement): void {
   overlay.style.zIndex = '6';
 }
 
-function SwyzzleTraceOverlay({ enabled }: { enabled: boolean }) {
+function SwyzzleTraceOverlay({ enabled, effect }: { enabled: boolean; effect: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showing, setShowing] = useState(false);
   const showingRef = useRef(false);
@@ -87,9 +87,10 @@ function SwyzzleTraceOverlay({ enabled }: { enabled: boolean }) {
     const overlay = canvasRef.current;
     if (!overlay) return undefined;
 
+    const resolvedEffect = resolveSwyzzleEffect(effect);
     let renderer: SwyzzleRenderer | null = null;
     try {
-      renderer = new SwyzzleRenderer(overlay, { effect: 'swyzzle' });
+      renderer = new SwyzzleRenderer(overlay, { effect: resolvedEffect });
     } catch (_error) {
       return undefined;
     }
@@ -116,7 +117,7 @@ function SwyzzleTraceOverlay({ enabled }: { enabled: boolean }) {
       window.removeEventListener('resize', capture);
       renderer?.destroy();
     };
-  }, [enabled, showing]);
+  }, [enabled, showing, effect]);
 
   if (!enabled || !showing) return null;
 
@@ -125,6 +126,7 @@ function SwyzzleTraceOverlay({ enabled }: { enabled: boolean }) {
       ref={canvasRef}
       aria-hidden="true"
       data-swyzzle-overlay="true"
+      data-swyzzle-effect={resolveSwyzzleEffect(effect)}
       style={{ position: 'fixed', pointerEvents: 'none', zIndex: 6 }}
     />
   );
@@ -132,4 +134,5 @@ function SwyzzleTraceOverlay({ enabled }: { enabled: boolean }) {
 
 export default connect((state: RootState) => ({
   enabled: state.settings.swyzzle,
+  effect: state.settings.swyzzleEffect,
 }))(SwyzzleTraceOverlay);

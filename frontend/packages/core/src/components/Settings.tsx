@@ -4,18 +4,30 @@ import styled from 'styled-components';
 
 import AppModal from '../components/AppModal';
 import ApiTokensPanel from './ApiTokensPanel';
-import { hideSettings as hideSettingsAction, toggleSetting } from '../actions';
+import { hideSettings as hideSettingsAction, setSetting, toggleSetting } from '../actions';
 import type { SettingsState } from '../reducers/settings';
 import { commitUrl, fetchBuildInfo, shortSha, type BuildInfo } from '../utilities/buildInfo';
+import { SWYZZLE_EFFECTS } from '../vendor/swyzzle';
 
 type BooleanSettingKey = {
   [Key in keyof SettingsState]: SettingsState[Key] extends boolean ? Key : never;
 }[keyof SettingsState];
 
+type StringSettingKey = {
+  [Key in keyof SettingsState]: SettingsState[Key] extends string ? Key : never;
+}[keyof SettingsState];
+
+interface SelectSettingDefinition {
+  copy: string;
+  options: readonly string[];
+  setting: StringSettingKey;
+}
+
 interface SettingDefinition {
   copy: string;
   description?: string;
   setting: BooleanSettingKey;
+  select?: SelectSettingDefinition;
   subsettings?: SettingDefinition[];
 }
 
@@ -94,6 +106,11 @@ const DEVELOPER_SETTINGS: SettingDefinition[] = [
     copy: 'Swyzzle',
     description:
       'After 7 seconds idle, melt the flame chart. Move the pointer to stir it. Space or Escape clears it.',
+    select: {
+      copy: 'Shader',
+      setting: 'swyzzleEffect',
+      options: SWYZZLE_EFFECTS,
+    },
   },
 ];
 
@@ -112,6 +129,12 @@ const Subsetting = styled.div<{ $disabled: boolean }>`
   margin-left: 20px;
 
   color: ${props => (props.$disabled ? 'lightgrey' : 'inherit')};
+`;
+
+const ShaderSelect = styled.select`
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
 `;
 
 const Wrapper = styled.div`
@@ -183,13 +206,15 @@ interface Props {
   hideSettings: () => unknown;
   settings: SettingsState;
   settingsVisible: boolean;
+  setSetting: (setting: string, value: boolean | string) => unknown;
   toggleSetting: (setting: BooleanSettingKey) => unknown;
 }
 
 function renderSetting(
-  { setting, copy, description, subsettings }: SettingDefinition,
+  { setting, copy, description, select, subsettings }: SettingDefinition,
   settings: SettingsState,
   toggleSetting: (setting: BooleanSettingKey) => unknown,
+  setSettingValue: (setting: string, value: boolean | string) => unknown,
 ) {
   return (
     <li key={setting}>
@@ -202,6 +227,23 @@ function renderSetting(
         />
         <label htmlFor={setting}>{copy}</label>
         <span>{description}</span>
+        {select && (
+          <Subsetting $disabled={!settings[setting]}>
+            <label htmlFor={select.setting}>{select.copy}</label>
+            <ShaderSelect
+              id={select.setting}
+              value={String(settings[select.setting])}
+              disabled={!settings[setting]}
+              onChange={event => setSettingValue(select.setting, event.target.value)}
+            >
+              {select.options.map(option => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </ShaderSelect>
+          </Subsetting>
+        )}
         {subsettings &&
           subsettings.map(
             ({ copy: subCopy, description: subDescription, setting: subsetting }) => (
@@ -229,6 +271,7 @@ const Settings = ({
   settingsVisible,
   hideSettings,
   settings,
+  setSetting: setSettingValue,
   toggleSetting,
 }: Props) => {
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
@@ -259,12 +302,14 @@ const Settings = ({
     <Wrapper>
       <h1 style={{ marginTop: 0 }}>Settings</h1>
       <ul>
-        {SETTINGS.map(item => renderSetting(item, settings, toggleSetting))}
+        {SETTINGS.map(item => renderSetting(item, settings, toggleSetting, setSettingValue))}
       </ul>
       <DeveloperPanel>
         <h2>Developer</h2>
         <ul>
-          {DEVELOPER_SETTINGS.map(item => renderSetting(item, settings, toggleSetting))}
+          {DEVELOPER_SETTINGS.map(item =>
+            renderSetting(item, settings, toggleSetting, setSettingValue),
+          )}
         </ul>
         <VersionBlock>
           <dt>Deployed commit</dt>
@@ -302,6 +347,7 @@ export default connect(
   }),
   dispatch => ({
     hideSettings: () => dispatch(hideSettingsAction()),
+    setSetting: (setting: string, value: boolean | string) => dispatch(setSetting(setting, value)),
     toggleSetting: (setting: BooleanSettingKey) => dispatch(toggleSetting(setting)),
   }),
 )(Settings);

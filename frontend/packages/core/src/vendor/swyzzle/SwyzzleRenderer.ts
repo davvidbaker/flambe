@@ -9,8 +9,17 @@ import {
 
 export const SWYZZLE_EFFECTS = ['basic', ...Object.keys(effectShaders)] as const;
 export type SwyzzleEffect = (typeof SWYZZLE_EFFECTS)[number];
+export const DEFAULT_SWYZZLE_EFFECT: SwyzzleEffect = 'swyzzle';
 
 const EFFECTS = new Set<string>(SWYZZLE_EFFECTS);
+
+export function isSwyzzleEffect(value: unknown): value is SwyzzleEffect {
+  return typeof value === 'string' && EFFECTS.has(value);
+}
+
+export function resolveSwyzzleEffect(value: unknown): SwyzzleEffect {
+  return isSwyzzleEffect(value) ? value : DEFAULT_SWYZZLE_EFFECT;
+}
 
 export type SwyzzlePixelSource = TexImageSource;
 
@@ -71,7 +80,7 @@ export class SwyzzleRenderer {
     if (!gl) throw new Error('WebGL is not available.');
     this.gl = gl;
 
-    this.effect = options.effect || 'swyzzle';
+    this.effect = options.effect || DEFAULT_SWYZZLE_EFFECT;
     if (!EFFECTS.has(this.effect)) throw new RangeError(`Unknown effect: ${this.effect}`);
 
     this.pointer = [0.5, 0.5];

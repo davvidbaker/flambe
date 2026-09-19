@@ -1,1 +1,9 @@
-export { SwyzzleRenderer, SWYZZLE_EFFECTS, type SwyzzleEffect, type SwyzzlePixelSource } from './SwyzzleRenderer';
+export {
+  SwyzzleRenderer,
+  SWYZZLE_EFFECTS,
+  DEFAULT_SWYZZLE_EFFECT,
+  isSwyzzleEffect,
+  resolveSwyzzleEffect,
+  type SwyzzleEffect,
+  type SwyzzlePixelSource,
+} from './SwyzzleRenderer';

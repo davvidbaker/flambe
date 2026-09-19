@@ -147,3 +147,17 @@ export const EmptyTrace: Story = {
     fixture: createEmptyTraceFixture(),
   },
 };
+
+export const Swyzzle: Story = {
+  args: {
+    fixture: createAppChartFixture(),
+    storeExtras: { settings: { swyzzle: true } },
+  },
+};
+
+export const SwyzzleFluid: Story = {
+  args: {
+    fixture: createAppChartFixture(),
+    storeExtras: { settings: { swyzzle: true, swyzzleEffect: 'fluid' } },
+  },
+};
