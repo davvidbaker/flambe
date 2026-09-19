@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   SWYZZLE_IDLE_MS,
+  SWYZZLE_IDLE_SECONDS_DEFAULT,
   SwyzzleIdleGate,
+  clampSwyzzleIdleSeconds,
   isSwyzzleClearKey,
   rememberSwyzzleClearKey,
+  swyzzleIdleMs,
   takeSwyzzleClearKey,
 } from './swyzzleIdle';
 
@@ -29,6 +32,23 @@ describe('rememberSwyzzleClearKey', () => {
     const consumed = new Set<string>();
     expect(rememberSwyzzleClearKey({ code: 'Space', key: ' ' }, false, consumed)).toBe(false);
     expect(takeSwyzzleClearKey({ code: 'Space' }, consumed)).toBe(false);
+  });
+});
+
+describe('swyzzle idle delay', () => {
+  it('defaults to 7 seconds', () => {
+    expect(SWYZZLE_IDLE_SECONDS_DEFAULT).toBe(7);
+    expect(SWYZZLE_IDLE_MS).toBe(7_000);
+    expect(swyzzleIdleMs(SWYZZLE_IDLE_SECONDS_DEFAULT)).toBe(SWYZZLE_IDLE_MS);
+  });
+
+  it('clamps configured seconds and converts to ms', () => {
+    expect(clampSwyzzleIdleSeconds(0)).toBe(1);
+    expect(clampSwyzzleIdleSeconds(60)).toBe(60);
+    expect(clampSwyzzleIdleSeconds(61)).toBe(60);
+    expect(clampSwyzzleIdleSeconds(Number.NaN)).toBe(7);
+    expect(swyzzleIdleMs(3)).toBe(3_000);
+    expect(swyzzleIdleMs(90)).toBe(60_000);
   });
 });
 
@@ -78,6 +98,21 @@ describe('SwyzzleIdleGate', () => {
 
     vi.advanceTimersByTime(SWYZZLE_IDLE_MS);
     expect(onChange).toHaveBeenLastCalledWith(true);
+    gate.stop();
+  });
+
+  it('shows after a configured idle interval', () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    const idleMs = swyzzleIdleMs(3);
+    const gate = new SwyzzleIdleGate(idleMs, onChange);
+    gate.start();
+
+    vi.advanceTimersByTime(idleMs - 1);
+    expect(onChange).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(onChange).toHaveBeenCalledWith(true);
     gate.stop();
   });
 });

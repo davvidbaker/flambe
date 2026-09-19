@@ -77,7 +77,7 @@ export type ChartStoreExtras = {
   traces?: { id: AppChartFixture['traceId']; name: string }[];
   viewport?: SnapshotViewport;
   timeLabels?: SnapshotTimeLabels;
-  settings?: Partial<Pick<SettingsState, 'swyzzle' | 'showActivityIds' | 'darkerAsWeGoDown' | 'swyzzleEffect'>>;
+  settings?: Partial<Pick<SettingsState, 'swyzzle' | 'showActivityIds' | 'darkerAsWeGoDown' | 'swyzzleEffect' | 'swyzzleIdleSeconds'>>;
 };
 
 export function viewportForFixture(
@@ -143,7 +143,7 @@ export function createChartStore(
   }
   const settings = { darkerAsWeGoDown: false, ...extras.settings };
   for (const [setting, value] of Object.entries(settings)) {
-    if (typeof value === 'boolean' || typeof value === 'string') {
+    if (typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number') {
       store.dispatch(setSetting(setting, value));
     }
   }
