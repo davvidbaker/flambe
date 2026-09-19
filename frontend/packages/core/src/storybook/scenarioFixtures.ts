@@ -344,7 +344,7 @@ export function createSparseTraceFixture(now = Date.now()): AppChartFixture {
   ]);
 }
 
-/** Short same-agent flames — close bursts coalesce; distant ones stay separate. */
+/** Short same-agent flames — all owned work shares one sustained wash. */
 export function createShortAgentFlamesFixture(now = Date.now()): AppChartFixture {
   const app = thread(1, 'flambe🔥');
   const root = activity(app, 800, 'Ship lane chrome', { category: 3 });
@@ -394,6 +394,107 @@ export function createShortAgentFlamesFixture(now = Date.now()): AppChartFixture
     { id: 8010, timestamp: minutesAgo(now, 18), phase: 'B', activity: late },
     { id: 8011, timestamp: minutesAgo(now, 14), phase: 'E', activity: late },
     { id: 8012, timestamp: minutesAgo(now, 5), phase: 'E', activity: root },
+  ]);
+}
+
+/**
+ * Independent `--root` agent flames interleaved with human work — the shape of
+ * a live afternoon where several agents each own scattered bursts. Chrome
+ * should read as one sustained wash per agent, not a labeled island per burst.
+ */
+export function createIndependentAgentRootsFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'flambe🔥');
+  const humanRoot = activity(app, 900, 'Ship timeline chrome', { category: 3 });
+  const theo = activity(app, 901, 'Reinstate presence', {
+    agentName: 'Theo',
+    agentProvider: 'cursor',
+    category: 1,
+  });
+  const theoChild = activity(app, 902, 'Wire session names', {
+    agentName: 'Theo',
+    agentProvider: 'cursor',
+    category: 1,
+    parentId: theo.id,
+  });
+  const ottoEarly = activity(app, 910, 'Plot observations', {
+    agentName: 'Otto',
+    agentProvider: 'cursor',
+    category: 1,
+  });
+  const cg4Early = activity(app, 920, 'Add default cluster assignment', {
+    agentName: 'CG4',
+    agentProvider: 'cursor',
+    category: 1,
+  });
+  const cg4Child = activity(app, 921, 'Finish migrate', {
+    agentName: 'CG4',
+    agentProvider: 'cursor',
+    category: 1,
+    parentId: cg4Early.id,
+  });
+  const humanDb = activity(app, 930, 'Optional remote DB for local Phoenix', {
+    category: 4,
+    parentId: humanRoot.id,
+  });
+  const ottoMid = activity(app, 911, 'Wire chart overlay', {
+    agentName: 'Otto',
+    agentProvider: 'cursor',
+    category: 1,
+  });
+  const redesign = activity(app, 940, 'Redesign category UI', {
+    agentName: 'Cleo',
+    agentProvider: 'claude',
+    category: 1,
+  });
+  const ottoLate = activity(app, 912, 'Add remaining ticks', {
+    agentName: 'Otto',
+    agentProvider: 'cursor',
+    category: 2,
+  });
+  const cg4Late = activity(app, 922, 'Add default action user', {
+    agentName: 'CG4',
+    agentProvider: 'cursor',
+    category: 1,
+  });
+  const cg4LateChild = activity(app, 923, 'Backfill clusters on Fly', {
+    agentName: 'CG4',
+    agentProvider: 'cursor',
+    category: 1,
+    parentId: cg4Late.id,
+  });
+  const when = activity(app, 950, 'Add modal', {
+    agentName: 'When',
+    agentProvider: 'claude',
+    category: 1,
+  });
+
+  return fixture(9910, 'Independent agent roots', [app], [
+    { id: 9001, timestamp: minutesAgo(now, 80), phase: 'B', activity: humanRoot },
+    { id: 9002, timestamp: minutesAgo(now, 79), phase: 'B', activity: theo },
+    { id: 9003, timestamp: minutesAgo(now, 78), phase: 'B', activity: theoChild },
+    { id: 9004, timestamp: minutesAgo(now, 76), phase: 'E', activity: theoChild },
+    { id: 9005, timestamp: minutesAgo(now, 75), phase: 'E', activity: theo },
+    { id: 9006, timestamp: minutesAgo(now, 70), phase: 'B', activity: ottoEarly },
+    { id: 9007, timestamp: minutesAgo(now, 67), phase: 'E', activity: ottoEarly },
+    { id: 9008, timestamp: minutesAgo(now, 68), phase: 'B', activity: cg4Early },
+    { id: 9009, timestamp: minutesAgo(now, 66), phase: 'B', activity: cg4Child },
+    { id: 9010, timestamp: minutesAgo(now, 63), phase: 'E', activity: cg4Child },
+    { id: 9011, timestamp: minutesAgo(now, 62), phase: 'E', activity: cg4Early },
+    { id: 9012, timestamp: minutesAgo(now, 60), phase: 'B', activity: humanDb },
+    { id: 9013, timestamp: minutesAgo(now, 58), phase: 'B', activity: ottoMid },
+    { id: 9014, timestamp: minutesAgo(now, 55), phase: 'E', activity: ottoMid },
+    { id: 9015, timestamp: minutesAgo(now, 48), phase: 'E', activity: humanDb },
+    { id: 9016, timestamp: minutesAgo(now, 45), phase: 'B', activity: redesign },
+    { id: 9017, timestamp: minutesAgo(now, 42), phase: 'B', activity: ottoLate },
+    { id: 9018, timestamp: minutesAgo(now, 39), phase: 'E', activity: ottoLate },
+    { id: 9019, timestamp: minutesAgo(now, 36), phase: 'E', activity: redesign },
+    { id: 9020, timestamp: minutesAgo(now, 22), phase: 'B', activity: cg4Late },
+    { id: 9021, timestamp: minutesAgo(now, 20), phase: 'B', activity: cg4LateChild },
+    { id: 9022, timestamp: minutesAgo(now, 16), phase: 'E', activity: cg4LateChild },
+    { id: 9023, timestamp: minutesAgo(now, 15), phase: 'E', activity: cg4Late },
+    { id: 9024, timestamp: minutesAgo(now, 12), phase: 'B', activity: when },
+    { id: 9025, timestamp: minutesAgo(now, 8), phase: 'E', activity: when },
+    { id: 9026, timestamp: minutesAgo(now, 4), phase: 'E', activity: humanRoot },
   ]);
 }
 

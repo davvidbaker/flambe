@@ -901,9 +901,12 @@ export class FlameChart extends Component<Props, State> {
   }
 
   ensureActorLaneLayout(): ActorLaneLayout {
+    // Lay out only agents currently in view: their bands (and the chart height)
+    // reflect the visible window and reflow as the user pans or zooms.
+    const visibleBlocks = this.props.blocks.filter(block => this.isVisible(block));
     this.actorLaneLayout = projectActorLaneLayout(
       this.props.activities,
-      this.props.blocks,
+      visibleBlocks,
     );
     return this.actorLaneLayout;
   }
@@ -984,14 +987,7 @@ export class FlameChart extends Component<Props, State> {
     chromeBands.forEach(chrome => {
       if (this.threadCollapsed(chrome.threadId)) return;
 
-      const contentLeft = this.timeToPixels(chrome.startTime);
-      const contentRight = this.timeToPixels(
-        chrome.endTime === null ? this.rightBoundaryTime : chrome.endTime,
-      );
       const depthInset = chrome.depth * FlameChart.actorLaneDepthInset;
-      const railX = contentLeft - gutter + depthInset;
-      if (contentRight < 0 || railX > this.width) return;
-
       const threadOffset = this.offsets[String(chrome.threadId)] ?? 0;
       const threadIds = Object.keys(this.offsets).sort(
         (left, right) => (this.offsets[left] ?? 0) - (this.offsets[right] ?? 0),
@@ -1001,30 +997,70 @@ export class FlameChart extends Component<Props, State> {
         ? (this.offsets[threadIds[threadIndex + 1]!] ?? this.state.canvasHeight)
         : this.state.canvasHeight;
       const rowHeight = this.blockHeight + 1;
-      const rowCount = chrome.rowEnd - chrome.rowStart + 1;
       const nestedPad = chrome.depth > 0 ? FlameChart.actorLaneNestedPad : 0;
       const topBleed = nestedPad > 0 ? 0 : 2;
-      const top = threadOffset
-        + FlameChart.threadHeaderHeight
-        + chrome.rowStart * rowHeight
-        - topBleed
-        + nestedPad;
-      const unclampedHeight = Math.max(4, rowCount * rowHeight + topBleed - nestedPad * 2);
-      const height = Math.max(0, Math.min(unclampedHeight, nextOffset - top));
-      if (height <= 0) return;
       const accent = actorAccentColor(chrome.actorKey);
-      const washLeft = Math.max(railX, -2);
-      const washRight = Math.min(contentRight, this.width + 2);
-      const washWidth = Math.max(0, washRight - washLeft);
 
-      // Time-bounded wash behind the flame rows (ADR-005).
-      if (washWidth > 0) {
-        this.ctx.globalAlpha = 0.10;
-        this.ctx.fillStyle = accent;
-        this.ctx.fillRect(washLeft, top, washWidth, height);
-      }
+      const rects = chrome.washRects.length
+        ? chrome.washRects
+        : [{
+            rowStart: chrome.rowStart,
+            rowEnd: chrome.rowEnd,
+            startTime: chrome.startTime,
+            endTime: chrome.endTime,
+          }];
 
-      // Gutter rail left of the first block.
+      // Anchor the single rail + label at the agent's earliest wash rectangle.
+      const anchor = rects.reduce((best, rect) => (
+        rect.startTime < best.startTime
+        || (rect.startTime === best.startTime && rect.rowStart < best.rowStart)
+          ? rect
+          : best
+      ), rects[0]!);
+
+      const rowGeometry = (rowStart: number, rowEnd: number) => {
+        const rowCount = rowEnd - rowStart + 1;
+        const top = threadOffset
+          + FlameChart.threadHeaderHeight
+          + rowStart * rowHeight
+          - topBleed
+          + nestedPad;
+        const unclampedHeight = Math.max(4, rowCount * rowHeight + topBleed - nestedPad * 2);
+        const height = Math.max(0, Math.min(unclampedHeight, nextOffset - top));
+        return { rowCount, top, height };
+      };
+
+      // Time-clipped wash rectangles: paint only where the agent actually was.
+      this.ctx.globalAlpha = 0.16;
+      this.ctx.fillStyle = accent;
+      rects.forEach(rect => {
+        const isAnchor = rect === anchor;
+        const rectLeft = this.timeToPixels(rect.startTime) + depthInset;
+        const rectRight = this.timeToPixels(
+          rect.endTime === null ? this.rightBoundaryTime : rect.endTime,
+        );
+        // The anchor rectangle extends left under the gutter so the rail sits on it.
+        const washLeft = Math.max(isAnchor ? rectLeft - gutter : rectLeft, -2);
+        const washRight = Math.min(rectRight, this.width + 2);
+        const washWidth = Math.max(0, washRight - washLeft);
+        if (washWidth <= 0 || washRight < 0 || washLeft > this.width) return;
+        const { top, height } = rowGeometry(rect.rowStart, rect.rowEnd);
+        if (height <= 0) return;
+        this.ctx.beginPath();
+        if (typeof this.ctx.roundRect === 'function') {
+          this.ctx.roundRect(washLeft, top, washWidth, height, 3);
+        } else {
+          this.ctx.rect(washLeft, top, washWidth, height);
+        }
+        this.ctx.fill();
+      });
+
+      // One rail + label per agent, on the anchor rectangle's rows.
+      const railX = this.timeToPixels(anchor.startTime) - gutter + depthInset;
+      if (railX > this.width) return;
+      const { rowCount, top, height } = rowGeometry(anchor.rowStart, anchor.rowEnd);
+      if (height <= 0) return;
+
       this.ctx.globalAlpha = 0.95;
       this.ctx.fillStyle = accent;
       this.ctx.fillRect(railX, top, 3, height);
@@ -1032,7 +1068,6 @@ export class FlameChart extends Component<Props, State> {
       const label = chrome.actorName;
       if (!label || height < 8) return;
 
-      // Single-row: stay rotated, use tiny type so more of the name fits.
       const singleRow = rowCount === 1;
       this.ctx.font = singleRow ? 'bold 7px sans-serif' : 'bold 10px sans-serif';
       const maxVertical = Math.max(0, height - (singleRow ? 4 : 10));
