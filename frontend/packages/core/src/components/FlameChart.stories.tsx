@@ -14,6 +14,7 @@ import {
   createShortAgentFlamesFixture,
   createIndependentAgentRootsFixture,
   createSparseTraceFixture,
+  createStackedAgentWorkFixture,
   createStrangeSequenceFixture,
 } from '../storybook/scenarioFixtures';
 import { createFrontiersFixture } from '../storybook/frontiersFixture';
@@ -106,6 +107,12 @@ export const ShortAgentFlames: Story = {
 export const IndependentAgentRoots: Story = {
   args: {
     fixture: createIndependentAgentRootsFixture(),
+  },
+};
+
+export const StackedAgentWork: Story = {
+  args: {
+    fixture: createStackedAgentWorkFixture(),
   },
 };
 
