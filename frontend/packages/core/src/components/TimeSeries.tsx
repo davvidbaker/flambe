@@ -12,9 +12,10 @@ import {
   formatObservationValue,
   groupObservationSeries,
   hoverSamples,
-  independentScale,
   nextLocalMidnight,
+  observationScale,
   pathPoints,
+  pickAxisSeries,
   sampleSeriesAtTime,
   valueToY,
   type HoverSample,
@@ -197,6 +198,7 @@ export class TimeSeries extends Component<Props, State> {
     this.drawMantras();
     this.drawTabs();
     this.drawObservations();
+    this.drawObservationAxis();
     this.drawSearchTerms();
     ctx.restore();
   }
@@ -281,6 +283,38 @@ export class TimeSeries extends Component<Props, State> {
     }
   }
 
+  seriesScale(series: ObservationSeries) {
+    const points = pathPoints(series, this.leftBoundaryTime, this.rightBoundaryTime);
+    return {
+      points,
+      scale: observationScale(points.map(point => point.value)),
+    };
+  }
+
+  axisSeries(): ObservationSeries | null {
+    const { hoverObservations, mouseIsOver, cursor } = this.state;
+    if (!mouseIsOver || hoverObservations.length <= 1) {
+      return pickAxisSeries(this.observationSeries, mouseIsOver ? hoverObservations : []);
+    }
+
+    const chartHeight = this.chartHeight();
+    const paddingY = TimeSeries.chartPadding.y;
+    let best: ObservationSeries | null = null;
+    let bestDist = Infinity;
+    hoverObservations.forEach(sample => {
+      const series = this.observationSeries.find(candidate => candidate.kind === sample.kind);
+      if (!series) return;
+      const { scale } = this.seriesScale(series);
+      const y = valueToY(sample.value, scale.min, scale.max, chartHeight, paddingY);
+      const dist = Math.abs(y - cursor.y);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = series;
+      }
+    });
+    return best ?? this.observationSeries[0] ?? null;
+  }
+
   drawObservations(): void {
     const { ctx } = this;
     if (!ctx) return;
@@ -290,10 +324,9 @@ export class TimeSeries extends Component<Props, State> {
     const cursorTime = this.pixelsToTime(this.state.cursor.x);
 
     this.observationSeries.forEach(series => {
-      const points = pathPoints(series, this.leftBoundaryTime, this.rightBoundaryTime);
+      const { points, scale } = this.seriesScale(series);
       if (points.length === 0) return;
 
-      const scale = independentScale(points.map(point => point.value));
       ctx.globalAlpha = 1;
       ctx.lineWidth = 2;
       ctx.strokeStyle = series.color;
@@ -342,6 +375,57 @@ export class TimeSeries extends Component<Props, State> {
         }
       }
     });
+  }
+
+  drawObservationAxis(): void {
+    const { ctx } = this;
+    const series = this.axisSeries();
+    if (!ctx || !series) return;
+
+    const { points, scale } = this.seriesScale(series);
+    if (points.length === 0) return;
+
+    const chartHeight = this.chartHeight();
+    const paddingY = TimeSeries.chartPadding.y;
+    const tickX = 4;
+    const labelX = 12;
+
+    ctx.save();
+    ctx.font = '11px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = series.color;
+    ctx.lineWidth = 1;
+
+    const paintLabel = (text: string, x: number, y: number) => {
+      const width = ctx.measureText(text).width;
+      ctx.fillStyle = 'rgba(255,255,255,0.82)';
+      ctx.fillRect(x - 2, y - 7, width + 4, 14);
+      ctx.fillStyle = series.color;
+      ctx.fillText(text, x, y);
+    };
+
+    scale.ticks.forEach(tick => {
+      const y = valueToY(tick, scale.min, scale.max, chartHeight, paddingY);
+      ctx.globalAlpha = 0.18;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(this.width, y);
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.moveTo(tickX, y);
+      ctx.lineTo(tickX + 5, y);
+      ctx.stroke();
+      paintLabel(formatObservationValue(tick), labelX, y);
+    });
+
+    const heading = series.unit ? `${series.kind} (${series.unit})` : series.kind;
+    const headingText = trimTextMiddle(ctx, heading, Math.min(240, this.width / 2));
+    const headingWidth = ctx.measureText(headingText).width;
+    ctx.textBaseline = 'middle';
+    paintLabel(headingText, Math.max(labelX, this.width - headingWidth - 10), 10);
+    ctx.restore();
   }
 
   pixelsToTime(x: number): number {
