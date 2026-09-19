@@ -733,42 +733,84 @@ export function projectActorLaneLayout(
         || left.localeCompare(right);
     });
 
-    let bandBase = 0;
+    const nestedMinRow = (
+      block: TraceBlock,
+      ownerKey: string,
+      rowOf: (parentBlock: TraceBlock) => number | undefined,
+    ): number => {
+      const activity = activities[keyFor(block.activity_id)];
+      const parentId = activity?.parent_id ?? null;
+      const parentSameOwner = parentId !== null
+        && String(activities[keyFor(parentId)]?.thread_id) === threadKey
+        && ownerKeyOf(parentId) === ownerKey;
+      if (!parentSameOwner || parentId === null) return 0;
+      const parentBlock = coveringParentBlock(parentId, block.startTime);
+      const parentRow = parentBlock ? rowOf(parentBlock) : undefined;
+      return parentRow === undefined ? 0 : parentRow + 1;
+    };
+
     for (const ownerKey of ownerOrder) {
-      let bandMax = bandBase - 1;
-      for (const block of ordered) {
-        if (ownerKeyOf(block.activity_id) !== ownerKey) continue;
-        const activity = activities[keyFor(block.activity_id)];
-        if (!activity) continue;
+      const ownerBlocks = ordered.filter(block => ownerKeyOf(block.activity_id) === ownerKey);
+      if (!ownerBlocks.length) continue;
+
+      if (ownerKey === HUMAN_ACTOR_KEY) {
+        // Human base stack: classic time-based packing, rows reused across time.
+        for (const block of ownerBlocks) {
+          const interval: TimeInterval = {
+            start: block.startTime,
+            end: block.endTime ?? Number.POSITIVE_INFINITY,
+          };
+          const minRow = nestedMinRow(block, ownerKey,
+            parentBlock => rowByBlock[blockLayoutKey(parentBlock)]);
+          const row = firstFreeRow(threadId, minRow, [interval], 1);
+          rowByBlock[blockLayoutKey(block)] = row;
+          occupyRows(threadId, row, row, [interval]);
+        }
+        continue;
+      }
+
+      // Agent swimlane: lay the band out relative to its own base, then float
+      // the whole band up to the highest row where its time span collides with
+      // neither human work nor another agent band (a delegated child nests
+      // inside on the row below its parent).
+      const localOccupied = new Map<number, TimeInterval[]>();
+      const relativeRow: Record<string, number> = {};
+      let height = 0;
+      let spanStart = Number.POSITIVE_INFINITY;
+      let spanEnd = Number.NEGATIVE_INFINITY;
+
+      for (const block of ownerBlocks) {
         const interval: TimeInterval = {
           start: block.startTime,
           end: block.endTime ?? Number.POSITIVE_INFINITY,
         };
+        spanStart = Math.min(spanStart, interval.start);
+        spanEnd = interval.end === Number.POSITIVE_INFINITY
+          ? Number.POSITIVE_INFINITY
+          : Math.max(spanEnd, interval.end);
 
-        // Nest under a covering parent only when it shares this band (same
-        // owner); a cross-owner parent (e.g. a human root delegating to an
-        // agent) does not push the child down — the child starts its own band.
-        const parentId = activity.parent_id ?? null;
-        const parentSameOwner = parentId !== null
-          && String(activities[keyFor(parentId)]?.thread_id) === threadKey
-          && ownerKeyOf(parentId) === ownerKey;
-        let minRow = bandBase;
-        if (parentSameOwner && parentId !== null) {
-          const parentBlock = coveringParentBlock(parentId, block.startTime);
-          if (parentBlock) {
-            const parentRow = rowByBlock[blockLayoutKey(parentBlock)]
-              ?? rowByActivity[keyFor(parentId)]
-              ?? bandBase;
-            minRow = Math.max(bandBase, parentRow + 1);
-          }
-        }
-
-        const row = firstFreeRow(threadId, minRow, [interval], 1);
-        rowByBlock[blockLayoutKey(block)] = row;
-        occupyRows(threadId, row, row, [interval]);
-        bandMax = Math.max(bandMax, row);
+        const minRel = nestedMinRow(block, ownerKey,
+          parentBlock => relativeRow[blockLayoutKey(parentBlock)]);
+        let rel = Math.max(0, minRel);
+        while (anyIntervalOverlap(localOccupied.get(rel) ?? [], [interval])) rel += 1;
+        relativeRow[blockLayoutKey(block)] = rel;
+        const list = localOccupied.get(rel) ?? [];
+        list.push(interval);
+        localOccupied.set(rel, list);
+        height = Math.max(height, rel + 1);
       }
-      bandBase = bandMax + 1;
+
+      if (!Number.isFinite(spanStart)) continue;
+      // Reserve the band's full span across all its rows so the agent stays one
+      // exclusive block (its sustained wash never fragments), while agents whose
+      // spans do not overlap still share rows and pack tightly upward.
+      const span: TimeInterval = { start: spanStart, end: spanEnd };
+      const base = firstFreeRow(threadId, 0, [span], height);
+      for (const block of ownerBlocks) {
+        const rel = relativeRow[blockLayoutKey(block)];
+        if (rel !== undefined) rowByBlock[blockLayoutKey(block)] = base + rel;
+      }
+      occupyRows(threadId, base, base + height - 1, [span]);
     }
 
     const threadFlames = flames.filter(flame => {
