@@ -32,13 +32,29 @@ export function writeLocalSnapshot(
   snapshot: TimelineSnapshot,
   storage: StorageLike | null = browserStorage(),
 ): void {
+  writeLocalSnapshotText(JSON.stringify(snapshot), storage);
+}
+
+export function writeLocalSnapshotText(
+  text: string,
+  storage: StorageLike | null = browserStorage(),
+): void {
   if (!storage) {
     throw new Error('This browser cannot keep the snapshot after a refresh.');
   }
   try {
-    storage.setItem(LOCAL_SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
+    storage.setItem(LOCAL_SNAPSHOT_STORAGE_KEY, text);
   } catch {
     throw new Error('Loaded the file, but it was too large to keep after a refresh.');
+  }
+}
+
+export function readLocalSnapshotText(storage: StorageLike | null = browserStorage()): string | null {
+  if (!storage) return null;
+  try {
+    return storage.getItem(LOCAL_SNAPSHOT_STORAGE_KEY);
+  } catch {
+    return null;
   }
 }
 
