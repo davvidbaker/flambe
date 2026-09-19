@@ -144,6 +144,9 @@ export class FlameChart extends Component<Props, State> {
   /** Vertical inset for nested lane chrome so it doesn't sit flush on the parent row. */
   static actorLaneNestedPad = 2;
 
+  /** Vertical margin inset on each agent swimlane wash so adjacent bands don't touch. */
+  static actorLaneVerticalMargin = 3;
+
   state = {
     canvasHeight: 150,
   };
@@ -998,7 +1001,7 @@ export class FlameChart extends Component<Props, State> {
         : this.state.canvasHeight;
       const rowHeight = this.blockHeight + 1;
       const nestedPad = chrome.depth > 0 ? FlameChart.actorLaneNestedPad : 0;
-      const topBleed = nestedPad > 0 ? 0 : 2;
+      const margin = FlameChart.actorLaneVerticalMargin;
       const accent = actorAccentColor(chrome.actorKey);
 
       const rects = chrome.washRects.length
@@ -1020,12 +1023,13 @@ export class FlameChart extends Component<Props, State> {
 
       const rowGeometry = (rowStart: number, rowEnd: number) => {
         const rowCount = rowEnd - rowStart + 1;
+        // Inset the wash vertically so adjacent swimlanes keep a small margin.
         const top = threadOffset
           + FlameChart.threadHeaderHeight
           + rowStart * rowHeight
-          - topBleed
-          + nestedPad;
-        const unclampedHeight = Math.max(4, rowCount * rowHeight + topBleed - nestedPad * 2);
+          + nestedPad
+          + margin;
+        const unclampedHeight = Math.max(4, rowCount * rowHeight - nestedPad * 2 - margin * 2);
         const height = Math.max(0, Math.min(unclampedHeight, nextOffset - top));
         return { rowCount, top, height };
       };
