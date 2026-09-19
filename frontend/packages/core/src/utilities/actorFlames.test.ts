@@ -264,7 +264,7 @@ describe('nested actor sublane layout', () => {
     expect(layout.rowByActivity['270']).toBe(1);
   });
 
-  it('reuses a row for sequential non-overlapping human roots; an agent gets its own band', () => {
+  it('floats an agent up to a shared row when its span does not collide', () => {
     const activities = {
       1: activity({ id: 1, name: 'Morning' }),
       2: activity({ id: 2, name: 'Afternoon' }),
@@ -278,14 +278,14 @@ describe('nested actor sublane layout', () => {
 
     const layout = projectActorLaneLayout(activities, blocks);
 
-    // Sequential human roots still share a row; the agent gets its own band even
-    // though it does not overlap in time, so its wash stays on rows it owns.
+    // Steve's span (40–50) collides with neither human block on row 0, so his
+    // swimlane floats all the way up and shares that row — as high as possible.
     expect(layout.rowByActivity).toMatchObject({
       1: 0,
       2: 0,
-      3: 1,
+      3: 0,
     });
-    expect(layout.maxRowsByThread['1']).toBe(2);
+    expect(layout.maxRowsByThread['1']).toBe(1);
   });
 
   it('reuses a row for sequential siblings under an overlapping parent', () => {
