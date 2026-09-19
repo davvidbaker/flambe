@@ -11,7 +11,11 @@ import type { SettingsState } from '../reducers/settings';
 import type { Thread } from '../types/Thread';
 import type { EntityId } from '../types/ids';
 import { rankThreadsByAttention, sortThreadsByRank } from '../utilities/timelineGeometry';
-import { buildTimelineSnapshot } from '../utilities/timelineSnapshot';
+import {
+  buildTimelineSnapshot,
+  downloadTimelineSnapshot,
+  type TimelineSnapshot,
+} from '../utilities/timelineSnapshot';
 import {
   fromDatetimeLocalValue,
   readSavedTimelineViewport,
@@ -102,6 +106,53 @@ export function createShareThreadDrafts(
   }));
 }
 
+export function snapshotFromShareDraft(input: {
+  absoluteTimeLabels: boolean;
+  attentionShifts: { thread_id: EntityId; timestamp: number }[];
+  categories: RootState['user']['categories'];
+  draftThreads: ThreadDraft[];
+  endValue: string;
+  events: RootState['timeline']['events'];
+  startValue: string;
+  threads: Record<string, Thread>;
+  twelveHourClock: boolean;
+  traceId: EntityId | null;
+  traceName: string | null;
+}): { error: string } | { snapshot: TimelineSnapshot } {
+  if (input.traceId === null || !input.traceName) {
+    return { error: 'Open a trace before sharing.' };
+  }
+  const leftBoundaryTime = fromDatetimeLocalValue(input.startValue);
+  const rightBoundaryTime = fromDatetimeLocalValue(input.endValue);
+  if (leftBoundaryTime === null || rightBoundaryTime === null || rightBoundaryTime <= leftBoundaryTime) {
+    return { error: 'Choose a start time before the end time.' };
+  }
+  const included = input.draftThreads.filter(thread => thread.included);
+  if (included.length === 0) {
+    return { error: 'Include at least one thread.' };
+  }
+  return {
+    snapshot: buildTimelineSnapshot(
+      {
+        traceId: input.traceId,
+        traceName: input.traceName,
+        threads: Object.values(input.threads),
+        events: input.events,
+        categories: input.categories,
+        attentionShifts: input.attentionShifts,
+      },
+      {
+        leftBoundaryTime,
+        rightBoundaryTime,
+        includedThreadIds: included.map(thread => thread.id),
+        collapsedThreadIds: included.filter(thread => thread.collapsed).map(thread => thread.id),
+        absoluteTimeLabels: input.absoluteTimeLabels,
+        twelveHourClock: input.twelveHourClock,
+      },
+    ),
+  };
+}
+
 interface Props {
   absoluteTimeLabels: boolean;
   attentionDrivenThreadOrder: boolean;
@@ -174,41 +225,37 @@ function ShareTimeline({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shareTimelineVisible]);
 
+  const draftSnapshot = () => snapshotFromShareDraft({
+    absoluteTimeLabels,
+    attentionShifts,
+    categories,
+    draftThreads,
+    endValue,
+    events,
+    startValue,
+    threads,
+    twelveHourClock,
+    traceId,
+    traceName,
+  });
+
+  const exportJson = () => {
+    const result = draftSnapshot();
+    if ('error' in result) {
+      setError(result.error);
+      return;
+    }
+    setError(null);
+    downloadTimelineSnapshot(result.snapshot);
+  };
+
   const publish = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (traceId === null || !traceName) {
-      setError('Open a trace before sharing.');
+    const result = draftSnapshot();
+    if ('error' in result) {
+      setError(result.error);
       return;
     }
-    const leftBoundaryTime = fromDatetimeLocalValue(startValue);
-    const rightBoundaryTime = fromDatetimeLocalValue(endValue);
-    if (leftBoundaryTime === null || rightBoundaryTime === null || rightBoundaryTime <= leftBoundaryTime) {
-      setError('Choose a start time before the end time.');
-      return;
-    }
-    const included = draftThreads.filter(thread => thread.included);
-    if (included.length === 0) {
-      setError('Include at least one thread.');
-      return;
-    }
-    const snapshot = buildTimelineSnapshot(
-      {
-        traceId,
-        traceName,
-        threads: Object.values(threads),
-        events,
-        categories,
-        attentionShifts,
-      },
-      {
-        leftBoundaryTime,
-        rightBoundaryTime,
-        includedThreadIds: included.map(thread => thread.id),
-        collapsedThreadIds: included.filter(thread => thread.collapsed).map(thread => thread.id),
-        absoluteTimeLabels,
-        twelveHourClock,
-      },
-    );
     setBusy(true);
     setError(null);
     try {
@@ -216,7 +263,7 @@ function ShareTimeline({
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ snapshot }),
+        body: JSON.stringify({ snapshot: result.snapshot }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -245,6 +292,7 @@ function ShareTimeline({
         <p>
           Anyone with the link can see this frozen slice — activity names and
           event messages in range. It will not update as the live trace changes.
+          Export JSON downloads the same snapshot as a file.
         </p>
         <label htmlFor="share-start">Start</label>
         <input
@@ -312,6 +360,9 @@ function ShareTimeline({
             {busy ? 'Publishing…' : 'Publish public URL'}
           </button>
         )}
+        <button type="button" onClick={exportJson} disabled={busy}>
+          Export JSON
+        </button>
         <button type="button" onClick={hideShareTimeline}>
           Close
         </button>

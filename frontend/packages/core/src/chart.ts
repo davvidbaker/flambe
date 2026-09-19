@@ -8,8 +8,10 @@ export {
 } from './storybook/fixtureTrace';
 export {
   buildTimelineSnapshot,
+  formatTimelineSnapshotJson,
   isTimelineSnapshot,
   TIMELINE_SNAPSHOT_VERSION,
+  timelineSnapshotDownloadName,
   type BuildTimelineSnapshotOptions,
   type SnapshotSource,
   type SnapshotTimeLabels,
