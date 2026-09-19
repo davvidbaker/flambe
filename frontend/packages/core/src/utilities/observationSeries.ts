@@ -104,6 +104,76 @@ export function independentScale(values: number[]): { min: number; max: number }
   return { min, max };
 }
 
+function cleanFloat(value: number): number {
+  return Number(value.toPrecision(12));
+}
+
+/** Graphics-Gems "nice number" for axis step / span. */
+function niceNumber(span: number, round: boolean): number {
+  if (!(span > 0) || !Number.isFinite(span)) return 1;
+  const exponent = Math.floor(Math.log10(span));
+  const fraction = span / 10 ** exponent;
+  let niceFraction: number;
+  if (round) {
+    if (fraction < 1.5) niceFraction = 1;
+    else if (fraction < 3) niceFraction = 2;
+    else if (fraction < 7) niceFraction = 5;
+    else niceFraction = 10;
+  } else if (fraction <= 1) niceFraction = 1;
+  else if (fraction <= 2) niceFraction = 2;
+  else if (fraction <= 5) niceFraction = 5;
+  else niceFraction = 10;
+  return niceFraction * 10 ** exponent;
+}
+
+export function niceScale(
+  min: number,
+  max: number,
+  targetCount = 5,
+): { min: number; max: number; ticks: number[] } {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max < min) {
+    return { min: 0, max: 1, ticks: [0, 1] };
+  }
+  if (min === max) {
+    const padded = independentScale([min]);
+    return niceScale(padded.min, padded.max, targetCount);
+  }
+
+  const range = niceNumber(max - min, false);
+  const step = niceNumber(range / Math.max(1, targetCount - 1), true);
+  const niceMin = cleanFloat(Math.floor(min / step) * step);
+  const niceMax = cleanFloat(Math.ceil(max / step) * step);
+  const ticks: number[] = [];
+  const last = niceMax + step * 0.5;
+  for (let value = niceMin; value <= last; value = cleanFloat(value + step)) {
+    ticks.push(cleanFloat(value));
+  }
+  return { min: niceMin, max: niceMax, ticks };
+}
+
+/** Visible-window scale for an observation series: include 0 when unipolar, then nice ticks. */
+export function observationScale(values: number[], targetCount = 5): {
+  min: number;
+  max: number;
+  ticks: number[];
+} {
+  if (values.length === 0) return niceScale(0, 1, targetCount);
+  const raw = independentScale(values);
+  let { min, max } = raw;
+  if (values.every(value => value >= 0)) min = 0;
+  else if (values.every(value => value <= 0)) max = 0;
+  return niceScale(min, max, targetCount);
+}
+
+export function pickAxisSeries(
+  seriesList: ObservationSeries[],
+  hover: HoverSample[],
+): ObservationSeries | null {
+  if (seriesList.length === 0) return null;
+  if (hover.length === 0) return seriesList[0];
+  return seriesList.find(series => series.kind === hover[0].kind) ?? seriesList[0];
+}
+
 export function pathPoints(
   series: ObservationSeries,
   left: number,
