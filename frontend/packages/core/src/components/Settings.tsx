@@ -89,6 +89,12 @@ const DEVELOPER_SETTINGS: SettingDefinition[] = [
     description:
       'Label flame-chart blocks with activity id instead of name, for matching what you see to database events.',
   },
+  {
+    setting: 'swyzzle',
+    copy: 'Swyzzle',
+    description:
+      'After 7 seconds idle, melt the flame chart. Move the pointer to stir it. Space or Escape clears it.',
+  },
 ];
 
 const Setting = styled.div`
