@@ -547,7 +547,8 @@ function anyIntervalOverlap(
 /**
  * Nested actor-sublane layout (Variant 1): each agent boundary opens a labeled
  * vertical lane; same-actor work nests inside; delegated agents nest inside the
- * parent actor's band. Human work stays in the thread's primary stack.
+ * parent actor's band. Human work is the thread's primary stack at the top;
+ * every agent band sits strictly below that stack.
  *
  * Lifecycle segments pack independently in start-time order. Nested children
  * sit under their parent only while that parent still covers them in time.
@@ -718,7 +719,8 @@ export function projectActorLaneLayout(
       ownerFirstStart.set(key, Math.min(prev, block.startTime));
     }
 
-    // Human base stack first, then agents in order of first appearance.
+    // Human base stack first (top of the thread), then agents in order of
+    // first appearance. Agent bands never share a row with that human stack.
     const ownerOrder = [...ownerFirstStart.keys()].sort((left, right) => {
       if (left === HUMAN_ACTOR_KEY) return right === HUMAN_ACTOR_KEY ? 0 : -1;
       if (right === HUMAN_ACTOR_KEY) return 1;
@@ -742,12 +744,15 @@ export function projectActorLaneLayout(
       return parentRow === undefined ? 0 : parentRow + 1;
     };
 
+    let humanFloor = 0;
+
     for (const ownerKey of ownerOrder) {
       const ownerBlocks = ordered.filter(block => ownerKeyOf(block.activity_id) === ownerKey);
       if (!ownerBlocks.length) continue;
 
       if (ownerKey === HUMAN_ACTOR_KEY) {
         // Human base stack: classic time-based packing, rows reused across time.
+        let maxHumanRow = -1;
         for (const block of ownerBlocks) {
           const interval: TimeInterval = {
             start: block.startTime,
@@ -758,14 +763,16 @@ export function projectActorLaneLayout(
           const row = firstFreeRow(threadId, minRow, [interval], 1);
           rowByBlock[blockLayoutKey(block)] = row;
           occupyRows(threadId, row, row, [interval]);
+          maxHumanRow = Math.max(maxHumanRow, row);
         }
+        humanFloor = maxHumanRow + 1;
         continue;
       }
 
-      // Agent swimlane: lay the band out relative to its own base, then float
-      // the whole band up to the highest row where its time span collides with
-      // neither human work nor another agent band (a delegated child nests
-      // inside on the row below its parent).
+      // Agent swimlane: lay the band out relative to its own base, then place
+      // the whole band on the highest row at or below the human stack where
+      // its time span collides with no other agent band (a delegated child
+      // nests inside on the row below its parent).
       const localOccupied = new Map<number, TimeInterval[]>();
       const relativeRow: Record<string, number> = {};
       let height = 0;
@@ -796,9 +803,10 @@ export function projectActorLaneLayout(
       if (!Number.isFinite(spanStart)) continue;
       // Reserve the band's full span across all its rows so the agent stays one
       // exclusive block (its sustained wash never fragments), while agents whose
-      // spans do not overlap still share rows and pack tightly upward.
+      // spans do not overlap still share rows with each other — always below
+      // the human stack.
       const span: TimeInterval = { start: spanStart, end: spanEnd };
-      const base = firstFreeRow(threadId, 0, [span], height);
+      const base = firstFreeRow(threadId, humanFloor, [span], height);
       for (const block of ownerBlocks) {
         const rel = relativeRow[blockLayoutKey(block)];
         if (rel !== undefined) rowByBlock[blockLayoutKey(block)] = base + rel;
