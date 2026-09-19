@@ -382,16 +382,16 @@ export function contiguousRowRanges(rows: number[]): ActorWashRowRange[] {
 }
 
 /**
- * Wash rectangles for one agent group, clipped to the (row × time) cells the
- * agent actually owns. On each row the agent's own blocks are unioned and a gap
- * between two of them is bridged into one rectangle only when no foreign block
- * occupies that row inside the gap. This keeps the "one sustained presence"
- * reading where the agent has a row to itself, while never painting over a
- * neighbour or human block that shares a row at a different time.
+ * Wash rectangles for one agent group. Because each agent occupies its own
+ * contiguous band (its rows are exclusive to it for its whole span), the wash is
+ * painted as a solid envelope over the agent's own rows: every contiguous run of
+ * the agent's owned rows becomes one rectangle spanning the agent's full time
+ * range. This *contains* stacked simultaneous same-agent work under one wash,
+ * rather than stair-stepping around each nested block.
  *
- * Washes never overlap: only the agent's own roots count as owned, so a nested
- * delegated child's rows belong to the child's wash alone (its inset rail and
- * label still convey the nesting). Every row is washed by at most one agent.
+ * Only the agent's own roots count as owned, so a delegated child's rows are not
+ * part of the envelope — they break the run and stay the child's own wash. Every
+ * row is therefore washed by at most one agent and washes never overlap.
  */
 function washRectsForGroup(
   rootActivityIds: EntityId[],
@@ -406,52 +406,45 @@ function washRectsForGroup(
     return rootSet.has(String(root));
   };
 
-  const ownedByRow = new Map<number, TimeInterval[]>();
-  const foreignByRow = new Map<number, TimeInterval[]>();
+  const ownedRows = new Set<number>();
+  let spanStart = Number.POSITIVE_INFINITY;
+  let spanEnd = Number.NEGATIVE_INFINITY;
   for (const block of blocks) {
+    if (!ownsBlock(block.activity_id)) continue;
     const row = layout.rowByBlock[blockLayoutKey(block)];
     if (row === undefined) continue;
-    const interval: TimeInterval = {
-      start: block.startTime,
-      end: block.endTime ?? Number.POSITIVE_INFINITY,
-    };
-    const target = ownsBlock(block.activity_id) ? ownedByRow : foreignByRow;
-    const list = target.get(row) ?? [];
-    list.push(interval);
-    target.set(row, list);
-  }
-
-  const rects: ActorWashRect[] = [];
-  for (const [row, ownedRaw] of ownedByRow) {
-    const owned = ownedRaw.slice().sort((left, right) => left.start - right.start);
-    const foreign = foreignByRow.get(row) ?? [];
-    let start = owned[0]!.start;
-    let end = owned[0]!.end;
-
-    const flush = () => rects.push({
-      rowStart: row,
-      rowEnd: row,
-      startTime: start,
-      endTime: Number.isFinite(end) ? end : null,
-    });
-
-    for (let index = 1; index < owned.length; index += 1) {
-      const next = owned[index]!;
-      const foreignInGap = Number.isFinite(end)
-        && foreign.some(entry => entry.start < next.start && entry.end > end);
-      if (!foreignInGap && Number.isFinite(end)) {
-        end = Math.max(end, next.end);
-      } else {
-        flush();
-        start = next.start;
-        end = next.end;
-      }
+    ownedRows.add(row);
+    spanStart = Math.min(spanStart, block.startTime);
+    if (block.endTime === undefined) {
+      spanEnd = Number.POSITIVE_INFINITY;
+    } else if (spanEnd !== Number.POSITIVE_INFINITY) {
+      spanEnd = Math.max(spanEnd, block.endTime);
     }
-    flush();
   }
 
-  return rects.sort((left, right) => left.startTime - right.startTime
-    || left.rowStart - right.rowStart);
+  if (!ownedRows.size || !Number.isFinite(spanStart)) return [];
+  const startTime = spanStart;
+  const endTime = Number.isFinite(spanEnd) ? spanEnd : null;
+
+  // One rectangle per contiguous run of owned rows (a delegated child's row, if
+  // any, breaks the run so its own wash owns it).
+  const sortedRows = [...ownedRows].sort((left, right) => left - right);
+  const rects: ActorWashRect[] = [];
+  let runStart = sortedRows[0]!;
+  let runEnd = sortedRows[0]!;
+  const flush = () => rects.push({ rowStart: runStart, rowEnd: runEnd, startTime, endTime });
+  for (const row of sortedRows.slice(1)) {
+    if (row === runEnd + 1) {
+      runEnd = row;
+    } else {
+      flush();
+      runStart = row;
+      runEnd = row;
+    }
+  }
+  flush();
+
+  return rects;
 }
 
 /**
