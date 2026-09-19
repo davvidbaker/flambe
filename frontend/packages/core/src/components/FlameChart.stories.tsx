@@ -56,6 +56,20 @@ export const ConcurrentAgents: Story = {
   },
 };
 
+/** Pan so agent starts are off the left; wash, rail, and label should stay pinned. */
+export const AgentStartOffLeft: Story = {
+  args: (() => {
+    const now = Date.now();
+    return {
+      fixture: createConcurrentAgentsFixture(now),
+      viewport: {
+        leftBoundaryTime: now - 45 * 60 * 1000,
+        rightBoundaryTime: now - 15 * 60 * 1000,
+      },
+    };
+  })(),
+};
+
 export const ParentSuspensionAndResume: Story = {
   args: {
     fixture: createParentSuspensionFixture(),

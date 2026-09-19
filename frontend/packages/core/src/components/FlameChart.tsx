@@ -17,12 +17,14 @@ import {
   visibleThreadLevels,
 } from '../utilities/timelineGeometry';
 import { clampTopOffset } from '../utilities/pan';
+import { readableTextOn } from '../utilities/readableTextOn';
 import { getShamefulColor } from '../utilities/timeline';
 import {
   actorAccentColor,
   blockLayoutKey,
   coalesceActorLaneChrome,
   fitActorLaneLabel,
+  pinActorLaneRailX,
   projectActorLaneLayout,
   selectActorFlameSegments,
   type ActorLaneLayout,
@@ -839,11 +841,12 @@ export class FlameChart extends Component<Props, State> {
 
         // draw vertical bars
         this.drawGrid(this.ctx, this.dividersData);
-        this.drawActorLaneChrome();
+        this.drawActorLaneChrome('wash');
         if (this.props.blocks) {
           this.drawBlocks();
         }
         this.drawActorForks();
+        this.drawActorLaneChrome('rail');
         this.drawFutureWindow();
         this.drawThreadHeaders(this.ctx);
         this.drawAttention(this.ctx);
@@ -982,7 +985,17 @@ export class FlameChart extends Component<Props, State> {
     };
   }
 
-  drawActorLaneChrome(): void {
+  fillActorLaneRoundRect(x: number, y: number, width: number, height: number): void {
+    this.ctx.beginPath();
+    if (typeof this.ctx.roundRect === 'function') {
+      this.ctx.roundRect(x, y, width, height, 3);
+    } else {
+      this.ctx.rect(x, y, width, height);
+    }
+    this.ctx.fill();
+  }
+
+  drawActorLaneChrome(phase: 'wash' | 'rail' = 'wash'): void {
     const layout = this.actorLaneLayout;
     if (!layout) return;
 
@@ -1044,36 +1057,54 @@ export class FlameChart extends Component<Props, State> {
         return { rowCount, top, height };
       };
 
-      // Time-clipped wash rectangles: paint only where the agent actually was.
-      this.ctx.globalAlpha = 0.16;
-      this.ctx.fillStyle = accent;
+      const naturalRailX = this.timeToPixels(anchor.startTime) - gutter + depthInset;
+      let chromeRight = Number.NEGATIVE_INFINITY;
       rects.forEach(rect => {
-        const isAnchor = rect === anchor;
-        const rectLeft = this.timeToPixels(rect.startTime) + depthInset;
-        const rectRight = this.timeToPixels(
-          rect.endTime === null ? this.rightBoundaryTime : rect.endTime,
+        chromeRight = Math.max(
+          chromeRight,
+          this.timeToPixels(rect.endTime === null ? this.rightBoundaryTime : rect.endTime),
         );
-        // The anchor rectangle extends left under the gutter so the rail sits on it.
-        const washLeft = Math.max(isAnchor ? rectLeft - gutter : rectLeft, -2);
-        const washRight = Math.min(rectRight, this.width + 2);
-        const washWidth = Math.max(0, washRight - washLeft);
-        if (washWidth <= 0 || washRight < 0 || washLeft > this.width) return;
-        const { top, height } = rowGeometry(rect.rowStart, rect.rowEnd);
-        if (height <= 0) return;
-        this.ctx.beginPath();
-        if (typeof this.ctx.roundRect === 'function') {
-          this.ctx.roundRect(washLeft, top, washWidth, height, 3);
-        } else {
-          this.ctx.rect(washLeft, top, washWidth, height);
-        }
-        this.ctx.fill();
       });
+      const railX = pinActorLaneRailX(naturalRailX, chromeRight, this.width, depthInset);
+      if (railX === null) return;
+      const pinnedLeft = naturalRailX < depthInset;
 
-      // One rail + label per agent, on the anchor rectangle's rows.
-      const railX = this.timeToPixels(anchor.startTime) - gutter + depthInset;
-      if (railX > this.width) return;
+      if (phase === 'wash') {
+        // Time-clipped wash rectangles: paint only where the agent actually was.
+        this.ctx.globalAlpha = 0.16;
+        this.ctx.fillStyle = accent;
+        rects.forEach(rect => {
+          const extendGutter = pinnedLeft || rect === anchor;
+          const rectLeft = this.timeToPixels(rect.startTime) + depthInset;
+          const rectRight = this.timeToPixels(
+            rect.endTime === null ? this.rightBoundaryTime : rect.endTime,
+          );
+          // The rail sits on wash: the anchor (and a pinned-left gutter) extend left of the bars.
+          const rawLeft = extendGutter ? Math.min(rectLeft - gutter, railX) : rectLeft;
+          const washLeft = Math.max(rawLeft, -2);
+          const washRight = Math.min(rectRight, this.width + 2);
+          const washWidth = Math.max(0, washRight - washLeft);
+          if (washWidth <= 0 || washRight < 0 || washLeft > this.width) return;
+          const { top, height } = rowGeometry(rect.rowStart, rect.rowEnd);
+          if (height <= 0) return;
+          this.fillActorLaneRoundRect(washLeft, top, washWidth, height);
+        });
+        return;
+      }
+
+      // One rail + label per agent, on the anchor rectangle's rows. Drawn after
+      // bars so a start that has scrolled off the left still keeps its chrome.
       const { rowCount, top, height } = rowGeometry(anchor.rowStart, anchor.rowEnd);
       if (height <= 0) return;
+
+      if (pinnedLeft) {
+        this.ctx.globalAlpha = 1;
+        this.ctx.fillStyle = colors.background;
+        this.fillActorLaneRoundRect(railX, top, gutter, height);
+        this.ctx.globalAlpha = 0.16;
+        this.ctx.fillStyle = accent;
+        this.fillActorLaneRoundRect(railX, top, gutter, height);
+      }
 
       this.ctx.globalAlpha = 0.95;
       this.ctx.fillStyle = accent;
@@ -1329,6 +1360,7 @@ export class FlameChart extends Component<Props, State> {
         : 1;
 
     this.ctx.fillStyle = colors.flames.main;
+    let labelColor = colors.text;
     /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
     if (activity.categories.length > 0 && activity.categories[0]) {
       // ⚠️ don't always just show the color belonging to category 0... need a better way
@@ -1336,9 +1368,11 @@ export class FlameChart extends Component<Props, State> {
         element => element.id === activity.categories[0],
       );
       if (cat) {
-        this.ctx.fillStyle = this.props.darkerAsWeGoDown
+        const fill = this.props.darkerAsWeGoDown
           ? shade(0.1 * block.level, cat.color_background)
           : cat.color_background;
+        this.ctx.fillStyle = fill;
+        labelColor = readableTextOn(fill, cat.color_text);
       }
     }
 
@@ -1372,27 +1406,29 @@ export class FlameChart extends Component<Props, State> {
     }
 
     if (collapsed) return;
+
+    let textLeft = blockX + FlameChart.textPadding.x;
+    const rootId = this.actorLaneLayout?.rootIdByActivity[String(activity.id)];
+    if (rootId != null && block.startTime < this.leftBoundaryTime) {
+      const lane = this.actorLaneLayout?.lanes.find(
+        entry => String(entry.rootActivityId) === String(rootId),
+      );
+      const stickyGutter = FlameChart.actorLaneGutter
+        + (lane ? lane.depth * FlameChart.actorLaneDepthInset : 0);
+      textLeft = Math.max(textLeft, stickyGutter + FlameChart.textPadding.x);
+    }
+    const textBudget = (blockX + blockWidth - FlameChart.textPadding.x) - textLeft;
+    if (textBudget <= 0) return;
+
     // ⚠️ chrome devtools caches the text widths for perf. If I notice that becoming an issue, I will look into doing the same.
     /** ⚠️ Emoji's need fixing in here. */
     const text = trimTextMiddle(
       this.ctx,
       label,
-      blockWidth - 2 * FlameChart.textPadding.x,
+      textBudget,
     );
 
-    /* ⚠️ this is redundant, we do it up above. need to refactor a little */
-    /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
-    if (activity.categories.length > 0 && activity.categories[0]) {
-      // ⚠️ don't always just show the color belonging to category 0... need a better way
-      const cat = this.props.categories.find(
-        element => element.id === activity.categories[0],
-      );
-      if (cat) {
-        this.ctx.fillStyle = cat.color_text || '#000000';
-      }
-    } else {
-      this.ctx.fillStyle = colors.text;
-    }
+    this.ctx.fillStyle = labelColor;
     // Center the label vertically within the bar (bar heights vary once agent
     // lanes inset their bars, so a fixed baseline would sit off-center).
     const prevBaseline = this.ctx.textBaseline;
@@ -1403,7 +1439,7 @@ export class FlameChart extends Component<Props, State> {
       this.ctx.fillText(text, blockX + blockWidth - FlameChart.textPadding.x, textY);
       this.ctx.textAlign = 'left';
     } else {
-      this.ctx.fillText(text, blockX + FlameChart.textPadding.x, textY);
+      this.ctx.fillText(text, textLeft, textY);
     }
     this.ctx.textBaseline = prevBaseline;
 
