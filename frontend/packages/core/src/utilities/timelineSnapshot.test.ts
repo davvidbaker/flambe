@@ -1,7 +1,11 @@
+import { describe, expect, it, vi } from 'vitest';
 import { createAppChartFixture } from '../storybook/fixtureTrace';
 import {
   buildTimelineSnapshot,
+  downloadTimelineSnapshot,
+  formatTimelineSnapshotJson,
   isTimelineSnapshot,
+  timelineSnapshotDownloadName,
 } from './timelineSnapshot';
 
 const now = 1_700_000_000_000;
@@ -236,6 +240,41 @@ describe('buildTimelineSnapshot', () => {
       absoluteTimeLabels: true,
       twelveHourClock: true,
     });
+  });
+});
+
+describe('timeline snapshot JSON export', () => {
+  it('pretty-prints a parseable snapshot and names the download from the trace', () => {
+    const { source } = sourceFromFixture();
+    const snapshot = buildTimelineSnapshot(source, {
+      leftBoundaryTime: now - 1000,
+      rightBoundaryTime: now,
+      includedThreadIds: [1],
+      collapsedThreadIds: [],
+      exportedAt: now,
+    });
+    const json = formatTimelineSnapshotJson(snapshot);
+    expect(json.startsWith('{')).toBe(true);
+    expect(JSON.parse(json)).toEqual(snapshot);
+    expect(timelineSnapshotDownloadName('flambé / pulse', now)).toBe('flambé-pulse-2023-11-14.json');
+    expect(timelineSnapshotDownloadName('   ', now)).toBe('timeline-2023-11-14.json');
+  });
+
+  it('downloads through the provided sink', () => {
+    const { source } = sourceFromFixture();
+    const snapshot = buildTimelineSnapshot(source, {
+      leftBoundaryTime: now - 1000,
+      rightBoundaryTime: now,
+      includedThreadIds: [1],
+      collapsedThreadIds: [],
+      exportedAt: now,
+    });
+    const sink = vi.fn();
+    downloadTimelineSnapshot(snapshot, sink);
+    expect(sink).toHaveBeenCalledWith(
+      timelineSnapshotDownloadName(snapshot.fixture.traceName, now),
+      formatTimelineSnapshotJson(snapshot),
+    );
   });
 });
 
