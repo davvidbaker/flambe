@@ -20,6 +20,7 @@ import {
   createIndependentAgentRootsFixture,
   createResurrectionFixture,
   createSparseTraceFixture,
+  createStackedAgentWorkFixture,
   createStrangeSequenceFixture,
 } from './scenarioFixtures';
 
@@ -306,6 +307,44 @@ describe('app chart Storybook fixture', () => {
     }
     expect(projectActorFlames(processed.activities).length).toBeGreaterThan(8);
     expect(() => coalesceActorLaneChrome(layout, processed.blocks, 60 * 60 * 1000)).not.toThrow();
+  });
+
+  it('contains each agent stacked simultaneous work under one non-overlapping wash', () => {
+    const fixture = createStackedAgentWorkFixture(1_700_000_000_000);
+    const processed = processTrace(fixture.events, fixture.threads);
+    const layout = projectActorLaneLayout(processed.activities, processed.blocks);
+    const chrome = coalesceActorLaneChrome(layout, processed.blocks, 60 * 1000);
+
+    const rowsOf = (band: (typeof chrome)[number]): Set<number> => {
+      const rows = new Set<number>();
+      band.washRects.forEach(rect => {
+        for (let row = rect.rowStart; row <= rect.rowEnd; row += 1) rows.add(row);
+      });
+      return rows;
+    };
+
+    for (const band of chrome) {
+      // The wash contains every row on which this agent has an owned block.
+      const ownedRows = new Set<number>();
+      for (const block of processed.blocks) {
+        if (!band.rootActivityIds.some(id => String(layout.rootIdByActivity[String(block.activity_id)]) === String(id))) {
+          continue;
+        }
+        const row = layout.rowByBlock[blockLayoutKey(block)];
+        if (row !== undefined) ownedRows.add(row);
+      }
+      const washRows = rowsOf(band);
+      for (const row of ownedRows) expect(washRows.has(row)).toBe(true);
+    }
+
+    // No two agents' washes share a row.
+    for (let i = 0; i < chrome.length; i += 1) {
+      for (let j = i + 1; j < chrome.length; j += 1) {
+        if (String(chrome[i]!.threadId) !== String(chrome[j]!.threadId)) continue;
+        const a = rowsOf(chrome[i]!);
+        for (const row of rowsOf(chrome[j]!)) expect(a.has(row)).toBe(false);
+      }
+    }
   });
 
   it('washes independent --root bursts of the same agent as one presence', () => {
