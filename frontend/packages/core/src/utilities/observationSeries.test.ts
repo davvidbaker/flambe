@@ -9,6 +9,9 @@ import {
   hoverSamples,
   independentScale,
   localMidnight,
+  niceScale,
+  observationScale,
+  pickAxisSeries,
   nextLocalMidnight,
   observationTime,
   pathPoints,
@@ -100,6 +103,41 @@ describe('independentScale and sampleSeriesAtTime', () => {
     expect(independentScale([280, 320])).toEqual({ min: 280, max: 320 });
     expect(independentScale([3, 5])).toEqual({ min: 3, max: 5 });
     expect(independentScale([10])).toEqual({ min: 9, max: 11 });
+  });
+
+  it('nices a domain onto round ticks', () => {
+    expect(niceScale(0, 320).ticks).toEqual([0, 100, 200, 300, 400]);
+    expect(niceScale(0, 320).max).toBe(400);
+  });
+
+  it('includes zero for unipolar observation values so magnitude is readable', () => {
+    const scale = observationScale([280, 320]);
+    expect(scale.min).toBe(0);
+    expect(scale.max).toBe(400);
+    expect(scale.ticks[0]).toBe(0);
+    expect(scale.ticks).toContain(400);
+  });
+
+  it('keeps a bipolar domain across zero', () => {
+    const scale = observationScale([-4, 6]);
+    expect(scale.min).toBeLessThan(0);
+    expect(scale.max).toBeGreaterThan(0);
+    expect(scale.ticks.some(tick => tick === 0)).toBe(true);
+  });
+
+  it('picks the first series until hover names a kind', () => {
+    const series = groupObservationSeries([
+      carbon('2026-09-04', 280),
+      mood(localMidnight('2026-09-04') + 4 * HOUR, 2),
+    ]);
+    expect(pickAxisSeries(series, [])?.kind).toBe('carbon');
+    expect(pickAxisSeries(series, [{
+      kind: 'mood',
+      value: 2,
+      unit: null,
+      color: series[1].color,
+    }])?.kind).toBe('mood');
+    expect(pickAxisSeries([], [])).toBeNull();
   });
 
   it('holds a dated value through the local day and interpolates undated points', () => {
