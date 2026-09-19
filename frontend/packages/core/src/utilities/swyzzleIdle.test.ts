@@ -37,6 +37,24 @@ describe('SwyzzleIdleGate', () => {
     vi.useRealTimers();
   });
 
+  it('schedules even when setTimeout throws if used as a method', () => {
+    const hostSetTimeout = function (this: unknown, handler: () => void, timeout?: number) {
+      if (this !== globalThis) throw new TypeError('Illegal invocation');
+      return globalThis.setTimeout(handler, timeout);
+    } as typeof setTimeout;
+    const hostClearTimeout = function (this: unknown, handle?: Parameters<typeof clearTimeout>[0]) {
+      if (this !== globalThis) throw new TypeError('Illegal invocation');
+      globalThis.clearTimeout(handle);
+    } as typeof clearTimeout;
+
+    const gate = new SwyzzleIdleGate(50, vi.fn(), {
+      setTimeout: hostSetTimeout,
+      clearTimeout: hostClearTimeout,
+    });
+    expect(() => gate.start()).not.toThrow();
+    gate.stop();
+  });
+
   it('shows after the idle interval and hides on wake', () => {
     vi.useFakeTimers();
     const onChange = vi.fn();

@@ -61,7 +61,11 @@ export class SwyzzleIdleGate {
     private readonly timeouts: {
       setTimeout: typeof setTimeout;
       clearTimeout: typeof clearTimeout;
-    } = { setTimeout, clearTimeout },
+    } = {
+      // Call through globalThis so browser host setTimeout is not invoked as a method.
+      setTimeout: (handler, timeout) => globalThis.setTimeout(handler, timeout),
+      clearTimeout: handle => globalThis.clearTimeout(handle),
+    },
   ) {}
 
   start(): void {
@@ -87,7 +91,7 @@ export class SwyzzleIdleGate {
 
   private schedule(): void {
     this.clearTimer();
-    this.timer = this.timeouts.setTimeout(() => {
+    this.timer = this.timeouts.setTimeout.call(globalThis, () => {
       this.timer = null;
       this.setShowing(true);
     }, this.idleMs);
@@ -95,7 +99,7 @@ export class SwyzzleIdleGate {
 
   private clearTimer(): void {
     if (this.timer === null) return;
-    this.timeouts.clearTimeout(this.timer);
+    this.timeouts.clearTimeout.call(globalThis, this.timer);
     this.timer = null;
   }
 
