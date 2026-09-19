@@ -68,7 +68,7 @@ David chose a sustained wash across all of an agent’s owned activities so shor
 - Frontend chrome helpers and Storybook fixtures should use **rail / wash / gutter / activity block / fork** consistently in comments and names.
 - `actorAccentColor` (or successor) should key off provider, not display name.
 - Flame projection coalesces all same-agent roots on a thread into one wash before painting chrome.
-- The wash is emitted as `washRects` clipped to each row's actual occupancy, so it never covers a neighbour or human block sharing a row at another time, and **no two washes overlap** — every row is washed by at most one agent (a delegated child's rows are the child's alone).
+- The wash is emitted as `washRects`: a solid envelope over each contiguous run of the agent's own rows, spanning its full time range, so stacked simultaneous same-agent work is *contained* under one wash instead of stair-stepping around each nested block. Because each agent's rows are exclusive to its band, **no two washes overlap** — a delegated child's row breaks the run and stays the child's own wash.
 - Category bar fill remains independent of rail/wash color.
 
 ## Addendum: per-agent row bands, scoped to the viewport
