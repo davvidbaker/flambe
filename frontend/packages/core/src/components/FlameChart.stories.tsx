@@ -12,6 +12,7 @@ import {
   createHumanResumeDuringConcurrentWorkFixture,
   createResurrectionFixture,
   createShortAgentFlamesFixture,
+  createIndependentAgentRootsFixture,
   createSparseTraceFixture,
   createStrangeSequenceFixture,
 } from '../storybook/scenarioFixtures';
@@ -99,6 +100,12 @@ export const DenseShortWork: Story = {
 export const ShortAgentFlames: Story = {
   args: {
     fixture: createShortAgentFlamesFixture(),
+  },
+};
+
+export const IndependentAgentRoots: Story = {
+  args: {
+    fixture: createIndependentAgentRootsFixture(),
   },
 };
 

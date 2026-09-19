@@ -28,6 +28,14 @@ function block(activity_id: number, startTime: number, endTime?: number): TraceB
   };
 }
 
+function rowsOfWash(band: { washRects: Array<{ rowStart: number; rowEnd: number }> }): number[] {
+  const rows: number[] = [];
+  for (const rect of band.washRects) {
+    for (let row = rect.rowStart; row <= rect.rowEnd; row += 1) rows.push(row);
+  }
+  return rows;
+}
+
 describe('actor flame projection', () => {
   it('starts a flame when an agent branches from human work', () => {
     const activities = {
@@ -122,17 +130,18 @@ describe('nested actor sublane layout', () => {
 
     const layout = projectActorLaneLayout(activities, blocks);
 
+    // Human base stack first, then each agent in its own contiguous band.
     expect(layout.rowByActivity).toMatchObject({
       90: 0,
       100: 1,
       101: 2,
-      110: 4,
+      110: 3,
     });
     expect(layout.lanes).toMatchObject([
       { rootActivityId: 100, rowStart: 1, rowEnd: 2, depth: 0, parentLaneRootId: null },
-      { rootActivityId: 110, rowStart: 4, rowEnd: 4, depth: 0, parentLaneRootId: null },
+      { rootActivityId: 110, rowStart: 3, rowEnd: 3, depth: 0, parentLaneRootId: null },
     ]);
-    expect(layout.maxRowsByThread['1']).toBe(5);
+    expect(layout.maxRowsByThread['1']).toBe(4);
   });
 
   it('nests a delegated agent lane inside the parent actor band', () => {
@@ -173,7 +182,7 @@ describe('nested actor sublane layout', () => {
     });
   });
 
-  it('leaves a gap row between stacked non-nested agents but not before nested ones', () => {
+  it('packs each agent in its own contiguous band with delegated child inside', () => {
     const activities = {
       90: activity({ id: 90 }),
       100: activity({ id: 100, parent_id: 90, agent_id: 'steve', agent_name: 'Steve' }),
@@ -190,9 +199,13 @@ describe('nested actor sublane layout', () => {
     ];
 
     const layout = projectActorLaneLayout(activities, blocks);
+    // Human row 0; Steve's band next; Belinda's band (with Nora nested) below,
+    // contiguous and disjoint from Steve's — no interleaving, no spacer.
     expect(layout.rowByActivity['100']).toBe(1);
-    expect(layout.rowByActivity['110']).toBe(3);
-    expect(layout.rowByActivity['121']).toBe(5);
+    expect(layout.rowByActivity['110']).toBe(2);
+    expect(layout.rowByActivity['111']).toBe(3);
+    expect(layout.rowByActivity['121']).toBe(4);
+    // Nora (delegated) sits directly under her parent inside Belinda's band.
     expect(layout.rowByActivity['121'] - layout.rowByActivity['111']).toBe(1);
   });
 
@@ -251,7 +264,7 @@ describe('nested actor sublane layout', () => {
     expect(layout.rowByActivity['270']).toBe(1);
   });
 
-  it('reuses rows for sequential non-overlapping roots like a flame chart', () => {
+  it('reuses a row for sequential non-overlapping human roots; an agent gets its own band', () => {
     const activities = {
       1: activity({ id: 1, name: 'Morning' }),
       2: activity({ id: 2, name: 'Afternoon' }),
@@ -265,12 +278,14 @@ describe('nested actor sublane layout', () => {
 
     const layout = projectActorLaneLayout(activities, blocks);
 
+    // Sequential human roots still share a row; the agent gets its own band even
+    // though it does not overlap in time, so its wash stays on rows it owns.
     expect(layout.rowByActivity).toMatchObject({
       1: 0,
       2: 0,
-      3: 0,
+      3: 1,
     });
-    expect(layout.maxRowsByThread['1']).toBe(1);
+    expect(layout.maxRowsByThread['1']).toBe(2);
   });
 
   it('reuses a row for sequential siblings under an overlapping parent', () => {
@@ -364,7 +379,7 @@ describe('nested actor sublane layout', () => {
     expect(layout.rowByBlock[blockLayoutKey(resume)]).toBe(layout.rowByActivity['3']);
   });
 
-  it('stacks a resumed agent root below concurrent sibling agent work', () => {
+  it('keeps a resumed agent in its own band, separate from concurrent agent work', () => {
     const begin = { ...block(1, 0, 10), beginning: 'B' as const, ending: 'S' as const };
     const gap = block(2, 15, 70);
     const child = block(3, 20, 40);
@@ -384,15 +399,20 @@ describe('nested actor sublane layout', () => {
 
     const layout = projectActorLaneLayout(activities, [begin, gap, child, resume]);
 
-    expect(layout.rowByBlock[blockLayoutKey(begin)]).toBe(0);
-    expect(layout.rowByBlock[blockLayoutKey(resume)]).toBe(
-      layout.rowByBlock[blockLayoutKey(gap)] + 1,
-    );
+    // Claude's begin and resume share Claude's own band row (they do not overlap),
+    // while Composer occupies a separate band below — no interleaving.
+    const beginRow = layout.rowByBlock[blockLayoutKey(begin)];
+    const resumeRow = layout.rowByBlock[blockLayoutKey(resume)];
+    const gapRow = layout.rowByBlock[blockLayoutKey(gap)];
+    const childRow = layout.rowByBlock[blockLayoutKey(child)];
+    expect(resumeRow).toBe(beginRow);
+    expect(gapRow).toBeGreaterThan(beginRow);
+    expect(childRow).toBe(gapRow + 1);
   });
 });
 
 describe('coalesceActorLaneChrome', () => {
-  it('merges same-agent flames when the gap is within one grid tick', () => {
+  it('puts all same-agent owned flames in one sustained wash, including large gaps', () => {
     const activities = {
       1: activity({ id: 1 }),
       2: activity({ id: 2, parent_id: 1, agent_id: 'claude:miles', agent_name: 'Miles' }),
@@ -407,41 +427,47 @@ describe('coalesceActorLaneChrome', () => {
     ];
     const layout = projectActorLaneLayout(activities, blocks);
     const chrome = coalesceActorLaneChrome(layout, blocks, 10);
+    const miles = chrome.filter(band => band.actorName === 'Miles');
 
-    expect(chrome).toMatchObject([
-      {
-        actorName: 'Miles',
-        providerKey: 'claude',
-        rootActivityIds: [2, 3],
-        startTime: 10,
-        endTime: 35,
-      },
-      {
-        actorName: 'Miles',
-        rootActivityIds: [4],
-        startTime: 100,
-        endTime: 110,
-      },
-    ]);
+    expect(miles).toMatchObject([{
+      actorName: 'Miles',
+      providerKey: 'claude',
+      rootActivityIds: [2, 3, 4],
+      startTime: 10,
+      endTime: 110,
+    }]);
   });
 
-  it('keeps separate chrome when the gap exceeds one grid tick', () => {
+  it('keeps a nested delegated agent as its own inset chrome', () => {
     const activities = {
       1: activity({ id: 1 }),
       2: activity({ id: 2, parent_id: 1, agent_id: 'cursor:steve', agent_name: 'Steve' }),
-      3: activity({ id: 3, parent_id: 1, agent_id: 'cursor:steve', agent_name: 'Steve' }),
+      3: activity({ id: 3, parent_id: 2, agent_id: 'codex:nora', agent_name: 'Nora' }),
     };
     const blocks = [
       block(1, 0, 100),
-      block(2, 10, 20),
-      block(3, 40, 50),
+      block(2, 10, 80),
+      block(3, 20, 40),
     ];
     const layout = projectActorLaneLayout(activities, blocks);
-    expect(coalesceActorLaneChrome(layout, blocks, 10)).toHaveLength(2);
-    expect(coalesceActorLaneChrome(layout, blocks, 30)).toHaveLength(1);
+    const chrome = coalesceActorLaneChrome(layout, blocks, 10);
+    expect(chrome.map(band => band.actorName)).toEqual(['Steve', 'Nora']);
+    const steve = chrome.find(band => band.actorName === 'Steve')!;
+    const nora = chrome.find(band => band.actorName === 'Nora')!;
+    expect(steve.startTime).toBe(10);
+    expect(steve.endTime).toBe(80);
+    expect(nora.depth).toBe(1);
+    expect(nora.parentLaneRootId).toBe(2);
+
+    // Washes must not overlap: the parent does not wash the delegated child's row.
+    const noraRow = layout.rowByBlock[blockLayoutKey(block(3, 20, 40))];
+    const steveCoversNora = steve.washRects.some(rect =>
+      rect.rowStart <= noraRow && noraRow <= rect.rowEnd);
+    expect(steveCoversNora).toBe(false);
+    expect(nora.washRects.some(rect => rect.rowStart <= noraRow && noraRow <= rect.rowEnd)).toBe(true);
   });
 
-  it('does not coalesce parentless same-agent roots even when the gap is small', () => {
+  it('washes independent --root flames of the same agent as one presence', () => {
     const activities = {
       339: activity({ id: 339, agent_id: 'cursor:a', agent_name: 'Grok' }),
       340: activity({ id: 340, agent_id: 'cursor:a', agent_name: 'Grok' }),
@@ -451,11 +477,36 @@ describe('coalesceActorLaneChrome', () => {
       block(340, 12, 22),
     ];
     const chrome = coalesceActorLaneChrome(projectActorLaneLayout(activities, blocks), blocks, 10);
-    expect(chrome).toHaveLength(2);
-    expect(chrome.map(band => band.rootActivityIds)).toEqual([[339], [340]]);
+    expect(chrome).toHaveLength(1);
+    expect(chrome[0]).toMatchObject({
+      actorName: 'Grok',
+      rootActivityIds: [339, 340],
+      startTime: 0,
+      endTime: 22,
+    });
   });
 
-  it('does not paint a hull wash across rows between a suspend and a later resume', () => {
+  it('gives an agent its own band so its wash never shares a row with human work', () => {
+    const activities = {
+      2: activity({ id: 2, agent_id: 'cursor:ada', agent_name: 'Ada' }),
+      3: activity({ id: 3 }),
+      4: activity({ id: 4, agent_id: 'cursor:ada', agent_name: 'Ada' }),
+    };
+    const blocks = [block(2, 0, 10), block(3, 20, 30), block(4, 40, 50)];
+    const layout = projectActorLaneLayout(activities, blocks);
+    const humanRow = layout.rowByBlock[blockLayoutKey(block(3, 20, 30))];
+    const chrome = coalesceActorLaneChrome(layout, blocks, 10);
+
+    const ada = chrome.filter(band => band.actorName === 'Ada');
+    expect(ada).toHaveLength(1);
+    // Ada owns her own band row (the human block is on a different row), so her
+    // sustained wash is one continuous rectangle that never covers the human.
+    expect(ada[0]).toMatchObject({ rootActivityIds: [2, 4], startTime: 0, endTime: 50 });
+    const adaRows = new Set(rowsOfWash(ada[0]!));
+    expect(adaRows.has(humanRow)).toBe(false);
+  });
+
+  it('keeps each actor on its own band so washes never overlap (incl. suspend/resume)', () => {
     const begin = { ...block(2, 0, 10), beginning: 'B' as const, ending: 'S' as const };
     const gap = block(3, 15, 70);
     const resume = { ...block(2, 50, 80), beginning: 'R' as const, ending: 'E' as const };
@@ -472,16 +523,16 @@ describe('coalesceActorLaneChrome', () => {
     const layout = projectActorLaneLayout(activities, blocks);
     const chrome = coalesceActorLaneChrome(layout, blocks, 1);
 
-    const claude = chrome.filter(band => band.rootActivityIds.some(id => Number(id) === 2));
-    expect(claude.length).toBeGreaterThanOrEqual(2);
-    const rows = claude.flatMap(band => [band.rowStart, band.rowEnd]);
-    const beginRow = layout.rowByBlock[blockLayoutKey(begin)];
-    const resumeRow = layout.rowByBlock[blockLayoutKey(resume)];
-    expect(resumeRow).toBeGreaterThan(beginRow);
-    expect(Math.max(...rows) - Math.min(...rows)).toBeGreaterThanOrEqual(resumeRow - beginRow);
-    claude.forEach(band => {
-      expect(band.rowEnd - band.rowStart).toBeLessThan(resumeRow - beginRow);
-    });
+    const claude = chrome.find(band => band.rootActivityIds.some(id => Number(id) === 2))!;
+    const composer = chrome.find(band => band.rootActivityIds.some(id => Number(id) === 3))!;
+    expect(claude).toMatchObject({ startTime: 0, endTime: 80 });
+
+    // Claude's begin and resume share Claude's own band row; Composer sits on a
+    // separate band, so no row (and no wash) is shared between the two agents.
+    expect(layout.rowByBlock[blockLayoutKey(resume)]).toBe(layout.rowByBlock[blockLayoutKey(begin)]);
+    const claudeRows = new Set(rowsOfWash(claude));
+    const composerRows = new Set(rowsOfWash(composer));
+    for (const row of claudeRows) expect(composerRows.has(row)).toBe(false);
   });
 });
 
