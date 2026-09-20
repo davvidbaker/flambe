@@ -1,7 +1,10 @@
 # Phoenix 1.8 release and rollback checklist
 
-Use this checklist when promoting the Phoenix 1.8/Vite stack to the private
-Fly.io instance. Do not run these commands against `flambe_legacy_restored`.
+Operator script for the Fly.io app in this repository. For a **new** instance,
+start with [SELF_HOSTING.md](SELF_HOSTING.md).
+
+Use this checklist when promoting the Phoenix 1.8/Vite stack to that private
+Fly.io app. Do not run these commands against `flambe_legacy_restored`.
 
 The deploy shape is recorded in [ADR-007](ADR-007-private-fly-instance.md):
 one Fly Machine, Fly Postgres, invite-code registration.

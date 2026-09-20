@@ -22,13 +22,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/davvidbaker/flame-chart.git"
+    "url": "git+https://github.com/davvidbaker/flambe.git",
+    "directory": "frontend"
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/davvidbaker/flame-chart/issues"
+    "url": "https://github.com/davvidbaker/flambe/issues"
   },
-  "homepage": "https://github.com/davvidbaker/flame-chart#readme",
+  "homepage": "https://github.com/davvidbaker/flambe#readme",
   "devDependencies": {
     "@babel/core": "^8.0.1",
     "@babel/preset-env": "^8.0.2",
