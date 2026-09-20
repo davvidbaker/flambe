@@ -11,7 +11,7 @@ const HOUR = 60 * MINUTE;
 const categories: Category[] = [
   { id: 1, name: 'question', color_background: '#efc360', color_text: '#000000' },
   { id: 2, name: 'evidence', color_background: '#60a5fa', color_text: '#000000' },
-  { id: 3, name: 'principle', color_background: '#a78bfa', color_text: '#ffffff' },
+  { id: 3, name: 'principle', color_background: '#a78bfa', color_text: '#000000' },
   { id: 4, name: 'design', color_background: '#34d399', color_text: '#000000' },
 ];
 

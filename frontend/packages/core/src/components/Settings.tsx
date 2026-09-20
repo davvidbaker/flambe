@@ -4,18 +4,46 @@ import styled from 'styled-components';
 
 import AppModal from '../components/AppModal';
 import ApiTokensPanel from './ApiTokensPanel';
-import { hideSettings as hideSettingsAction, toggleSetting } from '../actions';
+import { hideSettings as hideSettingsAction, setSetting, toggleSetting } from '../actions';
 import type { SettingsState } from '../reducers/settings';
 import { commitUrl, fetchBuildInfo, shortSha, type BuildInfo } from '../utilities/buildInfo';
+import {
+  SWYZZLE_IDLE_SECONDS_MAX,
+  SWYZZLE_IDLE_SECONDS_MIN,
+} from '../utilities/swyzzleIdle';
+import { SWYZZLE_EFFECTS } from '../vendor/swyzzle';
 
 type BooleanSettingKey = {
   [Key in keyof SettingsState]: SettingsState[Key] extends boolean ? Key : never;
 }[keyof SettingsState];
 
+type StringSettingKey = {
+  [Key in keyof SettingsState]: SettingsState[Key] extends string ? Key : never;
+}[keyof SettingsState];
+
+type NumberSettingKey = {
+  [Key in keyof SettingsState]: SettingsState[Key] extends number ? Key : never;
+}[keyof SettingsState];
+
+interface SelectSettingDefinition {
+  copy: string;
+  options: readonly string[];
+  setting: StringSettingKey;
+}
+
+interface NumberSettingDefinition {
+  copy: string;
+  max: number;
+  min: number;
+  setting: NumberSettingKey;
+}
+
 interface SettingDefinition {
   copy: string;
   description?: string;
   setting: BooleanSettingKey;
+  number?: NumberSettingDefinition;
+  select?: SelectSettingDefinition;
   subsettings?: SettingDefinition[];
 }
 
@@ -89,6 +117,23 @@ const DEVELOPER_SETTINGS: SettingDefinition[] = [
     description:
       'Label flame-chart blocks with activity id instead of name, for matching what you see to database events.',
   },
+  {
+    setting: 'swyzzle',
+    copy: 'Swyzzle',
+    description:
+      'After the configured idle time, melt the flame chart. Move the pointer to stir it. Space or Escape clears it.',
+    number: {
+      copy: 'Idle seconds',
+      setting: 'swyzzleIdleSeconds',
+      min: SWYZZLE_IDLE_SECONDS_MIN,
+      max: SWYZZLE_IDLE_SECONDS_MAX,
+    },
+    select: {
+      copy: 'Shader',
+      setting: 'swyzzleEffect',
+      options: SWYZZLE_EFFECTS,
+    },
+  },
 ];
 
 const Setting = styled.div`
@@ -106,6 +151,19 @@ const Subsetting = styled.div<{ $disabled: boolean }>`
   margin-left: 20px;
 
   color: ${props => (props.$disabled ? 'lightgrey' : 'inherit')};
+`;
+
+const ShaderSelect = styled.select`
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+`;
+
+const IdleSecondsInput = styled.input`
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  width: 4.5em;
 `;
 
 const Wrapper = styled.div`
@@ -177,13 +235,15 @@ interface Props {
   hideSettings: () => unknown;
   settings: SettingsState;
   settingsVisible: boolean;
+  setSetting: (setting: string, value: boolean | string | number) => unknown;
   toggleSetting: (setting: BooleanSettingKey) => unknown;
 }
 
 function renderSetting(
-  { setting, copy, description, subsettings }: SettingDefinition,
+  { setting, copy, description, number, select, subsettings }: SettingDefinition,
   settings: SettingsState,
   toggleSetting: (setting: BooleanSettingKey) => unknown,
+  setSettingValue: (setting: string, value: boolean | string | number) => unknown,
 ) {
   return (
     <li key={setting}>
@@ -196,6 +256,38 @@ function renderSetting(
         />
         <label htmlFor={setting}>{copy}</label>
         <span>{description}</span>
+        {number && (
+          <Subsetting $disabled={!settings[setting]}>
+            <label htmlFor={number.setting}>{number.copy}</label>
+            <IdleSecondsInput
+              id={number.setting}
+              type="number"
+              min={number.min}
+              max={number.max}
+              step={1}
+              value={Number(settings[number.setting])}
+              disabled={!settings[setting]}
+              onChange={event => setSettingValue(number.setting, event.target.valueAsNumber)}
+            />
+          </Subsetting>
+        )}
+        {select && (
+          <Subsetting $disabled={!settings[setting]}>
+            <label htmlFor={select.setting}>{select.copy}</label>
+            <ShaderSelect
+              id={select.setting}
+              value={String(settings[select.setting])}
+              disabled={!settings[setting]}
+              onChange={event => setSettingValue(select.setting, event.target.value)}
+            >
+              {select.options.map(option => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </ShaderSelect>
+          </Subsetting>
+        )}
         {subsettings &&
           subsettings.map(
             ({ copy: subCopy, description: subDescription, setting: subsetting }) => (
@@ -223,6 +315,7 @@ const Settings = ({
   settingsVisible,
   hideSettings,
   settings,
+  setSetting: setSettingValue,
   toggleSetting,
 }: Props) => {
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
@@ -253,12 +346,14 @@ const Settings = ({
     <Wrapper>
       <h1 style={{ marginTop: 0 }}>Settings</h1>
       <ul>
-        {SETTINGS.map(item => renderSetting(item, settings, toggleSetting))}
+        {SETTINGS.map(item => renderSetting(item, settings, toggleSetting, setSettingValue))}
       </ul>
       <DeveloperPanel>
         <h2>Developer</h2>
         <ul>
-          {DEVELOPER_SETTINGS.map(item => renderSetting(item, settings, toggleSetting))}
+          {DEVELOPER_SETTINGS.map(item =>
+            renderSetting(item, settings, toggleSetting, setSettingValue),
+          )}
         </ul>
         <VersionBlock>
           <dt>Deployed commit</dt>
@@ -296,6 +391,8 @@ export default connect(
   }),
   dispatch => ({
     hideSettings: () => dispatch(hideSettingsAction()),
+    setSetting: (setting: string, value: boolean | string | number) =>
+      dispatch(setSetting(setting, value)),
     toggleSetting: (setting: BooleanSettingKey) => dispatch(toggleSetting(setting)),
   }),
 )(Settings);

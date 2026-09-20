@@ -1,6 +1,7 @@
 import type { EventPhase } from './TraceEvent';
 
 export interface FlameBlockDetails {
+  blockHeight: number;
   blockWidth: number;
   blockX: number;
   blockY: number;

@@ -9,6 +9,7 @@ import {
 } from '../actions';
 import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import { rootReducer } from '../rootReducer';
+import type { SettingsState } from '../reducers/settings';
 import type { Observation } from '../reducers/user';
 import { DAY, HOUR } from '../utilities/time';
 import type { SnapshotTimeLabels, SnapshotViewport } from '../utilities/timelineSnapshot';
@@ -76,6 +77,7 @@ export type ChartStoreExtras = {
   traces?: { id: AppChartFixture['traceId']; name: string }[];
   viewport?: SnapshotViewport;
   timeLabels?: SnapshotTimeLabels;
+  settings?: Partial<Pick<SettingsState, 'swyzzle' | 'showActivityIds' | 'darkerAsWeGoDown' | 'swyzzleEffect' | 'swyzzleIdleSeconds'>>;
 };
 
 export function viewportForFixture(
@@ -138,6 +140,12 @@ export function createChartStore(
   if (extras.timeLabels) {
     store.dispatch(setSetting('absoluteTimeLabels', extras.timeLabels.absoluteTimeLabels));
     store.dispatch(setSetting('twelveHourClock', extras.timeLabels.twelveHourClock));
+  }
+  const settings = { darkerAsWeGoDown: false, ...extras.settings };
+  for (const [setting, value] of Object.entries(settings)) {
+    if (typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number') {
+      store.dispatch(setSetting(setting, value));
+    }
   }
 
   return store;

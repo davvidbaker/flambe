@@ -1,4 +1,13 @@
 import { SETTING_SET, SETTING_TOGGLE, USER_FETCH } from '../actions';
+import {
+  clampSwyzzleIdleSeconds,
+  SWYZZLE_IDLE_SECONDS_DEFAULT,
+} from '../utilities/swyzzleIdle';
+import {
+  DEFAULT_SWYZZLE_EFFECT,
+  resolveSwyzzleEffect,
+  type SwyzzleEffect,
+} from '../vendor/swyzzle';
 
 export interface SettingsState {
   absoluteTimeLabels: boolean;
@@ -14,6 +23,12 @@ export interface SettingsState {
   reactiveThreadHeight: boolean;
   /** Dev: paint activity ids on blocks instead of names. */
   showActivityIds: boolean;
+  /** Dev: overlay the Swyzzle WebGL melt on the flame chart. */
+  swyzzle: boolean;
+  /** Dev: which Swyzzle shader to run; session-only like other developer settings. */
+  swyzzleEffect: SwyzzleEffect;
+  /** Dev: idle seconds before the Swyzzle overlay appears; session-only. */
+  swyzzleIdleSeconds: number;
   suspendResumeFlows: boolean;
   suspendResumeFlowsOnlyForFocusedActivity: boolean;
   uniformBlockHeight: boolean;
@@ -37,6 +52,9 @@ const defaultState: SettingsState = {
   activityMute: false,
   reactiveThreadHeight: true,
   showActivityIds: false,
+  swyzzle: false,
+  swyzzleEffect: DEFAULT_SWYZZLE_EFFECT,
+  swyzzleIdleSeconds: SWYZZLE_IDLE_SECONDS_DEFAULT,
   suspendResumeFlows: true,
   suspendResumeFlowsOnlyForFocusedActivity: false,
   uniformBlockHeight: false,
@@ -45,7 +63,7 @@ const defaultState: SettingsState = {
 type SettingsAction = {
   setting?: keyof SettingsState;
   type: string;
-  value?: boolean;
+  value?: boolean | string | number;
   data?: { settings?: Partial<Record<UserSettingKey, unknown>> };
 };
 
@@ -59,13 +77,23 @@ function settings(state: SettingsState = defaultState, action: SettingsAction): 
   }
 
   const setting = action.setting;
-  if (!setting || typeof state[setting] !== 'boolean') return state;
+  if (!setting || !(setting in state)) return state;
 
   if (action.type === SETTING_SET) {
-    return { ...state, [setting]: Boolean(action.value) } as SettingsState;
+    if (setting === 'swyzzleEffect') {
+      return { ...state, swyzzleEffect: resolveSwyzzleEffect(action.value) };
+    }
+    if (setting === 'swyzzleIdleSeconds') {
+      return { ...state, swyzzleIdleSeconds: clampSwyzzleIdleSeconds(action.value) };
+    }
+    if (typeof state[setting] === 'boolean') {
+      return { ...state, [setting]: Boolean(action.value) } as SettingsState;
+    }
+    return state;
   }
 
   if (action.type !== SETTING_TOGGLE) return state;
+  if (typeof state[setting] !== 'boolean') return state;
   return { ...state, [setting]: !state[setting] } as SettingsState;
 }
 
