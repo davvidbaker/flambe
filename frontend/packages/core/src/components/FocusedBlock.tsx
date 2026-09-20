@@ -24,6 +24,7 @@ const FocusBlock = styled.div`
   pointer-events: none;
   background: ${colors['focus-activity-bg']};
   outline: solid black 2px;
+  outline-offset: -2px;
 `;
 
 const HoverBlock = styled.div`
@@ -58,7 +59,7 @@ class FocusedBlock extends React.Component<Props> {
                 left: `${hoveredBlock.blockX}px`,
                 top: `${hoveredBlock.blockY + yOffset}px`,
                 width: `${hoveredBlock.blockWidth}px`,
-                height: `${flameChartRef.current?.blockHeight ?? 0}px`,
+                height: `${hoveredBlock.blockHeight}px`,
               }}
             />
           )}
@@ -70,7 +71,7 @@ class FocusedBlock extends React.Component<Props> {
                 left: `${focusedBlock.blockX}px`,
                 top: `${focusedBlock.blockY + yOffset}px`,
                 width: `${focusedBlock.blockWidth}px`,
-                height: `${flameChartRef.current?.blockHeight ?? 0}px`,
+                height: `${focusedBlock.blockHeight}px`,
               }}
             />
           )}
