@@ -314,6 +314,8 @@ defmodule FlambeNextWeb.ActivityControllerTest do
 
     assert json_response(conn, 200) == %{
              "data" => %{
+               "agent_id" => nil,
+               "agent_name" => nil,
                "description" => nil,
                "id" => activity.id,
                "name" => "Final",
@@ -667,6 +669,145 @@ defmodule FlambeNextWeb.ActivityControllerTest do
 
     assert json_response(conn, 404) == %{"error" => "NOT_FOUND"}
     assert Traces.get_user_activity!(user, activity.id).thread_id == thread.id
+  end
+
+  test "session can reassign an activity to a known agent or back to human", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Assign User", username: "assign-agent-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Assign trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, %{agent: agent}} = FlambeNext.Agents.identify(user, "cursor:steve", "Steve")
+
+    {:ok, activity, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Misattributed"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{activity}", %{"activity" => %{"agent_id" => agent.agent_id}})
+
+    assert %{
+             "data" => %{
+               "agent_id" => "cursor:steve",
+               "agent_name" => "Steve",
+               "id" => activity_id
+             }
+           } = json_response(conn, 200)
+
+    assert activity_id == activity.id
+    stored = Traces.get_user_activity!(user, activity.id)
+    assert stored.agent_id == "cursor:steve"
+    assert stored.agent_name == "Steve"
+
+    conn =
+      conn
+      |> recycle()
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{activity}", %{"activity" => %{"agent_id" => nil}})
+
+    assert %{"data" => %{"agent_id" => nil, "agent_name" => nil}} = json_response(conn, 200)
+    stored = Traces.get_user_activity!(user, activity.id)
+    assert stored.agent_id == nil
+    assert stored.agent_name == nil
+  end
+
+  test "session can assign an agent_id that is not yet in the agents table", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Unknown Agent", username: "unknown-agent-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Unknown agent trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+
+    {:ok, activity, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Stay human"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{activity}", %{
+        "activity" => %{"agent_id" => "cursor:nobody", "agent_name" => "Nobody"}
+      })
+
+    assert %{
+             "data" => %{"agent_id" => "cursor:nobody", "agent_name" => "Nobody"}
+           } = json_response(conn, 200)
+
+    stored = Traces.get_user_activity!(user, activity.id)
+    assert stored.agent_id == "cursor:nobody"
+    assert stored.agent_name == "Nobody"
+  end
+
+  test "session can assign an agent_id that already appears on the user's activities", %{
+    conn: conn
+  } do
+    {:ok, user} = Accounts.create_user(%{name: "Imported Agent", username: "imported-agent-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Imported agent trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+
+    {:ok, source, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Imported", "agent_id" => "import:miles", "agent_name" => "Miles"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    {:ok, target, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Human block"},
+        %{"timestamp_integer" => 2, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{target}", %{
+        "activity" => %{"agent_id" => source.agent_id}
+      })
+
+    assert %{
+             "data" => %{"agent_id" => "import:miles", "agent_name" => "Miles"}
+           } = json_response(conn, 200)
+  end
+
+  test "an API token cannot reassign activity agent identity", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Token Assign", username: "token-assign-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Token assign trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, _token, raw_token} = ApiTokens.create(user, "Cursor")
+    {:ok, %{agent: _agent}} = FlambeNext.Agents.identify(user, "cursor:nora", "Nora")
+
+    {:ok, activity, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Human work"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer #{raw_token}")
+      |> put_req_header("x-flambe-agent-id", "cursor:nora")
+      |> put(~p"/api/activities/#{activity}", %{"activity" => %{"agent_id" => "cursor:nora"}})
+
+    assert %{"data" => %{"agent_id" => nil, "agent_name" => nil}} = json_response(conn, 200)
+    stored = Traces.get_user_activity!(user, activity.id)
+    assert stored.agent_id == nil
   end
 
   defp authenticated_as(conn, user) do

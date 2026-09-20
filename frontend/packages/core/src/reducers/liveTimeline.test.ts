@@ -77,6 +77,41 @@ describe('live timeline events', () => {
     expect(replayed.blocks).toHaveLength(1);
   });
 
+  it('keeps a locally assigned agent when a later socket event still snapshots the old one', () => {
+    const pulse = { ...activity, agent_id: 'cursor:pulse', agent_name: 'pulse' };
+    const nora = { ...activity, agent_id: 'cursor:nora', agent_name: 'Nora' };
+    const started = { ...beginEvent, activity: pulse };
+    const initial = liveTimeline(undefined, { type: '@@INIT' });
+    const processed = processTrace([started], [thread]);
+    const state: TimelineState = {
+      ...initial,
+      ...processed,
+      activities: {
+        ...processed.activities,
+        [String(activity.id)]: {
+          ...processed.activities[String(activity.id)],
+          agent_id: nora.agent_id,
+          agent_name: nora.agent_name,
+        },
+      },
+      events: [{ ...started, activity: nora }],
+      trace: { id: 99, name: 'Live agent trace', filterExcludes: [] },
+      lastCategory_id: processed.lastCategory_id ?? null,
+      lastThread_id: processed.lastThread_id ?? null,
+      minTime: processed.min - 1000 * 60 * 10,
+      maxTime: processed.max,
+    };
+
+    const next = liveTimeline(state, {
+      type: TIMELINE_EVENT_RECEIVED,
+      trace_id: 99,
+      event: { ...endEvent, activity: pulse },
+    });
+
+    expect(next.activities[String(activity.id)].agent_id).toBe('cursor:nora');
+    expect(next.activities[String(activity.id)].agent_name).toBe('Nora');
+  });
+
   it('materializes a thread that arrives with the first streamed event', () => {
     const initial = liveTimeline(undefined, { type: '@@INIT' });
     const state: TimelineState = {
