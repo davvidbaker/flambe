@@ -52,10 +52,12 @@ Create a `.env` in the project working directory (or set the same names in the
 shell; shell wins):
 
 ```dotenv
-FLAMBE_URL=https://flambe.fly.dev
+FLAMBE_URL=https://your-app.fly.dev
 FLAMBE_API_TOKEN=flb_...
 FLAMBE_TRACE_ID=1
 # FLAMBE_THREAD=flambe
 ```
 
-Mint a token in Flambe Settings → API tokens. See the [repository README](https://github.com/davvidbaker/flambe#coding-agent-cli) for commands (`start`, `end`, `message`, `observe`, local `serve`).
+Mint a token in Flambe Settings → API tokens. See the
+[repository README](https://github.com/davvidbaker/flambe#connect-coding-agents)
+for commands (`start`, `end`, `message`, `observe`, local `serve`).
