@@ -613,7 +613,7 @@ export function toggleSetting(setting: string) {
   };
 }
 
-export function setSetting(setting: string, value: boolean) {
+export function setSetting(setting: string, value: boolean | string) {
   return {
     type: SETTING_SET,
     setting,
