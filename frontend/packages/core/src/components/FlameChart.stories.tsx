@@ -18,6 +18,8 @@ import {
   createStrangeSequenceFixture,
 } from '../storybook/scenarioFixtures';
 import { createFrontiersFixture } from '../storybook/frontiersFixture';
+import { createNationalTreasureFixture } from '../storybook/nationalTreasureFixture';
+import { createPowerPlantFixture } from '../storybook/powerPlantFixture';
 import { createWinterStormUriFixture } from '../storybook/winterStormUriFixture';
 
 const meta = {
@@ -41,6 +43,18 @@ export const Frontiers: Story = {
 export const WinterStormUri: Story = {
   args: {
     fixture: createWinterStormUriFixture(),
+  },
+};
+
+export const NationalTreasure: Story = {
+  args: {
+    fixture: createNationalTreasureFixture(),
+  },
+};
+
+export const PowerPlantGantt: Story = {
+  args: {
+    fixture: createPowerPlantFixture(),
   },
 };
 
@@ -145,5 +159,19 @@ export const CollapsedThread: Story = {
 export const EmptyTrace: Story = {
   args: {
     fixture: createEmptyTraceFixture(),
+  },
+};
+
+export const Swyzzle: Story = {
+  args: {
+    fixture: createAppChartFixture(),
+    storeExtras: { settings: { swyzzle: true } },
+  },
+};
+
+export const SwyzzleFluid: Story = {
+  args: {
+    fixture: createAppChartFixture(),
+    storeExtras: { settings: { swyzzle: true, swyzzleEffect: 'fluid' } },
   },
 };
