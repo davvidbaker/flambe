@@ -10,7 +10,9 @@ you see it; when you come back up, you see that too.
 It can also show agentic work on the same chart. Coding agents report the same
 kind of nested activities, so human effort and agent effort share one flame.
 
-![Flambé timeline with nested human and agent activities across threads](docs/images/flambe-timeline.png)
+[![Flambé timeline with nested human and agent activities across threads](docs/images/flambe-timeline.png)](https://flambe-share.vercel.app)
+
+[Live demo](https://flambe-share.vercel.app) — pan and zoom a sample timeline in the browser.
 
 ## Try it on one machine
 
