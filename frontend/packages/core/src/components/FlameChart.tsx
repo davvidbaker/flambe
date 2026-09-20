@@ -1037,7 +1037,10 @@ export class FlameChart extends Component<Props, State> {
           + rowStart * rowHeight
           + nestedPad
           + margin;
-        const unclampedHeight = Math.max(4, rowCount * rowHeight - nestedPad * 2 - margin * 2);
+        // Subtract the inter-row pixel (rowHeight = blockHeight + 1) so the wash
+        // pads the top and bottom bars symmetrically instead of leaving an extra
+        // pixel at the bottom.
+        const unclampedHeight = Math.max(4, rowCount * rowHeight - nestedPad * 2 - margin * 2 - 1);
         const height = Math.max(0, Math.min(unclampedHeight, nextOffset - top));
         return { rowCount, top, height };
       };
@@ -1391,7 +1394,11 @@ export class FlameChart extends Component<Props, State> {
     } else {
       this.ctx.fillStyle = colors.text;
     }
-    const textY = blockY + Math.min(FlameChart.textPadding.y, blockHeight - 4);
+    // Center the label vertically within the bar (bar heights vary once agent
+    // lanes inset their bars, so a fixed baseline would sit off-center).
+    const prevBaseline = this.ctx.textBaseline;
+    this.ctx.textBaseline = 'middle';
+    const textY = blockY + blockHeight / 2;
     if (this.props.rightAlignTimelineText) {
       this.ctx.textAlign = 'right';
       this.ctx.fillText(text, blockX + blockWidth - FlameChart.textPadding.x, textY);
@@ -1399,6 +1406,7 @@ export class FlameChart extends Component<Props, State> {
     } else {
       this.ctx.fillText(text, blockX + FlameChart.textPadding.x, textY);
     }
+    this.ctx.textBaseline = prevBaseline;
 
     // visually denote a resumed or resurrected activity
     if (block.beginning === 'R' || block.beginning === 'X') {
