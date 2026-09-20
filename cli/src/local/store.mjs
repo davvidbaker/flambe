@@ -545,6 +545,8 @@ export class LocalStore {
       weight: row.weight,
       parent_id: row.parent_id,
       thread_id: row.thread_id,
+      agent_id: row.agent_id ?? null,
+      agent_name: row.agent_name ?? null,
     };
   }
 
@@ -559,6 +561,13 @@ export class LocalStore {
         parent_id = COALESCE(?, parent_id)
       WHERE id = ?
     `).run(attrs.name ?? null, attrs.description ?? null, attrs.weight ?? null, attrs.parent_id ?? null, current.id);
+
+    if (Object.prototype.hasOwnProperty.call(attrs, 'agent_id')) {
+      const agentId = attrs.agent_id == null || attrs.agent_id === '' ? null : String(attrs.agent_id);
+      const agentName = agentId == null ? null : this.#activityAgentName(userId, agentId, attrs);
+      this.db.prepare('UPDATE activities SET agent_id = ?, agent_name = ? WHERE id = ?')
+        .run(agentId, agentName, current.id);
+    }
 
     if (Array.isArray(attrs.category_ids)) {
       this.db.prepare('DELETE FROM activities_categories WHERE activity_id = ?').run(current.id);
@@ -669,6 +678,11 @@ export class LocalStore {
         timestamp: isoFromMs(row.timestamp_ms),
       })),
       observations: this.listObservations(userId),
+      agents: this.listAgents(userId).map(agent => ({
+        agent_id: agent.agent_id,
+        name: agent.name,
+        platform: agent.platform ?? null,
+      })),
     };
   }
 
@@ -805,6 +819,24 @@ export class LocalStore {
         message: event.message,
       })),
     };
+  }
+
+  #activityAgentName(userId, agentId, attrs) {
+    const known = this.db.prepare(
+      'SELECT name FROM agents WHERE user_id = ? AND agent_id = ?',
+    ).get(userId, agentId);
+    if (known?.name) return known.name;
+    const snapshot = this.db.prepare(`
+      SELECT activities.agent_name FROM activities
+      JOIN threads ON threads.id = activities.thread_id
+      JOIN traces ON traces.id = threads.trace_id
+      WHERE traces.user_id = ? AND activities.agent_id = ?
+        AND activities.agent_name IS NOT NULL AND activities.agent_name != ''
+      LIMIT 1
+    `).get(userId, agentId);
+    if (snapshot?.agent_name) return snapshot.agent_name;
+    if (typeof attrs.agent_name === 'string' && attrs.agent_name !== '') return attrs.agent_name;
+    return agentId;
   }
 
   #eventPayload(event) {

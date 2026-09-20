@@ -167,8 +167,10 @@ defmodule FlambeNextWeb.ActivityController do
   # Agents may not reassign identity through the activity body. The SPA (session)
   # can, so a human can correct who owns a block.
   defp maybe_drop_agent_identity(conn, attrs) do
-    if Map.has_key?(conn.assigns, :api_token) do
-      Map.drop(attrs, ["agent_id", "agent_name"])
+    if conn.assigns[:api_token] do
+      attrs
+      |> Map.drop(["agent_id", "agent_name"])
+      |> Map.drop([:agent_id, :agent_name])
     else
       attrs
     end

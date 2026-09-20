@@ -294,7 +294,14 @@ async function dispatch(store, req, url, body, { auth, agent }) {
       return { status: 200, json: { data: activity } };
     }
     if (method === 'PUT') {
-      const activity = store.updateActivity(userId, id, body.activity ?? {});
+      let attrs = body.activity ?? {};
+      // Same rule as Phoenix: bearer tokens cannot reassign identity; a session can.
+      if (auth.tokenName !== null) {
+        attrs = Object.fromEntries(
+          Object.entries(attrs).filter(([key]) => key !== 'agent_id' && key !== 'agent_name'),
+        );
+      }
+      const activity = store.updateActivity(userId, id, attrs);
       if (activity?.error === 'not_found' || !activity) return { status: 404, json: { error: 'NOT_FOUND' } };
       return { status: 200, json: { data: activity } };
     }

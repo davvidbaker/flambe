@@ -197,6 +197,74 @@ test('login on the local server sets a session cookie and serves the user dashbo
     assert.equal(user.status, 200);
     const dashboard = await user.json();
     assert.equal(dashboard.data.traces[0].name, 'Main');
+    assert.deepEqual(dashboard.data.agents, []);
+  });
+});
+
+test('session can reassign an activity agent and a later trace fetch keeps it', async () => {
+  await withServer(async ({ origin, rawToken, traceId, store }) => {
+    store.identifyAgent(1, 'cursor:steve', 'Steve');
+    const created = store.createActivity(1, {
+      traceId,
+      threadId: 1,
+      activity: { name: 'Misattributed' },
+      event: { timestamp_integer: 1, phase: 'B' },
+    });
+
+    const login = await fetch(`${origin}/auth/identity/callback`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'anyone@local', password: 'ignored' }),
+    });
+    const cookie = login.headers.get('set-cookie').split(';')[0];
+
+    const assigned = await fetch(`${origin}/api/activities/${created.activity.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ activity: { agent_id: 'cursor:steve' } }),
+    });
+    assert.equal(assigned.status, 200);
+    assert.deepEqual(await assigned.json(), {
+      data: {
+        id: created.activity.id,
+        name: 'Misattributed',
+        description: null,
+        weight: null,
+        parent_id: null,
+        thread_id: 1,
+        agent_id: 'cursor:steve',
+        agent_name: 'Steve',
+      },
+    });
+
+    const tokenBlocked = await fetch(`${origin}/api/activities/${created.activity.id}`, {
+      method: 'PUT',
+      headers: {
+        authorization: `Bearer ${rawToken}`,
+        'content-type': 'application/json',
+        'x-flambe-agent-id': 'cursor:steve',
+      },
+      body: JSON.stringify({ activity: { agent_id: null } }),
+    });
+    assert.equal(tokenBlocked.status, 200);
+    assert.equal((await tokenBlocked.json()).data.agent_id, 'cursor:steve');
+
+    const cleared = await fetch(`${origin}/api/activities/${created.activity.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ activity: { agent_id: null } }),
+    });
+    assert.equal((await cleared.json()).data.agent_id, null);
+
+    await fetch(`${origin}/api/activities/${created.activity.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ activity: { agent_id: 'cursor:steve' } }),
+    });
+
+    const trace = await fetch(`${origin}/api/traces/${traceId}`, { headers: { cookie } }).then(r => r.json());
+    assert.equal(trace.data.events[0].activity.agent_id, 'cursor:steve');
+    assert.equal(trace.data.events[0].activity.agent_name, 'Steve');
   });
 });
 

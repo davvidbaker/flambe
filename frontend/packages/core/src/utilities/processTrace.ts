@@ -292,7 +292,7 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
   return { activities, blocks, events: trace, lastCategory_id, lastThread_id, max: rightTime, min: leftTime, threadLevels, threads: threadsObject };
 }
 
-/** Keep a locally assigned actor when the trace is rebuilt from event snapshots. */
+/** Keep a locally assigned actor when a live socket event still snapshots the previous one. */
 export function preserveAssignedAgents(
   processed: Record<string, ProcessedActivity>,
   prior: Record<string, ProcessedActivity> | undefined,

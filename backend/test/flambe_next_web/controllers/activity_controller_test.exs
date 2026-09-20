@@ -716,6 +716,80 @@ defmodule FlambeNextWeb.ActivityControllerTest do
     assert stored.agent_name == nil
   end
 
+  test "session agent assignment is what a later trace fetch returns", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Reload User", username: "reload-agent-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Reload trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, %{agent: agent}} = FlambeNext.Agents.identify(user, "cursor:steve", "Steve")
+
+    {:ok, activity, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Misattributed"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put(~p"/api/activities/#{activity}", %{"activity" => %{"agent_id" => agent.agent_id}})
+
+    assert %{"data" => %{"agent_id" => "cursor:steve"}} = json_response(conn, 200)
+
+    conn = conn |> recycle() |> authenticated_as(user) |> get(~p"/api/traces/#{trace}")
+
+    assert %{
+             "data" => %{
+               "events" => [
+                 %{"activity" => %{"agent_id" => "cursor:steve", "agent_name" => "Steve"}}
+               ]
+             }
+           } = json_response(conn, 200)
+  end
+
+  test "session JSON PUT persists agent_id the way the SPA sends it", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "JSON Assign", username: "json-assign-user"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "JSON assign trace"})
+    [thread] = Traces.get_trace!(trace.id).threads
+    {:ok, %{agent: agent}} = FlambeNext.Agents.identify(user, "cursor:steve", "Steve")
+
+    {:ok, activity, _} =
+      Traces.create_activity(
+        trace,
+        thread,
+        nil,
+        %{"name" => "Misattributed"},
+        %{"timestamp_integer" => 1, "phase" => "B"}
+      )
+
+    conn =
+      conn
+      |> authenticated_as(user)
+      |> put_req_header("content-type", "application/json")
+      |> put(
+        ~p"/api/activities/#{activity}",
+        Jason.encode!(%{
+          "activity" => %{"agent_id" => agent.agent_id, "agent_name" => "Steve"}
+        })
+      )
+
+    assert %{"data" => %{"agent_id" => "cursor:steve", "agent_name" => "Steve"}} =
+             json_response(conn, 200)
+
+    stored = Traces.get_user_activity!(user, activity.id)
+    assert stored.agent_id == "cursor:steve"
+
+    conn = conn |> recycle() |> authenticated_as(user) |> get(~p"/api/traces/#{trace}")
+
+    assert %{
+             "data" => %{
+               "events" => [%{"activity" => %{"agent_id" => "cursor:steve"}}]
+             }
+           } = json_response(conn, 200)
+  end
+
   test "session can assign an agent_id that is not yet in the agents table", %{conn: conn} do
     {:ok, user} = Accounts.create_user(%{name: "Unknown Agent", username: "unknown-agent-user"})
     {:ok, trace} = Traces.create_trace(user, %{name: "Unknown agent trace"})
