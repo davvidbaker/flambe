@@ -7,6 +7,10 @@ import ApiTokensPanel from './ApiTokensPanel';
 import { hideSettings as hideSettingsAction, setSetting, toggleSetting } from '../actions';
 import type { SettingsState } from '../reducers/settings';
 import { commitUrl, fetchBuildInfo, shortSha, type BuildInfo } from '../utilities/buildInfo';
+import {
+  SWYZZLE_IDLE_SECONDS_MAX,
+  SWYZZLE_IDLE_SECONDS_MIN,
+} from '../utilities/swyzzleIdle';
 import { SWYZZLE_EFFECTS } from '../vendor/swyzzle';
 
 type BooleanSettingKey = {
@@ -17,16 +21,28 @@ type StringSettingKey = {
   [Key in keyof SettingsState]: SettingsState[Key] extends string ? Key : never;
 }[keyof SettingsState];
 
+type NumberSettingKey = {
+  [Key in keyof SettingsState]: SettingsState[Key] extends number ? Key : never;
+}[keyof SettingsState];
+
 interface SelectSettingDefinition {
   copy: string;
   options: readonly string[];
   setting: StringSettingKey;
 }
 
+interface NumberSettingDefinition {
+  copy: string;
+  max: number;
+  min: number;
+  setting: NumberSettingKey;
+}
+
 interface SettingDefinition {
   copy: string;
   description?: string;
   setting: BooleanSettingKey;
+  number?: NumberSettingDefinition;
   select?: SelectSettingDefinition;
   subsettings?: SettingDefinition[];
 }
@@ -105,7 +121,13 @@ const DEVELOPER_SETTINGS: SettingDefinition[] = [
     setting: 'swyzzle',
     copy: 'Swyzzle',
     description:
-      'After 7 seconds idle, melt the flame chart. Move the pointer to stir it. Space or Escape clears it.',
+      'After the configured idle time, melt the flame chart. Move the pointer to stir it. Space or Escape clears it.',
+    number: {
+      copy: 'Idle seconds',
+      setting: 'swyzzleIdleSeconds',
+      min: SWYZZLE_IDLE_SECONDS_MIN,
+      max: SWYZZLE_IDLE_SECONDS_MAX,
+    },
     select: {
       copy: 'Shader',
       setting: 'swyzzleEffect',
@@ -135,6 +157,13 @@ const ShaderSelect = styled.select`
   display: block;
   margin-top: 4px;
   font-size: 11px;
+`;
+
+const IdleSecondsInput = styled.input`
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  width: 4.5em;
 `;
 
 const Wrapper = styled.div`
@@ -206,15 +235,15 @@ interface Props {
   hideSettings: () => unknown;
   settings: SettingsState;
   settingsVisible: boolean;
-  setSetting: (setting: string, value: boolean | string) => unknown;
+  setSetting: (setting: string, value: boolean | string | number) => unknown;
   toggleSetting: (setting: BooleanSettingKey) => unknown;
 }
 
 function renderSetting(
-  { setting, copy, description, select, subsettings }: SettingDefinition,
+  { setting, copy, description, number, select, subsettings }: SettingDefinition,
   settings: SettingsState,
   toggleSetting: (setting: BooleanSettingKey) => unknown,
-  setSettingValue: (setting: string, value: boolean | string) => unknown,
+  setSettingValue: (setting: string, value: boolean | string | number) => unknown,
 ) {
   return (
     <li key={setting}>
@@ -227,6 +256,21 @@ function renderSetting(
         />
         <label htmlFor={setting}>{copy}</label>
         <span>{description}</span>
+        {number && (
+          <Subsetting $disabled={!settings[setting]}>
+            <label htmlFor={number.setting}>{number.copy}</label>
+            <IdleSecondsInput
+              id={number.setting}
+              type="number"
+              min={number.min}
+              max={number.max}
+              step={1}
+              value={Number(settings[number.setting])}
+              disabled={!settings[setting]}
+              onChange={event => setSettingValue(number.setting, event.target.valueAsNumber)}
+            />
+          </Subsetting>
+        )}
         {select && (
           <Subsetting $disabled={!settings[setting]}>
             <label htmlFor={select.setting}>{select.copy}</label>
@@ -347,7 +391,8 @@ export default connect(
   }),
   dispatch => ({
     hideSettings: () => dispatch(hideSettingsAction()),
-    setSetting: (setting: string, value: boolean | string) => dispatch(setSetting(setting, value)),
+    setSetting: (setting: string, value: boolean | string | number) =>
+      dispatch(setSetting(setting, value)),
     toggleSetting: (setting: BooleanSettingKey) => dispatch(toggleSetting(setting)),
   }),
 )(Settings);

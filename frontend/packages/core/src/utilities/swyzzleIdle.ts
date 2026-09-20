@@ -1,4 +1,20 @@
-export const SWYZZLE_IDLE_MS = 7_000;
+export const SWYZZLE_IDLE_SECONDS_DEFAULT = 7;
+export const SWYZZLE_IDLE_SECONDS_MIN = 1;
+export const SWYZZLE_IDLE_SECONDS_MAX = 60;
+export const SWYZZLE_IDLE_MS = SWYZZLE_IDLE_SECONDS_DEFAULT * 1000;
+
+export function clampSwyzzleIdleSeconds(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) return SWYZZLE_IDLE_SECONDS_DEFAULT;
+  return Math.min(
+    SWYZZLE_IDLE_SECONDS_MAX,
+    Math.max(SWYZZLE_IDLE_SECONDS_MIN, Math.round(parsed)),
+  );
+}
+
+export function swyzzleIdleMs(seconds: unknown): number {
+  return clampSwyzzleIdleSeconds(seconds) * 1000;
+}
 
 export function isSwyzzleClearKey(event: Pick<KeyboardEvent, 'code' | 'key'>): boolean {
   return event.code === 'Space' || event.key === ' ' || event.key === 'Escape';

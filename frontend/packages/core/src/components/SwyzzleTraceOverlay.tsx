@@ -3,10 +3,10 @@ import { connect } from 'react-redux';
 
 import type { RootState } from '../rootReducer';
 import {
-  SWYZZLE_IDLE_MS,
   SwyzzleIdleGate,
   isTextEntryTarget,
   rememberSwyzzleClearKey,
+  swyzzleIdleMs,
   takeSwyzzleClearKey,
 } from '../utilities/swyzzleIdle';
 import { resolveSwyzzleEffect, SwyzzleRenderer } from '../vendor/swyzzle';
@@ -29,7 +29,15 @@ function syncOverlay(overlay: HTMLCanvasElement, source: HTMLElement): void {
   overlay.style.zIndex = '6';
 }
 
-function SwyzzleTraceOverlay({ enabled, effect }: { enabled: boolean; effect: string }) {
+function SwyzzleTraceOverlay({
+  enabled,
+  effect,
+  idleSeconds,
+}: {
+  enabled: boolean;
+  effect: string;
+  idleSeconds: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showing, setShowing] = useState(false);
   const showingRef = useRef(false);
@@ -41,7 +49,7 @@ function SwyzzleTraceOverlay({ enabled, effect }: { enabled: boolean; effect: st
       return undefined;
     }
 
-    const gate = new SwyzzleIdleGate(SWYZZLE_IDLE_MS, setShowing);
+    const gate = new SwyzzleIdleGate(swyzzleIdleMs(idleSeconds), setShowing);
     gate.start();
     const consumed = new Set<string>();
 
@@ -80,7 +88,7 @@ function SwyzzleTraceOverlay({ enabled, effect }: { enabled: boolean; effect: st
       window.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keyup', onKeyUp, true);
     };
-  }, [enabled]);
+  }, [enabled, idleSeconds]);
 
   useEffect(() => {
     if (!enabled || !showing) return undefined;
@@ -135,4 +143,5 @@ function SwyzzleTraceOverlay({ enabled, effect }: { enabled: boolean; effect: st
 export default connect((state: RootState) => ({
   enabled: state.settings.swyzzle,
   effect: state.settings.swyzzleEffect,
+  idleSeconds: state.settings.swyzzleIdleSeconds,
 }))(SwyzzleTraceOverlay);
