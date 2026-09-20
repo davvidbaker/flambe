@@ -1,4 +1,5 @@
 import type { Category } from '../types/Category';
+import type { Agent } from '../types/Agent';
 import type { EntityId } from '../types/ids';
 import type { Todo } from '../types/Todo';
 import type { Trace } from '../types/Trace';
@@ -28,6 +29,7 @@ export interface UserState {
   username: string;
   traces: Trace[];
   categories: Category[];
+  agents: Agent[];
   todos: Todo[];
   mantras: Mantra[];
   observations: Observation[];
@@ -38,7 +40,7 @@ export interface UserState {
 }
 
 const defaultState: UserState = {
-  name: 'david', username: 'david', id: '1', traces: [], categories: [], todos: [],
+  name: 'david', username: 'david', id: '1', traces: [], categories: [], agents: [], todos: [],
   mantras: [], observations: [], attentionShifts: [], searchTerms: [], tabs: [],
 };
 
@@ -97,6 +99,7 @@ function user(state: UserState = defaultState, action: UserAction): UserState {
         observations: sortByTime<Observation>(data.observations ?? []),
         searchTerms: sortByTime<SearchTerm>(data.searchTerms),
         tabs: sortByTime<TabCount>(data.tabs),
+        agents: data.agents ?? [],
       } as UserState;
     }
     case `${USER_FETCH}_FAILED`:

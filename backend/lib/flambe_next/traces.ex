@@ -172,6 +172,26 @@ defmodule FlambeNext.Traces do
     |> Repo.one!()
   end
 
+  @doc """
+  Display name already stored on one of `user`'s activities for `agent_id`.
+  Used when reassigning an activity to an identity that is on the chart but
+  not in the agents table (imports, older rows).
+  """
+  def activity_agent_snapshot(%User{} = user, agent_id) when is_binary(agent_id) do
+    from(activity in Activity,
+      join: thread in assoc(activity, :thread),
+      join: trace in assoc(thread, :trace),
+      where: trace.user_id == ^user.id and activity.agent_id == ^agent_id,
+      select: {activity.agent_id, activity.agent_name},
+      limit: 1
+    )
+    |> Repo.one()
+    |> case do
+      nil -> nil
+      {id, name} -> {id, name || id}
+    end
+  end
+
   def get_user_event!(%User{} = user, event_id) do
     from(event in Event,
       join: trace in assoc(event, :trace),

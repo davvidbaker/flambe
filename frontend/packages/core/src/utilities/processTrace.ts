@@ -187,6 +187,10 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
     activity.description ??= sourceActivity.description;
     activity.parent_id ??= sourceActivity.parent_id;
     activity.categories = uniq([...activity.categories, ...sourceActivity.categories]);
+    if (sourceActivity.agent_id !== undefined) {
+      activity.agent_id = sourceActivity.agent_id;
+      activity.agent_name = sourceActivity.agent_name ?? null;
+    }
 
     switch (event.phase) {
       case 'S': {
@@ -286,6 +290,25 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
   });
 
   return { activities, blocks, events: trace, lastCategory_id, lastThread_id, max: rightTime, min: leftTime, threadLevels, threads: threadsObject };
+}
+
+/** Keep a locally assigned actor when the trace is rebuilt from event snapshots. */
+export function preserveAssignedAgents(
+  processed: Record<string, ProcessedActivity>,
+  prior: Record<string, ProcessedActivity> | undefined,
+): Record<string, ProcessedActivity> {
+  if (!prior) return processed;
+  return Object.fromEntries(
+    Object.entries(processed).map(([key, activity]) => {
+      const current = prior[key];
+      if (!current) return [key, activity];
+      return [key, {
+        ...activity,
+        agent_id: current.agent_id,
+        agent_name: current.agent_name,
+      }];
+    }),
+  );
 }
 
 export default processTrace;

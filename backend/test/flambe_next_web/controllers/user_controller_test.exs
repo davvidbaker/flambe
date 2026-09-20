@@ -30,6 +30,7 @@ defmodule FlambeNextWeb.UserControllerTest do
 
     default_names = Enum.map(Accounts.default_categories(), & &1["name"])
     assert default_names -- Enum.map(payload["categories"], & &1["name"]) == []
+    assert payload["agents"] == []
   end
 
   test "dashboard show seeds default categories when the user has none", %{conn: conn} do
@@ -47,6 +48,23 @@ defmodule FlambeNextWeb.UserControllerTest do
     assert json_response(conn, 200)["data"]["traces"] == [
              %{"id" => trace.id, "name" => "Existing trace"}
            ]
+  end
+
+  test "dashboard show includes the user's named agents", %{conn: conn} do
+    {:ok, user} = Accounts.create_user(%{name: "Agent Owner", username: "agent-owner"})
+
+    {:ok, %{agent: agent}} =
+      FlambeNext.Agents.identify(user, "cursor:theo", "Theo", "Cursor Cloud")
+
+    conn = conn |> authenticated_as(user) |> get(~p"/api/users/#{user}")
+
+    assert %{
+             "agent_id" => "cursor:theo",
+             "name" => "Theo",
+             "platform" => "Cursor Cloud"
+           } in json_response(conn, 200)["data"]["agents"]
+
+    assert agent.name == "Theo"
   end
 
   test "updates persisted user settings for the signed-in user", %{conn: conn} do
