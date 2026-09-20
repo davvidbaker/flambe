@@ -10,6 +10,7 @@ import {
   drawFutureWindow,
   getBlockTransform,
   getBlockY,
+  insetBlockHeight,
   isVisible,
   pixelsToTime,
   sortThreadsByRank,
@@ -565,7 +566,7 @@ export class FlameChart extends Component<Props, State> {
       // Use display-row geometry (same as draw/hitTest), not block.level —
       // actor-lane packing remaps Y independently of nesting depth.
       this.ensureActorLaneLayout();
-      const { blockX, blockY, blockWidth } = this.getRenderedBlockTransform(
+      const { blockX, blockY, blockWidth, blockHeight } = this.getRenderedBlockTransform(
         block,
         activity,
       );
@@ -586,6 +587,7 @@ export class FlameChart extends Component<Props, State> {
       );
 
       return {
+        blockHeight,
         blockWidth,
         blockX,
         blockY,
@@ -981,7 +983,7 @@ export class FlameChart extends Component<Props, State> {
       blockX,
       blockY,
       blockWidth,
-      blockHeight: Math.max(4, this.blockHeight - pad * 2),
+      blockHeight: insetBlockHeight(this.blockHeight, pad),
     };
   }
 
