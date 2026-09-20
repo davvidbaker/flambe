@@ -315,9 +315,12 @@ const ActivityDetail = (props: ActivityDetailProps) => {
               <Fuzzy
                 itemStringKey="name"
                 onChange={choice => {
+                  const agentId = Object.prototype.hasOwnProperty.call(choice, 'id')
+                    ? (choice.id as string | null)
+                    : null;
                   updateActivity(activity.id, {
-                    agent_id: choice.id,
-                    agent_name: choice.id ? choice.name : null,
+                    agent_id: agentId,
+                    agent_name: agentId ? String(choice.name ?? '') : null,
                   });
                 }}
                 placeholder="Assign an agent…"

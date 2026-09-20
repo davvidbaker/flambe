@@ -44,7 +44,7 @@ import {
 } from '../actions';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
-import processTrace, { preserveAssignedAgents, terminateBlock, type ProcessedActivity, type ThreadLevel, type TraceBlock } from '../utilities/processTrace';
+import processTrace, { terminateBlock, type ProcessedActivity, type ThreadLevel, type TraceBlock } from '../utilities/processTrace';
 import { getFilteredThreads } from '../utilities/timeline';
 import type { EntityId } from '../types/ids';
 import type { EventPhase, TraceEvent } from '../types/TraceEvent';
@@ -283,7 +283,7 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         ...state,
         minTime: min - 1000 * 60 * 10, // 10 minutes before the beginning
         maxTime: max,
-        activities: preserveAssignedAgents(activities, state.activities),
+        activities,
         blocks,
         threadLevels,
         threads,
@@ -723,6 +723,32 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         lastThread_id: action.thread_id,
         activities,
         events,
+      };
+    }
+    case `${ACTIVITY_UPDATE}_SUCCEEDED`: {
+      const data = action.data;
+      if (!data || data.id === undefined || data.id === null) return state;
+      if (!Object.prototype.hasOwnProperty.call(data, 'agent_id')) return state;
+      const key = String(data.id);
+      const current = state.activities[key];
+      if (!current) return state;
+      const agentId = data.agent_id ?? null;
+      const agentName = agentId ? (data.agent_name ?? current.agent_name) : null;
+      return {
+        ...state,
+        activities: {
+          ...state.activities,
+          [key]: { ...current, agent_id: agentId, agent_name: agentName },
+        },
+        events: state.events.map((event: any) => {
+          if (String(event.activity?.id) !== key) return event;
+          return {
+            ...event,
+            activity: event.activity
+              ? { ...event.activity, agent_id: agentId, agent_name: agentName }
+              : event.activity,
+          };
+        }),
       };
     }
     /** 😃 optimism */

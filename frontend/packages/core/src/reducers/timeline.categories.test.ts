@@ -74,10 +74,20 @@ describe('activity agent_id', () => {
     expect(next.events[0].activity?.agent_id).toBe('cursor:nora');
     expect(next.events[0].activity?.agent_name).toBe('Nora');
   });
+
+  it('keeps the server agent after ACTIVITY_UPDATE_SUCCEEDED', () => {
+    const current = activity({ id: 7, agent_id: 'cursor:pulse', agent_name: 'pulse' });
+    const next = timeline(stateWithActivity(current), {
+      type: 'ACTIVITY_UPDATE_SUCCEEDED',
+      data: { id: 7, agent_id: 'cursor:steve', agent_name: 'Steve' },
+    });
+    expect(next.activities['7'].agent_id).toBe('cursor:steve');
+    expect(next.activities['7'].agent_name).toBe('Steve');
+  });
 });
 
-describe('processTimelineTrace keeps assigned agents', () => {
-  it('does not restore the previous agent when the trace is rebuilt', () => {
+describe('processTimelineTrace uses the fetched agent', () => {
+  it('takes the incoming snapshot on a full trace rebuild', () => {
     const current = activity({ id: 7, agent_id: 'cursor:nora', agent_name: 'Nora' });
     const state = stateWithActivity(current);
     const next = timeline(state, processTimelineTrace(
@@ -96,7 +106,7 @@ describe('processTimelineTrace keeps assigned agents', () => {
       }],
       [{ id: 1, name: 'Main', rank: 0 }],
     ));
-    expect(next.activities['7'].agent_id).toBe('cursor:nora');
-    expect(next.activities['7'].agent_name).toBe('Nora');
+    expect(next.activities['7'].agent_id).toBe('cursor:pulse');
+    expect(next.activities['7'].agent_name).toBe('pulse');
   });
 });
