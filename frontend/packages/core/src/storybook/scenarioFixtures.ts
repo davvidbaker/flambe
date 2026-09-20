@@ -10,7 +10,7 @@ const MINUTE = 60 * 1000;
 const categories: Category[] = [
   { id: 1, name: 'coding', color_background: '#efc360', color_text: '#000000' },
   { id: 2, name: 'investigation', color_background: '#60a5fa', color_text: '#000000' },
-  { id: 3, name: 'review', color_background: '#a78bfa', color_text: '#ffffff' },
+  { id: 3, name: 'review', color_background: '#a78bfa', color_text: '#000000' },
   { id: 4, name: 'operations', color_background: '#34d399', color_text: '#000000' },
   { id: 5, name: 'failure', color_background: '#fb7185', color_text: '#000000' },
 ];
