@@ -26,7 +26,7 @@ export type AppChartFixtureOptions = {
 const categories: Category[] = [
   { id: 1, name: 'coding', color_background: '#efc360', color_text: '#000000' },
   { id: 2, name: 'investigation', color_background: '#60a5fa', color_text: '#000000' },
-  { id: 3, name: 'review', color_background: '#a78bfa', color_text: '#ffffff' },
+  { id: 3, name: 'review', color_background: '#a78bfa', color_text: '#000000' },
 ];
 
 function minutesAgo(now: number, minutes: number): number {

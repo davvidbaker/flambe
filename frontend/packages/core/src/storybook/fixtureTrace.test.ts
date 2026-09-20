@@ -5,9 +5,13 @@ import {
   projectActorFlames,
   projectActorLaneLayout,
 } from '../utilities/actorFlames';
+import { readableTextOn } from '../utilities/readableTextOn';
+
 import { createChartStore, viewportForFixture } from './createChartStore';
 import { createAppChartFixture } from './fixtureTrace';
 import { createFrontiersFixture } from './frontiersFixture';
+import { createNationalTreasureFixture } from './nationalTreasureFixture';
+import { createPowerPlantFixture } from './powerPlantFixture';
 import { createWinterStormUriFixture } from './winterStormUriFixture';
 import {
   createConcurrentAgentsFixture,
@@ -388,5 +392,72 @@ describe('createChartStore share path', () => {
     });
     expect(store.getState().settings.absoluteTimeLabels).toBe(true);
     expect(store.getState().settings.twelveHourClock).toBe(true);
+  });
+});
+
+/** 11px sans-serif is ~5.5px/char; 1200px is a typical Storybook pane. */
+const EXAMPLE_PX_PER_CHAR = 5.5;
+const EXAMPLE_CHART_WIDTH = 1200;
+const EXAMPLE_TEXT_PAD = 5;
+const EXAMPLE_MIN_BAR = 100;
+
+function truncatedThreadZoomLabels(fixture: ReturnType<typeof createPowerPlantFixture>) {
+  const processed = processTrace(fixture.events, fixture.threads);
+  const blocksByThread = new Map<string, typeof processed.blocks>();
+  for (const block of processed.blocks) {
+    const activity = processed.activities[String(block.activity_id)];
+    const threadId = String(activity.thread_id);
+    const list = blocksByThread.get(threadId) ?? [];
+    list.push(block);
+    blocksByThread.set(threadId, list);
+  }
+
+  const truncated: string[] = [];
+  for (const blocks of blocksByThread.values()) {
+    const start = Math.min(...blocks.map(block => block.startTime));
+    const end = Math.max(...blocks.map(block => block.endTime ?? block.startTime));
+    const span = Math.max(1, end - start);
+    for (const block of blocks) {
+      const activity = processed.activities[String(block.activity_id)];
+      const width = ((block.endTime ?? end) - block.startTime) / span * EXAMPLE_CHART_WIDTH;
+      if (width < EXAMPLE_MIN_BAR) continue;
+      const needed = EXAMPLE_TEXT_PAD + activity.name.length * EXAMPLE_PX_PER_CHAR;
+      if (needed > width + 8) {
+        truncated.push(
+          `${activity.name} (${Math.round(needed)}px label / ${Math.round(width)}px bar)`,
+        );
+      }
+    }
+  }
+  return truncated;
+}
+
+describe('example category palettes', () => {
+  it('keep activity labels readable on their bar colors', () => {
+    const palettes = [
+      createAppChartFixture().categories,
+      createFrontiersFixture().categories,
+      createPowerPlantFixture().categories,
+      createNationalTreasureFixture().categories,
+      createWinterStormUriFixture().categories,
+      createConcurrentAgentsFixture().categories,
+    ];
+    for (const categories of palettes) {
+      for (const category of categories) {
+        expect(
+          readableTextOn(category.color_background, category.color_text),
+          `${category.name} ${category.color_text} on ${category.color_background}`,
+        ).toBe(category.color_text);
+      }
+    }
+  });
+});
+
+describe('power plant example labels', () => {
+  it('fit on their bars when a thread fills the chart', () => {
+    const truncated = truncatedThreadZoomLabels(
+      createPowerPlantFixture(Date.parse('2026-06-03T12:00:00Z')),
+    );
+    expect(truncated).toEqual([]);
   });
 });
