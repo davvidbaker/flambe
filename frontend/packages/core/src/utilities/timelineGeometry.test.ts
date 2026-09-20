@@ -1,5 +1,6 @@
 import {
   getBlockTransform,
+  insetBlockHeight,
   isVisible,
   pixelsToTime,
   rankThreadsByAttention,
@@ -15,6 +16,13 @@ describe('timeline geometry', () => {
     expect(getBlockTransform(90, 150, 2, 20, 10, 100, 200, 500)).toEqual({
       blockX: 0, blockY: 52, blockWidth: 250,
     });
+  });
+
+  it('insets agent bars from the row pitch so selection can match draw', () => {
+    expect(insetBlockHeight(20, 0)).toBe(20);
+    expect(insetBlockHeight(20, 2)).toBe(16);
+    expect(insetBlockHeight(20, 4)).toBe(12);
+    expect(insetBlockHeight(6, 4)).toBe(4);
   });
 
   it('finds visible blocks and their thread depth', () => {

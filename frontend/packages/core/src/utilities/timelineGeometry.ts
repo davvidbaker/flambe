@@ -41,6 +41,11 @@ export function getBlockY(level: number, blockHeight: number, offsetFromTop: num
   return level * (1 + blockHeight) + offsetFromTop;
 }
 
+/** Vertical size of a drawn flame after actor-lane inset. Selection overlays must use this, not the row pitch. */
+export function insetBlockHeight(rowHeight: number, pad: number): number {
+  return Math.max(4, rowHeight - pad * 2);
+}
+
 export function getBlockTransform(
   startTime: number,
   endTime: number | null | undefined,
