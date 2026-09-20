@@ -44,9 +44,8 @@ import {
 } from '../actions';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
-import processTrace from '../utilities/processTrace';
+import processTrace, { preserveAssignedAgents, terminateBlock, type ProcessedActivity, type ThreadLevel, type TraceBlock } from '../utilities/processTrace';
 import { getFilteredThreads } from '../utilities/timeline';
-import { terminateBlock, type ProcessedActivity, type ThreadLevel, type TraceBlock } from '../utilities/processTrace';
 import type { EntityId } from '../types/ids';
 import type { EventPhase, TraceEvent } from '../types/TraceEvent';
 import type { Thread } from '../types/Thread';
@@ -284,7 +283,7 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         ...state,
         minTime: min - 1000 * 60 * 10, // 10 minutes before the beginning
         maxTime: max,
-        activities,
+        activities: preserveAssignedAgents(activities, state.activities),
         blocks,
         threadLevels,
         threads,
@@ -682,6 +681,14 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
             : current.weight,
           ...(nextThreadId === undefined ? {} : { thread_id: nextThreadId }),
           ...(detachMovedRoot && key === String(action.id) ? { parent_id: null } : {}),
+          ...(key === String(action.id) && Object.prototype.hasOwnProperty.call(action.updates, 'agent_id')
+            ? {
+                agent_id: action.updates.agent_id ?? null,
+                agent_name: action.updates.agent_id
+                  ? (action.updates.agent_name ?? current.agent_name)
+                  : null,
+              }
+            : {}),
         };
       }
 
@@ -693,10 +700,29 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         activities[key] = { ...current, parent_id: remainingParentId };
       }
 
+      const events = Object.prototype.hasOwnProperty.call(action.updates, 'agent_id')
+        ? state.events.map(event => {
+            if (String(event.activity?.id) !== String(action.id)) return event;
+            return {
+              ...event,
+              activity: event.activity
+                ? {
+                    ...event.activity,
+                    agent_id: action.updates.agent_id ?? null,
+                    agent_name: action.updates.agent_id
+                      ? (action.updates.agent_name ?? event.activity.agent_name)
+                      : null,
+                  }
+                : event.activity,
+            };
+          })
+        : state.events;
+
       return {
         ...state,
         lastThread_id: action.thread_id,
         activities,
+        events,
       };
     }
     /** 😃 optimism */
