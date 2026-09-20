@@ -46,6 +46,7 @@ import ThreadDetail from './ThreadDetail';
 import ActivityDetailModal from './ActivityDetailModal';
 import TimeSeries from './TimeSeries';
 import FlameChart, { FlameChart as FlameChartComponent } from './FlameChart';
+import SwyzzleTraceOverlay from './SwyzzleTraceOverlay';
 import Tooltip from './Tooltip';
 import FocusedBlock from './FocusedBlock';
 
@@ -981,6 +982,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                     activities={props.activities}
                     submitCommand={props.submitCommand}
                   />
+                  <SwyzzleTraceOverlay />
                 </div>
               )}
             </Measure>

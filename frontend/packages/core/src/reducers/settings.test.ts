@@ -20,4 +20,18 @@ describe('settings', () => {
     });
     expect(next.rightAlignTimelineText).toBe(true);
   });
+
+  it('defaults Swyzzle off and toggles it as a session setting', () => {
+    const initial = settings(undefined, { type: '@@INIT' });
+    expect(initial.swyzzle).toBe(false);
+
+    const enabled = settings(initial, { type: SETTING_TOGGLE, setting: 'swyzzle' });
+    expect(enabled.swyzzle).toBe(true);
+
+    const afterUserFetch = settings(enabled, {
+      type: `${USER_FETCH}_SUCCEEDED`,
+      data: { settings: {} },
+    });
+    expect(afterUserFetch.swyzzle).toBe(true);
+  });
 });

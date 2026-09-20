@@ -76,6 +76,7 @@ export type ChartStoreExtras = {
   traces?: { id: AppChartFixture['traceId']; name: string }[];
   viewport?: SnapshotViewport;
   timeLabels?: SnapshotTimeLabels;
+  settings?: Partial<Record<'swyzzle' | 'showActivityIds' | 'darkerAsWeGoDown', boolean>>;
 };
 
 export function viewportForFixture(
@@ -138,6 +139,10 @@ export function createChartStore(
   if (extras.timeLabels) {
     store.dispatch(setSetting('absoluteTimeLabels', extras.timeLabels.absoluteTimeLabels));
     store.dispatch(setSetting('twelveHourClock', extras.timeLabels.twelveHourClock));
+  }
+  const settings = { darkerAsWeGoDown: false, ...extras.settings };
+  for (const [setting, value] of Object.entries(settings)) {
+    if (typeof value === 'boolean') store.dispatch(setSetting(setting, value));
   }
 
   return store;
