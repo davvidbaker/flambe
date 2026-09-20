@@ -272,6 +272,21 @@ export function selectActorFlameSegments(
 }
 
 /**
+ * Screen-space X for an agent rail. When the flame start has scrolled off the
+ * left, pin the rail at `minX` so the wash gutter and label stay visible.
+ * Returns null when the chrome is fully off-canvas.
+ */
+export function pinActorLaneRailX(
+  naturalRailX: number,
+  chromeRightX: number,
+  canvasWidth: number,
+  minX: number,
+): number | null {
+  if (chromeRightX < 0 || naturalRailX > canvasWidth) return null;
+  return Math.max(naturalRailX, minX);
+}
+
+/**
  * Pick a label that fits in `maxLengthPx` when drawn horizontally (which becomes
  * the vertical budget after a 90° CCW rotation). Prefer full name, then
  * initials, then ellipsis truncation.

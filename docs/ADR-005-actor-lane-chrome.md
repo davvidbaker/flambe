@@ -43,6 +43,7 @@ or parentage.
 - **Multi-row flame:** label may be rotated 90° CCW in the gutter when height allows; otherwise shorten while staying vertical.
 - **Nested delegation:** a delegated child owns its own rows outright — the parent’s wash does **not** extend over them, so washes never overlap. The child reads as nested through its inset (deeper) gutter/rail, label, and fork rather than by sitting under the parent’s fill.
 - **All same-agent owned work:** every flame for the same agent on a thread — including independent `--root` workstreams and bursts with large idle gaps — shares **one sustained wash**, one rail, and one label. Nested delegated agents stay their own inset chrome.
+- **Start off the left of the viewport:** pin that same gutter (rail, label, and a wash strip) to the left edge while any of the agent's work remains in view, so identity chrome is not lost when the true start has scrolled off.
 
 ## Rationale
 

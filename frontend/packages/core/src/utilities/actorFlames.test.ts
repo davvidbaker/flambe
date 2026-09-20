@@ -7,6 +7,7 @@ import {
   blockLayoutKey,
   coalesceActorLaneChrome,
   fitActorLaneLabel,
+  pinActorLaneRailX,
   modelProviderFromAgentId,
   projectActorFlames,
   projectActorLaneLayout,
@@ -555,6 +556,22 @@ describe('coalesceActorLaneChrome', () => {
     const claudeRows = new Set(rowsOfWash(claude));
     const composerRows = new Set(rowsOfWash(composer));
     for (const row of claudeRows) expect(composerRows.has(row)).toBe(false);
+  });
+});
+
+describe('pinActorLaneRailX', () => {
+  it('keeps the rail at the flame start when that start is on screen', () => {
+    expect(pinActorLaneRailX(80, 400, 600, 0)).toBe(80);
+  });
+
+  it('pins the rail to the left when the flame start has scrolled off', () => {
+    expect(pinActorLaneRailX(-120, 400, 600, 0)).toBe(0);
+    expect(pinActorLaneRailX(-120, 400, 600, 12)).toBe(12);
+  });
+
+  it('hides the rail when the flame is fully off-canvas', () => {
+    expect(pinActorLaneRailX(-200, -10, 600, 0)).toBeNull();
+    expect(pinActorLaneRailX(700, 900, 600, 0)).toBeNull();
   });
 });
 
