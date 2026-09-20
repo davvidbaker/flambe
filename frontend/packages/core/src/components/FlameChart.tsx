@@ -144,11 +144,11 @@ export class FlameChart extends Component<Props, State> {
   /** Vertical inset for nested lane chrome so it doesn't sit flush on the parent row. */
   static actorLaneNestedPad = 2;
 
-  /** Vertical margin inset on each agent swimlane (wash + bars) so adjacent bands don't touch. */
+  /** Vertical inset of an agent bar from its row edge; the wash gap between bands is ~1 + 2× this. */
   static actorLaneVerticalMargin = 2;
 
-  /** Extra inset on agent bars beyond the wash, so a thin strip of wash pads each bar. */
-  static actorLaneWashPad = 2;
+  /** How far the wash extends beyond the bars (a thin strip of wash pads each band edge). */
+  static actorLaneWashPad = 1;
 
   state = {
     canvasHeight: 150,
@@ -952,10 +952,10 @@ export class FlameChart extends Component<Props, State> {
     if (rootId === null || rootId === undefined) return 0; // human work fills its row
     const lane = layout.lanes.find(entry => String(entry.rootActivityId) === String(rootId));
     if (lane === undefined) return 0;
-    // Inset agent bars a little more than the swimlane wash so a thin strip of
-    // wash pads the bar, plus the nested inset for delegated lanes.
+    // Inset agent bars from the row edge (keeps interior bars tight) plus the
+    // nested inset for delegated lanes. The wash pad is added around the band,
+    // not per bar, so stacked bars in one band stay close together.
     return FlameChart.actorLaneVerticalMargin
-      + FlameChart.actorLaneWashPad
       + (lane.depth > 0 ? FlameChart.actorLaneNestedPad : 0);
   }
 
@@ -1031,16 +1031,15 @@ export class FlameChart extends Component<Props, State> {
 
       const rowGeometry = (rowStart: number, rowEnd: number) => {
         const rowCount = rowEnd - rowStart + 1;
-        // Inset the wash vertically so adjacent swimlanes keep a small margin.
-        const top = threadOffset
-          + FlameChart.threadHeaderHeight
-          + rowStart * rowHeight
-          + nestedPad
-          + margin;
-        // Subtract the inter-row pixel (rowHeight = blockHeight + 1) so the wash
-        // pads the top and bottom bars symmetrically instead of leaving an extra
-        // pixel at the bottom.
-        const unclampedHeight = Math.max(4, rowCount * rowHeight - nestedPad * 2 - margin * 2 - 1);
+        // The wash wraps the band's bars with a small outward pad (actorLaneWashPad)
+        // at the top of the first row's bar and the bottom of the last row's bar.
+        // Interior bars stay tightly packed because the pad is only at the edges.
+        const barInset = margin + nestedPad;
+        const pad = FlameChart.actorLaneWashPad;
+        const base = threadOffset + FlameChart.threadHeaderHeight;
+        const top = base + rowStart * rowHeight + barInset - pad;
+        const bottom = base + rowEnd * rowHeight + (this.blockHeight - barInset) + pad;
+        const unclampedHeight = Math.max(4, bottom - top);
         const height = Math.max(0, Math.min(unclampedHeight, nextOffset - top));
         return { rowCount, top, height };
       };
