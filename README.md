@@ -1,22 +1,20 @@
-# Flambe
+# Flambé
 
-Flambe is a live flame chart of coding-agent work.
+Flambé is a glorified todo app. Its distinction is that it orients your tasks
+and effort into a **flame chart** — flame charts for humans.
 
-Agents report nested activities the way a call stack works: when they go down a
-rabbit hole, you see it; when they come back up, you see that too. A reducer
-keeps the chart aligned with what you asked for, and can tell an agent to
-change course.
+You still have work to do. Instead of a flat list, activities nest and sit on a
+timeline the way a profiler shows a call stack: when you go down a rabbit hole,
+you see it; when you come back up, you see that too.
 
-It is an intent, control, and observability layer — not an agent runtime.
-Cursor, Claude Code, Codex, and similar tools still execute the work.
+It can also show agentic work on the same chart. Coding agents report the same
+kind of nested activities, so human effort and agent effort share one flame.
 
-![Flambe timeline with nested agent activities across threads](docs/images/flambe-timeline.png)
+![Flambé timeline with nested human and agent activities across threads](docs/images/flambe-timeline.png)
 
 ## Try it on one machine
 
-Local mode is Node 22 and SQLite. It binds loopback only, so cloud agents
-cannot reach it — use that for a laptop, and [host an instance](#host-your-own-instance)
-when agents run elsewhere.
+Local mode is Node 22 and SQLite. It binds loopback only.
 
 ```sh
 npm --prefix frontend ci
@@ -26,14 +24,15 @@ node cli/bin/flambe.mjs serve
 
 Open http://127.0.0.1:4001. Sign-in accepts any password and opens the local
 user. The process prints `FLAMBE_URL`, `FLAMBE_API_TOKEN`, and
-`FLAMBE_TRACE_ID` for the project `.env` that agents load.
+`FLAMBE_TRACE_ID` if you later point agents at this machine.
 
 That command serves the built SPA from `backend/priv/static`. The npm CLI
 package does not ship those assets; pass
 `--static /path/to/backend/priv/static`, or run Vite against the local API
 (`VITE_API_URL=http://127.0.0.1:4001` in `frontend/.env.local`).
 
-To copy selected history onto a hosted instance later:
+Cloud agents cannot reach loopback — [host an instance](#host-your-own-instance)
+when they run elsewhere. To copy selected history onto a hosted instance later:
 
 ```sh
 flambe export work.json
@@ -44,6 +43,9 @@ Import creates a **new** trace on that account (or skips if that export was
 already imported). Tokens and credentials are not part of the file.
 
 ## Connect coding agents
+
+Agents are optional. They use the same nested activities you already see on the
+chart.
 
 ```sh
 npm install -g @davvidbaker/flambe-cli
@@ -87,11 +89,11 @@ install, Cloud secrets, and command details.
 
 ## Host your own instance
 
-Production Flambe is a Phoenix 1.8 app with PostgreSQL: invite-gated signup,
+Production Flambé is a Phoenix 1.8 app with PostgreSQL: invite-gated signup,
 one Machine, in-memory agent presence. Fly.io is the path this repo ships
 (`Dockerfile` + `fly.toml`).
 
-**[Host your own Flambe](docs/SELF_HOSTING.md)** covers Fly setup, secrets,
+**[Host your own Flambé](docs/SELF_HOSTING.md)** covers Fly setup, secrets,
 first login, GitHub deploys, and running the Docker image elsewhere.
 
 Keep `fly scale count` at 1. A second Machine would split presence until that
@@ -150,7 +152,7 @@ above. CI runs backend checks, the CLI, Phoenix-served browser smoke, and a
 
 ## Desktop status flame
 
-A native helper shows whether agents have talked to Flambe in the last 30
+A native helper shows whether agents have talked to Flambé in the last 30
 seconds (outlined / orange / blue sparkling flame) over one SSE connection to
 `/api/agent-status/stream`.
 
@@ -162,7 +164,7 @@ seconds (outlined / orange / blue sparkling flame) over one SSE connection to
 | Doc | What it is |
 |-----|------------|
 | [Host your own instance](docs/SELF_HOSTING.md) | Fly / Docker production |
-| [Product principles](docs/PRODUCT_PRINCIPLES.md) | What Flambe owns vs agent runtimes |
+| [Product principles](docs/PRODUCT_PRINCIPLES.md) | What Flambé owns vs agent runtimes |
 | [Docs index](docs/README.md) | ADRs, local database, release checklist |
 
 ## License
