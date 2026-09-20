@@ -12,11 +12,14 @@ import { getTimeline, type TimelineState } from '../reducers/timeline';
 import { blocksForActivity } from '../utilities/timeline';
 // types
 import type { Category as CategoryType } from '../types/Category';
+import type { Agent } from '../types/Agent';
 import type { EntityId } from '../types/ids';
 import type { TraceEvent } from '../types/TraceEvent';
 import type { Thread } from '../types/Thread';
 import type { ProcessedActivity, TraceBlock } from '../utilities/processTrace';
 import { activityCommandsByStatus, type Command } from '../constants/commands';
+import { actorName } from '../utilities/actorFlames';
+import { activityAgentChoices } from '../utilities/activityAgents';
 
 import ActivityEventFlow from './ActivityEventFlow';
 import CategoryChip from './CategoryChip';
@@ -62,6 +65,7 @@ const FieldBody = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow: visible;
 `;
 
 const ChipList = styled.ul`
@@ -93,6 +97,9 @@ const ManageRow = styled.div`
 `;
 
 const AssignBox = styled.div`
+  position: relative;
+  overflow: visible;
+
   input {
     width: 100%;
     box-sizing: border-box;
@@ -151,6 +158,7 @@ const MoveActions = styled.div`
 export interface ActivityDetailProps {
   activities: Record<string, ProcessedActivity>;
   activity_id: EntityId | null;
+  agents: Agent[];
   blocks: TraceBlock[];
   categories: CategoryType[];
   showCategoryManager: () => unknown;
@@ -164,6 +172,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
   const {
     activities,
     activity_id,
+    agents,
     blocks,
     updateActivity,
     categories,
@@ -254,6 +263,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
   };
 
   const activityBlocks = blocksForActivity(activity_id, blocks);
+  const agentChoices = activityAgentChoices(activity, agents, activities);
 
   // for example, an activity that is resolved after being suspended without
   // ever being resumed. It happens.
@@ -291,6 +301,27 @@ const ActivityDetail = (props: ActivityDetailProps) => {
                 onChange={moveToThread}
                 placeholder="Move to thread…"
                 items={threadChoices}
+              />
+            </AssignBox>
+          )}
+        </FieldBody>
+      </Field>
+      <Field>
+        <FieldLabel>Agent</FieldLabel>
+        <FieldBody>
+          <div>{actorName(activity)}</div>
+          {agentChoices.length > 0 && (
+            <AssignBox>
+              <Fuzzy
+                itemStringKey="name"
+                onChange={choice => {
+                  updateActivity(activity.id, {
+                    agent_id: choice.id,
+                    agent_name: choice.id ? choice.name : null,
+                  });
+                }}
+                placeholder="Assign an agent…"
+                items={agentChoices}
               />
             </AssignBox>
           )}
@@ -463,6 +494,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
 export default connect(
   (state: { timeline: TimelineState; user: UserState }) => ({
     activity_id: getTimeline(state).focusedBlockActivity_id,
+    agents: getUser(state).agents ?? [],
     categories: getUser(state).categories,
     events: getTimeline(state).events,
     threads: getTimeline(state).threads,

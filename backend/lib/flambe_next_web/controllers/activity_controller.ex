@@ -139,9 +139,10 @@ defmodule FlambeNextWeb.ActivityController do
   def update(conn, %{"id" => id, "activity" => attrs}) do
     user = conn.assigns.current_user
     activity = Traces.get_user_activity!(user, id)
-    attrs = Map.drop(attrs, ["agent_id", "agent_name"])
+    attrs = maybe_drop_agent_identity(conn, attrs)
 
-    with {:ok, categories} <- update_categories(user, activity, attrs),
+    with {:ok, attrs} <- apply_agent_assignment(user, attrs),
+         {:ok, categories} <- update_categories(user, activity, attrs),
          {:ok, activity} <- maybe_move_thread(user, activity, attrs),
          {:ok, activity} <-
            Traces.update_activity(
@@ -160,6 +161,73 @@ defmodule FlambeNextWeb.ActivityController do
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{errors: errors(changeset)})
+    end
+  end
+
+  # Agents may not reassign identity through the activity body. The SPA (session)
+  # can, so a human can correct who owns a block.
+  defp maybe_drop_agent_identity(conn, attrs) do
+    if Map.has_key?(conn.assigns, :api_token) do
+      Map.drop(attrs, ["agent_id", "agent_name"])
+    else
+      attrs
+    end
+  end
+
+  defp apply_agent_assignment(user, attrs) do
+    case fetch_attr(attrs, "agent_id") do
+      :error ->
+        {:ok, drop_attr(attrs, "agent_name")}
+
+      {:ok, value} when value in [nil, ""] ->
+        {:ok, attrs |> Map.put("agent_id", nil) |> Map.put("agent_name", nil)}
+
+      {:ok, agent_id} when is_binary(agent_id) ->
+        name =
+          case known_agent(user, agent_id) do
+            {:ok, _id, name} -> name
+            :error -> supplied_agent_name(attrs, agent_id)
+          end
+
+        {:ok, attrs |> Map.put("agent_id", agent_id) |> Map.put("agent_name", name)}
+
+      {:ok, _} ->
+        {:error, :not_found}
+    end
+  end
+
+  defp fetch_attr(attrs, key) do
+    case Map.fetch(attrs, key) do
+      :error -> Map.fetch(attrs, String.to_existing_atom(key))
+      other -> other
+    end
+  rescue
+    ArgumentError -> :error
+  end
+
+  defp drop_attr(attrs, key) do
+    attrs |> Map.delete(key) |> Map.delete(String.to_existing_atom(key))
+  rescue
+    ArgumentError -> Map.delete(attrs, key)
+  end
+
+  defp supplied_agent_name(attrs, agent_id) do
+    case fetch_attr(attrs, "agent_name") do
+      {:ok, name} when is_binary(name) and name != "" -> name
+      _ -> agent_id
+    end
+  end
+
+  defp known_agent(user, agent_id) do
+    case FlambeNext.Agents.get(user, agent_id) do
+      %{agent_id: id, name: name} ->
+        {:ok, id, name}
+
+      nil ->
+        case Traces.activity_agent_snapshot(user, agent_id) do
+          {id, name} -> {:ok, id, name}
+          nil -> :error
+        end
     end
   end
 

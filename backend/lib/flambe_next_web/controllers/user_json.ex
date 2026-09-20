@@ -10,7 +10,8 @@ defmodule FlambeNextWeb.UserJSON do
         attentions: attentions,
         tabs: tabs,
         search_terms: search_terms,
-        observations: observations
+        observations: observations,
+        agents: agents
       }) do
     %{
       data: %{
@@ -25,7 +26,8 @@ defmodule FlambeNextWeb.UserJSON do
         attentionShifts: Enum.map(attentions, &attention_data/1),
         tabs: Enum.map(tabs, &tab_data/1),
         searchTerms: Enum.map(search_terms, &search_term_data/1),
-        observations: Enum.map(observations, &FlambeNextWeb.ObservationJSON.data/1)
+        observations: Enum.map(observations, &FlambeNextWeb.ObservationJSON.data/1),
+        agents: Enum.map(agents, &agent_data/1)
       }
     }
   end
@@ -53,5 +55,9 @@ defmodule FlambeNextWeb.UserJSON do
 
   defp search_term_data(search_term) do
     %{id: search_term.id, term: search_term.term, timestamp: search_term.timestamp}
+  end
+
+  defp agent_data(agent) do
+    %{agent_id: agent.agent_id, name: agent.name, platform: agent.platform}
   end
 end
