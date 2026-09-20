@@ -10,25 +10,38 @@ export interface FuzzyItem {
 }
 interface Props<T extends FuzzyItem> { onChange: (item: T) => void; placeholder?: string; items: T[]; itemStringKey: keyof T & string }
 
-const StyledResults = styled.div`
-  overflow-y: scroll;
-  max-height: 100px;
+const Wrap = styled.div<{ $open: boolean }>`
+  position: relative;
+  z-index: ${props => (props.$open ? 8 : 'auto')};
+`;
+
+const StyledResults = styled.div<{ $open: boolean }>`
   position: absolute;
-  width: 100%;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 8;
+  max-height: 180px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  visibility: ${props => (props.$open ? 'visible' : 'hidden')};
+  pointer-events: ${props => (props.$open ? 'auto' : 'none')};
 
   .commander-result {
-    padding: 5px;
+    padding: 6px 8px;
     display: flex;
-
-    &:first-child {
-      border-top: 1px solid #ccc;
-    }
+    cursor: pointer;
   }
 
   .commander-result-item {
     flex: auto;
+    min-width: 0;
   }
 `;
+
 const Fuzzy = <T extends FuzzyItem,>({
   onChange,
   placeholder,
@@ -50,76 +63,80 @@ const Fuzzy = <T extends FuzzyItem,>({
   } = useCombobox({
     items: filteredItems,
     inputValue: filterValue,
+    selectedItem: null,
     defaultHighlightedIndex: 0,
     itemToString,
     onInputValueChange: ({ inputValue }) => setFilterValue(inputValue || ''),
     onSelectedItemChange: ({ selectedItem }) => {
-      if (selectedItem) onChange(selectedItem);
+      if (selectedItem) {
+        onChange(selectedItem);
+        setFilterValue('');
+      }
     },
   });
 
+  const menuOpen = isOpen && filteredItems.length > 0;
+
   return (
-    <div style={{ position: 'relative' }}>
+    <Wrap $open={menuOpen}>
       <label {...getLabelProps()} />
       <input
         style={{ width: '100%' }}
-        {...getInputProps({ placeholder })}
+        {...getInputProps({ placeholder, 'aria-label': placeholder })}
       />
-      {isOpen && (
-        <StyledResults {...getMenuProps()}>
-          {filteredItems.map((item, index) => (
-            <div
-              className="commander-result"
-              key={String(item[itemStringKey] ?? index)}
-              {...getItemProps({
-                index,
-                item,
-                style: {
-                  backgroundColor:
-                    highlightedIndex === index ? '#f5f5f5' : 'white',
-                },
-              })}
-            >
-              <div className="commander-result-item">
-                {item.label && (
-                  <span
-                    className="item-label"
-                    style={{
-                      background: item.label.background,
-                      color: 'white',
-                      padding: '1px 3px',
-                      borderRadius: '2px',
-                      marginRight: '5px',
-                    }}
-                  >
-                    {item.label.copy}
-                  </span>
-                )}
-                {filterValue.length === 0 ? (
-                  <span>{String(item[itemStringKey] ?? '')}</span>
-                ) : (
-                  <span
-                    dangerouslySetInnerHTML={{
-                      __html: fuzzaldrin.wrap(String(item[itemStringKey] ?? ''), filterValue),
-                    }}
-                  />
-                )}
-              </div>
-              {item.shortcut && (
-                <div className="item-shortcut">
-                  <span
-                    className="item-shortcut"
-                    style={{ textAlign: 'right', color: 'steelblue' }}
-                  >
-                    {item.shortcut}
-                  </span>
-                </div>
+      <StyledResults {...getMenuProps()} $open={menuOpen}>
+        {menuOpen && filteredItems.map((item, index) => (
+          <div
+            className="commander-result"
+            key={String(item[itemStringKey] ?? index)}
+            {...getItemProps({
+              index,
+              item,
+              style: {
+                backgroundColor:
+                  highlightedIndex === index ? '#f5f5f5' : 'white',
+              },
+            })}
+          >
+            <div className="commander-result-item">
+              {item.label && (
+                <span
+                  className="item-label"
+                  style={{
+                    background: item.label.background,
+                    color: 'white',
+                    padding: '1px 3px',
+                    borderRadius: '2px',
+                    marginRight: '5px',
+                  }}
+                >
+                  {item.label.copy}
+                </span>
+              )}
+              {filterValue.length === 0 ? (
+                <span>{String(item[itemStringKey] ?? '')}</span>
+              ) : (
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: fuzzaldrin.wrap(String(item[itemStringKey] ?? ''), filterValue),
+                  }}
+                />
               )}
             </div>
-          ))}
-        </StyledResults>
-      )}
-    </div>
+            {item.shortcut && (
+              <div className="item-shortcut">
+                <span
+                  className="item-shortcut"
+                  style={{ textAlign: 'right', color: 'steelblue' }}
+                >
+                  {item.shortcut}
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+      </StyledResults>
+    </Wrap>
   );
 };
 
