@@ -15,7 +15,8 @@ defmodule FlambeNextWeb.UserController do
       attentions: Accounts.list_user_attentions(user),
       tabs: Accounts.list_user_tabs(user),
       search_terms: Accounts.list_user_search_terms(user),
-      observations: Accounts.list_user_observations(user)
+      observations: Accounts.list_user_observations(user),
+      agents: FlambeNext.Agents.list(user)
     )
   end
 

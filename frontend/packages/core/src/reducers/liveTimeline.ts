@@ -2,7 +2,7 @@ import { TIMELINE_EVENT_DELETED, TIMELINE_EVENT_RECEIVED } from '../constants/li
 import type { EntityId } from '../types/ids';
 import type { Thread } from '../types/Thread';
 import type { TraceEvent } from '../types/TraceEvent';
-import processTrace from '../utilities/processTrace';
+import processTrace, { preserveAssignedAgents } from '../utilities/processTrace';
 import baseTimeline, { type TimelineState } from './timeline';
 
 interface LiveTimelineEventAction {
@@ -72,7 +72,7 @@ export default function liveTimeline(
 
   return {
     ...nextState,
-    activities: processed.activities,
+    activities: preserveAssignedAgents(processed.activities, nextState.activities),
     blocks: processed.blocks,
     events: processed.events,
     lastCategory_id: processed.lastCategory_id ?? null,
