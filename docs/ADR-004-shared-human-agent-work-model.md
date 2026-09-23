@@ -70,6 +70,9 @@ new parallel work entities.
 Human-only overlays such as attention, mantras, todos, and tab history are not part of the shared
 activity model. Agent presence may expire or reset without changing persisted activity history.
 
+David later removed todos as a primitive. See
+[ADR-017](ADR-017-unstarted-activities-with-scheduled-times.md).
+
 Actor lanes and fork connectors are derived entirely in the frontend. They do not add a persisted
 relationship. Bar fill stays category-based; actor color is reserved for lane chrome and forks.
 

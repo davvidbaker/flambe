@@ -16,7 +16,6 @@ import {
   THREAD_CREATE,
   THREADS_COLLAPSE_ALL,
   THREADS_EXPAND_ALL,
-  TODOS_TOGGLE,
   SETTINGS_SHOW,
   KEYBOARD_SHORTCUTS_SHOW,
   SHARE_TIMELINE_SHOW,
@@ -170,10 +169,6 @@ const COMMANDS: Command[] = [
         placeholder: 'thread name',
       },
     ],
-  },
-  {
-    action: TODOS_TOGGLE,
-    copy: 'toggle todo list',
   },
   {
     action: THREADS_COLLAPSE_ALL,

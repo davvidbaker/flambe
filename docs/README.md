@@ -5,6 +5,7 @@
 | [SELF_HOSTING.md](SELF_HOSTING.md) | Host your own instance (Fly.io or the Docker image) |
 | [PRODUCT_PRINCIPLES.md](PRODUCT_PRINCIPLES.md) | Product boundary: Flambe owns intent/control/observability, not generic agent orchestration |
 | [OPEN_WORK.md](OPEN_WORK.md) | Unfinished and parked work |
+| [ADR-017-unstarted-activities-with-scheduled-times.md](ADR-017-unstarted-activities-with-scheduled-times.md) | Accepted: unstarted activities use `scheduled_start` / `scheduled_end`; begin is a real event |
 | [ADR-015-bounded-message-context.md](ADR-015-bounded-message-context.md) | Accepted: `flambe message` prompt is the live stack plus ended work from the last 21 days |
 | [ADR-014-reducer-enforces-structure.md](ADR-014-reducer-enforces-structure.md) | Accepted: one worker ingress, one reducer; structure enforced by rewriting; intent is the root activity; sync model review on two rules |
 | [PLAN-reducer-structure.md](PLAN-reducer-structure.md) | Phasing and ownership for ADR-014 |

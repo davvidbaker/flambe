@@ -1,11 +1,10 @@
 import type { Category } from '../types/Category';
 import type { Agent } from '../types/Agent';
 import type { EntityId } from '../types/ids';
-import type { Todo } from '../types/Todo';
 import type { Trace } from '../types/Trace';
 import {
   ATTENTION_SHIFT, CATEGORY_CREATE, CATEGORY_UPDATE, MANTRA_CREATE,
-  TODO_BEGIN, TODO_CREATE, TRACE_DELETE, TRACE_CREATE, USER_FETCH,
+  TRACE_DELETE, TRACE_CREATE, USER_FETCH,
   SEARCH_TERMS_EVENT, TABS_EVENT, CATEGORIES_EVENT,
 } from '../actions';
 
@@ -30,7 +29,6 @@ export interface UserState {
   traces: Trace[];
   categories: Category[];
   agents: Agent[];
-  todos: Todo[];
   mantras: Mantra[];
   observations: Observation[];
   attentionShifts: AttentionShift[];
@@ -40,14 +38,14 @@ export interface UserState {
 }
 
 const defaultState: UserState = {
-  name: 'david', username: 'david', id: '1', traces: [], categories: [], agents: [], todos: [],
+  name: 'david', username: 'david', id: '1', traces: [], categories: [], agents: [],
   mantras: [], observations: [], attentionShifts: [], searchTerms: [], tabs: [],
 };
 
 type IncomingTimedRecord<T extends TimedRecord> = Omit<T, 'timestamp'> & { timestamp: number | string };
 type UserAction = {
-  type: string; name?: string; description?: string | null; color_background?: string;
-  color_text?: string; id?: EntityId; todo_id?: EntityId; thread_id?: EntityId;
+  type: string; name?: string; color_background?: string;
+  color_text?: string; id?: EntityId; thread_id?: EntityId;
   timestamp?: number; term?: string; tabs_count?: number; window_count?: number;
   updates?: Partial<Category>; data?: Record<string, any>;
 };
@@ -77,12 +75,6 @@ function user(state: UserState = defaultState, action: UserAction): UserState {
       if (action.thread_id === undefined || action.thread_id === previous?.thread_id) return state;
       return { ...state, attentionShifts: [...state.attentionShifts, { timestamp: action.timestamp ?? Date.now(), thread_id: action.thread_id }] };
     }
-    case TODO_CREATE:
-      return { ...state, todos: [...state.todos, { name: action.name ?? '', description: action.description ?? null, id: 'optimisticTodo' }] };
-    case `${TODO_CREATE}_SUCCEEDED`:
-      return { ...state, todos: state.todos.map(todo => todo.id === 'optimisticTodo' ? { ...todo, id: action.data?.id } : todo) };
-    case TODO_BEGIN:
-      return { ...state, todos: state.todos.filter(todo => todo.id !== action.todo_id) };
     case TRACE_DELETE:
       return { ...state, traces: state.traces.filter(trace => trace.id !== action.id) };
     case TRACE_CREATE:

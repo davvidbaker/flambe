@@ -8,7 +8,6 @@ defmodule FlambeNext.Accounts do
     Observation,
     SearchTerm,
     Tab,
-    Todo,
     User
   }
 
@@ -146,30 +145,6 @@ defmodule FlambeNext.Accounts do
   end
 
   def delete_category(%Category{} = category), do: Repo.delete(category)
-
-  def list_user_todos(%User{} = user) do
-    from(todo in Todo, where: todo.user_id == ^user.id, order_by: [asc: todo.id])
-    |> Repo.all()
-  end
-
-  def get_user_todo!(%User{} = user, id) do
-    from(todo in Todo, where: todo.id == ^id and todo.user_id == ^user.id)
-    |> Repo.one!()
-  end
-
-  def create_todo(%User{} = user, attrs) do
-    %Todo{user_id: user.id}
-    |> Todo.changeset(attrs)
-    |> Repo.insert()
-  end
-
-  def update_todo(%Todo{} = todo, attrs) do
-    todo
-    |> Todo.changeset(attrs)
-    |> Repo.update()
-  end
-
-  def delete_todo(%Todo{} = todo), do: Repo.delete(todo)
 
   def list_user_mantras(%User{} = user) do
     from(mantra in Mantra, where: mantra.user_id == ^user.id, order_by: [asc: mantra.timestamp])

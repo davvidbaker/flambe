@@ -25,8 +25,6 @@ import {
   THREAD_UPDATE,
   THREAD_HIDE,
   THREADS_REORDER,
-  TODO_CREATE,
-  TODO_BEGIN,
   TRACE_CREATE,
   TRACE_FETCH,
   TRACE_FILTER,
@@ -84,7 +82,6 @@ interface NetworkAction {
   rank?: number;
   thread_id?: EntityId;
   timestamp?: number;
-  todo_id?: EntityId | null;
   trace?: Trace | EntityId;
   type: string;
   updates?: Record<string, unknown>;
@@ -136,7 +133,6 @@ function* fetchResource(actionType: string, { resource, params }: ResourceReques
 
 // // // // // // // // // // // // // // // // // // // // // // // //
 
-/** 💁 Creating an activity from a todo automatically handles deleting that todo (from the database). */
 function* createActivity({
   type,
   name,
@@ -144,7 +140,6 @@ function* createActivity({
   description, // 👈 not currently using this
   thread_id /* message */,
   category_id,
-  todo_id = null,
   phase = 'B',
 }: NetworkAction): SagaIterator {
   const timeline: TimelineState = yield select(getTimeline);
@@ -156,7 +151,6 @@ function* createActivity({
       body: JSON.stringify({
         trace_id: timeline.trace?.id,
         thread_id,
-        todo_id,
         event: { timestamp_integer: timestamp, phase },
         activity: {
           name,
@@ -291,23 +285,6 @@ function* createCategory({ type, activity_id, name, color_background, color_text
           name,
           color_background,
           color_text: color_text ?? '#000000',
-        },
-      }),
-    },
-  });
-}
-
-function* createTodo({ type, name, description }: NetworkAction): SagaIterator {
-  const user: UserState = yield select(getUser);
-  yield* fetchResource(type, {
-    resource: { path: 'todos' },
-    params: {
-      method: 'POST',
-      body: JSON.stringify({
-        user_id: user.id,
-        todo: {
-          name,
-          description,
         },
       }),
     },
@@ -574,9 +551,6 @@ function* networkSaga(): SagaIterator {
   yield takeEvery(ATTENTION_SHIFT, shiftAttention);
 
   // 🤔 A saga might be overkill for this, but maybe not because the command palette doesn't know what the state of selected activities is, so it wouldn't know what activity to apply your command to...ehhhh maybe not...still not sure
-
-  yield takeEvery(TODO_BEGIN, createActivity);
-  yield takeEvery(TODO_CREATE, createTodo);
 
   yield takeEvery(TRACE_CREATE, createTrace);
   yield takeEvery(TRACE_DELETE, deleteTrace);

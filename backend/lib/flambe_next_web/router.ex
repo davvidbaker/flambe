@@ -50,7 +50,6 @@ defmodule FlambeNextWeb.Router do
     resources "/categories", CategoryController, except: [:new, :edit]
     resources "/activities", ActivityController, only: [:create, :show, :update, :delete]
     resources "/events", EventController, only: [:create, :update, :delete]
-    resources "/todos", TodoController, except: [:new, :edit]
     resources "/mantras", MantraController, except: [:new, :edit]
     resources "/attentions", AttentionController, except: [:new, :edit]
     resources "/tabs", TabController, except: [:new, :edit]

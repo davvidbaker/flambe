@@ -1,5 +1,4 @@
 import {
-  TODOS_TOGGLE,
   ADVANCED_SEARCH_SHOW,
   ADVANCED_SEARCH_HIDE,
   ACTIVITY_DETAILS_SHOW,
@@ -29,19 +28,9 @@ import type { EntityId } from '../types/ids';
 import undo from './undo';
 
 interface RootAction {
-  bool?: boolean;
   thread_id?: EntityId;
   type: string;
   view?: string;
-}
-
-function todosVisible(state = false, action: RootAction): boolean {
-  switch (action.type) {
-    case TODOS_TOGGLE:
-      return action.bool ?? state;
-    default:
-      return state;
-  }
 }
 
 function activityDetailModalVisible(state = false, action: RootAction): boolean {
@@ -156,7 +145,6 @@ export {
   shareTimelineVisible,
   keyboardShortcutsVisible,
   timeline,
-  todosVisible,
   toaster,
   undo,
   user,
