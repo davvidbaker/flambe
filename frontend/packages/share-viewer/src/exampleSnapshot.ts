@@ -185,118 +185,115 @@ export function createExampleSnapshot(now = Date.now()): TimelineSnapshot {
     eventId += 1;
   };
 
+  // One stack per thread: parents stay open, siblings never overlap.
   ev(120, 'B', fercGlue, 'Started');
+  ev(119, 'B', readFerc);
   ev(118, 'B', upstairsBath, 'Started');
   ev(117, 'B', demoTile);
-  ev(119, 'B', readFerc);
-  ev(113, 'E', readFerc, 'Plant table is 2014–2024');
+  ev(114, 'E', readFerc, 'Plant table is 2014–2024');
+  ev(113, 'B', sketchJoin);
   ev(112, 'E', demoTile, 'Lath and plaster underneath');
   ev(111, 'Q', keepTub);
-  ev(114, 'B', sketchJoin);
   ev(110, 'B', publicShares, 'Started');
   ev(109, 'Q', isJsonEnough, 'Do we need a live server?');
   ev(108, 'E', sketchJoin, 'Join on plant_id_eia plus report year');
   ev(106, 'V', isJsonEnough, 'A frozen file is enough');
   ev(105, 'V', keepTub, 'Keep it, refinish later');
   ev(105, 'B', frozenExport);
-  ev(104.5, 'B', orderVanity);
   ev(104, 'B', clipWindow);
-  ev(100, 'B', mysteryOrispl);
-  ev(100, 'B', stripSockets);
-  ev(98, 'B', oregonSheet);
-  ev(98, 'E', clipWindow, 'Straddling spans clip to the window');
-  ev(96, 'B', snapshotGuard);
-  ev(95, 'Q', cogenQuestion);
-  ev(93, 'E', stripSockets);
-  ev(92, 'V', cogenQuestion, 'Mostly paper, two cogens');
+  ev(100, 'E', clipWindow, 'Straddling spans clip to the window');
+  ev(100, 'B', orderVanity);
+  ev(99, 'B', stripSockets);
+  ev(96, 'E', orderVanity, 'Eight-week lead time, hang it later');
+  ev(95, 'E', stripSockets);
+  ev(94, 'B', snapshotGuard);
+  ev(93, 'B', plumbingRough);
   ev(91, 'E', snapshotGuard);
   ev(90, 'E', frozenExport, 'version 1 snapshots');
-  ev(90, 'B', handMap);
-  ev(89, 'S', orderVanity, 'Eight-week lead time');
-  ev(88, 'E', oregonSheet);
+  ev(88, 'E', plumbingRough);
+  ev(87, 'B', tileShower);
   ev(85, 'B', vercelViewer);
   ev(84, 'B', vitePackage);
-  ev(80, 'B', blobUpload);
   ev(78, 'E', vitePackage);
-  ev(75, 'E', handMap, '12 plants mapped');
-  ev(75, 'E', mysteryOrispl);
-  ev(74.5, 'R', orderVanity, 'Vanity shipped');
-  ev(74, 'B', favicon);
-  ev(73, 'E', orderVanity);
-  ev(72.5, 'B', plumbingRough);
+  ev(77, 'B', blobUpload);
   ev(72, 'E', blobUpload, 'Phoenix writes to Vercel Blob');
-  ev(71, 'B', routerCrash);
-  ev(70, 'E', favicon);
-  ev(70, 'S', fercGlue, 'Waiting on the 2025 FERC 1 release');
+  ev(71, 'B', favicon);
+  ev(70, 'E', tileShower);
+  ev(69, 'E', favicon);
+  ev(68, 'B', hangVanity);
+  ev(68, 'B', routerCrash);
   ev(66, 'E', routerCrash);
-  ev(65.5, 'E', plumbingRough);
   ev(65, 'E', vercelViewer, 'flambe-share.vercel.app');
-  ev(64, 'B', tileShower);
-  ev(60, 'B', annualRebuild);
-  ev(59, 'B', bumpSchema);
-  ev(54, 'E', bumpSchema);
-  ev(52, 'B', waitShapefile);
-  ev(50, 'S', annualRebuild, 'Census shapefile still missing');
-  ev(50, 'S', waitShapefile);
-  ev(48, 'B', backsplash);
-  ev(47, 'B', pickGrout);
+  ev(60, 'E', hangVanity);
+  ev(58, 'B', punchList);
+  ev(51, 'E', punchList);
+  ev(50, 'E', upstairsBath, 'First real shower');
+  ev(49, 'B', backsplash);
+  ev(48, 'B', pickGrout);
   ev(44, 'E', pickGrout, 'Warm gray');
-  ev(42, 'R', fercGlue, '2025 FERC 1 dropped');
-  ev(41, 'B', diffRespondents);
-  ev(40, 'E', tileShower);
-  ev(39.5, 'B', hangVanity);
-  ev(38, 'B', cutTile);
-  ev(36, 'E', hangVanity);
-  ev(36, 'E', diffRespondents, '41 new respondents');
-  ev(35.5, 'E', cutTile);
-  ev(35.2, 'B', waitThinset);
-  ev(35, 'B', reviewJoin);
-  ev(34.5, 'B', punchList);
+  ev(43, 'B', cutTile);
+  ev(38, 'E', cutTile);
+  ev(37, 'B', waitThinset);
   ev(33, 'S', waitThinset, '24 hours');
-  ev(32, 'E', reviewJoin, '98.4% coverage');
-  ev(32, 'E', fercGlue, 'Join holds on plant_id_eia');
-  ev(30, 'E', punchList);
-  ev(29, 'E', upstairsBath, 'First real shower');
-  ev(28, 'R', annualRebuild, 'Shapefile landed');
-  ev(28, 'R', waitShapefile);
-  ev(27.8, 'R', waitThinset);
-  ev(27.5, 'E', waitShapefile);
-  ev(27.2, 'E', waitThinset);
-  ev(27, 'B', rebuildTables);
-  ev(26.5, 'B', groutBacksplash);
+  ev(28, 'R', waitThinset);
+  ev(27.5, 'E', waitThinset);
+  ev(27, 'B', groutBacksplash);
   ev(25, 'B', playground);
   ev(24.5, 'B', lightTheme);
-  ev(23, 'B', dragDrop);
-  ev(22, 'E', lightTheme);
-  ev(22, 'B', spotCheck);
-  ev(20, 'B', liveEditor);
-  ev(20, 'E', rebuildTables);
+  ev(23, 'E', groutBacksplash);
+  ev(23, 'E', lightTheme);
+  ev(22.8, 'B', dragDrop);
+  ev(22, 'E', backsplash, 'No leftover tiles');
+  ev(21, 'B', sideFence);
+  ev(21, 'E', dragDrop);
+  ev(20.5, 'B', liveEditor);
+  ev(20.5, 'B', measureLot);
   ev(19, 'B', persistLocal);
-  ev(18.5, 'E', dragDrop);
-  ev(17.5, 'E', spotCheck, 'Generation totals match EIA');
-  ev(16, 'E', annualRebuild, 'pudl.sqlite is 4.2 GB');
-  ev(15.5, 'E', groutBacksplash);
-  ev(15, 'E', backsplash, 'No leftover tiles');
-  ev(14.5, 'B', sideFence);
-  ev(14.2, 'B', measureLot);
-  ev(14, 'B', form1Harvest);
-  ev(14, 'E', persistLocal);
-  ev(13.5, 'B', downloadXbrl);
-  ev(13.2, 'E', measureLot);
-  ev(13.1, 'Q', permitQuestion);
-  ev(13, 'B', loginChrome);
-  ev(12, 'E', downloadXbrl);
-  ev(12, 'B', parseFilings);
-  ev(11.8, 'V', permitQuestion, 'Under 6 feet, no permit');
-  ev(11, 'B', monthEpics);
-  ev(9.5, 'E', loginChrome);
-  ev(8.2, 'E', monthEpics);
-  ev(8, 'E', liveEditor);
-  ev(8, 'B', flagDupes);
+  ev(19, 'E', measureLot);
+  ev(18.5, 'Q', permitQuestion);
+  ev(17, 'V', permitQuestion, 'Under 6 feet, no permit');
+  ev(16, 'E', persistLocal);
+  ev(16, 'B', digPosts);
+  ev(12, 'E', liveEditor);
+  ev(11.5, 'B', loginChrome);
+  ev(10, 'E', loginChrome);
+  ev(9.8, 'B', monthEpics);
+  ev(8.5, 'E', monthEpics);
   ev(8, 'E', playground, 'Drop JSON, edit live');
-  ev(7.5, 'B', digPosts);
+  ev(100, 'B', mysteryOrispl);
+  ev(98, 'B', oregonSheet);
+  ev(92, 'E', oregonSheet);
+  ev(91, 'Q', cogenQuestion);
+  ev(88, 'V', cogenQuestion, 'Mostly paper, two cogens');
+  ev(87, 'B', handMap);
+  ev(80, 'X', mysteryOrispl, 'One more Oregon mill');
+  ev(76, 'E', handMap, '12 plants mapped');
+  ev(75, 'E', mysteryOrispl);
+  ev(70, 'S', fercGlue, 'Waiting on the 2025 FERC 1 release');
+  ev(42, 'R', fercGlue, '2025 FERC 1 dropped');
+  ev(41, 'B', diffRespondents);
+  ev(37, 'E', diffRespondents, '41 new respondents');
+  ev(36, 'B', reviewJoin);
+  ev(33, 'E', reviewJoin, '98.4% coverage');
+  ev(32, 'E', fercGlue, 'Join holds on plant_id_eia');
+  ev(31, 'B', annualRebuild);
+  ev(30.5, 'B', bumpSchema);
+  ev(28, 'E', bumpSchema);
+  ev(27, 'B', waitShapefile);
+  ev(24, 'S', waitShapefile, 'Census shapefile still missing');
+  ev(22, 'R', waitShapefile, 'Shapefile landed');
+  ev(21.8, 'E', waitShapefile);
+  ev(21.5, 'B', rebuildTables);
+  ev(18, 'E', rebuildTables);
+  ev(17.8, 'B', spotCheck);
+  ev(16.5, 'E', spotCheck, 'Generation totals match EIA');
+  ev(16, 'E', annualRebuild, 'pudl.sqlite is 4.2 GB');
+  ev(15, 'B', form1Harvest);
+  ev(14.8, 'B', downloadXbrl);
+  ev(13.5, 'E', downloadXbrl);
+  ev(13.2, 'B', parseFilings);
+  ev(8, 'B', flagDupes);
   ev(6, 'E', publicShares);
-  ev(4, 'X', mysteryOrispl, 'One more Oregon mill');
 
   events.sort((left, right) => left.timestamp - right.timestamp || Number(left.id) - Number(right.id));
 
@@ -317,16 +314,13 @@ export function createExampleSnapshot(now = Date.now()): TimelineSnapshot {
         { thread_id: home.id, timestamp: daysAgo(now, 118) },
         { thread_id: flambe.id, timestamp: daysAgo(now, 110) },
         { thread_id: pudl.id, timestamp: daysAgo(now, 100) },
-        { thread_id: home.id, timestamp: daysAgo(now, 89) },
+        { thread_id: home.id, timestamp: daysAgo(now, 93) },
         { thread_id: flambe.id, timestamp: daysAgo(now, 85) },
+        { thread_id: home.id, timestamp: daysAgo(now, 70) },
         { thread_id: pudl.id, timestamp: daysAgo(now, 70) },
-        { thread_id: home.id, timestamp: daysAgo(now, 64) },
-        { thread_id: pudl.id, timestamp: daysAgo(now, 60) },
-        { thread_id: home.id, timestamp: daysAgo(now, 48) },
-        { thread_id: pudl.id, timestamp: daysAgo(now, 42) },
         { thread_id: flambe.id, timestamp: daysAgo(now, 25) },
-        { thread_id: home.id, timestamp: daysAgo(now, 14.5) },
-        { thread_id: pudl.id, timestamp: daysAgo(now, 14) },
+        { thread_id: home.id, timestamp: daysAgo(now, 21) },
+        { thread_id: pudl.id, timestamp: daysAgo(now, 15) },
       ],
       categories,
       events,
