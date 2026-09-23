@@ -44,4 +44,62 @@ describe('createExampleSnapshot', () => {
       'home 🔨',
     ]);
   });
+
+  it('keeps siblings on a thread as a true stack, not overlapping Gantt bars', () => {
+    const now = 1_758_000_000_000;
+    const snapshot = createExampleSnapshot(now);
+    const openAt = new Map<string, number>();
+    const ranges = new Map<string, { parent: string | null; thread: string; start: number; end: number }[]>();
+    const meta = new Map<string, { parent: string | null; thread: string }>();
+    const opens = new Set(['B', 'R', 'Q']);
+    const closes = new Set(['E', 'V', 'J', 'S']);
+
+    for (const event of snapshot.fixture.events) {
+      const activity = event.activity;
+      if (!activity) continue;
+      const id = String(activity.id);
+      if (!meta.has(id)) {
+        meta.set(id, {
+          parent: activity.parent_id == null ? null : String(activity.parent_id),
+          thread: String(activity.thread_id),
+        });
+      }
+      if (opens.has(event.phase) && !openAt.has(id)) openAt.set(id, event.timestamp);
+      if (closes.has(event.phase) && openAt.has(id)) {
+        const start = openAt.get(id)!;
+        openAt.delete(id);
+        const info = meta.get(id)!;
+        const list = ranges.get(id) ?? [];
+        list.push({ ...info, start, end: event.timestamp });
+        ranges.set(id, list);
+      }
+    }
+    for (const [id, start] of openAt) {
+      const info = meta.get(id)!;
+      const list = ranges.get(id) ?? [];
+      list.push({ ...info, start, end: now });
+      ranges.set(id, list);
+    }
+
+    const overlapping: string[] = [];
+    const ids = [...ranges.keys()];
+    for (let i = 0; i < ids.length; i += 1) {
+      for (let j = i + 1; j < ids.length; j += 1) {
+        const leftId = ids[i]!;
+        const rightId = ids[j]!;
+        const leftMeta = meta.get(leftId)!;
+        const rightMeta = meta.get(rightId)!;
+        const sameParent = leftMeta.parent === rightMeta.parent && leftMeta.thread === rightMeta.thread;
+        if (!sameParent) continue;
+        for (const left of ranges.get(leftId) ?? []) {
+          for (const right of ranges.get(rightId) ?? []) {
+            if (left.start < right.end && right.start < left.end) {
+              overlapping.push(`${leftId} ∩ ${rightId}`);
+            }
+          }
+        }
+      }
+    }
+    expect(overlapping).toEqual([]);
+  });
 });
