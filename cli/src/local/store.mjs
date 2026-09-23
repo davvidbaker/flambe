@@ -79,13 +79,6 @@ CREATE TABLE IF NOT EXISTS events (
   export_id TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS todos (
-  id INTEGER PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  description TEXT
-);
-
 CREATE TABLE IF NOT EXISTS mantras (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -183,6 +176,7 @@ export class LocalStore {
     this.db = new DatabaseSync(dbPath);
     this.db.exec('PRAGMA foreign_keys = ON');
     this.db.exec(SCHEMA);
+    this.db.exec('DROP TABLE IF EXISTS todos');
     this.#seed();
   }
 
@@ -652,7 +646,6 @@ export class LocalStore {
       username: user.username,
       traces: this.listTraces(userId),
       categories: this.listCategories(userId),
-      todos: this.db.prepare('SELECT id, name, description FROM todos WHERE user_id = ?').all(userId),
       mantras: this.db.prepare('SELECT id, name, timestamp_ms FROM mantras WHERE user_id = ? ORDER BY id').all(userId)
         .map(row => ({ id: row.id, name: row.name, timestamp: isoFromMs(row.timestamp_ms) })),
       attentionShifts: this.db.prepare(
@@ -684,14 +677,6 @@ export class LocalStore {
         platform: agent.platform ?? null,
       })),
     };
-  }
-
-  createTodo(userId, attrs) {
-    const result = this.db.prepare(
-      'INSERT INTO todos (user_id, name, description) VALUES (?, ?, ?)',
-    ).run(userId, attrs.name, attrs.description ?? null);
-    return this.db.prepare('SELECT id, name, description FROM todos WHERE id = ?')
-      .get(Number(result.lastInsertRowid));
   }
 
   createMantra(userId, attrs) {

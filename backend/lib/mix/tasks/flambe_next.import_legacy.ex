@@ -17,8 +17,7 @@ defmodule Mix.Tasks.FlambeNext.ImportLegacy do
     {"mantras", ~w(id name timestamp user_id inserted_at updated_at)},
     {"attentions", ~w(id thread_id timestamp user_id inserted_at updated_at)},
     {"tabs", ~w(id count window_count timestamp user_id inserted_at updated_at)},
-    {"search_terms", ~w(id term timestamp user_id inserted_at updated_at)},
-    {"todos", ~w(id name description user_id inserted_at updated_at)}
+    {"search_terms", ~w(id term timestamp user_id inserted_at updated_at)}
   ]
 
   @id_tables Enum.map(@tables, fn {table, columns} -> if "id" in columns, do: table end)

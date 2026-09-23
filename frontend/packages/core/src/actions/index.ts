@@ -94,10 +94,6 @@ export const THREADS_COLLAPSE_ALL = 'THREADS_COLLAPSE_ALL';
 export const THREADS_REORDER = 'THREADS_REORDER';
 export const THREADS_EXPAND_ALL = 'THREADS_EXPAND_ALL';
 
-export const TODO_BEGIN = 'TODO_BEGIN';
-export const TODO_CREATE = 'TODO_CREATE';
-export const TODOS_TOGGLE = 'TODOS_TOGGLE';
-
 export const TOAST_CREATE = 'TOAST_CREATE';
 export const TOAST_POP = 'TOAST_POP';
 
@@ -118,13 +114,6 @@ export const CATEGORIES_EVENT = 'CATEGORIES_EVENT';
 
 export const SET_THREAD_INCLUDE_LIST = 'SET_THREAD_INCLUDE_LIST';
 export const SET_THREAD_EXCLUDE_LIST = 'SET_THREAD_EXCLUDE_LIST';
-
-export function toggleTodos(bool: boolean) {
-  return {
-    type: TODOS_TOGGLE,
-    bool,
-  };
-}
 
 export function incrementBlock(direction: 1 | -1) {
   return {
@@ -202,31 +191,6 @@ export function collapseAllThreads() {
 export function expandAllThreads() {
   return {
     type: THREADS_EXPAND_ALL,
-  };
-}
-
-export function createTodo(name: string, description: string | null) {
-  return {
-    type: TODO_CREATE,
-    name,
-    description,
-  };
-}
-
-export function beginTodo({
-  todo_id,
-  thread_id,
-  name,
-  description,
-  timestamp,
-}: { todo_id: EntityId; thread_id: EntityId; name: string; description: string | null; timestamp: number }) {
-  return {
-    type: TODO_BEGIN,
-    todo_id,
-    name,
-    description,
-    timestamp,
-    thread_id,
   };
 }
 

@@ -5,7 +5,6 @@ defmodule FlambeNextWeb.UserJSON do
         user: %User{} = user,
         traces: traces,
         categories: categories,
-        todos: todos,
         mantras: mantras,
         attentions: attentions,
         tabs: tabs,
@@ -21,7 +20,6 @@ defmodule FlambeNextWeb.UserJSON do
         settings: user.settings || %{},
         traces: Enum.map(traces, &trace_data/1),
         categories: Enum.map(categories, &category_data/1),
-        todos: Enum.map(todos, &todo_data/1),
         mantras: Enum.map(mantras, &mantra_data/1),
         attentionShifts: Enum.map(attentions, &attention_data/1),
         tabs: Enum.map(tabs, &tab_data/1),
@@ -43,7 +41,6 @@ defmodule FlambeNextWeb.UserJSON do
     }
   end
 
-  defp todo_data(todo), do: %{id: todo.id, name: todo.name, description: todo.description}
   defp mantra_data(mantra), do: %{id: mantra.id, name: mantra.name, timestamp: mantra.timestamp}
 
   defp attention_data(attention),

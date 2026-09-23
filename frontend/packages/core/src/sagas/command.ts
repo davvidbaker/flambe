@@ -18,7 +18,6 @@ import {
   THREAD_CREATE,
   THREADS_COLLAPSE_ALL,
   THREADS_EXPAND_ALL,
-  TODOS_TOGGLE,
   VIEW_CHANGE,
   changeView,
   collapseAllThreads,
@@ -38,7 +37,6 @@ import {
   showKeyboardShortcuts,
   showShareTimeline,
   suspendActivity,
-  toggleTodos,
 } from '../actions';
 import { getTimeline, type TimelineState } from '../reducers/timeline';
 import type { OperandState } from '../reducers/operand';
@@ -220,11 +218,6 @@ function* handleCommand({ operand, command }: CommandRunAction): SagaIterator {
 
       case THREADS_EXPAND_ALL:
         yield put(expandAllThreads());
-        break;
-
-      case TODOS_TOGGLE:
-        const todosVisible: boolean = yield select((state: { todosVisible: boolean }) => state.todosVisible);
-        yield put(toggleTodos(!todosVisible));
         break;
 
       case VIEW_CHANGE:

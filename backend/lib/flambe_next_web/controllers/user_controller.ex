@@ -10,7 +10,6 @@ defmodule FlambeNextWeb.UserController do
       user: user,
       traces: Traces.list_user_traces(user),
       categories: Accounts.ensure_default_categories(user),
-      todos: Accounts.list_user_todos(user),
       mantras: Accounts.list_user_mantras(user),
       attentions: Accounts.list_user_attentions(user),
       tabs: Accounts.list_user_tabs(user),

@@ -11,7 +11,6 @@ import Modal from 'react-modal';
 import ConnectedTimeline from '../containers/ConnectedTimeline';
 import SingleThreadView from '../containers/SingleThreadView';
 import AdvancedSearch from '../containers/AdvancedSearch';
-// import Todos from './Todos';
 import Header from '../components/Header';
 import SidePanel from '../components/SidePanel';
 import SearchBar from '../containers/SearchBar';
@@ -506,8 +505,7 @@ const ConnectedTrace = connect(
         state.settingsVisible ||
         state.shareTimelineVisible ||
         state.keyboardShortcutsVisible ||
-        state.activityDetailModalVisible ||
-        state.todosVisible,
+        state.activityDetailModalVisible,
       activities: timeline.activities,
       advancedSearchVisible: state.advancedSearchVisible,
       blocks: timeline.blocks,

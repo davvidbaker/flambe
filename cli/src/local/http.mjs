@@ -356,10 +356,6 @@ async function dispatch(store, req, url, body, { auth, agent }) {
     return { status: 200, json: { data: store.userDashboard(userId) } };
   }
 
-  if (method === 'POST' && path === '/api/todos') {
-    return { status: 201, json: { data: store.createTodo(userId, body.todo ?? {}) } };
-  }
-
   if (method === 'POST' && path === '/api/mantras') {
     return { status: 201, json: { data: store.createMantra(userId, body.mantra ?? {}) } };
   }

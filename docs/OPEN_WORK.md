@@ -14,6 +14,8 @@ Node+SQLite: [ADR-009](ADR-009-local-node-sqlite-and-on-demand-import.md).
 
 ## Follow-ups
 
+- Unstarted activities with `scheduled_start` / `scheduled_end`
+  ([ADR-017](ADR-017-unstarted-activities-with-scheduled-times.md)). Not built.
 - Re-place an activity when its name changes
   ([ADR-012](ADR-012-reducer-places-work-and-names-agents.md)).
 - Whether agents actually obey a returned `direction`. The skill is the only

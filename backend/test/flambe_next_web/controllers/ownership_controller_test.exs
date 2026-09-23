@@ -21,8 +21,6 @@ defmodule FlambeNextWeb.OwnershipControllerTest do
     {:ok, category} =
       Accounts.create_category(owner, [], %{name: "Private category", color_background: "#ffffff"})
 
-    {:ok, todo} = Accounts.create_todo(owner, %{name: "Private todo"})
-
     {:ok, mantra} =
       Accounts.create_mantra(owner, %{
         name: "Private mantra",
@@ -55,7 +53,6 @@ defmodule FlambeNextWeb.OwnershipControllerTest do
           ~p"/api/threads/#{thread}",
           ~p"/api/activities/#{activity}",
           ~p"/api/categories/#{category}",
-          ~p"/api/todos/#{todo}",
           ~p"/api/mantras/#{mantra}",
           ~p"/api/attentions/#{attention}",
           ~p"/api/tabs/#{tab}",
@@ -74,14 +71,12 @@ defmodule FlambeNextWeb.OwnershipControllerTest do
   test "collection endpoints only return the signed-in user's records", %{conn: conn} do
     {:ok, owner} = Accounts.create_user(%{name: "Owner", username: "collection-owner"})
     {:ok, intruder} = Accounts.create_user(%{name: "Intruder", username: "collection-intruder"})
-    {:ok, _todo} = Accounts.create_todo(owner, %{name: "Owner todo"})
     {:ok, _trace} = Traces.create_trace(owner, %{name: "Owner trace"})
 
     conn = authenticated_as(conn, intruder)
 
     for path <- [
           ~p"/api/traces",
-          ~p"/api/todos",
           ~p"/api/mantras",
           ~p"/api/attentions",
           ~p"/api/tabs",

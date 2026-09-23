@@ -37,7 +37,6 @@ import {
   TIMELINE_ZOOM,
   TIMELINE_PAN,
   TIMELINE_SET,
-  TODO_BEGIN,
   TRACE_SELECT,
   TRACE_FETCH,
   TRACE_FILTER,
@@ -368,8 +367,6 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
     //   };
 
     // 😃 optimism!
-    case TODO_BEGIN:
-
     case ACTIVITY_CREATE_B:
     case ACTIVITY_CREATE_Q:
       return {
@@ -397,7 +394,6 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         ),
       };
 
-    case `${TODO_BEGIN}_SUCCEEDED`:
     case `${ACTIVITY_CREATE_B}_SUCCEEDED`:
     case `${ACTIVITY_CREATE_Q}_SUCCEEDED`:
       return {

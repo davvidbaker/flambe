@@ -9,8 +9,7 @@ defmodule FlambeNext.Accounts.User do
     Mantra,
     Observation,
     SearchTerm,
-    Tab,
-    Todo
+    Tab
   }
 
   alias FlambeNext.Traces.Trace
@@ -25,7 +24,6 @@ defmodule FlambeNext.Accounts.User do
     has_many :credentials, Credential, on_replace: :delete
     has_many :traces, Trace
     has_many :categories, Category
-    has_many :todos, Todo
     has_many :mantras, Mantra
     has_many :attentions, Attention
     has_many :tabs, Tab
