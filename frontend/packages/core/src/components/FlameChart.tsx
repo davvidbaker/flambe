@@ -35,7 +35,7 @@ import {
 
 import {
   constrain,
-  trimTextMiddle,
+  trimTextEnd,
   deepArrayIsEqual,
   formatTimelineTickLabel,
   shortEnglishHumanizer,
@@ -1469,7 +1469,7 @@ export class FlameChart extends Component<Props, State> {
 
     // ⚠️ chrome devtools caches the text widths for perf. If I notice that becoming an issue, I will look into doing the same.
     /** ⚠️ Emoji's need fixing in here. */
-    const text = trimTextMiddle(
+    const text = trimTextEnd(
       this.ctx,
       label,
       textBudget,

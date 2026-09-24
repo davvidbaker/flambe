@@ -19,6 +19,13 @@ const trimMiddle = (str: string, maxLength: number): string => {
   )}`;
 };
 
+const trimEnd = (str: string, maxLength: number): string => {
+  if (str.length <= maxLength) return String(str);
+  let keep = Math.max(0, maxLength - 1);
+  if (keep > 0 && (str.codePointAt(keep - 1) ?? 0) >= 0x10000) --keep;
+  return `${str.substr(0, keep).trimEnd()}\u2026`;
+};
+
 /**
  * @param {!CanvasRenderingContext2D} context
  * @param {string} text
@@ -67,5 +74,8 @@ const trimText = (
  */
 const trimTextMiddle = (context: CanvasRenderingContext2D, text: string, maxWidth: number): string =>
   trimText(context, text, maxWidth, (text, width) => trimMiddle(text, width));
+
+export const trimTextEnd = (context: CanvasRenderingContext2D, text: string, maxWidth: number): string =>
+  trimText(context, text, maxWidth, (text, width) => trimEnd(text, width));
 
 export default trimTextMiddle;
