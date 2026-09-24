@@ -13,6 +13,8 @@ import {
   createResurrectionFixture,
   createShortAgentFlamesFixture,
   createIndependentAgentRootsFixture,
+  createLimboFixture,
+  createScheduledActivitiesFixture,
   createSparseTraceFixture,
   createStackedAgentWorkFixture,
   createStrangeSequenceFixture,
@@ -153,6 +155,27 @@ export const SparseLongRunningWork: Story = {
 export const CollapsedThread: Story = {
   args: {
     fixture: createAppChartFixture({ collapsedThreadIds: [2] }),
+  },
+};
+
+/** Plans to the right of now: a span, an end-only point, and a start-only plan open to the edge. */
+export const ScheduledActivities: Story = {
+  args: (() => {
+    const now = Date.now();
+    return {
+      fixture: createScheduledActivitiesFixture(now),
+      viewport: {
+        leftBoundaryTime: now - 100 * 60 * 1000,
+        rightBoundaryTime: now + 180 * 60 * 1000,
+      },
+    };
+  })(),
+};
+
+/** Suspended work and untimed plans both land in the limbo pane under the chart. */
+export const Limbo: Story = {
+  args: {
+    fixture: createLimboFixture(),
   },
 };
 
