@@ -396,7 +396,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       </div>
       <ActivityEventFlow activityBlocks={[...activityBlocks, ...falseBlocks]} />
       <Actions>
-        {activity.status && activity.status !== 'parent_suspended' && activityCommandsByStatus(activity.status)
+        {activity.status && activity.status !== 'parent_suspended' && activity.status !== 'unstarted' && activityCommandsByStatus(activity.status)
           .filter(cmd => cmd.action !== ACTIVITY_DETAILS_SHOW)
           .map(
             cmd =>

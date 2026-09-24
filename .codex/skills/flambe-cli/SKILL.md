@@ -49,6 +49,10 @@ The reducer may answer a proposal with a question in `reply`, usually when a nam
 
 A returned `direction` is binding: act on it before doing more work. On `pause`, `stop`, or `escalate`, stop and surface the reply to David rather than deciding yourself. `direction -` or none means continue as you were. A model-judged `start` can take a few seconds; wait for it.
 
+## End of work
+
+When the work you were doing is finished, check limbo and scheduled activities before you stop. Run `flambe status --unstarted --json`. If something there is worth doing next, propose that candidate with `flambe message` and begin it only if the reply says continue. Do not begin it unasked, and do not ask David in chat.
+
 ## Ask the reducer before you drift
 
 `flambe message "<update>"` is your own channel: it sends your update plus the live flame (open and suspended work, the path to the current activity, and ended work from the last 21 days) and answers with `assessment`, `direction`, `reply`, and at most one stack change. Message when you are about to:

@@ -320,6 +320,10 @@ defmodule FlambeNextWeb.ActivityControllerTest do
                "id" => activity.id,
                "name" => "Final",
                "parent_id" => nil,
+               "proposed_by_agent_id" => nil,
+               "proposed_by_agent_name" => nil,
+               "scheduled_end" => nil,
+               "scheduled_start" => nil,
                "thread_id" => thread.id,
                "weight" => 2
              }

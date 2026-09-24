@@ -21,6 +21,11 @@ defmodule FlambeNextWeb.EventController do
         |> put_status(:created)
         |> render(:show, event: event, closed_descendants: closed)
 
+      {:error, :parent_unstarted} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: %{activity: ["parent is unstarted"]}})
+
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)

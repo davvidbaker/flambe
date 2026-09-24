@@ -10,10 +10,14 @@ import {
 } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
 import {
+  beginActivity,
   collapseThread,
+  deleteActivity,
   expandThread,
   focusBlock,
   hoverBlock,
+  planActivity,
+  updateActivity,
   updateEvent,
 } from '../actions';
 
@@ -52,6 +56,14 @@ export default connect(
   dispatch => ({
     toggleThread: (id: EntityId, isCollapsed = false) => dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
     updateEvent: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateEvent(id, updates)),
+    updateActivity: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateActivity(id, updates)),
+    beginActivity: (id: EntityId) => dispatch(beginActivity(id)),
+    deleteActivity: (id: EntityId, threadId: EntityId) => dispatch(deleteActivity(id, threadId)),
+    planActivity: (threadId: EntityId, time: number) => dispatch(planActivity({
+      name: 'Scheduled',
+      thread_id: threadId,
+      scheduled_start: time,
+    })),
     focusBlock: ({
       index, activity_id, activityStatus, thread_id,
     }: Parameters<TimelineProps['focusBlock']>[0]) => dispatch(

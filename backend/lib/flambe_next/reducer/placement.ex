@@ -66,12 +66,15 @@ defmodule FlambeNext.Reducer.Placement do
   end
 
   defp placement_context(user, activity, threads, categories) do
+    agent_id = activity.agent_id || activity.proposed_by_agent_id
+
     recent =
-      if activity.agent_id do
+      if agent_id do
         from(a in Activity,
           join: thread in assoc(a, :thread),
           where:
-            thread.trace_id == ^activity.thread.trace_id and a.agent_id == ^activity.agent_id and
+            thread.trace_id == ^activity.thread.trace_id and
+              (a.agent_id == ^agent_id or a.proposed_by_agent_id == ^agent_id) and
               a.id != ^activity.id,
           order_by: [desc: a.id],
           limit: 8,
@@ -94,8 +97,8 @@ defmodule FlambeNext.Reducer.Placement do
         id: activity.id,
         name: activity.name,
         description: activity.description,
-        agent_name: activity.agent_name,
-        agent_platform: agent_platform(user, activity.agent_id),
+        agent_name: activity.agent_name || activity.proposed_by_agent_name,
+        agent_platform: agent_platform(user, activity.agent_id || activity.proposed_by_agent_id),
         thread_id: activity.thread_id
       },
       threads: Enum.map(threads, &%{id: &1.id, name: &1.name}),

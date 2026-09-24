@@ -5,7 +5,8 @@ export type ActivityStatus =
   | 'active'
   | 'complete'
   | 'parent_suspended'
-  | 'suspended';
+  | 'suspended'
+  | 'unstarted';
 
 export interface Activity {
   agent_id?: string | null;
@@ -19,6 +20,10 @@ export interface Activity {
   level?: number;
   name?: string;
   parent_id?: EntityId | null;
+  proposed_by_agent_id?: string | null;
+  proposed_by_agent_name?: string | null;
+  scheduled_end?: number | null;
+  scheduled_start?: number | null;
   startTime?: number;
   status?: ActivityStatus;
   suspendedChildren?: EntityId[];

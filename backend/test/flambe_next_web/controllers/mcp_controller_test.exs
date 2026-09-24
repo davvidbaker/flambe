@@ -70,7 +70,8 @@ defmodule FlambeNextWeb.McpControllerTest do
              "flambe_suspend",
              "flambe_resume",
              "flambe_status",
-             "flambe_message"
+             "flambe_message",
+             "flambe_plan"
            ]
 
     assert get_in(Enum.find(tools, &(&1["name"] == "flambe_start")), ["inputSchema", "required"]) ==

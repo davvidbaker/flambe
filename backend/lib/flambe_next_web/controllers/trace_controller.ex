@@ -28,7 +28,12 @@ defmodule FlambeNextWeb.TraceController do
 
   def show(conn, %{"id" => id}) do
     {trace, events} = Traces.get_user_trace_with_events!(conn.assigns.current_user, id)
-    render(conn, :show, trace: trace, events: events)
+
+    render(conn, :show,
+      trace: trace,
+      events: events,
+      unstarted: Traces.list_unstarted_activities(trace)
+    )
   end
 
   def update(conn, %{"id" => id, "trace" => attrs}) do
@@ -37,7 +42,12 @@ defmodule FlambeNextWeb.TraceController do
     case Traces.update_trace(trace, attrs) do
       {:ok, trace} ->
         {trace, events} = Traces.get_user_trace_with_events!(conn.assigns.current_user, trace.id)
-        render(conn, :show, trace: trace, events: events)
+
+        render(conn, :show,
+          trace: trace,
+          events: events,
+          unstarted: Traces.list_unstarted_activities(trace)
+        )
 
       {:error, changeset} ->
         conn

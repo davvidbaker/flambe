@@ -1,4 +1,3 @@
-import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import { zoomTimeRange } from '@davvidbaker/flame-chart';
 
 export type TimeRange = {
@@ -13,7 +12,7 @@ function zoom(
   leftBoundaryTime: number,
   rightBoundaryTime: number,
   _width: number,
-  nowTime: number,
+  _nowTime: number,
   minTime = 0,
 ): TimeRange {
   const range = zoomTimeRange(
@@ -21,7 +20,7 @@ function zoom(
     zoomCenterTime,
     leftBoundaryTime,
     rightBoundaryTime,
-    { min: minTime, max: nowTime + MAX_TIME_INTO_FUTURE },
+    { min: minTime },
   );
 
   return { leftBoundaryTime: range.start, rightBoundaryTime: range.end };

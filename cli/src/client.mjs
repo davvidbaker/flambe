@@ -291,13 +291,28 @@ export class FlambeClient {
     return payload.data;
   }
 
-  async status({ activeOnly = false, suspendedOnly = false } = {}) {
+  async plan({ name, description, weight, scheduledStart, scheduledEnd }) {
+    if (!name?.trim()) throw new Error('Activity name is required');
+    const result = await this.agentCommand('plan', {
+      ...this.commandIdentity(),
+      name: name.trim(),
+      ...(description ? { description } : {}),
+      ...(weight == null ? {} : { weight }),
+      ...(scheduledStart == null ? {} : { scheduled_start: scheduledStart }),
+      ...(scheduledEnd == null ? {} : { scheduled_end: scheduledEnd }),
+    });
+    this.reportCommandResult(result);
+    return result.activity_id;
+  }
+
+  async status({ activeOnly = false, suspendedOnly = false, includeUnstarted = false } = {}) {
     if (activeOnly && suspendedOnly) throw new Error('--active and --suspended cannot be used together');
     if (await this.supportsAgentCommands()) {
       const result = await this.agentCommand('status', {
         ...this.commandIdentity(),
         active_only: activeOnly,
         suspended_only: suspendedOnly,
+        include_unstarted: includeUnstarted,
       });
       return result.state;
     }

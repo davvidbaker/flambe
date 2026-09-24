@@ -1,3 +1,4 @@
+import type { Activity } from '../types/Activity';
 import type { Trace } from '../types/Trace';
 import type { EntityId } from '../types/ids';
 import type { Thread } from '../types/Thread';
@@ -21,6 +22,8 @@ export const KEY_UP = 'KEY_UP';
 export const FETCH_RESOURCE = 'FETCH_RESOURCE';
 
 export const ACTIVITY_CREATE_B = 'ACTIVITY_CREATE_B';
+export const ACTIVITY_PLAN = 'ACTIVITY_PLAN';
+export const ACTIVITY_BEGIN = 'ACTIVITY_BEGIN';
 export const ACTIVITY_CREATE_Q = 'ACTIVITY_CREATE_Q';
 export const ACTIVITY_DELETE = 'ACTIVITY_DELETE';
 export const ACTIVITY_END = 'ACTIVITY_END'; // 👈 legacy
@@ -130,11 +133,16 @@ export function incrementMatch(direction: 1 | -1) {
 }
 
 // trace array of events -> object of activities
-export function processTimelineTrace(events: TraceEvent[], threads: Thread[]) {
+export function processTimelineTrace(
+  events: TraceEvent[],
+  threads: Thread[],
+  unstarted: Activity[] = [],
+) {
   return {
     type: PROCESS_TIMELINE_TRACE,
     events,
     threads,
+    unstarted,
   };
 }
 
@@ -370,6 +378,30 @@ export function resurrectActivity({ id, timestamp, message, thread_id }: Activit
 }
 
 /** 💁 the thread_id is just being used here for optimystical updating threadLevels */
+export function beginActivity(id: EntityId) {
+  return { type: ACTIVITY_BEGIN, id, timestamp: Date.now() };
+}
+
+export function planActivity({
+  name,
+  thread_id,
+  scheduled_start,
+  scheduled_end,
+}: {
+  name: string;
+  thread_id: EntityId;
+  scheduled_start?: number | null;
+  scheduled_end?: number | null;
+}) {
+  return {
+    type: ACTIVITY_PLAN,
+    name,
+    thread_id,
+    scheduled_start,
+    scheduled_end,
+  };
+}
+
 export function deleteActivity(id: EntityId, thread_id: EntityId) {
   return {
     type: ACTIVITY_DELETE,

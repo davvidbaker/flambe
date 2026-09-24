@@ -128,3 +128,15 @@ test('CLI discovers local commands; legacy REST shares the reducer and honors he
   assert.equal(spoof.data.state.activities.at(-1).agentId, 'test:a');
   assert.equal((await fetch(`${url}/api/agent-commands`)).status, 401);
 });
+
+test('plan stays out of status until asked, and a matching start begins limbo', t => {
+  const { call, start } = fixture(t);
+  const planned = call('plan', { name: 'Sit in limbo' });
+  const hidden = call('status');
+  assert.equal(hidden.state.activities.some(a => a.id === planned.activity_id), false);
+  const shown = call('status', { include_unstarted: true });
+  assert.equal(shown.state.activities.some(a => a.status === 'unstarted' && a.id === planned.activity_id), true);
+  const begun = start('Sit in limbo');
+  assert.equal(begun.activity_id, planned.activity_id);
+  assert.equal(begun.actions_applied[0].type, 'begin_existing');
+});

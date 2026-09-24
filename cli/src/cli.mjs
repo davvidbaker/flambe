@@ -20,7 +20,8 @@ const usage = `Usage:
   flambe end <activity-id> [message] [--force]
   flambe suspend <activity-id> [message]
   flambe resume <activity-id> [message]
-  flambe status [--active | --suspended] [--json]
+  flambe plan <activity name> [--start <ISO-8601>] [--end <ISO-8601>] [--description <text>] [--weight <n>]
+  flambe status [--active | --suspended] [--unstarted] [--json]
   flambe threads [--json]
   flambe categories [--json]
   flambe ping
@@ -127,20 +128,55 @@ function parseEnd(args) {
   };
 }
 
+function parsePlan(args) {
+  const nameParts = [];
+  let description;
+  let weight;
+  let start;
+  let end;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--description') {
+      description = args[index + 1];
+      if (description === undefined) throw new Error('--description requires a value');
+      index += 1;
+    } else if (arg === '--weight') {
+      weight = Number(args[index + 1]);
+      if (!Number.isInteger(weight)) throw new Error('--weight requires an integer');
+      index += 1;
+    } else if (arg === '--start' || arg === '--end') {
+      const raw = args[index + 1];
+      if (raw === undefined) throw new Error(`${arg} requires an ISO-8601 timestamp`);
+      const parsed = Date.parse(raw);
+      if (!Number.isFinite(parsed)) throw new Error(`${arg} must be a valid ISO-8601 timestamp`);
+      if (arg === '--start') start = parsed;
+      else end = parsed;
+      index += 1;
+    } else if (arg.startsWith('--')) {
+      throw new Error(`Unknown option: ${arg}`);
+    } else nameParts.push(arg);
+  }
+  const name = nameParts.join(' ').trim();
+  if (!name) throw new Error('Usage: flambe plan <activity name> [--start <ISO-8601>] [--end <ISO-8601>]');
+  return { name, description, weight, scheduledStart: start, scheduledEnd: end };
+}
+
 function parseStatus(args) {
   let activeOnly = false;
   let suspendedOnly = false;
+  let includeUnstarted = false;
   let json = false;
 
   for (const arg of args) {
     if (arg === '--active') activeOnly = true;
     else if (arg === '--suspended') suspendedOnly = true;
+    else if (arg === '--unstarted') includeUnstarted = true;
     else if (arg === '--json') json = true;
     else throw new Error(`Unknown option: ${arg}`);
   }
 
   if (activeOnly && suspendedOnly) throw new Error('--active and --suspended cannot be used together');
-  return { activeOnly, suspendedOnly, json };
+  return { activeOnly, suspendedOnly, includeUnstarted, json };
 }
 
 function parseObserve(args) {
@@ -389,6 +425,12 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
   flambe.onReducerNote ??= onReducerNote;
   await flambe.flushQueue?.();
 
+  if (command === 'plan') {
+    const activityId = await flambe.plan(parsePlan(args));
+    stdout.write(`${activityId}\n`);
+    return;
+  }
+
   if (command === 'start') {
     const activityId = await flambe.start(parseStart(args));
     stdout.write(`${activityId}\n`);
@@ -412,14 +454,16 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
   }
 
   if (command === 'status') {
-    const { activeOnly, suspendedOnly, json } = parseStatus(args);
-    const status = await flambe.status({ activeOnly, suspendedOnly });
+    const { activeOnly, suspendedOnly, includeUnstarted, json } = parseStatus(args);
+    const status = await flambe.status({ activeOnly, suspendedOnly, includeUnstarted });
 
     if (json) {
       stdout.write(`${JSON.stringify(status)}\n`);
     } else {
       for (const activity of status.activities) {
-        stdout.write(`${activity.id}\t${activity.path.join(' > ')}\t${activity.threadId}\t${activity.threadName ?? ''}\t${activity.categoryIds.join(',')}\t${activity.latestEvent.phase}\t${activity.latestEvent.timestamp}\n`);
+        const phase = activity.latestEvent?.phase ?? activity.status;
+        const when = activity.latestEvent?.timestamp ?? '';
+        stdout.write(`${activity.id}\t${activity.path.join(' > ')}\t${activity.threadId}\t${activity.threadName ?? ''}\t${activity.categoryIds.join(',')}\t${phase}\t${when}\n`);
       }
     }
 
