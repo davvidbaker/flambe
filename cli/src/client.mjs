@@ -312,7 +312,7 @@ export class FlambeClient {
         ...this.commandIdentity(),
         active_only: activeOnly,
         suspended_only: suspendedOnly,
-        include_unstarted: includeUnstarted,
+        ...(includeUnstarted ? { include_unstarted: true } : {}),
       });
       return result.state;
     }

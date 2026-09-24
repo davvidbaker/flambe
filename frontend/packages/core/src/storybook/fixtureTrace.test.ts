@@ -421,7 +421,7 @@ function truncatedThreadZoomLabels(fixture: ReturnType<typeof createPowerPlantFi
       const activity = processed.activities[String(block.activity_id)];
       const width = ((block.endTime ?? end) - block.startTime) / span * EXAMPLE_CHART_WIDTH;
       if (width < EXAMPLE_MIN_BAR) continue;
-      const needed = EXAMPLE_TEXT_PAD + activity.name.length * EXAMPLE_PX_PER_CHAR;
+      const needed = EXAMPLE_TEXT_PAD + (activity.name ?? '').length * EXAMPLE_PX_PER_CHAR;
       if (needed > width + 8) {
         truncated.push(
           `${activity.name} (${Math.round(needed)}px label / ${Math.round(width)}px bar)`,

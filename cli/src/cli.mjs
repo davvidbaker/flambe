@@ -455,7 +455,11 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
 
   if (command === 'status') {
     const { activeOnly, suspendedOnly, includeUnstarted, json } = parseStatus(args);
-    const status = await flambe.status({ activeOnly, suspendedOnly, includeUnstarted });
+    const status = await flambe.status({
+      activeOnly,
+      suspendedOnly,
+      ...(includeUnstarted ? { includeUnstarted } : {}),
+    });
 
     if (json) {
       stdout.write(`${JSON.stringify(status)}\n`);
