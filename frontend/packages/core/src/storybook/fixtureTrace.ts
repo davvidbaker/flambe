@@ -16,6 +16,7 @@ export type AppChartFixture = {
   threads: Thread[];
   traceId: EntityId;
   traceName: string;
+  unstarted?: Activity[];
 };
 
 export type AppChartFixtureOptions = {
