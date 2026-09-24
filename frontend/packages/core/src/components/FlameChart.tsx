@@ -1401,7 +1401,7 @@ export class FlameChart extends Component<Props, State> {
         : 1;
 
     this.ctx.fillStyle = colors.flames.main;
-    let labelColor = colors.text;
+    let labelColor: string = colors.text;
     /** 💁 sometimes the categories array contains null or undefined... probably shouldn't but 🤷‍ */
     if (activity.categories.length > 0 && activity.categories[0]) {
       // ⚠️ don't always just show the color belonging to category 0... need a better way

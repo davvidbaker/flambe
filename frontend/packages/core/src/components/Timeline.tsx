@@ -927,7 +927,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       )}
                       zoom={this.zoom}
                     />
-                    <SplitPane split="horizontal" primary="second" defaultSize={168} minSize={96}>
+                    <SplitPane split="horizontal" primary="second" defaultSize={260} minSize={120}>
                     <FlameChart
                       ref={this.flameChart}
                       activities={props.activities}
@@ -960,6 +960,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                     <LimboPane
                       activities={props.activities}
                       beginActivity={props.beginActivity ?? (() => undefined)}
+                      categories={props.categories}
                       deleteActivity={props.deleteActivity ?? (() => undefined)}
                       focusActivity={id => {
                         const activity = props.activities[String(id)];
