@@ -39,6 +39,17 @@ defmodule FlambeNextWeb.ActivityController do
     end
   end
 
+  def create(conn, %{"trace_id" => trace_id, "activity" => activity_attrs} = params) do
+    user = conn.assigns.current_user
+    trace = Traces.get_user_trace!(user, trace_id)
+
+    if Map.has_key?(conn.assigns, :api_token) do
+      plan_create(conn, user, params, activity_attrs)
+    else
+      direct_unstarted(conn, user, trace, params, activity_attrs)
+    end
+  end
+
   defp agent_create(conn, user, params, activity_attrs, event_attrs) do
     case AgentCommands.execute(
            user,
@@ -123,6 +134,75 @@ defmodule FlambeNextWeb.ActivityController do
 
   defp direct_create(_user, _trace, _params, _activity_attrs, _event_attrs),
     do: {:error, :not_found}
+
+  defp plan_create(conn, user, params, activity_attrs) do
+    case AgentCommands.execute(user, "plan", plan_command_attrs(conn, params, activity_attrs)) do
+      {:ok, result} ->
+        activity = Traces.get_user_trace_activity!(user, params["trace_id"], result.activity_id)
+
+        conn
+        |> put_status(:created)
+        |> render(:show, activity: activity, event: nil)
+
+      {:error, :not_found} ->
+        conn |> put_status(:not_found) |> json(%{error: "NOT_FOUND"})
+
+      {:error, {:invalid_input, message}} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: %{activity: [message]}})
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: errors(changeset)})
+    end
+  end
+
+  defp plan_command_attrs(conn, params, activity_attrs) do
+    attrs = %{
+      "trace_id" => params["trace_id"],
+      "name" => Map.get(activity_attrs, "name"),
+      "description" => Map.get(activity_attrs, "description"),
+      "category_ids" => Map.get(activity_attrs, "categories", []),
+      "weight" => Map.get(activity_attrs, "weight"),
+      "scheduled_start" => Map.get(activity_attrs, "scheduled_start_integer"),
+      "scheduled_end" => Map.get(activity_attrs, "scheduled_end_integer")
+    }
+
+    case conn.assigns[:agent] do
+      %{id: agent_id, name: name} = agent ->
+        attrs
+        |> Map.put("agent_id", agent_id)
+        |> Map.put("agent_name", name)
+        |> Map.put("agent_platform", Map.get(agent, :platform))
+
+      _ ->
+        attrs
+    end
+  end
+
+  defp direct_unstarted(conn, user, trace, %{"thread_id" => thread_id}, activity_attrs) do
+    thread = Traces.get_user_trace_thread!(user, trace.id, thread_id)
+    category_ids = Map.get(activity_attrs, "categories", [])
+    activity_attrs = agent_identity(conn, activity_attrs)
+
+    with {:ok, parent} <-
+           parent_activity(user, trace.id, thread.id, Map.get(activity_attrs, "parent_id")),
+         {:ok, categories} <- Accounts.get_user_categories(user, category_ids),
+         {:ok, activity} <-
+           Traces.create_unstarted_activity(trace, thread, parent, activity_attrs, categories) do
+      conn
+      |> put_status(:created)
+      |> render(:show, activity: activity, event: nil)
+    else
+      {:error, :not_found} ->
+        conn |> put_status(:not_found) |> json(%{error: "NOT_FOUND"})
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: errors(changeset)})
+    end
+  end
+
+  defp direct_unstarted(conn, _user, _trace, _params, _activity_attrs) do
+    conn |> put_status(:not_found) |> json(%{error: "NOT_FOUND"})
+  end
 
   defp agent_identity(conn, activity_attrs) do
     attrs = Map.drop(activity_attrs, ["agent_id", "agent_name"])
@@ -260,8 +340,18 @@ defmodule FlambeNextWeb.ActivityController do
 
   def delete(conn, %{"id" => id}) do
     activity = Traces.get_user_activity!(conn.assigns.current_user, id)
-    {:ok, _activity} = Traces.delete_activity(activity)
-    send_resp(conn, :no_content, "")
+
+    result =
+      if Traces.unstarted?(activity) do
+        Traces.delete_unstarted_activity(activity)
+      else
+        Traces.delete_activity(activity)
+      end
+
+    case result do
+      {:ok, _activity} -> send_resp(conn, :no_content, "")
+      {:error, _reason} -> send_resp(conn, :unprocessable_entity, "")
+    end
   end
 
   defp update_categories(user, activity, attrs) do

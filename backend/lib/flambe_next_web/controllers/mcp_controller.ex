@@ -6,7 +6,7 @@ defmodule FlambeNextWeb.McpController do
 
   @protocol_version "2026-07-28"
   @legacy_protocol_versions ~w(2025-11-25 2025-06-18 2025-03-26 2024-11-05)
-  @tools ~w(flambe_start flambe_end flambe_suspend flambe_resume flambe_status flambe_message)
+  @tools ~w(flambe_start flambe_end flambe_suspend flambe_resume flambe_status flambe_message flambe_plan)
 
   def unsupported(conn, _params), do: send_resp(conn, :method_not_allowed, "")
 
@@ -98,7 +98,7 @@ defmodule FlambeNextWeb.McpController do
          "method" => "tools/call",
          "params" => %{"name" => "flambe_" <> command, "arguments" => arguments}
        })
-       when not is_nil(id) and command in ~w(start end suspend resume status message) and
+       when not is_nil(id) and command in ~w(start end suspend resume status message plan) and
               is_map(arguments) do
     arguments = AgentCommandController.put_agent_identity(conn, arguments)
 
@@ -179,9 +179,32 @@ defmodule FlambeNextWeb.McpController do
       |> Map.merge(%{
         thread_id: positive_integer("Optional thread id to focus state and availableActions"),
         active_only: %{type: "boolean", default: false},
-        suspended_only: %{type: "boolean", default: false}
+        suspended_only: %{type: "boolean", default: false},
+        include_unstarted: %{
+          type: "boolean",
+          default: false,
+          description: "Include unstarted activities. Omitted, status leaves them out."
+        }
       }),
       ["trace_id"]
+    )
+  end
+
+  defp tool_definition("flambe_plan") do
+    tool(
+      "flambe_plan",
+      "Plan an unstarted Flambe activity",
+      "Create an activity before it begins. Omit both times for limbo, or pass scheduled_start and scheduled_end as millisecond timestamps. The reducer places a new root on a thread. Beginning it later is flambe_start with the same name, or with activity_id.",
+      common_properties()
+      |> Map.merge(%{
+        name: %{type: "string", minLength: 1, maxLength: 255, description: "Activity name"},
+        description: %{type: "string"},
+        weight: %{type: "integer", minimum: 0},
+        scheduled_start: timestamp_schema(),
+        scheduled_end: timestamp_schema(),
+        category_ids: %{type: "array", items: %{type: "integer", minimum: 1}}
+      }),
+      ["trace_id", "name"]
     )
   end
 

@@ -46,6 +46,7 @@ import ThreadDetail from './ThreadDetail';
 import ActivityDetailModal from './ActivityDetailModal';
 import TimeSeries from './TimeSeries';
 import FlameChart, { FlameChart as FlameChartComponent } from './FlameChart';
+import LimboPane from './LimboPane';
 import SwyzzleTraceOverlay from './SwyzzleTraceOverlay';
 import Tooltip from './Tooltip';
 import FocusedBlock from './FocusedBlock';
@@ -114,6 +115,10 @@ export interface TimelineProps {
   toggleThread: (id: EntityId, isCollapsed?: boolean) => unknown;
   trace_id: EntityId;
   updateEvent: (id: EntityId, updates: Record<string, unknown>) => unknown;
+  beginActivity?: (id: EntityId) => unknown;
+  deleteActivity?: (id: EntityId, threadId: EntityId) => unknown;
+  planActivity?: (threadId: EntityId, time: number) => unknown;
+  updateActivity?: (id: EntityId, updates: Record<string, unknown>) => unknown;
 }
 
 interface TimelineComponentState {
@@ -922,6 +927,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       )}
                       zoom={this.zoom}
                     />
+                    <SplitPane split="horizontal" primary="second" defaultSize={168} minSize={96}>
                     <FlameChart
                       ref={this.flameChart}
                       activities={props.activities}
@@ -947,8 +953,25 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       toggleThread={props.toggleThread}
                       topOffset={this.topOffset || 0}
                       updateEvent={props.updateEvent}
+                      updateScheduled={props.updateActivity}
+                      planAt={props.planActivity}
                       zoom={this.zoom}
                     />
+                    <LimboPane
+                      activities={props.activities}
+                      beginActivity={props.beginActivity ?? (() => undefined)}
+                      deleteActivity={props.deleteActivity ?? (() => undefined)}
+                      focusActivity={id => {
+                        const activity = props.activities[String(id)];
+                        props.focusBlock({
+                          index: null,
+                          activity_id: id,
+                          activityStatus: activity?.status,
+                          thread_id: activity?.thread_id ?? null,
+                        });
+                      }}
+                    />
+                    </SplitPane>
                   </SplitPane>
 
                   {/* ⚠️ Moved these up? */}

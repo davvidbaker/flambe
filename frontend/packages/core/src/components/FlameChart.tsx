@@ -102,6 +102,8 @@ interface OwnProps {
   toggleThread: (id: EntityId, isCollapsed?: boolean) => unknown;
   topOffset?: number;
   updateEvent: (id: EntityId, updates: Record<string, unknown>) => unknown;
+  updateScheduled?: (id: EntityId, updates: Record<string, unknown>) => unknown;
+  planAt?: (threadId: EntityId, time: number) => unknown;
   zoom?: (...args: any[]) => unknown;
 }
 
@@ -366,7 +368,9 @@ export class FlameChart extends Component<Props, State> {
 
     if (mouseX > 10 && mouseX < this.width - 10) {
       const startX = this.timeToPixels(hitBlock[1].startTime);
-      const endX = hitBlock[1].endTime && this.timeToPixels(hitBlock[1].endTime);
+      const endX = hitBlock[1].scheduled && hitBlock[1].endTime == null
+        ? this.width
+        : hitBlock[1].endTime && this.timeToPixels(hitBlock[1].endTime);
 
       /* 💁 don't resize if block is too small */
       if (!endX || endX - startX > 20) {
@@ -638,15 +642,47 @@ export class FlameChart extends Component<Props, State> {
     }
   };
 
+  onDoubleClick = (event: MouseEvent<HTMLCanvasElement>): void => {
+    const hit = this.hitTest(event);
+    if (hit && (hit.type === 'block' || hit.type === 'block_edge_left' || hit.type === 'block_edge_right')) {
+      return;
+    }
+    const threadId = this.pixelsToThreadId(event.nativeEvent.offsetY);
+    if (threadId == null || !this.props.planAt) return;
+    this.props.planAt(threadId, Math.floor(this.pixelsToTime(event.nativeEvent.offsetX)));
+  };
+
+  onDrop = (event: React.DragEvent<HTMLCanvasElement>): void => {
+    event.preventDefault();
+    const activityId = event.dataTransfer.getData('text/flambe-activity');
+    const threadId = this.pixelsToThreadId(event.nativeEvent.offsetY);
+    if (!activityId || threadId == null || !this.props.updateScheduled) return;
+    this.props.updateScheduled(activityId, {
+      thread_id: threadId,
+      scheduled_start_integer: Math.floor(this.pixelsToTime(event.nativeEvent.offsetX)),
+      scheduled_end: null,
+    });
+  };
+
   onMouseUp = () => {
     if (this.resizing && this.resizingBlock) {
-      /* ⚠️ should do like an adjust activity thing that updates redux blocks */
-      this.props.updateEvent(
-        this.resizingBlock[1].events[this.resizing === 'left' ? 0 : 1],
-        {
-          timestamp_integer: Math.floor(this.pixelsToTime(this.cursor.x)),
-        },
-      );
+      const block = this.resizingBlock[1];
+      const time = Math.floor(this.pixelsToTime(this.cursor.x));
+      if (block.scheduled && this.props.updateScheduled) {
+        const start = this.resizing === 'left' ? time : block.startTime;
+        const end = this.resizing === 'right' ? time : block.endTime;
+        if (end == null || end >= start) {
+          this.props.updateScheduled(block.activity_id, {
+            ...(this.resizing === 'left' ? { scheduled_start_integer: time } : {}),
+            ...(this.resizing === 'right' ? { scheduled_end_integer: time } : {}),
+          });
+        }
+      } else {
+        this.props.updateEvent(
+          block.events[this.resizing === 'left' ? 0 : 1],
+          { timestamp_integer: time },
+        );
+      }
     } else if (this.draggingThread) {
       // this.props.updateThreadRank()
     }
@@ -700,6 +736,9 @@ export class FlameChart extends Component<Props, State> {
               onMouseMove={this.onMouseMove}
               onMouseDown={this.onMouseDown}
               onMouseUp={this.onMouseUp}
+              onDoubleClick={this.onDoubleClick}
+              onDragOver={event => event.preventDefault()}
+              onDrop={this.onDrop}
               style={{
                 width: '100%',
                 height: '100%',
@@ -1382,12 +1421,18 @@ export class FlameChart extends Component<Props, State> {
       / Math.max(1, this.props.uniformBlockHeight
         ? this.maxThreadLevels
         : (this.threadLevels[String(activity.thread_id)]?.max ?? 1));
-    this.ctx.fillRect(
-      blockX,
-      collapsed ? blockY + this.displayRowForBlock(block) * adjustedBlockHeight : blockY,
-      blockWidth,
-      collapsed ? adjustedBlockHeight : blockHeight,
-    );
+    const drawnWidth = block.scheduledPoint ? Math.max(blockWidth, 8) : blockWidth;
+    const drawnX = blockX;
+    const drawnY = collapsed ? blockY + this.displayRowForBlock(block) * adjustedBlockHeight : blockY;
+    const drawnHeight = collapsed ? adjustedBlockHeight : blockHeight;
+    if (block.scheduled) this.ctx.globalAlpha *= 0.55;
+    this.ctx.fillRect(drawnX, drawnY, drawnWidth, drawnHeight);
+    if (block.scheduled) {
+      this.ctx.setLineDash([4, 3]);
+      this.ctx.strokeStyle = labelColor;
+      this.ctx.strokeRect(drawnX, drawnY, drawnWidth, drawnHeight);
+      this.ctx.setLineDash([]);
+    }
 
     this.ctx.globalAlpha = collapsed
       ? 0.4

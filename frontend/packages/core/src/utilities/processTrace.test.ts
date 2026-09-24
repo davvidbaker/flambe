@@ -147,4 +147,40 @@ describe('processTrace', () => {
     expect(result.threadLevels[thread.id]).toEqual({ current: 0, max: 1 });
     expect(result.threadLevels[otherThread.id]).toEqual({ current: 0, max: 1 });
   });
+
+  it('draws a scheduled activity from its plan and leaves an untimed one off the chart', () => {
+    const planned: Activity = {
+      ...activity,
+      id: 20,
+      name: 'Later',
+      scheduled_start: 500,
+      scheduled_end: 800,
+    };
+    const limbo: Activity = { ...activity, id: 21, name: 'Undated' };
+
+    const result = processTrace([], [thread], [planned, limbo]);
+
+    expect(result.activities[20]?.status).toBe('unstarted');
+    expect(result.activities[21]?.status).toBe('unstarted');
+    expect(result.blocks).toEqual([
+      expect.objectContaining({
+        activity_id: 20,
+        scheduled: true,
+        startTime: 500,
+        endTime: 800,
+      }),
+    ]);
+  });
+
+  it('draws an end-only plan as a point and a start-only plan open to the right', () => {
+    const startOnly: Activity = { ...activity, id: 30, scheduled_start: 1000 };
+    const endOnly: Activity = { ...activity, id: 31, scheduled_end: 2000 };
+
+    const result = processTrace([], [thread], [startOnly, endOnly]);
+
+    expect(result.blocks).toEqual([
+      expect.objectContaining({ activity_id: 30, scheduled: true, scheduledPoint: false, startTime: 1000 }),
+      expect.objectContaining({ activity_id: 31, scheduled: true, scheduledPoint: true, startTime: 2000, endTime: 2000 }),
+    ]);
+  });
 });

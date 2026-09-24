@@ -6,8 +6,10 @@ import {
   processTimelineTrace,
   setHiddenThreads,
   updateActivity as updateActivityAction,
+  ACTIVITY_BEGIN,
   ACTIVITY_CREATE_B,
   ACTIVITY_CREATE_Q,
+  ACTIVITY_PLAN,
   ACTIVITY_DELETE,
   ACTIVITY_END,
   ACTIVITY_RESUME,
@@ -43,6 +45,7 @@ import { navigate } from '../utilities/navigation';
 import type { SagaIterator } from 'redux-saga';
 import type { EntityId } from '../types/ids';
 import type { EventPhase, TraceEvent } from '../types/TraceEvent';
+import type { Activity } from '../types/Activity';
 import type { Thread } from '../types/Thread';
 import type { Trace } from '../types/Trace';
 
@@ -64,6 +67,7 @@ interface IncomingTrace {
   events: Array<Omit<TraceEvent, 'timestamp'> & { timestamp: number | string }>;
   id: EntityId;
   threads: Thread[];
+  unstarted?: Activity[];
 }
 
 interface NetworkAction {
@@ -80,6 +84,8 @@ interface NetworkAction {
   orderedIds?: EntityId[];
   phase?: EventPhase;
   rank?: number;
+  scheduled_end?: number | null;
+  scheduled_start?: number | null;
   thread_id?: EntityId;
   timestamp?: number;
   trace?: Trace | EntityId;
@@ -223,9 +229,54 @@ function* deleteActivity({ type, id }: NetworkAction): SagaIterator {
       }),
     },
   });
+  yield* refetchTrace();
 }
 
 // { name, thread_id, category_ids = [], weight }
+function* refetchTrace(): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  if (timeline.trace?.id !== null && timeline.trace?.id !== undefined) {
+    yield* fetchTrace({ type: TRACE_FETCH, trace: timeline.trace.id });
+  }
+}
+
+function* planActivity({ type, name, thread_id, scheduled_start, scheduled_end }: NetworkAction): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  yield* fetchResource(type, {
+    resource: { path: 'activities' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        trace_id: timeline.trace?.id,
+        thread_id,
+        activity: {
+          name,
+          scheduled_start_integer: scheduled_start ?? null,
+          scheduled_end_integer: scheduled_end ?? null,
+          categories: [],
+        },
+      }),
+    },
+  });
+  yield* refetchTrace();
+}
+
+function* beginActivity({ type, id, timestamp }: NetworkAction): SagaIterator {
+  const timeline: TimelineState = yield select(getTimeline);
+  yield* fetchResource(type, {
+    resource: { path: 'events' },
+    params: {
+      method: 'POST',
+      body: JSON.stringify({
+        trace_id: timeline.trace?.id,
+        activity_id: id,
+        event: { timestamp_integer: timestamp ?? Date.now(), phase: 'B' },
+      }),
+    },
+  });
+  yield* refetchTrace();
+}
+
 function* updateActivity({ type, id, updates }: NetworkAction): SagaIterator {
   yield* fetchResource(type, {
     resource: { path: 'activities', id },
@@ -236,11 +287,14 @@ function* updateActivity({ type, id, updates }: NetworkAction): SagaIterator {
   });
 
   // Thread moves cascade on the server; refetch so blocks/lanes recompute.
-  if (updates?.thread_id !== undefined) {
-    const timeline: TimelineState = yield select(getTimeline);
-    if (timeline.trace?.id !== null && timeline.trace?.id !== undefined) {
-      yield* fetchTrace({ type: TRACE_FETCH, trace: timeline.trace.id });
-    }
+  if (
+    updates?.thread_id !== undefined
+    || updates?.scheduled_start_integer !== undefined
+    || updates?.scheduled_end_integer !== undefined
+    || updates?.scheduled_start !== undefined
+    || updates?.scheduled_end !== undefined
+  ) {
+    yield* refetchTrace();
   }
 }
 
@@ -467,6 +521,7 @@ function* processFetchedTrace({ data }: NetworkAction): SagaIterator {
         collapsed: isCollapsed(persistedThreads, thread)
           || persistedCollapseState[String(thread.id)] === true,
       })),
+      data.unstarted ?? [],
     ),
   );
   yield put(setHiddenThreads(getHiddenThreadIds(data.id)));
@@ -531,6 +586,8 @@ function* resurrectActivity({ type, id, timestamp, message }: NetworkAction): Sa
 // // // // // // // // // // // // // // // // // // // // // // // //
 
 function* networkSaga(): SagaIterator {
+  yield takeEvery(ACTIVITY_PLAN, planActivity);
+  yield takeEvery(ACTIVITY_BEGIN, beginActivity);
   yield takeEvery(ACTIVITY_CREATE_B, createActivity);
   yield takeEvery(ACTIVITY_CREATE_Q, createActivity);
   yield takeEvery(ACTIVITY_DELETE, deleteActivity);
