@@ -42,7 +42,7 @@ const meta = {
   },
   decorators: [
     Story => (
-      <div style={{ height: 360 }}>
+      <div style={{ height: 180 }}>
         <Story />
       </div>
     ),
@@ -59,11 +59,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Weighted items are hexes sized by weight, heaviest in the middle; the rest wait in the side list. */
+/** Unstarted and paused work are separated; weight is metadata rather than geometry. */
 export const Mixed: Story = {
   args: {
     activities: byId([
-      item(1, 'Bring back the hex field', 'unstarted', { category: 3, weight: 8 }),
+      item(1, 'Review the activity detail flow', 'unstarted', { category: 3, weight: 8 }),
       item(2, 'Rework reducer placement', 'suspended', { category: 2, weight: 5 }),
       item(3, 'Detail the interior', 'unstarted', { category: 4, weight: 3 }),
       item(4, 'Write a CLI walkthrough', 'unstarted', { category: 3, weight: 2 }),
@@ -74,8 +74,8 @@ export const Mixed: Story = {
   },
 };
 
-/** Many weighted items, to check the honeycomb spiral stays readable and scrolls. */
-export const ManyWeighted: Story = {
+/** A busy tray stays compact and scrolls horizontally within each group. */
+export const ManyCards: Story = {
   args: {
     activities: byId(
       Array.from({ length: 19 }, (_, index) =>
@@ -87,7 +87,7 @@ export const ManyWeighted: Story = {
   },
 };
 
-/** A long name must stay inside its hex and show in full on hover. */
+/** Long names stay inside their cards and show in full on hover. */
 export const LongNames: Story = {
   args: {
     activities: byId([

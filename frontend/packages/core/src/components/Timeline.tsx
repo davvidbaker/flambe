@@ -11,6 +11,7 @@ import {
 } from '../utilities/timelineGeometry';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
+import { limboItems } from '../utilities/limbo';
 import { persistCollapsedThreadState } from '../utilities/threadCollapseState';
 import { savedRangeIsUsable } from '../utilities/timelineViewport';
 import {
@@ -795,6 +796,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
   render() {
     const { props } = this;
+    const hasLimbo = limboItems(props.activities).length > 0;
 
     const rightBoundaryTime = this.rightBoundaryTime || props.maxTime;
     const leftBoundaryTime = this.leftBoundaryTime || props.minTime;
@@ -927,7 +929,13 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       )}
                       zoom={this.zoom}
                     />
-                    <SplitPane split="horizontal" primary="second" defaultSize={260} minSize={120}>
+                    <SplitPane
+                      key={hasLimbo ? 'limbo-open' : 'limbo-empty'}
+                      split="horizontal"
+                      primary="second"
+                      defaultSize={hasLimbo ? 180 : 36}
+                      minSize={hasLimbo ? 120 : 36}
+                    >
                     <FlameChart
                       ref={this.flameChart}
                       activities={props.activities}
