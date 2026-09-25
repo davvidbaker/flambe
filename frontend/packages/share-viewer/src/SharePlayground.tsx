@@ -154,154 +154,266 @@ export function SharePlayground() {
     cursor: 'pointer',
     fontSize: 13,
     padding: '6px 10px',
+    whiteSpace: 'nowrap',
   } as const;
 
   return (
     <AuthFrame data-auth-shell="true" style={{ position: 'relative' }}>
-    <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', height: '100%', padding: 10 }}>
-      <header
-        style={{
-          alignItems: 'center',
-          background: colors.background,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-          padding: '6px 8px 12px',
-          textAlign: 'center',
-        }}
-      >
-        <Logo isAnimated size={52} />
-        <p style={{ color: '#444', fontSize: 14, margin: 0, maxWidth: 560 }}>
-          Paste or drop a Flambe snapshot and see the flame chart. Nothing leaves this browser: the JSON is
-          read and saved locally so a refresh keeps it. Nothing is uploaded.
-        </p>
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <button onClick={() => fileInput.current?.click()} style={buttonStyle} type="button">
-            Open a JSON file
-          </button>
-          <button
-            onClick={() => {
-              const next = createExampleSnapshot();
-              const example = formatSnapshotJson(next);
-              starterText.current = example;
-              setJsonText(example);
-              appliedJson.current = JSON.stringify(next);
-              setSnapshot(next);
-              setChartKey(key => key + 1);
-              setParseError(null);
-              setNotice(null);
-              clearLocalSnapshot();
-            }}
-            style={buttonStyle}
-            type="button"
-          >
-            Reset example
-          </button>
-        </div>
-        <input
-          accept=".json,application/json"
-          hidden
-          onChange={event => {
-            void loadDroppedFile(event.target.files?.[0]);
-            event.target.value = '';
-          }}
-          ref={fileInput}
-          type="file"
-        />
-      </header>
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          flexWrap: 'wrap',
-          minHeight: 0,
-        }}
-      >
-        <section
-          style={{
-            borderRight: `1px solid ${colors.hover}`,
-            display: 'flex',
-            flex: '1 1 360px',
-            flexDirection: 'column',
-            maxWidth: 560,
-            minHeight: 240,
-            minWidth: 280,
-          }}
-        >
-          <div style={{ fontSize: 13, lineHeight: 1.5, padding: '12px 14px 8px' }}>
-            <p style={{ margin: '0 0 8px' }}>
-              A snapshot is a <code>version: 1</code> JSON object with a <code>viewport</code> and a{' '}
-              <code>fixture</code> of threads, categories, and events. Each event has a phase:{' '}
-              <code>B</code> begin, <code>E</code> end, <code>S</code> suspend, <code>R</code> resume,{' '}
-              <code>Q</code> question, <code>X</code> instant. <code>parent_id</code> nests work;{' '}
-              <code>agent_name</code> marks agent work. Timestamps are Unix milliseconds.
-            </p>
-            <p style={{ margin: 0 }}>
-              Edit the JSON below. The chart redraws whenever it parses.
-            </p>
+      <style>{`
+        .share-playground {
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-height: 0;
+          padding: 8px;
+        }
+
+        .share-header {
+          align-items: center;
+          background: ${colors.background};
+          display: flex;
+          gap: 10px;
+          min-height: 44px;
+          padding: 2px 4px 8px;
+        }
+
+        .share-header-actions {
+          align-items: center;
+          display: flex;
+          gap: 8px;
+          margin-left: auto;
+        }
+
+        .share-local-note {
+          color: #666;
+          font-size: 12px;
+          white-space: nowrap;
+        }
+
+        .share-content {
+          display: grid;
+          flex: 1;
+          grid-template-areas: "editor chart";
+          grid-template-columns: minmax(320px, 0.8fr) minmax(420px, 1.4fr);
+          min-height: 0;
+        }
+
+        .share-chart {
+          grid-area: chart;
+          min-height: 280px;
+          min-width: 0;
+        }
+
+        .share-editor {
+          border-right: 1px solid ${colors.hover};
+          display: flex;
+          flex-direction: column;
+          grid-area: editor;
+          min-height: 0;
+          min-width: 0;
+        }
+
+        .share-editor-summary {
+          cursor: pointer;
+          display: none;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 10px 2px;
+        }
+
+        .share-editor-body {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          min-height: 0;
+        }
+
+        @media (max-width: 799px) {
+          .share-playground {
+            padding: 4px;
+          }
+
+          .share-header {
+            gap: 6px;
+            min-height: 40px;
+            padding-bottom: 4px;
+          }
+
+          .share-header svg {
+            max-height: 34px;
+            width: auto;
+          }
+
+          .share-local-note {
+            display: none;
+          }
+
+          .share-header-actions {
+            gap: 6px;
+          }
+
+          .share-header-actions button {
+            font-size: 12px !important;
+            padding: 5px 8px !important;
+          }
+
+          .share-content {
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+          }
+
+          .share-chart {
+            flex: 0 0 calc(100dvh - 58px);
+            min-height: 420px;
+            order: 1;
+          }
+
+          .share-editor {
+            border-right: none;
+            border-top: 1px solid ${colors.hover};
+            min-height: auto;
+            order: 2;
+          }
+
+          .share-editor-summary {
+            display: block;
+          }
+
+          .share-editor-body {
+            display: none;
+          }
+
+          .share-editor[open] .share-editor-body {
+            display: flex;
+          }
+        }
+      `}</style>
+
+      <div className="share-playground">
+        <header className="share-header">
+          <Logo isAnimated size={42} />
+          <span className="share-local-note">Local only · Nothing leaves this browser</span>
+          <div className="share-header-actions">
+            <button onClick={() => fileInput.current?.click()} style={buttonStyle} type="button">
+              Open JSON
+            </button>
+            <button
+              onClick={() => {
+                const next = createExampleSnapshot();
+                const example = formatSnapshotJson(next);
+                starterText.current = example;
+                setJsonText(example);
+                appliedJson.current = JSON.stringify(next);
+                setSnapshot(next);
+                setChartKey(key => key + 1);
+                setParseError(null);
+                setNotice(null);
+                clearLocalSnapshot();
+              }}
+              style={buttonStyle}
+              type="button"
+            >
+              Example
+            </button>
           </div>
-          <textarea
-            aria-label="Timeline snapshot JSON"
-            onChange={event => setJsonText(event.target.value)}
-            spellCheck={false}
-            style={{
-              border: 'none',
-              borderTop: `1px solid ${colors.hover}`,
-              flex: 1,
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              fontSize: 12,
-              lineHeight: 1.45,
-              minHeight: 180,
-              outline: 'none',
-              padding: 12,
-              resize: 'none',
-              whiteSpace: 'pre',
+          <input
+            accept=".json,application/json"
+            hidden
+            onChange={event => {
+              void loadDroppedFile(event.target.files?.[0]);
+              event.target.value = '';
             }}
-            value={jsonText}
+            ref={fileInput}
+            type="file"
           />
+        </header>
+
+        <div className="share-content">
+          <div className="share-chart">
+            <ChartHarness
+              demoOverlays={false}
+              fixture={snapshot.fixture}
+              height="100%"
+              key={chartKey}
+              timeLabels={snapshot.timeLabels}
+              viewport={snapshot.viewport}
+            />
+          </div>
+
+          <details className="share-editor" open={false}>
+            <summary className="share-editor-summary">
+              Edit snapshot JSON
+              <span style={{ color: parseError ? colors.red : '#666', fontWeight: 400, marginLeft: 8 }}>
+                {parseError ? 'Invalid JSON' : 'Local only'}
+              </span>
+            </summary>
+            <div className="share-editor-body">
+              <div style={{ fontSize: 13, lineHeight: 1.5, padding: '12px 14px 8px' }}>
+                <p style={{ margin: '0 0 8px' }}>
+                  A snapshot is a <code>version: 1</code> JSON object with a <code>viewport</code> and a{' '}
+                  <code>fixture</code> of threads, categories, and events. Each event has a phase:{' '}
+                  <code>B</code> begin, <code>E</code> end, <code>S</code> suspend, <code>R</code> resume,{' '}
+                  <code>Q</code> question, <code>X</code> instant. <code>parent_id</code> nests work;{' '}
+                  <code>agent_name</code> marks agent work. Timestamps are Unix milliseconds.
+                </p>
+                <p style={{ margin: 0 }}>Edit the JSON below. The chart redraws whenever it parses.</p>
+              </div>
+              <textarea
+                aria-label="Timeline snapshot JSON"
+                onChange={event => setJsonText(event.target.value)}
+                spellCheck={false}
+                style={{
+                  border: 'none',
+                  borderTop: `1px solid ${colors.hover}`,
+                  flex: 1,
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: 12,
+                  lineHeight: 1.45,
+                  minHeight: 180,
+                  outline: 'none',
+                  padding: 12,
+                  resize: 'none',
+                  whiteSpace: 'pre',
+                }}
+                value={jsonText}
+              />
+              <div
+                style={{
+                  borderTop: `1px solid ${colors.hover}`,
+                  color: parseError ? colors.red : '#444',
+                  fontSize: 12,
+                  minHeight: 36,
+                  padding: '8px 12px',
+                }}
+              >
+                {parseError ?? notice ?? 'Valid snapshot. Saved in this browser only.'}
+              </div>
+            </div>
+          </details>
+        </div>
+
+        {dragging ? (
           <div
             style={{
-              borderTop: `1px solid ${colors.hover}`,
-              color: parseError ? colors.red : '#444',
-              fontSize: 12,
-              minHeight: 36,
-              padding: '8px 12px',
+              alignItems: 'center',
+              background: colors.dropTarget,
+              color: colors.text,
+              display: 'flex',
+              fontSize: 22,
+              inset: 0,
+              justifyContent: 'center',
+              opacity: 0.92,
+              pointerEvents: 'none',
+              position: 'fixed',
+              zIndex: 20,
             }}
           >
-            {parseError ?? notice ?? 'Valid snapshot. Saved in this browser only.'}
+            Drop JSON to replace this snapshot
           </div>
-        </section>
-        <div style={{ flex: '1.4 1 420px', minHeight: 280, minWidth: 280 }}>
-          <ChartHarness
-            demoOverlays={false}
-            fixture={snapshot.fixture}
-            height="100%"
-            key={chartKey}
-            timeLabels={snapshot.timeLabels}
-            viewport={snapshot.viewport}
-          />
-        </div>
+        ) : null}
       </div>
-      {dragging ? (
-        <div
-          style={{
-            alignItems: 'center',
-            background: colors.dropTarget,
-            color: colors.text,
-            display: 'flex',
-            fontSize: 22,
-            inset: 0,
-            justifyContent: 'center',
-            opacity: 0.92,
-            pointerEvents: 'none',
-            position: 'fixed',
-            zIndex: 20,
-          }}
-        >
-          Drop JSON to replace this snapshot
-        </div>
-      ) : null}
-    </div>
     </AuthFrame>
   );
 }
