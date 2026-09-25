@@ -9,6 +9,7 @@ import {
 } from '../actions';
 import { getUser, type UserState } from '../reducers/user';
 import { getTimeline, type TimelineState } from '../reducers/timeline';
+import { latestReducerActor } from '../utilities/reducerActor';
 import { blocksForActivity } from '../utilities/timeline';
 // types
 import type { Category as CategoryType } from '../types/Category';
@@ -66,6 +67,19 @@ const FieldBody = styled.div`
   flex-direction: column;
   gap: 8px;
   overflow: visible;
+`;
+
+const FieldHint = styled.div`
+  color: #666;
+  font-size: 12px;
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.92em;
+    background: #f3f1ee;
+    border-radius: 3px;
+    padding: 0 4px;
+  }
 `;
 
 const ChipList = styled.ul`
@@ -179,6 +193,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     showCategoryManager,
     submitCommand,
     threads,
+    events,
   } = props;
 
   const [pendingMove, setPendingMove] = React.useState<{
@@ -270,7 +285,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
   const blockEventIds = new Set(activityBlocks.flatMap(({ events }) => events).map(String));
   const additionalEventsNotIncludedInBlocks = activity.events
     .filter(eventId => !blockEventIds.has(String(eventId)))
-    .map(eventId => props.events.find(({ id }) => String(id) === String(eventId)))
+    .map(eventId => events.find(({ id }) => String(id) === String(eventId)))
     .filter((event): event is TraceEvent => event !== undefined);
 
   /* ⚠️ I'm currently assuming these will only be resolve/reject events, which may not hold true */
@@ -279,6 +294,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     endTime: e.timestamp,
     ending: e.phase,
   }));
+  const reducer = latestReducerActor(events, activity.id);
 
   return (
     <>
@@ -306,6 +322,15 @@ const ActivityDetail = (props: ActivityDetailProps) => {
           )}
         </FieldBody>
       </Field>
+      {reducer && (
+        <Field>
+          <FieldLabel>Reducer</FieldLabel>
+          <FieldBody>
+            <div>{reducer.agent}</div>
+            <FieldHint><code>{reducer.model}</code></FieldHint>
+          </FieldBody>
+        </Field>
+      )}
       <Field>
         <FieldLabel>Agent</FieldLabel>
         <FieldBody>

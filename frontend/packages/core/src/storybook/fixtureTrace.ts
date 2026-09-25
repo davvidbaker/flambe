@@ -124,6 +124,8 @@ export function createAppChartFixture({
     { id: 109, timestamp: minutesAgo(now, 52), phase: 'S', activity: addStorybook, message: 'Waiting on chart resize' },
     { id: 110, timestamp: minutesAgo(now, 48), phase: 'S', activity: heatRates, message: 'Waiting on data' },
     { id: 111, timestamp: minutesAgo(now, 36), phase: 'R', activity: addStorybook, message: 'Chart is drawing' },
+    { id: 121, timestamp: minutesAgo(now, 35), phase: 'reducer_incoming', activity: addStorybook, message: 'cursor: Chart is drawing.' },
+    { id: 122, timestamp: minutesAgo(now, 34), phase: 'reducer_decision', activity: addStorybook, message: 'model=gpt-5.6-luna | assessment=on_track | rationale=Stay on the Storybook work.' },
     { id: 112, timestamp: minutesAgo(now, 30), phase: 'R', activity: heatRates, message: 'Rates landed' },
     { id: 113, timestamp: minutesAgo(now, 28), phase: 'E', activity: writeFixture },
     { id: 114, timestamp: minutesAgo(now, 26), phase: 'B', activity: wireHarness },
