@@ -130,7 +130,11 @@ defmodule FlambeNext.Reducer.Review do
            answers when is_map(answers) <- response["answers"] || response[:answers],
            %{} = answer <- answers["action"] || answers[:action],
            choice when is_binary(choice) <- answer["choice"] || answer[:choice] do
-        jev_structure_choice(choice, activity, rule)
+        if Jev.confident_choice?(answer) do
+          jev_structure_choice(choice, activity, rule)
+        else
+          {:error, :low_jev_confidence}
+        end
       else
         {:error, reason} -> {:error, reason}
         _ -> {:error, :invalid_jev_response}
@@ -482,18 +486,22 @@ defmodule FlambeNext.Reducer.Review do
         escalation_reason: nil
       }
 
-      case route do
-        "routine" ->
+      routine? =
+        route == "routine" and assessment == "on_track" and direction_choice == "none" and
+          Jev.confident_choice?(route_answer)
+
+      cond do
+        routine? ->
           {:ok,
            %{
-             "assessment" => assessment,
-             "direction" => direction,
+             "assessment" => "on_track",
+             "direction" => nil,
              "reply" => nil,
              "rationale" => "Jev classified this as routine reducer work.",
              "actions" => [%{"type" => "no_op"}]
            }, model_info}
 
-        "review" ->
+        route in ["routine", "review"] ->
           if Model.available?(opts) do
             :fallback
           else
@@ -508,7 +516,7 @@ defmodule FlambeNext.Reducer.Review do
              }, model_info}
           end
 
-        _ ->
+        true ->
           {:error, :invalid_jev_response}
       end
     else
@@ -525,31 +533,31 @@ defmodule FlambeNext.Reducer.Review do
       llm = Model.resolve(opts)
       primary_model = Model.primary_model()
 
-    case model_decision(llm, primary_model, prompt, context) do
-      {:ok, primary_decision} ->
-        maybe_escalate(llm, primary_decision, prompt, context, primary_model)
+      case model_decision(llm, primary_model, prompt, context) do
+        {:ok, primary_decision} ->
+          maybe_escalate(llm, primary_decision, prompt, context, primary_model)
 
-      {:error, primary_error} ->
-        # Invalid or unavailable cheap-model output should fail safe by asking the
-        # stronger model rather than dropping a worker message or applying guesses.
-        escalation_model = Model.escalation_model()
+        {:error, primary_error} ->
+          # Invalid or unavailable cheap-model output should fail safe by asking the
+          # stronger model rather than dropping a worker message or applying guesses.
+          escalation_model = Model.escalation_model()
 
-        with {:ok, final_decision} <-
-               model_decision(
-                 llm,
-                 escalation_model,
-                 escalation_prompt(prompt, nil, primary_error),
-                 context
-               ) do
-          {:ok, final_decision,
-           %{
-             primary_model: primary_model,
-             final_model: escalation_model,
-             escalated: true,
-             escalation_reason: "primary_model_error"
-           }}
-        end
-    end
+          with {:ok, final_decision} <-
+                 model_decision(
+                   llm,
+                   escalation_model,
+                   escalation_prompt(prompt, nil, primary_error),
+                   context
+                 ) do
+            {:ok, final_decision,
+             %{
+               primary_model: primary_model,
+               final_model: escalation_model,
+               escalated: true,
+               escalation_reason: "primary_model_error"
+             }}
+          end
+      end
     end
   end
 

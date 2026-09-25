@@ -29,7 +29,7 @@ defmodule FlambeNext.Reducer.JevIntegrationTest do
        %{
          "model" => "jev-test",
          "answers" => %{
-           "route" => %{"type" => "choice", "choice" => "routine"},
+           "route" => %{"type" => "choice", "choice" => "routine", "confidence" => 0.95},
            "assessment" => %{"type" => "choice", "choice" => "on_track"},
            "direction" => %{"type" => "choice", "choice" => "none"}
          }
@@ -55,6 +55,47 @@ defmodule FlambeNext.Reducer.JevIntegrationTest do
     assert review.direction == nil
     assert review.reducer_model == "jev-test"
     assert review.actions_applied == [%{type: "no_op"}]
+  end
+
+  test "a routine label with a conflicting direction falls through to generative review", ctx do
+    jev = fn _state, _questions ->
+      {:ok,
+       %{
+         "model" => "jev-test",
+         "answers" => %{
+           "route" => %{"type" => "choice", "choice" => "routine", "confidence" => 0.99},
+           "assessment" => %{"type" => "choice", "choice" => "off_track"},
+           "direction" => %{"type" => "choice", "choice" => "stop"}
+         }
+       }}
+    end
+
+    llm = fn _model, _prompt ->
+      {:ok,
+       Jason.encode!(%{
+         "assessment" => "on_track",
+         "direction" => "continue",
+         "reply" => "Stay on the current work.",
+         "rationale" => "The stop direction did not match the stack.",
+         "actions" => [%{"type" => "no_op"}]
+       })}
+    end
+
+    assert {:ok, review} =
+             Review.handle(
+               ctx.user,
+               %{
+                 "trace_id" => ctx.trace.id,
+                 "activity_id" => ctx.root.id,
+                 "message" => "Stopping to start something else.",
+                 "agent_id" => "worker"
+               },
+               jev: jev,
+               llm: llm
+             )
+
+    assert review.direction == "continue"
+    assert review.reply == "Stay on the current work."
   end
 
   test "Jev routes non-routine messages to the existing generative review", ctx do
@@ -121,7 +162,11 @@ defmodule FlambeNext.Reducer.JevIntegrationTest do
        %{
          "model" => "jev-test",
          "answers" => %{
-           "action" => %{"type" => "choice", "choice" => "reparent_#{ctx.root.id}"}
+           "action" => %{
+             "type" => "choice",
+             "choice" => "reparent_#{ctx.root.id}",
+             "confidence" => 0.91
+           }
          }
        }}
     end
@@ -149,7 +194,11 @@ defmodule FlambeNext.Reducer.JevIntegrationTest do
        %{
          "model" => "jev-test",
          "answers" => %{
-           "thread" => %{"type" => "choice", "choice" => "thread_#{side.id}"},
+           "thread" => %{
+             "type" => "choice",
+             "choice" => "thread_#{side.id}",
+             "confidence" => 0.88
+           },
            "category_#{backend.id}" => %{"type" => "noul", "noul" => 0.91}
          }
        }}
@@ -160,5 +209,36 @@ defmodule FlambeNext.Reducer.JevIntegrationTest do
 
     assert thread_id == side.id
     assert category_ids == [backend.id]
+  end
+
+  test "a low-confidence thread choice falls back to the generative placer", ctx do
+    {:ok, side} = Traces.create_thread(ctx.trace, %{"name" => "Reducer work", "rank" => 1})
+
+    jev = fn _state, _questions ->
+      {:ok,
+       %{
+         "answers" => %{
+           "thread" => %{
+             "type" => "choice",
+             "choice" => "thread_#{side.id}",
+             "confidence" => 0.2
+           }
+         }
+       }}
+    end
+
+    llm = fn _model, _prompt ->
+      {:ok,
+       Jason.encode!(%{
+         "thread_id" => ctx.thread.id,
+         "category_ids" => [],
+         "rationale" => "Keep the current thread."
+       })}
+    end
+
+    assert {:ok, %{moved?: false, thread_id: thread_id}} =
+             Placement.place_root(ctx.user, ctx.root, jev: jev, llm: llm)
+
+    assert thread_id == ctx.thread.id
   end
 end

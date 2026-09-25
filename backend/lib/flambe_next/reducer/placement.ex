@@ -42,6 +42,7 @@ defmodule FlambeNext.Reducer.Placement do
       :skipped
     else
       context = placement_context(user, activity, threads, categories)
+
       case placement_decision_for(context, threads, categories, opts) do
         {:ok, decision} ->
           apply_placement(user, activity, decision, threads)
@@ -63,7 +64,10 @@ defmodule FlambeNext.Reducer.Placement do
           {:ok, decision}
 
         {:error, jev_error} ->
-          Logger.warning("Jev placement failed; falling back to the generative reducer: #{inspect(jev_error)}")
+          Logger.warning(
+            "Jev placement failed; falling back to the generative reducer: #{inspect(jev_error)}"
+          )
+
           placement_decision_llm(context, threads, categories, opts)
       end
     else
@@ -117,7 +121,8 @@ defmodule FlambeNext.Reducer.Placement do
          thread_choice when is_binary(thread_choice) <-
            thread_answer["choice"] || thread_answer[:choice],
          {:ok, thread_id} <- parse_choice_id(thread_choice, "thread_"),
-         true <- Enum.any?(threads, &(&1.id == thread_id)) do
+         true <- Enum.any?(threads, &(&1.id == thread_id)) or {:error, :invalid_jev_response},
+         true <- Jev.confident_choice?(thread_answer) or {:error, :low_jev_confidence} do
       category_ids =
         categories
         |> Enum.filter(fn category ->
