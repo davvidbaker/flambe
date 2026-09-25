@@ -22,7 +22,7 @@ defmodule FlambeNext.Reducer do
   alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
   alias FlambeNext.Repo
-  alias FlambeNext.Reducer.{Model, Review}
+  alias FlambeNext.Reducer.{Jev, Model, Review}
   alias FlambeNext.Traces
   alias FlambeNext.Traces.{Activity, Event, Thread, Trace}
 
@@ -155,7 +155,7 @@ defmodule FlambeNext.Reducer do
   defp fold_message(user, proposal) do
     opts = Map.get(proposal, :opts, [])
 
-    if Model.available?(opts) do
+    if Model.available?(opts) or Jev.available?(opts) do
       case Review.handle(user, Map.get(proposal, :attrs, %{}), opts) do
         {:ok, review} ->
           {:ok,
@@ -181,18 +181,18 @@ defmodule FlambeNext.Reducer do
         {:ok, folded}
 
       rule ->
-        case structure_llm() do
+        case structure_review_opts() do
           nil ->
             {:ok, note_structure(trace, folded, rule, %{type: "skipped"}, nil, nil)}
 
-          llm ->
-            judge_structure(user, trace, folded, rule, llm)
+          opts ->
+            judge_structure(user, trace, folded, rule, opts)
         end
     end
   end
 
-  defp judge_structure(user, trace, folded, rule, llm) do
-    case Review.judge_structure(user, folded.activity, rule, llm: llm) do
+  defp judge_structure(user, trace, folded, rule, opts) do
+    case Review.judge_structure(user, folded.activity, rule, opts) do
       {:ok, judgment} ->
         apply_structure_judgment(user, trace, folded, rule, judgment)
 
@@ -243,13 +243,17 @@ defmodule FlambeNext.Reducer do
 
   defp structure_rule(_trace, _activity, _agent_id), do: nil
 
-  defp structure_llm do
+  defp structure_review_opts do
     case Application.get_env(:flambe_next, :reducer_llm) do
       llm when is_function(llm, 2) ->
-        llm
+        [llm: llm]
 
       _ ->
-        if Mix.env() == :test or not Model.configured?(), do: nil, else: &Model.call/2
+        cond do
+          Mix.env() == :test -> nil
+          Jev.configured?() or Model.configured?() -> []
+          true -> nil
+        end
     end
   end
 
