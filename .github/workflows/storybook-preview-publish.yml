@@ -1,0 +1,248 @@
+name: Publish Storybook preview
+
+on:
+  # This privileged workflow runs from the default branch, not from PR code.
+  workflow_run:
+    workflows: ['Build Storybook preview']
+    types: [completed]
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+  pages: write
+  pull-requests: write
+
+concurrency:
+  group: storybook-preview-pages
+  cancel-in-progress: false
+
+env:
+  PREVIEW_COMMENT_MARKER: '<!-- flambe-storybook-preview -->'
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - name: Resolve pull request
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const direct = context.payload.workflow_run.pull_requests[0]?.number;
+            if (direct) {
+              const { data: pull } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: direct,
+              });
+              if (pull.state !== 'open') {
+                core.notice(`PR #${direct} closed before its preview was deployed.`);
+                core.setOutput('open', 'false');
+                return;
+              }
+              core.setOutput('number', direct);
+              core.setOutput('open', 'true');
+              return;
+            }
+
+            const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.payload.workflow_run.head_sha,
+            });
+            const openPull = pulls.find(pull => pull.state === 'open');
+            if (!openPull) {
+              core.notice('No open pull request remains for this Storybook build.');
+              core.setOutput('open', 'false');
+              return;
+            }
+            core.setOutput('number', openPull.number);
+            core.setOutput('open', 'true');
+
+      - name: Download Storybook artifact
+        if: steps.pr.outputs.open == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: storybook-preview-${{ steps.pr.outputs.number }}
+          path: preview
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Reject unsafe artifact entries
+        if: steps.pr.outputs.open == 'true'
+        run: |
+          if find preview -type l -print -quit | grep -q .; then
+            echo 'The Storybook artifact contains a symbolic link.'
+            exit 1
+          fi
+
+      - name: Publish preview to GitHub Pages branch
+        if: steps.pr.outputs.open == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          git clone --no-checkout "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pages
+          cd pages
+          if git ls-remote --exit-code origin refs/heads/gh-pages >/dev/null 2>&1; then
+            git checkout -B gh-pages origin/gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          rm -rf "pr-${PR_NUMBER}"
+          mkdir "pr-${PR_NUMBER}"
+          cp -R ../preview/. "pr-${PR_NUMBER}/"
+          touch .nojekyll
+          cat > index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head><meta charset="utf-8"><title>Flambe Storybook previews</title></head>
+            <body><h1>Flambe Storybook previews</h1><p>Open a preview from its pull request.</p></body>
+          </html>
+          HTML
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add --all
+          git commit -m "Publish Storybook preview for PR #${PR_NUMBER}"
+          git push origin HEAD:gh-pages
+          rm -rf .git
+
+      - name: Configure GitHub Pages
+        if: steps.pr.outputs.open == 'true'
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload complete preview site
+        if: steps.pr.outputs.open == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+      - name: Deploy GitHub Pages
+        if: steps.pr.outputs.open == 'true'
+        id: pages
+        uses: actions/deploy-pages@v4
+
+      - name: Comment with preview link
+        if: steps.pr.outputs.open == 'true'
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          MARKER: ${{ env.PREVIEW_COMMENT_MARKER }}
+          PAGE_URL: ${{ steps.pages.outputs.page_url }}
+        with:
+          script: |
+            const issue_number = Number(process.env.PR_NUMBER);
+            const previewUrl = `${process.env.PAGE_URL.replace(/\/?$/, '/')}pr-${issue_number}/`;
+            const body = `${process.env.MARKER}\n📚 [Open the Storybook preview](${previewUrl}) for \`${context.payload.workflow_run.head_sha.slice(0, 7)}\`.`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(comment =>
+              comment.user?.type === 'Bot' && comment.body?.includes(process.env.MARKER)
+            );
+            const request = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            };
+            if (existing) {
+              await github.rest.issues.updateComment({ ...request, comment_id: existing.id });
+            } else {
+              await github.rest.issues.createComment({ ...request, issue_number });
+            }
+
+  cleanup:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - name: Remove preview from GitHub Pages branch
+        id: remove
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if ! git ls-remote --exit-code "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" refs/heads/gh-pages >/dev/null 2>&1; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git clone --branch gh-pages --single-branch \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pages
+          cd pages
+          if [ ! -d "pr-${PR_NUMBER}" ]; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          rm -rf "pr-${PR_NUMBER}"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add --all
+          git commit -m "Remove Storybook preview for PR #${PR_NUMBER}"
+          git push origin HEAD:gh-pages
+          rm -rf .git
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+
+      - name: Configure GitHub Pages
+        if: steps.remove.outputs.changed == 'true'
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload complete preview site
+        if: steps.remove.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+      - name: Deploy GitHub Pages
+        if: steps.remove.outputs.changed == 'true'
+        id: pages
+        uses: actions/deploy-pages@v4
+
+      - name: Mark preview as removed
+        if: steps.remove.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        env:
+          MARKER: ${{ env.PREVIEW_COMMENT_MARKER }}
+        with:
+          script: |
+            const issue_number = context.payload.pull_request.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(comment =>
+              comment.user?.type === 'Bot' && comment.body?.includes(process.env.MARKER)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: `${process.env.MARKER}\n📚 Storybook preview removed because this pull request is closed.`,
+              });
+            }

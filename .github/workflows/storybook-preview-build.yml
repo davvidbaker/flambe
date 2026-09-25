@@ -1,0 +1,38 @@
+name: Build Storybook preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'frontend/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: storybook-preview-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build Storybook
+        working-directory: frontend
+        run: npm run build-storybook
+      - name: Upload preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-preview-${{ github.event.pull_request.number }}
+          path: frontend/storybook-static
+          if-no-files-found: error
+          retention-days: 7
