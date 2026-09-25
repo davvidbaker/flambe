@@ -8,6 +8,9 @@ defmodule FlambeNext.Reducer.Jev do
   """
 
   @endpoint "https://api.typesafe.ai/v1/systemone"
+  # A Choice below this confidence is a spread across options, so the reducer
+  # leaves the decision to the generative path instead of applying it.
+  @min_choice_confidence 0.6
 
   @type evaluator ::
           (map() | list() | String.t(), map() -> {:ok, map()} | {:error, term()})
@@ -27,6 +30,14 @@ defmodule FlambeNext.Reducer.Jev do
 
   def model do
     System.get_env("FLAMBE_REDUCER_JEV_MODEL") || "jev-latest"
+  end
+
+  @doc "True when a Choice answer is concentrated enough to apply directly."
+  def confident_choice?(answer) when is_map(answer) do
+    case answer["confidence"] || answer[:confidence] do
+      confidence when is_number(confidence) -> confidence >= @min_choice_confidence
+      _ -> false
+    end
   end
 
   @doc """
