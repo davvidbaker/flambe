@@ -270,7 +270,7 @@ function ActivityCard({
             </Action>
           </>
         )}
-        {!unstarted && <span style={{ color: MUTED, fontSize: 10 }}>Select to resume</span>}
+        {!unstarted && <span style={{ color: MUTED, fontSize: 10 }}>Select to view</span>}
       </Actions>
     </Card>
   );
