@@ -11,6 +11,7 @@ import {
 } from '../utilities/timelineGeometry';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
+import { limboItems } from '../utilities/limbo';
 import { persistCollapsedThreadState } from '../utilities/threadCollapseState';
 import { savedRangeIsUsable } from '../utilities/timelineViewport';
 import {
@@ -795,6 +796,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
   render() {
     const { props } = this;
+    const hasLimbo = limboItems(props.activities).length > 0;
 
     const rightBoundaryTime = this.rightBoundaryTime || props.maxTime;
     const leftBoundaryTime = this.leftBoundaryTime || props.minTime;
@@ -807,6 +809,38 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
     // load in the sense of bearing load
     threads = loadSuspendedActivityCount(props.activities, threads);
+
+    const flameChart = (
+      <FlameChart
+                            ref={this.flameChart}
+                            activities={props.activities}
+                            attentionShifts={props.attentionShifts}
+                            blocks={props.blocks}
+                            categories={props.categories}
+                            currentAttention={
+                              (props.attentionShifts || []).length > 0
+                                ? props.attentionShifts[props.attentionShifts.length - 1].thread_id
+                                : null
+                            }
+                            // leftBoundaryTime={leftBoundaryTime}
+                            modifiers={props.modifiers}
+                            pan={this.pan}
+                            // rightBoundaryTime={rightBoundaryTime}
+                            showThreadDetail={this.showThreadDetail}
+                            threadLevels={props.threadLevels}
+                            hoverBlock={props.hoverBlock}
+                            focusBlock={props.focusBlock}
+                            focusedBlockIndex={props.focusedBlockIndex}
+                            hoveredBlockIndex={props.hoveredBlockIndex}
+                            threads={threads}
+                            toggleThread={props.toggleThread}
+                            topOffset={this.topOffset || 0}
+                            updateEvent={props.updateEvent}
+                            updateScheduled={props.updateActivity}
+                            planAt={props.planActivity}
+                            zoom={this.zoom}
+                          />
+    );
 
     return (
       <WithEventListeners
@@ -927,52 +961,31 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       )}
                       zoom={this.zoom}
                     />
-                    <SplitPane split="horizontal" primary="second" defaultSize={260} minSize={120}>
-                    <FlameChart
-                      ref={this.flameChart}
-                      activities={props.activities}
-                      attentionShifts={props.attentionShifts}
-                      blocks={props.blocks}
-                      categories={props.categories}
-                      currentAttention={
-                        (props.attentionShifts || []).length > 0
-                          ? props.attentionShifts[props.attentionShifts.length - 1].thread_id
-                          : null
-                      }
-                      // leftBoundaryTime={leftBoundaryTime}
-                      modifiers={props.modifiers}
-                      pan={this.pan}
-                      // rightBoundaryTime={rightBoundaryTime}
-                      showThreadDetail={this.showThreadDetail}
-                      threadLevels={props.threadLevels}
-                      hoverBlock={props.hoverBlock}
-                      focusBlock={props.focusBlock}
-                      focusedBlockIndex={props.focusedBlockIndex}
-                      hoveredBlockIndex={props.hoveredBlockIndex}
-                      threads={threads}
-                      toggleThread={props.toggleThread}
-                      topOffset={this.topOffset || 0}
-                      updateEvent={props.updateEvent}
-                      updateScheduled={props.updateActivity}
-                      planAt={props.planActivity}
-                      zoom={this.zoom}
-                    />
-                    <LimboPane
-                      activities={props.activities}
-                      beginActivity={props.beginActivity ?? (() => undefined)}
-                      categories={props.categories}
-                      deleteActivity={props.deleteActivity ?? (() => undefined)}
-                      focusActivity={id => {
-                        const activity = props.activities[String(id)];
-                        props.focusBlock({
-                          index: null,
-                          activity_id: id,
-                          activityStatus: activity?.status,
-                          thread_id: activity?.thread_id ?? null,
-                        });
-                      }}
-                    />
+                    {hasLimbo ? (
+                    <SplitPane
+                      split="horizontal"
+                      primary="second"
+                      defaultSize={180}
+                      minSize={120}
+                    >
+                      {flameChart}
+                        <LimboPane
+                                              activities={props.activities}
+                                              beginActivity={props.beginActivity ?? (() => undefined)}
+                                              categories={props.categories}
+                                              deleteActivity={props.deleteActivity ?? (() => undefined)}
+                                              focusActivity={id => {
+                                                const activity = props.activities[String(id)];
+                                                props.focusBlock({
+                                                  index: null,
+                                                  activity_id: id,
+                                                  activityStatus: activity?.status,
+                                                  thread_id: activity?.thread_id ?? null,
+                                                });
+                                              }}
+                                            />
                     </SplitPane>
+                  ) : flameChart}
                   </SplitPane>
 
                   {/* ⚠️ Moved these up? */}
