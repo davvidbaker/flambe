@@ -810,6 +810,38 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     // load in the sense of bearing load
     threads = loadSuspendedActivityCount(props.activities, threads);
 
+    const flameChart = (
+      <FlameChart
+                            ref={this.flameChart}
+                            activities={props.activities}
+                            attentionShifts={props.attentionShifts}
+                            blocks={props.blocks}
+                            categories={props.categories}
+                            currentAttention={
+                              (props.attentionShifts || []).length > 0
+                                ? props.attentionShifts[props.attentionShifts.length - 1].thread_id
+                                : null
+                            }
+                            // leftBoundaryTime={leftBoundaryTime}
+                            modifiers={props.modifiers}
+                            pan={this.pan}
+                            // rightBoundaryTime={rightBoundaryTime}
+                            showThreadDetail={this.showThreadDetail}
+                            threadLevels={props.threadLevels}
+                            hoverBlock={props.hoverBlock}
+                            focusBlock={props.focusBlock}
+                            focusedBlockIndex={props.focusedBlockIndex}
+                            hoveredBlockIndex={props.hoveredBlockIndex}
+                            threads={threads}
+                            toggleThread={props.toggleThread}
+                            topOffset={this.topOffset || 0}
+                            updateEvent={props.updateEvent}
+                            updateScheduled={props.updateActivity}
+                            planAt={props.planActivity}
+                            zoom={this.zoom}
+                          />
+    );
+
     return (
       <WithEventListeners
         node={document}
@@ -929,58 +961,31 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       )}
                       zoom={this.zoom}
                     />
+                    {hasLimbo ? (
                     <SplitPane
-                      key={hasLimbo ? 'limbo-open' : 'limbo-empty'}
                       split="horizontal"
                       primary="second"
-                      defaultSize={hasLimbo ? 180 : 36}
-                      minSize={hasLimbo ? 120 : 36}
+                      defaultSize={180}
+                      minSize={120}
                     >
-                    <FlameChart
-                      ref={this.flameChart}
-                      activities={props.activities}
-                      attentionShifts={props.attentionShifts}
-                      blocks={props.blocks}
-                      categories={props.categories}
-                      currentAttention={
-                        (props.attentionShifts || []).length > 0
-                          ? props.attentionShifts[props.attentionShifts.length - 1].thread_id
-                          : null
-                      }
-                      // leftBoundaryTime={leftBoundaryTime}
-                      modifiers={props.modifiers}
-                      pan={this.pan}
-                      // rightBoundaryTime={rightBoundaryTime}
-                      showThreadDetail={this.showThreadDetail}
-                      threadLevels={props.threadLevels}
-                      hoverBlock={props.hoverBlock}
-                      focusBlock={props.focusBlock}
-                      focusedBlockIndex={props.focusedBlockIndex}
-                      hoveredBlockIndex={props.hoveredBlockIndex}
-                      threads={threads}
-                      toggleThread={props.toggleThread}
-                      topOffset={this.topOffset || 0}
-                      updateEvent={props.updateEvent}
-                      updateScheduled={props.updateActivity}
-                      planAt={props.planActivity}
-                      zoom={this.zoom}
-                    />
-                    <LimboPane
-                      activities={props.activities}
-                      beginActivity={props.beginActivity ?? (() => undefined)}
-                      categories={props.categories}
-                      deleteActivity={props.deleteActivity ?? (() => undefined)}
-                      focusActivity={id => {
-                        const activity = props.activities[String(id)];
-                        props.focusBlock({
-                          index: null,
-                          activity_id: id,
-                          activityStatus: activity?.status,
-                          thread_id: activity?.thread_id ?? null,
-                        });
-                      }}
-                    />
+                      {flameChart}
+                        <LimboPane
+                                              activities={props.activities}
+                                              beginActivity={props.beginActivity ?? (() => undefined)}
+                                              categories={props.categories}
+                                              deleteActivity={props.deleteActivity ?? (() => undefined)}
+                                              focusActivity={id => {
+                                                const activity = props.activities[String(id)];
+                                                props.focusBlock({
+                                                  index: null,
+                                                  activity_id: id,
+                                                  activityStatus: activity?.status,
+                                                  thread_id: activity?.thread_id ?? null,
+                                                });
+                                              }}
+                                            />
                     </SplitPane>
+                  ) : flameChart}
                   </SplitPane>
 
                   {/* ⚠️ Moved these up? */}
