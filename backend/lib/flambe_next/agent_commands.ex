@@ -8,13 +8,14 @@ defmodule FlambeNext.AgentCommands do
 
   import Ecto.Query
 
+  alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
   alias FlambeNext.{AgentTransitions, Agents, Reducer, Repo, Traces}
   alias FlambeNext.Reducer.Placement
   alias FlambeNext.Traces.{Activity, Event}
   alias FlambeNextWeb.EventStream
 
-  @commands ~w(start end suspend resume status message)
+  @commands ~w(start end suspend resume status message plan)
   @open_phases ~w(B R X)
   @lifecycle_phases ~w(B R X S E J V)
 
@@ -39,12 +40,14 @@ defmodule FlambeNext.AgentCommands do
          {:ok, timestamp} <- timestamp(attrs["timestamp"]),
          {:ok, thread_id} <- optional_id(attrs["thread_id"], "thread_id"),
          {:ok, parent_id} <- optional_parent_id(attrs),
+         {:ok, begin_id} <- optional_id(attrs["activity_id"], "activity_id"),
          activity_attrs <- activity_attrs(attrs, name, parent_id, category_ids),
          {:ok, folded} <-
            Reducer.fold(user, trace, %{
              command: "start",
              params: %{
                "thread_id" => thread_id,
+               "activity_id" => begin_id,
                "activity" => activity_attrs,
                "event" => %{"phase" => "B", "timestamp_integer" => timestamp},
                agent_id: optional_string(attrs["agent_id"])
@@ -67,6 +70,35 @@ defmodule FlambeNext.AgentCommands do
       )
     else
       {:error, %Ecto.Changeset{} = changeset} -> invalid_changeset(changeset)
+      {:error, :parent_unstarted} -> {:error, {:invalid_input, "parent is unstarted"}}
+      other -> other
+    end
+  end
+
+  defp run(user, trace, "plan", attrs) do
+    with {:ok, name} <- required_string(attrs["name"], "name"),
+         {:ok, category_ids} <- id_list(attrs["category_ids"], "category_ids"),
+         {:ok, schedule} <- schedule_attrs(attrs),
+         {:ok, categories} <- Accounts.get_user_categories(user, category_ids),
+         %{} = thread <- default_thread(trace) do
+      activity_attrs =
+        %{"name" => name}
+        |> maybe_put("description", optional_string(attrs["description"]))
+        |> maybe_put("weight", weight(attrs["weight"]))
+        |> Map.merge(schedule)
+        |> maybe_put("proposed_by_agent_id", optional_string(attrs["agent_id"]))
+        |> maybe_put("proposed_by_agent_name", optional_string(attrs["agent_name"]))
+
+      case Traces.create_unstarted_activity(trace, thread, nil, activity_attrs, categories) do
+        {:ok, activity} ->
+          Placement.place_root_async(user, activity)
+          result(user, trace, activity.id, nil, [])
+
+        {:error, changeset} ->
+          invalid_changeset(changeset)
+      end
+    else
+      nil -> {:error, {:invalid_input, "trace has no threads"}}
       other -> other
     end
   end
@@ -169,7 +201,12 @@ defmodule FlambeNext.AgentCommands do
   defp state(
          user,
          trace,
-         filters \\ %{active_only: false, suspended_only: false, thread_id: nil}
+         filters \\ %{
+           active_only: false,
+           suspended_only: false,
+           include_unstarted: false,
+           thread_id: nil
+         }
        ) do
     {authorized_trace, events} = Traces.get_user_trace_with_events!(user, trace.id)
     latest = latest_events(events)
@@ -209,6 +246,7 @@ defmodule FlambeNext.AgentCommands do
             available_actions(status, event.phase, descendants, trace.id, activity)
         }
       end)
+      |> Kernel.++(unstarted_views(trace, filters))
 
     threads =
       authorized_trace.threads
@@ -448,6 +486,11 @@ defmodule FlambeNext.AgentCommands do
     |> maybe_put("description", optional_string(attrs["description"]))
     |> maybe_put("agent_id", agent_id)
     |> maybe_put("agent_name", if(agent_id, do: optional_string(attrs["agent_name"])))
+    |> maybe_put("proposed_by_agent_id", agent_id)
+    |> maybe_put(
+      "proposed_by_agent_name",
+      if(agent_id, do: optional_string(attrs["agent_name"]))
+    )
     |> maybe_put_parent(parent_id)
     |> Map.put("categories", category_ids)
   end
@@ -491,11 +534,19 @@ defmodule FlambeNext.AgentCommands do
   defp status_filters(user, trace, attrs) do
     with {:ok, active} <- boolean(attrs["active_only"], false, "active_only"),
          {:ok, suspended} <- boolean(attrs["suspended_only"], false, "suspended_only"),
-         {:ok, thread_id} <- optional_thread_id(user, trace, attrs["thread_id"]) do
+         {:ok, thread_id} <- optional_thread_id(user, trace, attrs["thread_id"]),
+         {:ok, include_unstarted} <-
+           boolean(attrs["include_unstarted"], false, "include_unstarted") do
       if active and suspended do
         {:error, {:invalid_input, "active_only and suspended_only cannot both be true"}}
       else
-        {:ok, %{active_only: active, suspended_only: suspended, thread_id: thread_id}}
+        {:ok,
+         %{
+           active_only: active,
+           suspended_only: suspended,
+           include_unstarted: include_unstarted,
+           thread_id: thread_id
+         }}
       end
     end
   end
@@ -577,4 +628,72 @@ defmodule FlambeNext.AgentCommands do
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp default_thread(trace) do
+    case trace.threads do
+      [thread | _] -> thread
+      _ -> nil
+    end
+  end
+
+  defp weight(value) when is_integer(value) and value >= 0, do: value
+  defp weight(_value), do: nil
+
+  defp schedule_attrs(attrs) do
+    with {:ok, start} <- optional_timestamp(attrs["scheduled_start"], "scheduled_start"),
+         {:ok, ending} <- optional_timestamp(attrs["scheduled_end"], "scheduled_end") do
+      if start && ending && ending < start do
+        {:error, {:invalid_input, "scheduled_end must be at or after scheduled_start"}}
+      else
+        {:ok,
+         %{}
+         |> maybe_put("scheduled_start_integer", start)
+         |> maybe_put("scheduled_end_integer", ending)}
+      end
+    end
+  end
+
+  defp optional_timestamp(nil, _field), do: {:ok, nil}
+  defp optional_timestamp(value, _field) when is_integer(value), do: {:ok, value}
+
+  defp optional_timestamp(_value, field),
+    do: {:error, {:invalid_input, "#{field} must be integer milliseconds"}}
+
+  defp unstarted_views(_trace, %{include_unstarted: false}), do: []
+  defp unstarted_views(_trace, %{active_only: true}), do: []
+  defp unstarted_views(_trace, %{suspended_only: true}), do: []
+
+  defp unstarted_views(trace, filters) do
+    trace
+    |> Traces.list_unstarted_activities()
+    |> Enum.filter(&(is_nil(filters.thread_id) or &1.thread_id == filters.thread_id))
+    |> Enum.map(fn activity ->
+      %{
+        id: activity.id,
+        name: activity.name,
+        threadId: activity.thread_id,
+        threadName: activity.thread.name,
+        parentId: activity.parent_id,
+        agentId: activity.agent_id,
+        proposedByAgentId: activity.proposed_by_agent_id,
+        path: [activity.name],
+        categoryIds: Enum.map(activity.categories, & &1.id),
+        startedAt: nil,
+        latestEvent: nil,
+        scheduledStart: activity.scheduled_start,
+        scheduledEnd: activity.scheduled_end,
+        status: "unstarted",
+        availableActions: [
+          %{
+            operation: "start",
+            arguments: %{
+              trace_id: trace.id,
+              activity_id: activity.id,
+              name: activity.name
+            }
+          }
+        ]
+      }
+    end)
+  end
 end

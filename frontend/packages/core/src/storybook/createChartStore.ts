@@ -135,7 +135,7 @@ export function createChartStore(
     },
   });
   store.dispatch(selectTrace({ id: fixture.traceId, name: fixture.traceName }));
-  store.dispatch(processTimelineTrace(fixture.events, fixture.threads));
+  store.dispatch(processTimelineTrace(fixture.events, fixture.threads, fixture.unstarted ?? []));
   store.dispatch(setTimeline(minTime, maxTime));
   if (extras.timeLabels) {
     store.dispatch(setSetting('absoluteTimeLabels', extras.timeLabels.absoluteTimeLabels));

@@ -13,6 +13,10 @@ export interface TraceBlock {
   ending?: EventPhase;
   events: EntityId[];
   level: number;
+  /** A planned span, not a lived block. */
+  scheduled?: boolean;
+  /** End-only plan, drawn as a point. */
+  scheduledPoint?: boolean;
   startMessage?: string;
   startTime: number;
 }
@@ -135,7 +139,68 @@ export function terminateBlock(
   return blocks;
 }
 
-function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): ProcessedTrace {
+function scheduledBlock(activity: Activity, activities: Record<string, ProcessedActivity>, blocks: TraceBlock[]): TraceBlock | null {
+  const start = activity.scheduled_start ?? undefined;
+  const end = activity.scheduled_end ?? undefined;
+  if (start == null && end == null) return null;
+
+  const point = start == null && end != null;
+  const startTime = start ?? end!;
+  const level = displayLevel({ ...activity, thread_id: activity.thread?.id ?? activity.thread_id }, activities, blocks);
+
+  return {
+    activity_id: activity.id,
+    beginning: 'B',
+    events: [],
+    level,
+    scheduled: true,
+    scheduledPoint: point,
+    startTime,
+    ...(point ? { endTime: end } : end != null ? { endTime: end } : {}),
+  };
+}
+
+function rememberUnstarted(
+  source: Activity,
+  activities: Record<string, ProcessedActivity>,
+  blocks: TraceBlock[],
+  threadLevels: Record<string, ThreadLevel>,
+): void {
+  const thread_id = source.thread?.id ?? source.thread_id;
+  if (thread_id === undefined) return;
+  const activityKey = keyFor(source.id);
+  const existing = activities[activityKey];
+  if (existing?.status && existing.status !== 'unstarted') return;
+
+  const activity: ProcessedActivity = existing ?? {
+    ...source,
+    categories: source.categories ?? [],
+    events: [],
+    suspendedChildren: [],
+    thread_id,
+    status: 'unstarted',
+  };
+  activity.status = 'unstarted';
+  activity.scheduled_start = source.scheduled_start;
+  activity.scheduled_end = source.scheduled_end;
+  activity.weight = source.weight;
+  activity.thread_id = thread_id;
+  activities[activityKey] = activity;
+
+  const block = scheduledBlock(activity, activities, blocks);
+  if (!block) return;
+  blocks.push(block);
+  const threadKey = keyFor(thread_id);
+  const threadLevel = threadLevels[threadKey] ?? { current: 0, max: 0 };
+  threadLevels[threadKey] = threadLevel;
+  threadLevel.max = Math.max(block.level + 1, threadLevel.max);
+}
+
+function processTrace(
+  trace: TraceEvent[] = [],
+  threads: Thread[] = [],
+  unstarted: Activity[] = [],
+): ProcessedTrace {
   const threadLevels: Record<string, ThreadLevel> = {};
   const threadOpenActivities: Record<string, EntityId[]> = {};
   const threadsObject: Record<string, Thread> = {};
@@ -147,7 +212,7 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
     threadOpenActivities[key] = [];
   });
 
-  if (trace.length === 0) {
+  if (trace.length === 0 && unstarted.length === 0) {
     const min = Date.now();
     return {
       activities: {}, blocks: [], events: trace, max: min + 1000, min,
@@ -158,8 +223,9 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
   const orderedTrace = [...trace].sort((left, right) => left.timestamp - right.timestamp);
   const activities: Record<string, ProcessedActivity> = {};
   const blocks: TraceBlock[] = [];
-  let leftTime = orderedTrace[0].timestamp;
-  let rightTime = orderedTrace[0].timestamp;
+  const now = Date.now();
+  let leftTime = orderedTrace[0]?.timestamp ?? now;
+  let rightTime = orderedTrace[0]?.timestamp ?? now;
   let lastCategory_id: EntityId | null | undefined;
   let lastThread_id: EntityId | undefined;
 
@@ -288,6 +354,8 @@ function processTrace(trace: TraceEvent[] = [], threads: Thread[] = []): Process
     lastCategory_id = activity.categories[0] ?? null;
     if (index === orderedTrace.length - 1) lastThread_id = activity.thread_id;
   });
+
+  unstarted.forEach(activity => rememberUnstarted(activity, activities, blocks, threadLevels));
 
   return { activities, blocks, events: trace, lastCategory_id, lastThread_id, max: rightTime, min: leftTime, threadLevels, threads: threadsObject };
 }

@@ -244,9 +244,115 @@ defmodule FlambeNext.Traces do
   end
 
   def create_event(%Trace{} = trace, %Activity{} = activity, attrs) do
-    %Event{trace_id: trace.id, activity_id: activity.id}
-    |> Event.changeset(attrs)
+    phase = Map.get(attrs, "phase") || Map.get(attrs, :phase)
+
+    if phase == "B" and parent_unstarted?(activity) do
+      {:error, :parent_unstarted}
+    else
+      %Event{trace_id: trace.id, activity_id: activity.id}
+      |> Event.changeset(attrs)
+      |> Repo.insert()
+    end
+  end
+
+  def create_unstarted_activity(
+        %Trace{} = _trace,
+        %Thread{} = thread,
+        parent,
+        activity_attrs,
+        categories \\ []
+      ) do
+    %Activity{thread_id: thread.id, parent_id: parent && parent.id}
+    |> Activity.changeset(activity_attrs)
+    |> Ecto.Changeset.put_assoc(:categories, categories)
     |> Repo.insert()
+  end
+
+  @doc """
+  The first begin makes the caller the actor. The proposer stays on the activity.
+  """
+  def begin_unstarted_activity(%Trace{} = trace, %Activity{} = activity, attrs, actor \\ nil) do
+    activity = maybe_assign_actor(activity, actor)
+
+    case create_event(trace, activity, attrs) do
+      {:ok, event} -> {:ok, activity, event}
+      error -> error
+    end
+  end
+
+  def unstarted?(%Activity{id: id}) do
+    from(e in Event,
+      where: e.activity_id == ^id and e.phase in ^lifecycle_phases(),
+      select: e.id,
+      limit: 1
+    )
+    |> Repo.one()
+    |> is_nil()
+  end
+
+  def list_unstarted_activities(%Trace{id: trace_id}) do
+    from(activity in Activity,
+      join: thread in assoc(activity, :thread),
+      where: thread.trace_id == ^trace_id,
+      where:
+        fragment(
+          "NOT EXISTS (SELECT 1 FROM events WHERE events.activity_id = ? AND events.phase IN ('B','R','X','S','E','J','V'))",
+          activity.id
+        ),
+      order_by: [asc: activity.id],
+      preload: [:thread, :categories]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Giving up on an unstarted activity removes it. Children move to its parent,
+  or to the thread root when it had none.
+  """
+  def delete_unstarted_activity(%Activity{} = activity) do
+    if unstarted?(activity) do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      Multi.new()
+      |> Multi.update_all(
+        :children,
+        from(child in Activity, where: child.parent_id == ^activity.id),
+        set: [parent_id: activity.parent_id, updated_at: now]
+      )
+      |> Multi.delete(:activity, activity)
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{activity: activity}} -> {:ok, activity}
+        {:error, _op, changeset, _changes} -> {:error, changeset}
+      end
+    else
+      {:error, :already_started}
+    end
+  end
+
+  def lifecycle_phases, do: ~w(B R X S E J V)
+
+  defp parent_unstarted?(%Activity{parent_id: nil}), do: false
+
+  defp parent_unstarted?(%Activity{parent_id: parent_id}) do
+    parent = Repo.get(Activity, parent_id)
+    match?(%Activity{}, parent) and unstarted?(parent)
+  end
+
+  defp maybe_assign_actor(activity, nil), do: activity
+
+  defp maybe_assign_actor(activity, %{agent_id: agent_id, agent_name: agent_name})
+       when is_binary(agent_id) do
+    activity = Repo.preload(activity, :categories)
+
+    case update_activity(
+           activity,
+           %{"agent_id" => agent_id, "agent_name" => agent_name},
+           activity.categories
+         ) do
+      {:ok, activity} -> activity
+      {:error, _changeset} -> activity
+    end
   end
 
   def update_activity(%Activity{} = activity, attrs, categories) do
