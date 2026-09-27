@@ -276,7 +276,7 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         lastCategory_id,
         lastThread_id,
         events,
-      } = processTrace(action.events, action.threads);
+      } = processTrace(action.events, action.threads, action.unstarted ?? []);
 
       return {
         ...state,

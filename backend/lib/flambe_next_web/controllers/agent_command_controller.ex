@@ -3,7 +3,7 @@ defmodule FlambeNextWeb.AgentCommandController do
 
   alias FlambeNext.AgentCommands
 
-  @commands ~w(start end suspend resume status message)
+  @commands ~w(start end suspend resume status message plan)
 
   def index(conn, _params), do: json(conn, %{data: %{version: 1, commands: @commands}})
 

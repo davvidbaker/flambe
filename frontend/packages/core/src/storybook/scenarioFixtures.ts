@@ -575,3 +575,76 @@ export function createStackedAgentWorkFixture(now = Date.now()): AppChartFixture
 export function createEmptyTraceFixture(): AppChartFixture {
   return fixture(9800, 'Empty trace', [thread(1, 'nothing yet')], []);
 }
+
+function planned(
+  owner: Thread,
+  id: EntityId,
+  name: string,
+  options: { category?: EntityId; start?: number; end?: number; weight?: number; parentId?: EntityId } = {},
+): Activity {
+  return {
+    ...activity(owner, id, name, { category: options.category, parentId: options.parentId }),
+    scheduled_start: options.start ?? null,
+    scheduled_end: options.end ?? null,
+    ...(options.weight === undefined ? {} : { weight: options.weight }),
+  };
+}
+
+/** Lived work up to now, then scheduled plans to the right of now (ADR-017). */
+export function createScheduledActivitiesFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'flambé🔥');
+  const van = thread(2, 'sell van 🚐', 1);
+
+  const lived = activity(app, 2701, 'Persist scheduled times', { category: 1 });
+  const livedChild = activity(app, 2702, 'Write the migration', { category: 1, parentId: lived.id });
+
+  const base = fixture(9950, 'Scheduled activities', [app, van], [
+    { id: 9951, timestamp: minutesAgo(now, 90), phase: 'B', activity: lived },
+    { id: 9952, timestamp: minutesAgo(now, 80), phase: 'B', activity: livedChild },
+    { id: 9953, timestamp: minutesAgo(now, 40), phase: 'E', activity: livedChild },
+    { id: 9954, timestamp: minutesAgo(now, 20), phase: 'E', activity: lived },
+  ]);
+
+  return {
+    ...base,
+    unstarted: [
+      planned(app, 2710, 'Review the limbo pane', {
+        category: 3, start: now + 20 * MINUTE, end: now + 80 * MINUTE,
+      }),
+      planned(app, 2711, 'Ship it (deadline)', { category: 4, end: now + 150 * MINUTE }),
+      planned(van, 2712, 'List the van', { category: 4, start: now + 60 * MINUTE }),
+      planned(van, 2713, 'Past plan, still unstarted', {
+        category: 5, start: minutesAgo(now, 70), end: minutesAgo(now, 50),
+      }),
+    ],
+  };
+}
+
+/** Unstarted work with no time, next to suspended work: both are limbo. */
+export function createLimboFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'flambé🔥');
+  const van = thread(2, 'sell van 🚐', 1);
+
+  const paused = { ...activity(app, 2801, 'Rework reducer placement', { category: 2 }), weight: 5 };
+  const pausedUnweighted = activity(van, 2802, 'Touch up scratch on rear', { category: 4 });
+  const running = activity(app, 2803, 'Write stories', { category: 3 });
+
+  const base = fixture(9960, 'Limbo', [app, van], [
+    { id: 9961, timestamp: minutesAgo(now, 120), phase: 'B', activity: paused },
+    { id: 9962, timestamp: minutesAgo(now, 90), phase: 'S', activity: paused, message: 'Waiting on a decision' },
+    { id: 9963, timestamp: minutesAgo(now, 100), phase: 'B', activity: pausedUnweighted },
+    { id: 9964, timestamp: minutesAgo(now, 70), phase: 'S', activity: pausedUnweighted },
+    { id: 9965, timestamp: minutesAgo(now, 30), phase: 'B', activity: running },
+  ]);
+
+  return {
+    ...base,
+    unstarted: [
+      planned(app, 2810, 'Bring back the hex field', { category: 3, weight: 8 }),
+      planned(app, 2811, 'Write a CLI walkthrough', { category: 3, weight: 2 }),
+      planned(van, 2812, 'Detail the interior', { category: 4, weight: 3 }),
+      planned(app, 2813, 'Maybe a mobile view', { category: 2 }),
+      planned(van, 2814, 'Find a buyer', { category: 4 }),
+    ],
+  };
+}

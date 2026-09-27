@@ -2,7 +2,7 @@ import zoom from './zoom';
 import pan from './pan';
 import processTrace from './processTrace';
 import { saveState, loadState } from './localStorage';
-import trimTextMiddle from './trimText';
+import trimTextMiddle, { trimTextEnd } from './trimText';
 import deepArrayIsEqual from './deepArrayIsEqual';
 import shortEnglishHumanizer from './shortEnglishHumanizer';
 import formatTimelineTickLabel from './formatTimelineTickLabel';
@@ -20,6 +20,7 @@ export {
   processTrace,
   saveState,
   shortEnglishHumanizer,
+  trimTextEnd,
   trimTextMiddle,
   zoom,
 };

@@ -4,6 +4,7 @@ import day from 'dayjs';
 import type { EventPhase } from '../types/TraceEvent';
 import type { ActivityBlock } from './ActivityEventFlow';
 import { timelineActivityFontFamily, timelineActivityFontSizePx } from '../styles';
+import { reducerDecisionParts } from '../utilities/reducerActor';
 
 interface EventStyleProps {
   message?: string;
@@ -47,6 +48,36 @@ const Div = styled.div<EventStyleProps>`
       border-left: none;
       opacity: 0.9;
       padding: 5px;
+
+      &.reducer-fields {
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px 12px;
+      }
+
+      .part {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 5px;
+        white-space: nowrap;
+      }
+
+      .part.prose {
+        flex: 0 1 100%;
+        white-space: normal;
+      }
+
+      .key {
+        color: #666;
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.92em;
+        background: #f3f1ee;
+        border-radius: 3px;
+        padding: 0 4px;
+      }
     }
 
     > div {
@@ -86,6 +117,12 @@ const Div = styled.div<EventStyleProps>`
   .X {
     background: #2d2d2d;
   }
+
+  .reducer_decision,
+  .reducer_incoming,
+  .reducer_created {
+    background: #8a5a2b;
+  }
 `;
 
 const EventType = styled.div<{ eventType?: EventPhase }>`
@@ -114,15 +151,11 @@ const copy: Partial<Record<EventPhase, string>> = {
   R: 'Resumed',
   S: 'Suspended',
   V: 'Resolved',
-  X: 'Resurrected'
+  X: 'Resurrected',
+  reducer_created: 'Created',
+  reducer_decision: 'Reducer',
+  reducer_incoming: 'Message',
 };
-
-const NoMessage = styled.div`
-  color: white;
-  text-align: center;
-  justify-content: center;
-  width: 100%;
-`;
 
 interface ActivityEventProps {
   eventType?: EventPhase;
@@ -131,31 +164,50 @@ interface ActivityEventProps {
   time?: number;
 }
 
+const codedKeys = new Set(['model', 'assessment', 'direction', 'rule', 'applied', 'categories', 'thread']);
+
+function formatEventMessage(eventType: EventPhase | undefined, message: string) {
+  if (eventType !== 'reducer_decision') return message;
+
+  return reducerDecisionParts(message).map((part, index) => {
+    const prose = part.key === 'rationale' || (!part.key && part.value.includes(' '));
+    const coded = !prose && (!part.key || codedKeys.has(part.key));
+    return (
+      <span
+        className={prose ? 'part prose' : 'part'}
+        key={`${part.key ?? 'text'}-${index}`}
+      >
+        {part.key ? <span className="key">{part.key}</span> : null}
+        {coded ? <code>{part.value}</code> : part.value}
+      </span>
+    );
+  });
+}
+
 const ActivityEvent = ({
   showTime, eventType, time, message
-}: ActivityEventProps) => (
-  <Div showTime={showTime} message={message}>
-    {showTime && (
-      <div className="time-message">
-        {/* 🔮 should be moved  */}
-        <EventType eventType={eventType}>{eventType ? copy[eventType] : ''}</EventType>
-        {/* 🔮 better formatting */}
-        <div className="time">{day(time).format('YYYY-MM-DD')}</div>
+}: ActivityEventProps) => {
+  if (!eventType && !message) return null;
+
+  return (
+    <Div showTime={showTime} message={message}>
+      {showTime && (
+        <div className="time-message">
+          <EventType eventType={eventType}>{eventType ? copy[eventType] : ''}</EventType>
+          <div className="time">{day(time).format('YYYY-MM-DD')}</div>
+        </div>
+      )}
+      <div className={`${eventType} message-container`}>
+        <div className="timeline-marker" />
+        {message ? (
+          <div className={eventType === 'reducer_decision' ? 'message reducer-fields' : 'message'}>
+            {formatEventMessage(eventType, message)}
+          </div>
+        ) : null}
       </div>
-    )}
-    <div className={`${eventType} message-container`}>
-      <div className={'timeline-marker'} />
-      {message ? <div className="message">{message}</div> : null
-      // <NoMessage>
-      //   {/* 🔮 should be moved  */}
-      //   <span className="type">{copy[eventType]}</span><span style={{padding: '5px'}}>{' • '}</span>
-      //   {/* 🔮 better formatting */}
-      //   <span className="time">{day(time).format('YYYY-MM-DD')}</span>
-      // </NoMessage>
-      }
-    </div>
-  </Div>
-);
+    </Div>
+  );
+};
 
 const Wrapper = styled.div`
   margin-bottom: 10px;

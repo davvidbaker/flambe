@@ -60,6 +60,10 @@ CREATE TABLE IF NOT EXISTS activities (
   weight INTEGER,
   agent_id TEXT,
   agent_name TEXT,
+  scheduled_start_ms INTEGER,
+  scheduled_end_ms INTEGER,
+  proposed_by_agent_id TEXT,
+  proposed_by_agent_name TEXT,
   export_id TEXT NOT NULL UNIQUE
 );
 
@@ -177,6 +181,16 @@ export class LocalStore {
     this.db.exec('PRAGMA foreign_keys = ON');
     this.db.exec(SCHEMA);
     this.db.exec('DROP TABLE IF EXISTS todos');
+    for (const column of [
+      'scheduled_start_ms INTEGER',
+      'scheduled_end_ms INTEGER',
+      'proposed_by_agent_id TEXT',
+      'proposed_by_agent_name TEXT',
+    ]) {
+      const name = column.split(' ')[0];
+      const exists = this.db.prepare('PRAGMA table_info(activities)').all().some(row => row.name === name);
+      if (!exists) this.db.exec(`ALTER TABLE activities ADD COLUMN ${column}`);
+    }
     this.#seed();
   }
 
@@ -480,8 +494,11 @@ export class LocalStore {
       : { agent_id: null, agent_name: null };
 
     const inserted = this.db.prepare(`
-      INSERT INTO activities (thread_id, parent_id, name, description, weight, agent_id, agent_name, export_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO activities (
+        thread_id, parent_id, name, description, weight, agent_id, agent_name,
+        scheduled_start_ms, scheduled_end_ms, proposed_by_agent_id, proposed_by_agent_name, export_id
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       thread.id,
       parentId,
@@ -490,6 +507,10 @@ export class LocalStore {
       activity.weight ?? null,
       agentColumns.agent_id,
       agentColumns.agent_name,
+      activity.scheduled_start_ms ?? null,
+      activity.scheduled_end_ms ?? null,
+      activity.proposed_by_agent_id ?? agentColumns.agent_id,
+      activity.proposed_by_agent_name ?? agentColumns.agent_name,
       randomUUID(),
     );
     const activityId = Number(inserted.lastInsertRowid);
@@ -517,6 +538,38 @@ export class LocalStore {
       event: { id: Number(eventRow.lastInsertRowid), phase: event.phase },
       ...(reduce ? { reducer: notes } : {}),
     };
+  }
+
+  createUnstarted(userId, { traceId, name, description, weight, agent, scheduledStart, scheduledEnd }) {
+    const thread = this.#defaultThread(Number(traceId));
+    if (!thread) return { error: 'not_found' };
+    const trace = this.db.prepare('SELECT id FROM traces WHERE id = ? AND user_id = ?').get(thread.trace_id, userId);
+    if (!trace) return { error: 'not_found' };
+    const inserted = this.db.prepare(`
+      INSERT INTO activities (
+        thread_id, parent_id, name, description, weight, agent_id, agent_name,
+        scheduled_start_ms, scheduled_end_ms, proposed_by_agent_id, proposed_by_agent_name, export_id
+      ) VALUES (?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?)
+    `).run(
+      thread.id, name, description ?? null, weight ?? null,
+      scheduledStart ?? null, scheduledEnd ?? null,
+      agent?.agent_id ?? null, agent?.name ?? null, randomUUID(),
+    );
+    return { activity: { id: Number(inserted.lastInsertRowid), name, thread_id: thread.id, parent_id: null } };
+  }
+
+  listUnstarted(traceId) {
+    return this.db.prepare(`
+      SELECT activities.* FROM activities
+      JOIN threads ON threads.id = activities.thread_id
+      WHERE threads.trace_id = ?
+        AND NOT EXISTS (
+          SELECT 1 FROM events
+          WHERE events.activity_id = activities.id
+            AND events.phase IN ('B','R','X','S','E','J','V')
+        )
+      ORDER BY activities.id
+    `).all(Number(traceId));
   }
 
   #defaultThread(traceId) {

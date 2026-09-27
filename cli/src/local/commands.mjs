@@ -1,5 +1,5 @@
 // Local start/end/suspend/resume rules. HTTP is the adapter; SQLite is the source of truth.
-export const COMMANDS = ['start', 'end', 'suspend', 'resume', 'status', 'message'];
+export const COMMANDS = ['start', 'end', 'suspend', 'resume', 'status', 'message', 'plan'];
 const RUNNING = new Set(['B', 'R', 'X']);
 const ENDED = new Set(['E', 'J', 'V']);
 const LIFECYCLE = new Set([...RUNNING, ...ENDED, 'S']);
@@ -108,10 +108,44 @@ export function executeCommand(store, userId, command, attrs, headerAgent = null
   if (command === 'status' && threadId && !trace.threads.some(t => t.id === threadId)) notFound();
   const filters = { thread_id: threadId,
     active_only: bool(attrs.active_only, 'active_only'),
-    suspended_only: bool(attrs.suspended_only, 'suspended_only') };
+    suspended_only: bool(attrs.suspended_only, 'suspended_only'),
+    include_unstarted: bool(attrs.include_unstarted, 'include_unstarted') };
   if (filters.active_only && filters.suspended_only) invalid('active_only and suspended_only cannot both be true');
   const result = { direction: null, reply: null, actions_applied: [], rules_fired: [], closed_descendants: [] };
-  if (command === 'status') return { ...result, state: commandState(trace, filters) };
+  if (command === 'status') {
+    const state = commandState(trace, filters);
+    if (filters.include_unstarted && !filters.active_only && !filters.suspended_only) {
+      for (const row of store.listUnstarted(traceId)) {
+        if (filters.thread_id && row.thread_id !== filters.thread_id) continue;
+        state.activities.push({
+          id: row.id, name: row.name, threadId: row.thread_id,
+          threadName: trace.threads.find(t => t.id === row.thread_id)?.name ?? null,
+          parentId: row.parent_id, agentId: row.agent_id, path: [row.name],
+          categoryIds: [], startedAt: null, latestEvent: null, status: 'unstarted',
+          scheduledStart: row.scheduled_start_ms, scheduledEnd: row.scheduled_end_ms,
+          availableActions: [{ operation: 'start', arguments: { trace_id: trace.id, activity_id: row.id, name: row.name } }],
+        });
+      }
+    }
+    return { ...result, state };
+  }
+  if (command === 'plan') {
+    const name = requiredText(attrs.name, 'name');
+    if (name.length > 255) invalid('name must be at most 255 characters');
+    const startAt = attrs.scheduled_start ?? null;
+    const endAt = attrs.scheduled_end ?? null;
+    if (startAt != null && (!Number.isSafeInteger(startAt))) invalid('scheduled_start must be milliseconds');
+    if (endAt != null && (!Number.isSafeInteger(endAt))) invalid('scheduled_end must be milliseconds');
+    if (startAt != null && endAt != null && endAt < startAt) invalid('scheduled_end must be at or after scheduled_start');
+    const created = store.createUnstarted(userId, {
+      traceId, name, description: attrs.description, weight: attrs.weight,
+      scheduledStart: startAt, scheduledEnd: endAt,
+      agent: headerAgent ?? (attrs.agent_id ? { agent_id: attrs.agent_id, name: attrs.agent_name } : null),
+    });
+    if (created.error) notFound();
+    result.activity_id = created.activity.id;
+    return { ...result, state: commandState(store.getTrace(userId, traceId), filters) };
+  }
   if (command === 'message') {
     requiredText(attrs.message, 'message');
     if (attrs.activity_id != null && !byId.has(positiveId(attrs.activity_id, 'activity_id'))) notFound();
@@ -157,6 +191,29 @@ export function executeCommand(store, userId, command, attrs, headerAgent = null
       const explicitParent = Object.hasOwn(attrs, 'parent_id');
       const requestedParent = optionalId(attrs.parent_id, 'parent_id');
       if (requestedParent && !byId.has(requestedParent)) notFound();
+      const unstartedRows = store.listUnstarted(traceId);
+      const beginId = optionalId(attrs.activity_id, 'activity_id');
+      const namedLimbo = agentId && unstartedRows.find(row => row.proposed_by_agent_id === agentId
+        && row.name === name && row.scheduled_start_ms == null && row.scheduled_end_ms == null);
+      const explicit = beginId && unstartedRows.find(row => row.id === beginId);
+      if (beginId && !explicit) notFound();
+      const toBegin = explicit || namedLimbo;
+      if (toBegin) {
+        if (toBegin.parent_id) {
+          const parent = unstartedRows.find(row => row.id === toBegin.parent_id);
+          if (parent) invalid('parent is unstarted');
+        }
+        if (agentId) {
+          store.db.prepare('UPDATE activities SET agent_id = ?, agent_name = ? WHERE id = ?')
+            .run(agentId, headerAgent?.name ?? attrs.agent_name ?? agentId, toBegin.id);
+        }
+        const event = record(toBegin.id, 'B', 'Begun by reducer: a start matched this activity in limbo');
+        result.activity_id = toBegin.id;
+        result.event_id = event.id;
+        const action = { type: 'begin_existing', activity_id: toBegin.id };
+        result.actions_applied.push(action);
+        annotate(toBegin.id, 'begin_limbo', action);
+      } else {
       const duplicate = agentId && [...before.activities].reverse().find(a => a.agentId === agentId
         && a.name === name && !ENDED.has(a.latestEvent.phase));
       if (duplicate) {
@@ -197,6 +254,7 @@ export function executeCommand(store, userId, command, attrs, headerAgent = null
             annotate(result.activity_id, 'name_unfit', { type: 'skipped', reason: 'model_unavailable' });
           }
         }
+      }
       }
     } else {
       const id = positiveId(attrs.activity_id, 'activity_id');

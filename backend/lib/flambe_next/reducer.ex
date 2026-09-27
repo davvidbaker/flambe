@@ -22,7 +22,7 @@ defmodule FlambeNext.Reducer do
   alias FlambeNext.Accounts
   alias FlambeNext.Accounts.User
   alias FlambeNext.Repo
-  alias FlambeNext.Reducer.{Model, Review}
+  alias FlambeNext.Reducer.{Jev, Model, Review}
   alias FlambeNext.Traces
   alias FlambeNext.Traces.{Activity, Event, Thread, Trace}
 
@@ -64,13 +64,44 @@ defmodule FlambeNext.Reducer do
     name = Map.get(activity_attrs, "name")
     timestamp = timestamp_integer(Map.get(params, "event", %{}))
 
-    case duplicate_activity(trace, agent_id, name) do
+    case Map.get(params, "activity_id") do
+      nil ->
+        fold_new_or_duplicate(user, trace, params, activity_attrs, agent_id, name, timestamp)
+
+      activity_id ->
+        case fetch_parent(trace, activity_id) do
+          nil ->
+            {:error, :not_found}
+
+          %Activity{} = target ->
+            if latest_phase(trace.id, target.id) == nil do
+              begin_limbo(
+                trace,
+                target,
+                timestamp,
+                agent_id,
+                Map.get(activity_attrs, "agent_name")
+              )
+            else
+              {:error, {:invalid_input, "activity has already begun"}}
+            end
+        end
+    end
+  end
+
+  defp fold_new_or_duplicate(user, trace, params, activity_attrs, agent_id, name, timestamp) do
+    case duplicate_activity(trace, agent_id, name) || limbo_activity(trace, agent_id, name) do
       %Activity{} = existing ->
-        reuse_existing(trace, existing, timestamp)
+        if is_nil(latest_phase(trace.id, existing.id)) do
+          begin_limbo(trace, existing, timestamp, agent_id, Map.get(activity_attrs, "agent_name"))
+        else
+          reuse_existing(trace, existing, timestamp)
+        end
 
       nil ->
         with {:ok, parent, _source} <-
                resolve_parent(trace, Map.get(params, "thread_id"), activity_attrs, agent_id),
+             :ok <- ensure_parent_begun(trace, parent),
              {:ok, resumed_events} <- resume_suspended_ancestors(trace, parent, timestamp),
              {:ok, %{activity: activity, event: event, notes: notes}} <-
                reduce_start(user, trace, params) do
@@ -124,7 +155,7 @@ defmodule FlambeNext.Reducer do
   defp fold_message(user, proposal) do
     opts = Map.get(proposal, :opts, [])
 
-    if Model.available?(opts) do
+    if Model.available?(opts) or Jev.available?(opts) do
       case Review.handle(user, Map.get(proposal, :attrs, %{}), opts) do
         {:ok, review} ->
           {:ok,
@@ -150,18 +181,18 @@ defmodule FlambeNext.Reducer do
         {:ok, folded}
 
       rule ->
-        case structure_llm() do
+        case structure_review_opts() do
           nil ->
             {:ok, note_structure(trace, folded, rule, %{type: "skipped"}, nil, nil)}
 
-          llm ->
-            judge_structure(user, trace, folded, rule, llm)
+          opts ->
+            judge_structure(user, trace, folded, rule, opts)
         end
     end
   end
 
-  defp judge_structure(user, trace, folded, rule, llm) do
-    case Review.judge_structure(user, folded.activity, rule, llm: llm) do
+  defp judge_structure(user, trace, folded, rule, opts) do
+    case Review.judge_structure(user, folded.activity, rule, opts) do
       {:ok, judgment} ->
         apply_structure_judgment(user, trace, folded, rule, judgment)
 
@@ -212,13 +243,17 @@ defmodule FlambeNext.Reducer do
 
   defp structure_rule(_trace, _activity, _agent_id), do: nil
 
-  defp structure_llm do
+  defp structure_review_opts do
     case Application.get_env(:flambe_next, :reducer_llm) do
       llm when is_function(llm, 2) ->
-        llm
+        [llm: llm]
 
       _ ->
-        if Mix.env() == :test or not Model.configured?(), do: nil, else: &Model.call/2
+        cond do
+          Mix.env() == :test -> nil
+          Jev.configured?() or Model.configured?() -> []
+          true -> nil
+        end
     end
   end
 
@@ -380,6 +415,78 @@ defmodule FlambeNext.Reducer do
     |> Enum.find(fn activity ->
       latest_phase(trace_id, activity.id) in (@open_phases ++ ["S"])
     end)
+  end
+
+  defp limbo_activity(_trace, agent_id, name)
+       when not is_binary(agent_id) or not is_binary(name),
+       do: nil
+
+  defp limbo_activity(%Trace{id: trace_id}, agent_id, name) do
+    name = String.trim(name)
+
+    from(a in Activity,
+      join: thread in assoc(a, :thread),
+      where:
+        thread.trace_id == ^trace_id and a.proposed_by_agent_id == ^agent_id and a.name == ^name and
+          is_nil(a.scheduled_start) and is_nil(a.scheduled_end),
+      order_by: [desc: a.id],
+      limit: 8
+    )
+    |> Repo.all()
+    |> Enum.find(&(latest_phase(trace_id, &1.id) == nil))
+  end
+
+  defp begin_limbo(trace, %Activity{} = existing, timestamp, agent_id, agent_name) do
+    with :ok <- ensure_parent_begun(trace, parent_of(existing)),
+         {:ok, activity, event} <-
+           Traces.begin_unstarted_activity(
+             trace,
+             existing,
+             %{
+               "phase" => "B",
+               "message" => "Begun by reducer: a start matched this activity in limbo",
+               "timestamp_integer" => timestamp
+             },
+             actor(agent_id, agent_name)
+           ) do
+      applied = %{type: "begin_existing", activity_id: activity.id}
+
+      {:ok, decision} =
+        Traces.create_event(trace, activity, %{
+          "phase" => "reducer_decision",
+          "message" => "rule=begin_limbo | applied=begin_existing",
+          "timestamp_integer" => timestamp
+        })
+
+      {:ok,
+       %{
+         blank_fold()
+         | activity: activity,
+           event: event,
+           actions_applied: [applied],
+           rules_fired: [%{rule: "begin_limbo", applied: applied}],
+           extra_events: [decision]
+       }}
+    end
+  end
+
+  defp parent_of(%Activity{parent_id: nil}), do: nil
+  defp parent_of(%Activity{parent_id: parent_id}), do: Repo.get(Activity, parent_id)
+
+  defp actor(agent_id, _name) when not is_binary(agent_id), do: nil
+
+  defp actor(agent_id, name) do
+    %{agent_id: agent_id, agent_name: name || agent_id}
+  end
+
+  defp ensure_parent_begun(_trace, nil), do: :ok
+
+  defp ensure_parent_begun(trace, %Activity{} = parent) do
+    if latest_phase(trace.id, parent.id) == nil do
+      {:error, :parent_unstarted}
+    else
+      :ok
+    end
   end
 
   defp reuse_existing(trace, %Activity{} = existing, timestamp) do

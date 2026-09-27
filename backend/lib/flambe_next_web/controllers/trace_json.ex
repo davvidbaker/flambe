@@ -5,8 +5,19 @@ defmodule FlambeNextWeb.TraceJSON do
     %{data: Enum.map(traces, &summary_data/1)}
   end
 
-  def show(%{trace: %Trace{} = trace, events: events}) do
-    %{data: data(trace, events)}
+  def show(%{trace: %Trace{} = trace, events: events} = assigns) do
+    payload = data(trace, events)
+
+    payload =
+      case Map.get(assigns, :unstarted) do
+        unstarted when is_list(unstarted) ->
+          Map.put(payload, :unstarted, Enum.map(unstarted, &activity_data/1))
+
+        _ ->
+          payload
+      end
+
+    %{data: payload}
   end
 
   def show(%{trace: %Trace{} = trace}) do
@@ -43,7 +54,12 @@ defmodule FlambeNextWeb.TraceJSON do
       parent_id: activity.parent_id,
       thread: %{id: activity.thread_id},
       categories: Enum.map(activity.categories, & &1.id),
-      weight: activity.weight
+      weight: activity.weight,
+      description: activity.description,
+      scheduled_start: millis(activity.scheduled_start),
+      scheduled_end: millis(activity.scheduled_end),
+      proposed_by_agent_id: activity.proposed_by_agent_id,
+      proposed_by_agent_name: activity.proposed_by_agent_name
     }
   end
 
@@ -52,4 +68,7 @@ defmodule FlambeNextWeb.TraceJSON do
   end
 
   defp summary_data(trace), do: %{id: trace.id, name: trace.name}
+
+  defp millis(nil), do: nil
+  defp millis(%DateTime{} = datetime), do: DateTime.to_unix(datetime, :millisecond)
 end

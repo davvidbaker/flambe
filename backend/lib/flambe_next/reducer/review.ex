@@ -12,7 +12,7 @@ defmodule FlambeNext.Reducer.Review do
   import Ecto.Query
 
   alias FlambeNext.Accounts.User
-  alias FlambeNext.Reducer.Model
+  alias FlambeNext.Reducer.{Jev, Model}
   alias FlambeNext.Repo
   alias FlambeNext.Traces
   alias FlambeNext.Traces.{Activity, Event}
@@ -70,6 +70,19 @@ defmodule FlambeNext.Reducer.Review do
   """
   def judge_structure(%User{} = _user, %Activity{} = activity, rule, opts \\ [])
       when is_map(rule) and is_list(opts) do
+    case jev_structure_judgment(activity, rule, opts) do
+      {:ok, judgment} ->
+        {:ok, judgment}
+
+      :fallback ->
+        judge_structure_llm(activity, rule, opts)
+
+      {:error, _reason} ->
+        judge_structure_llm(activity, rule, opts)
+    end
+  end
+
+  defp judge_structure_llm(activity, rule, opts) do
     if Model.available?(opts) do
       prompt = structure_prompt(activity, rule)
 
@@ -86,6 +99,122 @@ defmodule FlambeNext.Reducer.Review do
       {:error, :reducer_not_configured}
     end
   end
+
+  defp jev_structure_judgment(activity, %{name: "new_root_while_open"} = rule, opts) do
+    if Jev.available?(opts) do
+      criteria =
+        %{"keep" => "Keep this activity as a separate root workstream."}
+        |> maybe_add_reparent_choice(rule.open_leaf, "open leaf")
+        |> maybe_add_reparent_choice(rule.previous_root, "previous root")
+
+      state = %{
+        activity: %{
+          id: activity.id,
+          name: activity.name,
+          description: activity.description,
+          parent_id: activity.parent_id
+        },
+        rule: rule
+      }
+
+      questions = %{
+        "action" => %{
+          type: "choice",
+          instructions:
+            "A worker opened a new root while it already had open work. Choose the structurally correct placement. Git commit, push, and PR bookkeeping normally belong under the work being shipped.",
+          criteria: criteria
+        }
+      }
+
+      with {:ok, response} <- Jev.evaluate(state, questions, opts),
+           answers when is_map(answers) <- response["answers"] || response[:answers],
+           %{} = answer <- answers["action"] || answers[:action],
+           choice when is_binary(choice) <- answer["choice"] || answer[:choice] do
+        if Jev.confident_choice?(answer) do
+          jev_structure_choice(choice, activity, rule)
+        else
+          {:error, :low_jev_confidence}
+        end
+      else
+        {:error, reason} -> {:error, reason}
+        _ -> {:error, :invalid_jev_response}
+      end
+    else
+      :fallback
+    end
+  end
+
+  defp jev_structure_judgment(activity, %{name: "name_unfit"} = rule, opts) do
+    if Jev.available?(opts) do
+      state = %{
+        activity: %{
+          id: activity.id,
+          name: activity.name,
+          description: activity.description,
+          parent_id: activity.parent_id
+        },
+        ancestors: rule.ancestors
+      }
+
+      questions = %{
+        "needs_review" => %{
+          type: "noul",
+          instructions:
+            "Does this child need generative review because its name likely indicates a structural problem or needs clarification? A poor name alone is not enough; prefer leaving plausible structure alone.",
+          criteria: %{
+            true: "A clarification, rename, or re-parent may be needed.",
+            false: "The existing placement is plausible and should be kept."
+          }
+        }
+      }
+
+      with {:ok, response} <- Jev.evaluate(state, questions, opts),
+           answers when is_map(answers) <- response["answers"] || response[:answers],
+           %{} = answer <- answers["needs_review"] || answers[:needs_review],
+           probability when is_number(probability) <- answer["noul"] || answer[:noul] do
+        if probability >= 0.5 do
+          :fallback
+        else
+          {:ok, %{assessment: "on_track", direction: nil, reply: nil, action: %{type: "keep"}}}
+        end
+      else
+        {:error, reason} -> {:error, reason}
+        _ -> {:error, :invalid_jev_response}
+      end
+    else
+      :fallback
+    end
+  end
+
+  defp jev_structure_judgment(_activity, _rule, _opts), do: :fallback
+
+  defp maybe_add_reparent_choice(criteria, nil, _label), do: criteria
+
+  defp maybe_add_reparent_choice(criteria, %{id: id, name: name}, label) do
+    Map.put(criteria, "reparent_#{id}", "Re-parent under the #{label}: #{name}")
+  end
+
+  defp jev_structure_choice("keep", _activity, _rule) do
+    {:ok, %{assessment: "on_track", direction: nil, reply: nil, action: %{type: "keep"}}}
+  end
+
+  defp jev_structure_choice("reparent_" <> id_text, activity, rule) do
+    with {parent_id, ""} <- Integer.parse(id_text),
+         true <- parent_id in rule.candidate_ids,
+         true <- parent_id != activity.id do
+      {:ok,
+       %{
+         assessment: "slightly_off_track",
+         direction: "continue",
+         reply: nil,
+         action: %{type: "reparent", parent_activity_id: parent_id, activity_id: activity.id}
+       }}
+    else
+      _ -> {:error, :invalid_jev_response}
+    end
+  end
+
+  defp jev_structure_choice(_, _activity, _rule), do: {:error, :invalid_jev_response}
 
   defp structure_prompt(activity, rule) do
     policy =
@@ -272,34 +401,163 @@ defmodule FlambeNext.Reducer.Review do
   defp blank_to_nil(value), do: value
 
   defp decide(context, agent_id, message, allow_changes?, opts) do
-    prompt = reducer_prompt(context, agent_id, message, allow_changes?)
-    llm = Model.resolve(opts)
-    primary_model = Model.primary_model()
+    if Jev.available?(opts) do
+      case jev_message_decision(context, agent_id, message, allow_changes?, opts) do
+        {:ok, decision, model_info} ->
+          {:ok, decision, model_info}
 
-    case model_decision(llm, primary_model, prompt, context) do
-      {:ok, primary_decision} ->
-        maybe_escalate(llm, primary_decision, prompt, context, primary_model)
+        :fallback ->
+          decide_llm(context, agent_id, message, allow_changes?, opts)
 
-      {:error, primary_error} ->
-        # Invalid or unavailable cheap-model output should fail safe by asking the
-        # stronger model rather than dropping a worker message or applying guesses.
-        escalation_model = Model.escalation_model()
+        {:error, _reason} ->
+          decide_llm(context, agent_id, message, allow_changes?, opts)
+      end
+    else
+      decide_llm(context, agent_id, message, allow_changes?, opts)
+    end
+  end
 
-        with {:ok, final_decision} <-
-               model_decision(
-                 llm,
-                 escalation_model,
-                 escalation_prompt(prompt, nil, primary_error),
-                 context
-               ) do
-          {:ok, final_decision,
+  defp jev_message_decision(context, agent_id, message, allow_changes?, opts) do
+    state = %{
+      flame: context,
+      sender_agent_id: agent_id,
+      message: message,
+      allow_stack_changes: allow_changes?
+    }
+
+    questions = %{
+      "route" => %{
+        type: "choice",
+        instructions:
+          "Decide whether this worker update is a routine on-track update that needs no reply and no stack mutation, or needs generative reducer review.",
+        criteria: %{
+          "routine" =>
+            "Clearly on-track progress or bookkeeping within current work; no guidance, clarification, mutation, or escalation is useful.",
+          "review" =>
+            "Any ambiguity, drift, blocker, possible stack mutation, clarification, or operational guidance could be useful."
+        }
+      },
+      "assessment" => %{
+        type: "choice",
+        instructions: "Assess this worker update against the current flame.",
+        criteria: %{
+          "on_track" => "The update advances the current activity and root intent.",
+          "slightly_off_track" => "The update drifts somewhat but is easy to correct.",
+          "off_track" => "The update materially diverges from the current root intent.",
+          "blocked" => "The worker is blocked from making useful progress.",
+          "uncertain" => "The available state is insufficient to judge confidently."
+        }
+      },
+      "direction" => %{
+        type: "choice",
+        instructions:
+          "Choose the smallest authoritative direction the worker needs. Choose none when no direction is needed.",
+        criteria: %{
+          "none" => "No steering is needed.",
+          "continue" => "Continue the current approach.",
+          "narrow_scope" => "Reduce scope to the essential current work.",
+          "investigate" => "Investigate before making further changes.",
+          "change_approach" => "Change the current implementation approach.",
+          "pause" => "Pause this work temporarily.",
+          "stop" => "Stop this work.",
+          "escalate" => "Human judgment is required."
+        }
+      }
+    }
+
+    with {:ok, response} <- Jev.evaluate(state, questions, opts),
+         answers when is_map(answers) <- response["answers"] || response[:answers],
+         %{} = route_answer <- answers["route"] || answers[:route],
+         route when is_binary(route) <- route_answer["choice"] || route_answer[:choice],
+         %{} = assessment_answer <- answers["assessment"] || answers[:assessment],
+         assessment when assessment in @allowed_assessments <-
+           assessment_answer["choice"] || assessment_answer[:choice],
+         %{} = direction_answer <- answers["direction"] || answers[:direction],
+         direction_choice when is_binary(direction_choice) <-
+           direction_answer["choice"] || direction_answer[:choice],
+         true <- direction_choice == "none" or direction_choice in @allowed_directions do
+      direction = if direction_choice == "none", do: nil, else: direction_choice
+      model = response["model"] || response[:model] || Jev.model()
+
+      model_info = %{
+        primary_model: model,
+        final_model: model,
+        escalated: false,
+        escalation_reason: nil
+      }
+
+      routine? =
+        route == "routine" and assessment == "on_track" and direction_choice == "none" and
+          Jev.confident_choice?(route_answer)
+
+      cond do
+        routine? ->
+          {:ok,
            %{
-             primary_model: primary_model,
-             final_model: escalation_model,
-             escalated: true,
-             escalation_reason: "primary_model_error"
-           }}
-        end
+             "assessment" => "on_track",
+             "direction" => nil,
+             "reply" => nil,
+             "rationale" => "Jev classified this as routine reducer work.",
+             "actions" => [%{"type" => "no_op"}]
+           }, model_info}
+
+        route in ["routine", "review"] ->
+          if Model.available?(opts) do
+            :fallback
+          else
+            {:ok,
+             %{
+               "assessment" => assessment,
+               "direction" => direction,
+               "reply" => nil,
+               "rationale" =>
+                 "Jev returned a typed decision; no generative reducer was configured for a richer review.",
+               "actions" => [%{"type" => "no_op"}]
+             }, model_info}
+          end
+
+        true ->
+          {:error, :invalid_jev_response}
+      end
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_jev_response}
+    end
+  end
+
+  defp decide_llm(context, agent_id, message, allow_changes?, opts) do
+    if not Model.available?(opts) do
+      {:error, :reducer_not_configured}
+    else
+      prompt = reducer_prompt(context, agent_id, message, allow_changes?)
+      llm = Model.resolve(opts)
+      primary_model = Model.primary_model()
+
+      case model_decision(llm, primary_model, prompt, context) do
+        {:ok, primary_decision} ->
+          maybe_escalate(llm, primary_decision, prompt, context, primary_model)
+
+        {:error, primary_error} ->
+          # Invalid or unavailable cheap-model output should fail safe by asking the
+          # stronger model rather than dropping a worker message or applying guesses.
+          escalation_model = Model.escalation_model()
+
+          with {:ok, final_decision} <-
+                 model_decision(
+                   llm,
+                   escalation_model,
+                   escalation_prompt(prompt, nil, primary_error),
+                   context
+                 ) do
+            {:ok, final_decision,
+             %{
+               primary_model: primary_model,
+               final_model: escalation_model,
+               escalated: true,
+               escalation_reason: "primary_model_error"
+             }}
+          end
+      end
     end
   end
 

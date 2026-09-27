@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createAppChartFixture } from '../storybook/fixtureTrace';
+import type { Activity } from '../types/Activity';
 import {
   buildTimelineSnapshot,
   downloadTimelineSnapshot,
@@ -88,7 +89,7 @@ describe('buildTimelineSnapshot', () => {
       name: 'From network',
       categories: [],
       thread: { id: 7 },
-    };
+    } as unknown as Activity;
     const snapshot = buildTimelineSnapshot(
       {
         traceId: 1,
