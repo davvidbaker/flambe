@@ -82,19 +82,6 @@ const FieldHint = styled.div`
   }
 `;
 
-const FieldHint = styled.div`
-  color: #666;
-  font-size: 12px;
-
-  code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.92em;
-    background: #f3f1ee;
-    border-radius: 3px;
-    padding: 0 4px;
-  }
-`;
-
 const ChipList = styled.ul`
   display: flex;
   flex-wrap: wrap;
