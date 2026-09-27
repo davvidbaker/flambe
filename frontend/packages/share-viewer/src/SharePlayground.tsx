@@ -53,10 +53,18 @@ export function SharePlayground() {
   const [parseError, setParseError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(() => window.matchMedia('(min-width: 800px)').matches);
   const dragDepth = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const appliedJson = useRef(JSON.stringify(boot.snapshot));
   const starterText = useRef(boot.starterText);
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 800px)');
+    const updateEditor = () => setEditorOpen(desktop.matches);
+    desktop.addEventListener('change', updateEditor);
+    return () => desktop.removeEventListener('change', updateEditor);
+  }, []);
 
   const persistText = useCallback((text: string) => {
     try {
@@ -94,6 +102,7 @@ export function SharePlayground() {
         applyValidText(text, true);
       } catch (caught) {
         setParseError(caught instanceof Error ? caught.message : 'Could not read that file.');
+        setEditorOpen(true);
       }
     },
     [applyValidText],
@@ -158,7 +167,7 @@ export function SharePlayground() {
   } as const;
 
   return (
-    <AuthFrame data-auth-shell="true" style={{ position: 'relative' }}>
+    <AuthFrame data-auth-shell="true" $overflowY="auto" style={{ position: 'relative' }}>
       <style>{`
         .share-playground {
           box-sizing: border-box;
@@ -216,7 +225,7 @@ export function SharePlayground() {
 
         .share-editor-summary {
           cursor: pointer;
-          display: none;
+          display: block;
           font-size: 13px;
           font-weight: 600;
           padding: 10px 2px;
@@ -235,6 +244,7 @@ export function SharePlayground() {
           }
 
           .share-header {
+            flex-wrap: wrap;
             gap: 6px;
             min-height: 40px;
             padding-bottom: 4px;
@@ -255,7 +265,8 @@ export function SharePlayground() {
 
           .share-header-actions button {
             font-size: 12px !important;
-            padding: 5px 8px !important;
+            min-height: 40px;
+            padding: 8px !important;
           }
 
           .share-content {
@@ -265,7 +276,7 @@ export function SharePlayground() {
           }
 
           .share-chart {
-            flex: 0 0 calc(100dvh - 58px);
+            flex: 0 0 calc(100dvh - 72px);
             min-height: 420px;
             order: 1;
           }
@@ -275,18 +286,6 @@ export function SharePlayground() {
             border-top: 1px solid ${colors.hover};
             min-height: auto;
             order: 2;
-          }
-
-          .share-editor-summary {
-            display: block;
-          }
-
-          .share-editor-body {
-            display: none;
-          }
-
-          .share-editor[open] .share-editor-body {
-            display: flex;
           }
         }
       `}</style>
@@ -315,7 +314,7 @@ export function SharePlayground() {
               style={buttonStyle}
               type="button"
             >
-              Example
+              Reset example
             </button>
           </div>
           <input
@@ -330,6 +329,15 @@ export function SharePlayground() {
           />
         </header>
 
+        {parseError || notice ? (
+          <div
+            role={parseError ? 'alert' : 'status'}
+            style={{ color: parseError ? colors.red : '#444', fontSize: 12, padding: '4px 8px' }}
+          >
+            {parseError ?? notice}
+          </div>
+        ) : null}
+
         <div className="share-content">
           <div className="share-chart">
             <ChartHarness
@@ -342,7 +350,7 @@ export function SharePlayground() {
             />
           </div>
 
-          <details className="share-editor" open={false}>
+          <details className="share-editor" open={editorOpen} onToggle={event => setEditorOpen(event.currentTarget.open)}>
             <summary className="share-editor-summary">
               Edit snapshot JSON
               <span style={{ color: parseError ? colors.red : '#666', fontWeight: 400, marginLeft: 8 }}>
