@@ -927,7 +927,13 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       )}
                       zoom={this.zoom}
                     />
-                    <SplitPane split="horizontal" primary="second" defaultSize={260} minSize={120}>
+                    <SplitPane
+                      key={this.state.width < 800 ? 'mobile-limbo' : 'desktop-limbo'}
+                      split="horizontal"
+                      primary="second"
+                      defaultSize={this.state.width < 800 ? 120 : 260}
+                      minSize={120}
+                    >
                     <FlameChart
                       ref={this.flameChart}
                       activities={props.activities}
