@@ -1,0 +1,1 @@
+import{n as e}from"./rolldown-runtime-C0FnF6B9.js";function t(e){return[{id:e.traceId,name:e.traceName},{id:9002,name:`Main`},{id:9003,name:`Incident review`}]}function n(){return(n=e((()=>{})))()}export{n,t};
