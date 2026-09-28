@@ -2,6 +2,15 @@
   "buildCommand": "npm run build:share-viewer",
   "outputDirectory": "packages/share-viewer/dist",
   "rewrites": [
-    { "source": "/s/:id", "destination": "/index.html" }
-  ]
+    {
+      "source": "/s/:id",
+      "destination": "/index.html"
+    }
+  ],
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "gh-pages": false
+    }
+  }
 }
