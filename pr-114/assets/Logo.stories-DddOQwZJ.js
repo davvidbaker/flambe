@@ -1,0 +1,1 @@
+import{n as e,t}from"./src-DYRdh319.js";import{n}from"./rolldown-runtime-C0FnF6B9.js";var r,i,a,o;function s(){return(s=n((()=>{e(),r={title:`App/Logo`,component:t,parameters:{layout:`centered`}},i={args:{size:90}},a={args:{size:90,isAnimated:!0}},o=[`Default`,`Animated`]})))()}s();export{a as Animated,i as Default,o as __namedExportsOrder,r as default};
