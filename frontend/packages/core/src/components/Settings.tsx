@@ -69,6 +69,11 @@ const SETTINGS: SettingDefinition[] = [
       'The height of a thread dynamically adjusts its height depending on how many levels are in the visible window.',
   },
   {
+    setting: 'showLimbo',
+    copy: 'Show Limbo',
+    description: 'Show the limbo pane under the timeline for unstarted and suspended work.',
+  },
+  {
     setting: 'suspendResumeFlows',
     copy: 'Suspend/Resume Flows',
     subsettings: [

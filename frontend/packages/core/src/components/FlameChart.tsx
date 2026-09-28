@@ -168,6 +168,9 @@ export class FlameChart extends Component<Props, State> {
 
   draggingThread: number | null = null;
 
+  /** Thread band under an in-progress limbo→timeline drag (`text/flambe-activity`). */
+  dropTargetThread: number | null = null;
+
   hoverThreadEllipsis: number | null = null;
 
   mousedown = false;
@@ -652,10 +655,43 @@ export class FlameChart extends Component<Props, State> {
     this.props.planAt(threadId, Math.floor(this.pixelsToTime(event.nativeEvent.offsetX)));
   };
 
+  isLimboActivityDrag = (event: React.DragEvent<HTMLCanvasElement>): boolean =>
+    Array.from(event.dataTransfer.types).includes('text/flambe-activity');
+
+  redrawChart = (): void => {
+    requestAnimationFrame(() => this.draw(
+      this.leftBoundaryTime,
+      this.rightBoundaryTime,
+      this.width,
+      this.dividersData,
+    ));
+  };
+
+  onDragOver = (event: React.DragEvent<HTMLCanvasElement>): void => {
+    if (!this.isLimboActivityDrag(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const threadId = this.pixelsToThreadId(event.nativeEvent.offsetY);
+    if (threadId === this.dropTargetThread) return;
+    this.setFlamechartState({ dropTargetThread: threadId });
+    this.redrawChart();
+  };
+
+  onDragLeave = (event: React.DragEvent<HTMLCanvasElement>): void => {
+    if (!this.isLimboActivityDrag(event) || this.dropTargetThread == null) return;
+    // Canvas has no children; leaving the element clears the landing highlight.
+    this.setFlamechartState({ dropTargetThread: null });
+    this.redrawChart();
+  };
+
   onDrop = (event: React.DragEvent<HTMLCanvasElement>): void => {
     event.preventDefault();
     const activityId = event.dataTransfer.getData('text/flambe-activity');
     const threadId = this.pixelsToThreadId(event.nativeEvent.offsetY);
+    if (this.dropTargetThread != null) {
+      this.setFlamechartState({ dropTargetThread: null });
+      this.redrawChart();
+    }
     if (!activityId || threadId == null || !this.props.updateScheduled) return;
     this.props.updateScheduled(activityId, {
       thread_id: threadId,
@@ -737,7 +773,8 @@ export class FlameChart extends Component<Props, State> {
               onMouseDown={this.onMouseDown}
               onMouseUp={this.onMouseUp}
               onDoubleClick={this.onDoubleClick}
-              onDragOver={event => event.preventDefault()}
+              onDragOver={this.onDragOver}
+              onDragLeave={this.onDragLeave}
               onDrop={this.onDrop}
               style={{
                 width: '100%',
@@ -889,6 +926,7 @@ export class FlameChart extends Component<Props, State> {
         this.drawActorForks();
         this.drawActorLaneChrome('rail');
         this.drawFutureWindow();
+        this.drawDropTargetThread();
         this.drawThreadHeaders(this.ctx);
         this.drawAttention(this.ctx);
         if (this.props.showSuspendResumeFlows) {
@@ -902,6 +940,29 @@ export class FlameChart extends Component<Props, State> {
       this.ctx.scale(0.5, 0.5);
       this.ctx.restore();
     }
+  }
+
+  drawDropTargetThread(): void {
+    if (this.dropTargetThread == null) return;
+    const sortedThreads = this.threadsSortedByRank || [];
+    const index = sortedThreads.findIndex(
+      ([threadId]) => Number(threadId) === this.dropTargetThread,
+    );
+    if (index < 0) return;
+
+    const top = this.offsets[this.dropTargetThread];
+    if (top == null) return;
+    const nextThread = sortedThreads[index + 1];
+    const bottom = nextThread
+      ? this.offsets[nextThread[0]]
+      : this.state.canvasHeight;
+    if (bottom == null || bottom <= top) return;
+
+    this.ctx.save();
+    this.ctx.globalAlpha = 0.35;
+    this.ctx.fillStyle = colors.dropTarget;
+    this.ctx.fillRect(0, top, this.width, bottom - top);
+    this.ctx.restore();
   }
 
   drawDraggingThreads(): void {
