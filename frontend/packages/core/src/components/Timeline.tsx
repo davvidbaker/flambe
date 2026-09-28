@@ -95,6 +95,7 @@ export interface TimelineProps {
   attentionShifts: AttentionShift[];
   darkerAsWeGoDown: boolean;
   rightAlignTimelineText: boolean;
+  showLimbo: boolean;
   blocks: TraceBlock[];
   categories: Category[];
   focusBlock: (input: { index: number | null; activity_id: EntityId | null; activityStatus?: string | null; thread_id: EntityId | null }) => unknown;
@@ -961,7 +962,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       )}
                       zoom={this.zoom}
                     />
-                    {hasLimbo ? (
+                    {props.showLimbo && hasLimbo ? (
                     <SplitPane
                       key={this.state.width < 800 ? 'mobile-limbo' : 'desktop-limbo'}
                       split="horizontal"

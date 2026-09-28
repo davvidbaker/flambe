@@ -21,6 +21,8 @@ export interface SettingsState {
   /** Draw activity names against the right edge of each flame-chart block. */
   rightAlignTimelineText: boolean;
   reactiveThreadHeight: boolean;
+  /** Show the limbo pane under the flame chart. */
+  showLimbo: boolean;
   /** Dev: paint activity ids on blocks instead of names. */
   showActivityIds: boolean;
   /** Dev: overlay the Swyzzle WebGL melt on the flame chart. */
@@ -51,6 +53,7 @@ const defaultState: SettingsState = {
   activityMuteOpacity: 0.1,
   activityMute: false,
   reactiveThreadHeight: true,
+  showLimbo: true,
   showActivityIds: false,
   swyzzle: false,
   swyzzleEffect: DEFAULT_SWYZZLE_EFFECT,

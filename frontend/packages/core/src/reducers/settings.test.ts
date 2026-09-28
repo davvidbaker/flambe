@@ -23,6 +23,14 @@ describe('settings', () => {
     expect(next.rightAlignTimelineText).toBe(true);
   });
 
+  it('defaults showLimbo on and toggles it as a session setting', () => {
+    const initial = settings(undefined, { type: '@@INIT' });
+    expect(initial.showLimbo).toBe(true);
+
+    const hidden = settings(initial, { type: SETTING_TOGGLE, setting: 'showLimbo' });
+    expect(hidden.showLimbo).toBe(false);
+  });
+
   it('defaults Swyzzle off and toggles it as a session setting', () => {
     const initial = settings(undefined, { type: '@@INIT' });
     expect(initial.swyzzle).toBe(false);
