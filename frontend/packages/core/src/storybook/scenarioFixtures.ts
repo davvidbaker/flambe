@@ -640,7 +640,7 @@ export function createLimboFixture(now = Date.now()): AppChartFixture {
   return {
     ...base,
     unstarted: [
-      planned(app, 2810, 'Bring back the hex field', { category: 3, weight: 8 }),
+      planned(app, 2810, 'Review the activity detail flow', { category: 3, weight: 8 }),
       planned(app, 2811, 'Write a CLI walkthrough', { category: 3, weight: 2 }),
       planned(van, 2812, 'Detail the interior', { category: 4, weight: 3 }),
       planned(app, 2813, 'Maybe a mobile view', { category: 2 }),
