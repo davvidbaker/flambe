@@ -1,4 +1,5 @@
 import { connect } from 'react-redux';
+import type { Dispatch } from 'redux';
 
 import Timeline from '../components/Timeline';
 import type { TimelineProps } from '../components/Timeline';
@@ -17,44 +18,47 @@ import {
   focusBlock,
   hoverBlock,
   planActivity,
+  showActivityDetails,
   updateActivity,
   updateEvent,
 } from '../actions';
 
-export default connect(
-  (state: RootState) => {
-    const timeline = getTimelineWithFiltersApplied(state);
-    return {
-      activities: timeline.activities,
-      blocks: timeline.blocks,
-      categories: getUser(state).categories,
-      mantras: getUser(state).mantras,
-      observations: getUser(state).observations,
-      minTime: timeline.minTime,
-      maxTime: timeline.maxTime,
-      modifiers: state.modifiers,
-      threadLevels: timeline.threadLevels,
-      threads: timeline.threads,
-      lastCategory_id: timeline.lastCategory_id,
-      lastThread_id: timeline.lastThread_id,
-      attentionShifts: getUser(state).attentionShifts,
-      searchTerms: getUser(state).searchTerms,
-      absoluteTimeLabels: state.settings.absoluteTimeLabels,
-      twelveHourClock: state.settings.twelveHourClock,
-      attentionDrivenThreadOrder: state.settings.attentionDrivenThreadOrder,
-      darkerAsWeGoDown: state.settings.darkerAsWeGoDown,
-      rightAlignTimelineText: state.settings.rightAlignTimelineText,
-      showLimbo: state.settings.showLimbo,
-      tabs: getUser(state).tabs,
+type StateProps = ReturnType<typeof mapStateToProps>;
 
-      // these are only used for overrides.
-      leftBoundaryTimeOverride: getTimeline(state).leftBoundaryTime,
-      rightBoundaryTimeOverride: getTimeline(state).rightBoundaryTime,
-      focusedBlockIndex: timeline.focusedBlockIndex,
-      hoveredBlockIndex: timeline.hoveredBlockIndex,
-    };
-  },
-  dispatch => ({
+function mapStateToProps(state: RootState) {
+  const timeline = getTimelineWithFiltersApplied(state);
+  return {
+    activities: timeline.activities,
+    blocks: timeline.blocks,
+    categories: getUser(state).categories,
+    mantras: getUser(state).mantras,
+    observations: getUser(state).observations,
+    minTime: timeline.minTime,
+    maxTime: timeline.maxTime,
+    modifiers: state.modifiers,
+    threadLevels: timeline.threadLevels,
+    threads: timeline.threads,
+    lastCategory_id: timeline.lastCategory_id,
+    lastThread_id: timeline.lastThread_id,
+    attentionShifts: getUser(state).attentionShifts,
+    searchTerms: getUser(state).searchTerms,
+    absoluteTimeLabels: state.settings.absoluteTimeLabels,
+    twelveHourClock: state.settings.twelveHourClock,
+    attentionDrivenThreadOrder: state.settings.attentionDrivenThreadOrder,
+    darkerAsWeGoDown: state.settings.darkerAsWeGoDown,
+    rightAlignTimelineText: state.settings.rightAlignTimelineText,
+    tabs: getUser(state).tabs,
+
+    // these are only used for overrides.
+    leftBoundaryTimeOverride: getTimeline(state).leftBoundaryTime,
+    rightBoundaryTimeOverride: getTimeline(state).rightBoundaryTime,
+    focusedBlockIndex: timeline.focusedBlockIndex,
+    hoveredBlockIndex: timeline.hoveredBlockIndex,
+  };
+}
+
+function mapDispatchToProps(dispatch: Dispatch) {
+  return {
     toggleThread: (id: EntityId, isCollapsed = false) => dispatch(isCollapsed ? expandThread(id) : collapseThread(id)),
     updateEvent: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateEvent(id, updates)),
     updateActivity: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateActivity(id, updates)),
@@ -76,5 +80,41 @@ export default connect(
       }),
     ),
     hoverBlock: (index: number | string | null) => dispatch(hoverBlock(index)),
-  }),
+    showActivityDetails: () => dispatch(showActivityDetails()),
+    dispatch,
+  };
+}
+
+type DispatchProps = ReturnType<typeof mapDispatchToProps>;
+
+function mergeProps(
+  stateProps: StateProps,
+  dispatchProps: DispatchProps,
+  ownProps: Record<string, unknown>,
+) {
+  const { dispatch, ...restDispatch } = dispatchProps;
+  return {
+    ...ownProps,
+    ...stateProps,
+    ...restDispatch,
+    planActivityInLimbo: (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const threadId = stateProps.lastThread_id
+        ?? (Object.values(stateProps.threads)[0] as { id?: EntityId } | undefined)?.id;
+      if (threadId === undefined) return;
+      dispatch(planActivity({
+        name: trimmed,
+        thread_id: threadId,
+        scheduled_start: null,
+        scheduled_end: null,
+      }));
+    },
+  };
+}
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+  mergeProps,
 )(Timeline);

@@ -16,6 +16,11 @@ To point the SPA at a hosted instance without Mix, copy `.env.example` to
 that instance. Writes from this Vite session go to the remote database; do not
 run `mix ecto.*` against it.
 
+```text
+VITE_API_URL=https://flambe.fly.dev npm run dev
+```
+
+
 Use `npm run build` to place the production bundle in
 `../backend/priv/static/assets`, then visit http://localhost:4001.
 

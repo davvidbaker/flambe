@@ -3,6 +3,7 @@ import {
   ACTIVITY_CREATE_Q,
   ACTIVITY_DELETE,
   ACTIVITY_END,
+  ACTIVITY_PLAN,
   ACTIVITY_REJECT,
   ACTIVITY_RESOLVE,
   ACTIVITY_RESUME,
@@ -27,6 +28,7 @@ import {
   deleteActivity,
   expandAllThreads,
   endActivity,
+  planActivity,
   processTimelineTrace,
   resumeActivity,
   resurrectActivity,
@@ -104,6 +106,22 @@ function* handleCommand({ operand, command }: CommandRunAction): SagaIterator {
         );
         yield put(shiftAttention(thread_id, Date.now()));
         break;
+
+      case ACTIVITY_PLAN: {
+        const planThreadId = thread_id
+          ?? timeline.lastThread_id
+          ?? Object.values(timeline.threads)[0]?.id;
+        if (planThreadId === undefined || !(command.name ?? '').trim()) return;
+        yield put(
+          planActivity({
+            name: (command.name ?? '').trim(),
+            thread_id: planThreadId,
+            scheduled_start: null,
+            scheduled_end: null,
+          }),
+        );
+        break;
+      }
 
       case ACTIVITY_RESUME:
         if (activity_id === undefined || thread_id === undefined) return;

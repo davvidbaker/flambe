@@ -29,6 +29,14 @@ function block(activity_id: number, startTime: number, endTime?: number): TraceB
   };
 }
 
+function scheduledBlock(activity_id: number, startTime: number, endTime?: number): TraceBlock {
+  return {
+    ...block(activity_id, startTime, endTime),
+    scheduled: true,
+    scheduledPoint: endTime !== undefined && startTime === endTime,
+  };
+}
+
 function rowsOfWash(band: { washRects: Array<{ rowStart: number; rowEnd: number }> }): number[] {
   const rows: number[] = [];
   for (const rect of band.washRects) {
@@ -556,6 +564,101 @@ describe('coalesceActorLaneChrome', () => {
     const claudeRows = new Set(rowsOfWash(claude));
     const composerRows = new Set(rowsOfWash(composer));
     for (const row of claudeRows) expect(composerRows.has(row)).toBe(false);
+  });
+});
+
+describe('scheduled vs begun stacking', () => {
+  it('keeps a past overlapping scheduled plan below an open begun block', () => {
+    const activities = {
+      1: activity({ id: 1, name: 'Begun' }),
+      2: activity({ id: 2, name: 'Past plan' }),
+    };
+    const begun = block(1, 100);
+    const plan = scheduledBlock(2, 50, 150);
+    const layout = projectActorLaneLayout(activities, [begun, plan]);
+
+    expect(layout.rowByBlock[blockLayoutKey(begun)]).toBe(0);
+    expect(layout.rowByBlock[blockLayoutKey(plan)]).toBeGreaterThan(
+      layout.rowByBlock[blockLayoutKey(begun)],
+    );
+  });
+
+  it('keeps a start-only past plan below an open begun block', () => {
+    const activities = {
+      1: activity({ id: 1, name: 'Begun' }),
+      2: activity({ id: 2, name: 'Open plan' }),
+    };
+    const begun = block(1, 100);
+    const plan = scheduledBlock(2, 40);
+    const layout = projectActorLaneLayout(activities, [begun, plan]);
+
+    expect(layout.rowByBlock[blockLayoutKey(begun)]).toBe(0);
+    expect(layout.rowByBlock[blockLayoutKey(plan)]).toBeGreaterThan(
+      layout.rowByBlock[blockLayoutKey(begun)],
+    );
+  });
+
+  it('stacks multiple overlapping plans below one active begun block', () => {
+    const activities = {
+      1: activity({ id: 1, name: 'Begun' }),
+      2: activity({ id: 2, name: 'Plan A' }),
+      3: activity({ id: 3, name: 'Plan B' }),
+    };
+    const begun = block(1, 100);
+    const planA = scheduledBlock(2, 60, 140);
+    const planB = scheduledBlock(3, 80, 160);
+    const layout = projectActorLaneLayout(activities, [begun, planA, planB]);
+
+    const begunRow = layout.rowByBlock[blockLayoutKey(begun)];
+    expect(begunRow).toBe(0);
+    expect(layout.rowByBlock[blockLayoutKey(planA)]).toBeGreaterThan(begunRow);
+    expect(layout.rowByBlock[blockLayoutKey(planB)]).toBeGreaterThan(begunRow);
+  });
+
+  it('keeps a future plan below an open begun block even when times do not overlap', () => {
+    // Open begun occupies ∞; future plans must still land under it.
+    const activities = {
+      1: activity({ id: 1, name: 'Begun' }),
+      2: activity({ id: 2, name: 'Future plan' }),
+    };
+    const begun = block(1, 100);
+    const plan = scheduledBlock(2, 300, 400);
+    const layout = projectActorLaneLayout(activities, [begun, plan]);
+
+    expect(layout.rowByBlock[blockLayoutKey(begun)]).toBe(0);
+    expect(layout.rowByBlock[blockLayoutKey(plan)]).toBeGreaterThan(
+      layout.rowByBlock[blockLayoutKey(begun)],
+    );
+  });
+
+  it('keeps a past plan below a completed overlapping lived block', () => {
+    const activities = {
+      1: activity({ id: 1, name: 'Done' }),
+      2: activity({ id: 2, name: 'Missed plan' }),
+    };
+    const done = block(1, 100, 200);
+    const plan = scheduledBlock(2, 120, 180);
+    const layout = projectActorLaneLayout(activities, [done, plan]);
+
+    expect(layout.rowByBlock[blockLayoutKey(done)]).toBe(0);
+    expect(layout.rowByBlock[blockLayoutKey(plan)]).toBeGreaterThan(
+      layout.rowByBlock[blockLayoutKey(done)],
+    );
+  });
+
+  it('nests a scheduled child below its open parent, not above', () => {
+    const activities = {
+      1: activity({ id: 1, name: 'Parent' }),
+      2: activity({ id: 2, name: 'Child plan', parent_id: 1 }),
+    };
+    const parent = block(1, 100);
+    const childPlan = scheduledBlock(2, 150, 250);
+    const layout = projectActorLaneLayout(activities, [parent, childPlan]);
+
+    expect(layout.rowByBlock[blockLayoutKey(parent)]).toBe(0);
+    expect(layout.rowByBlock[blockLayoutKey(childPlan)]).toBe(
+      layout.rowByBlock[blockLayoutKey(parent)] + 1,
+    );
   });
 });
 
