@@ -76,6 +76,8 @@ interface Props {
   contentLabel?: string;
   isOpen: boolean;
   onRequestClose: () => unknown;
+  /** When false, leave focus alone (e.g. name field already focused). Default true. */
+  shouldFocusAfterRender?: boolean;
   wide?: boolean;
 }
 
@@ -123,6 +125,7 @@ const AppModal = ({
   children,
   onRequestClose,
   contentLabel = 'Dialog',
+  shouldFocusAfterRender = true,
   wide = false,
 }: Props) => {
   const sheet = useSheetLayout();
@@ -132,6 +135,7 @@ const AppModal = ({
       contentLabel={contentLabel}
       onRequestClose={onRequestClose}
       isOpen={isOpen}
+      shouldFocusAfterRender={shouldFocusAfterRender}
       style={sheet ? sheetStyleOverrides : desktopStyleOverrides}
     >
       <ActualContent $sheet={sheet} $wide={wide} data-app-modal-sheet={sheet ? 'true' : 'false'}>

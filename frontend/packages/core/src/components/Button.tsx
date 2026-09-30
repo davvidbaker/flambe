@@ -54,6 +54,8 @@ interface Props {
   looksLikeButton?: boolean;
   placeholder?: string;
   placeholderIsDefaultValue?: boolean;
+  /** Open already as an input and focus (e.g. after scheduling a new activity). */
+  startAsInput?: boolean;
   submit: (value: string) => unknown;
 }
 
@@ -67,14 +69,32 @@ interface State {
 export class InputFromButton extends Component<Props, State> {
   button: HTMLButtonElement | null = null;
   transformedInput: HTMLTextAreaElement | null = null;
-  state: State = { height: 0, isInput: false, width: 0 };
+  didAutoFocus = false;
+  state: State = {
+    height: 0,
+    isInput: Boolean(this.props.startAsInput),
+    width: 0,
+  };
+
+  focusInput = (element: HTMLTextAreaElement | null = this.transformedInput): void => {
+    if (!element) return;
+    element.focus();
+    element.setSelectionRange(0, element.value.length);
+  };
 
   transformIntoInput = (): void => {
     this.setState({ isInput: true }, () => {
-      this.transformedInput?.focus();
-      this.transformedInput?.setSelectionRange(0, this.transformedInput.value.length);
+      this.focusInput();
     });
   };
+
+  componentDidMount(): void {
+    if (!this.state.isInput) return;
+    // react-modal focuses the dialog after open; steal focus back onto the name.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.focusInput());
+    });
+  }
 
   onKeyPress = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (event.key !== 'Enter') return;
@@ -124,14 +144,20 @@ export class InputFromButton extends Component<Props, State> {
 
     return (
       <StyledTextarea
-        style={{ width: `${this.state.width}px`, height: `${this.state.height}px` }}
+        style={{ width: `${this.state.width || 160}px`, height: `${this.state.height || 28}px` }}
         placeholder={placeholder || childText}
         onBlur={this.transformIntoButton}
         onKeyDown={this.stopShortcutKeys}
         onKeyUp={this.stopShortcutKeys}
         onKeyPress={this.onKeyPress}
         defaultValue={placeholderIsDefaultValue ? placeholder || childText : undefined}
-        ref={element => { this.transformedInput = element; }}
+        ref={element => {
+          this.transformedInput = element;
+          if (element && this.state.isInput && !this.didAutoFocus) {
+            this.didAutoFocus = true;
+            this.focusInput(element);
+          }
+        }}
       />
     );
   }

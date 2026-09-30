@@ -9,6 +9,7 @@ import { hideActivityDetailModal } from '../actions';
 import type { ActivityDetailProps } from './ActivityDetail';
 
 interface Props extends Omit<ActivityDetailProps, 'activity_id' | 'agents' | 'beginActivity' | 'categories' | 'events' | 'hideActivityDetailModal' | 'showCategoryManager' | 'threads' | 'updateActivity'> {
+  activityDetailEditName: boolean;
   activityDetailModalVisible: boolean;
   hideActivityDetailModal: () => unknown;
 }
@@ -29,6 +30,7 @@ const Title = styled.h2`
 
 const ActivityDetailModal = (props: Props) => {
   const {
+    activityDetailEditName,
     activityDetailModalVisible,
     hideActivityDetailModal,
     ...passedThroughProps
@@ -39,6 +41,7 @@ const ActivityDetailModal = (props: Props) => {
       contentLabel="Activity details"
       isOpen={activityDetailModalVisible}
       onRequestClose={hideActivityDetailModal}
+      shouldFocusAfterRender={!activityDetailEditName}
     >
       <div data-activity-detail="true">
         <Header>
@@ -52,7 +55,8 @@ const ActivityDetailModal = (props: Props) => {
 };
 
 export default connect(
-  (state: { activityDetailModalVisible: boolean }) => ({
+  (state: { activityDetailEditName: boolean; activityDetailModalVisible: boolean }) => ({
+    activityDetailEditName: state.activityDetailEditName,
     activityDetailModalVisible: state.activityDetailModalVisible,
   }),
   dispatch => ({

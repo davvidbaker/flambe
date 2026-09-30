@@ -179,6 +179,7 @@ export interface ActivityDetailProps {
   beginActivity: (id: EntityId) => unknown;
   blocks: TraceBlock[];
   categories: CategoryType[];
+  editName?: boolean;
   hideActivityDetailModal: () => unknown;
   showCategoryManager: () => unknown;
   events: TraceEvent[];
@@ -194,6 +195,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     agents,
     beginActivity,
     blocks,
+    editName = false,
     hideActivityDetailModal,
     updateActivity,
     categories,
@@ -306,7 +308,9 @@ const ActivityDetail = (props: ActivityDetailProps) => {
   return (
     <>
       <InputFromButton
+        key={`name-${activity.id}-${editName ? 'edit' : 'view'}`}
         placeholderIsDefaultValue
+        startAsInput={editName}
         submit={(value: string) => {
           updateActivity(activity.id, { name: value });
         }}
@@ -554,10 +558,11 @@ const ActivityDetail = (props: ActivityDetailProps) => {
 };
 
 export default connect(
-  (state: { timeline: TimelineState; user: UserState }) => ({
+  (state: { activityDetailEditName: boolean; timeline: TimelineState; user: UserState }) => ({
     activity_id: getTimeline(state).focusedBlockActivity_id,
     agents: getUser(state).agents ?? [],
     categories: getUser(state).categories,
+    editName: state.activityDetailEditName,
     events: getTimeline(state).events,
     threads: getTimeline(state).threads,
   }),

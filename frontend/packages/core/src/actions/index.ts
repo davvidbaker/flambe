@@ -446,9 +446,10 @@ export function clearUndo() {
   return { type: UNDO_CLEAR };
 }
 
-export function showActivityDetails() {
+export function showActivityDetails({ editName = false }: { editName?: boolean } = {}) {
   return {
     type: ACTIVITY_DETAILS_SHOW,
+    editName,
   };
 }
 
