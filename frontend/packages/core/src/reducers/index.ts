@@ -28,6 +28,7 @@ import type { EntityId } from '../types/ids';
 import undo from './undo';
 
 interface RootAction {
+  editName?: boolean;
   thread_id?: EntityId;
   type: string;
   view?: string;
@@ -37,6 +38,18 @@ function activityDetailModalVisible(state = false, action: RootAction): boolean 
   switch (action.type) {
     case ACTIVITY_DETAILS_SHOW:
       return true;
+    case ACTIVITY_DETAILS_HIDE:
+      return false;
+    default:
+      return state;
+  }
+}
+
+/** When true, Activity Detail should open the name field ready to type. */
+function activityDetailEditName(state = false, action: RootAction): boolean {
+  switch (action.type) {
+    case ACTIVITY_DETAILS_SHOW:
+      return Boolean(action.editName);
     case ACTIVITY_DETAILS_HIDE:
       return false;
     default:
@@ -133,6 +146,7 @@ function loggedIn(_state = false, _action: RootAction): boolean {
 }
 
 export {
+  activityDetailEditName,
   activityDetailModalVisible,
   advancedSearchVisible,
   categoryManagerVisible,

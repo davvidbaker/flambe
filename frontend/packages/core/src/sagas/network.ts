@@ -2,9 +2,11 @@ import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
 
 import {
   createToast,
+  focusBlock,
   recordUndo,
   processTimelineTrace,
   setHiddenThreads,
+  showActivityDetails,
   updateActivity as updateActivityAction,
   ACTIVITY_BEGIN,
   ACTIVITY_CREATE_B,
@@ -242,7 +244,7 @@ function* refetchTrace(): SagaIterator {
 
 function* planActivity({ type, name, thread_id, scheduled_start, scheduled_end }: NetworkAction): SagaIterator {
   const timeline: TimelineState = yield select(getTimeline);
-  yield* fetchResource(type, {
+  const data = yield* fetchResource(type, {
     resource: { path: 'activities' },
     params: {
       method: 'POST',
@@ -259,6 +261,23 @@ function* planActivity({ type, name, thread_id, scheduled_start, scheduled_end }
     },
   });
   yield* refetchTrace();
+
+  const activityId = (data as { activity?: { id?: EntityId } } | undefined)?.activity?.id;
+  // Chart double-click schedules with a start time; open details so the name can be typed.
+  if (activityId === undefined || scheduled_start == null) return;
+
+  const nextTimeline: TimelineState = yield select(getTimeline);
+  const activity = nextTimeline.activities[String(activityId)];
+  const index = nextTimeline.blocks.findIndex(
+    block => String(block.activity_id) === String(activityId),
+  );
+  yield put(focusBlock({
+    index: index >= 0 ? index : null,
+    activity_id: activityId,
+    activityStatus: activity?.status ?? 'unstarted',
+    thread_id: thread_id ?? activity?.thread_id ?? null,
+  }));
+  yield put(showActivityDetails({ editName: true }));
 }
 
 function* beginActivity({ type, id, timestamp }: NetworkAction): SagaIterator {
@@ -480,9 +499,14 @@ function* fetchUser({ type, id }: NetworkAction): SagaIterator {
 
 function* fetchTrace({ trace }: NetworkAction): SagaIterator {
   if (trace === undefined) return;
-  yield* fetchResource(TRACE_FETCH, {
+  const data = yield* fetchResource(TRACE_FETCH, {
     resource: { path: 'traces', id: typeof trace === 'object' ? trace.id : trace },
   });
+  // Process inline so callers of refetchTrace / fetchTrace see activities/blocks
+  // before continuing (e.g. focus the newly scheduled activity).
+  if (data) {
+    yield* processFetchedTrace({ data } as NetworkAction);
+  }
 }
 
 function* deleteTrace({ type, id }: NetworkAction): SagaIterator {
@@ -613,7 +637,6 @@ function* networkSaga(): SagaIterator {
   yield takeEvery(TRACE_DELETE, deleteTrace);
   yield takeLatest(TRACE_FETCH, fetchTrace);
   yield takeLatest(TRACE_SELECT, fetchTrace);
-  yield takeLatest(`${TRACE_FETCH}_SUCCEEDED`, processFetchedTrace);
 
   yield takeEvery(THREAD_CREATE, createThread);
   yield takeEvery(THREAD_DELETE, deleteThread);
