@@ -397,3 +397,19 @@ test('renders the post-login timeline on WebKit without requestIdleCallback', as
   expect(metrics.headerText).toMatch(/Traces|Log out/);
   expect(pageErrors.filter(message => /requestIdleCallback/i.test(message))).toEqual([]);
 });
+
+test('opens start-activity from the header Start button on phone', async ({ page }) => {
+  await page.setViewportSize(phone);
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log In' }).click();
+  await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
+  await expect(page.getByRole('banner')).toBeVisible();
+
+  await page.getByRole('banner').getByRole('button', { name: 'Start' }).click();
+  await expect(
+    page.locator('input[placeholder="gist/description of the activity"]'),
+  ).toBeVisible();
+  await expect(page.getByText('start a new task/activity...')).toBeVisible();
+});
