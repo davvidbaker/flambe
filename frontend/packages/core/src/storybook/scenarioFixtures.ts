@@ -620,6 +620,95 @@ export function createScheduledActivitiesFixture(now = Date.now()): AppChartFixt
   };
 }
 
+/**
+ * Active begun work with past and future plans on the same thread.
+ * Plans must stack below the open begun block, never above it.
+ */
+export function createScheduledUnderBegunFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'flambé🔥');
+  const begun = activity(app, 2901, 'Show drop thread while dragging limbo', { category: 1 });
+
+  const base = fixture(9970, 'Scheduled under begun', [app], [
+    { id: 9971, timestamp: minutesAgo(now, 45), phase: 'B', activity: begun },
+  ]);
+
+  return {
+    ...base,
+    unstarted: [
+      planned(app, 2910, 'how to delete', {
+        category: 3,
+        start: minutesAgo(now, 20),
+        end: now + 30 * MINUTE,
+      }),
+      planned(app, 2911, 'Past open-ended plan', {
+        category: 5,
+        start: minutesAgo(now, 60),
+      }),
+      planned(app, 2912, 'Future review', {
+        category: 2,
+        start: now + 40 * MINUTE,
+        end: now + 90 * MINUTE,
+      }),
+      planned(app, 2913, 'Deadline only', {
+        category: 4,
+        end: now + 120 * MINUTE,
+      }),
+    ],
+  };
+}
+
+/**
+ * Nested active parent+child with overlapping and future scheduled plans,
+ * plus a completed lived block that overlaps a past plan.
+ */
+export function createScheduledStackingEdgesFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'flambé🔥');
+  const chores = thread(2, 'chores', 1);
+
+  const parent = activity(app, 2920, 'Ship limbo tray', { category: 1 });
+  const child = activity(app, 2921, 'Wire Give up', { category: 1, parentId: parent.id });
+  const done = activity(chores, 2922, 'Vacuum the lab', { category: 4 });
+
+  const base = fixture(9980, 'Scheduled stacking edges', [app, chores], [
+    { id: 9981, timestamp: minutesAgo(now, 80), phase: 'B', activity: parent },
+    { id: 9982, timestamp: minutesAgo(now, 50), phase: 'B', activity: child },
+    { id: 9983, timestamp: minutesAgo(now, 100), phase: 'B', activity: done },
+    { id: 9984, timestamp: minutesAgo(now, 40), phase: 'E', activity: done },
+  ]);
+
+  return {
+    ...base,
+    unstarted: [
+      planned(app, 2930, 'Child plan under parent', {
+        category: 3,
+        parentId: parent.id,
+        start: minutesAgo(now, 10),
+        end: now + 50 * MINUTE,
+      }),
+      planned(app, 2931, 'Sibling plan overlapping both', {
+        category: 2,
+        start: minutesAgo(now, 30),
+        end: now + 20 * MINUTE,
+      }),
+      planned(app, 2932, 'Future after open work', {
+        category: 3,
+        start: now + 60 * MINUTE,
+        end: now + 100 * MINUTE,
+      }),
+      planned(chores, 2933, 'Missed chore window', {
+        category: 5,
+        start: minutesAgo(now, 90),
+        end: minutesAgo(now, 50),
+      }),
+      planned(chores, 2934, 'Later chore (no overlap)', {
+        category: 4,
+        start: now + 30 * MINUTE,
+        end: now + 70 * MINUTE,
+      }),
+    ],
+  };
+}
+
 /** Unstarted work with no time, next to suspended work: both are limbo. */
 export function createLimboFixture(now = Date.now()): AppChartFixture {
   const app = thread(1, 'flambé🔥');

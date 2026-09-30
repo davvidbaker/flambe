@@ -5,6 +5,7 @@ import {
   ACTIVITY_CREATE_Q,
   ACTIVITY_DELETE,
   ACTIVITY_END,
+  ACTIVITY_PLAN,
   ACTIVITY_SUSPEND,
   ACTIVITY_REJECT,
   ACTIVITY_RESOLVE,
@@ -137,6 +138,17 @@ const COMMANDS: Command[] = [
       },
       threadParam,
       categoryParam,
+    ],
+  },
+  {
+    action: ACTIVITY_PLAN,
+    copy: 'add to limbo...',
+    parameters: [
+      {
+        key: 'name',
+        placeholder: 'idea / unstarted work',
+      },
+      threadParam,
     ],
   },
   // {

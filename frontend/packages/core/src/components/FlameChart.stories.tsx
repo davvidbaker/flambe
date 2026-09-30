@@ -15,6 +15,8 @@ import {
   createIndependentAgentRootsFixture,
   createLimboFixture,
   createScheduledActivitiesFixture,
+  createScheduledStackingEdgesFixture,
+  createScheduledUnderBegunFixture,
   createSparseTraceFixture,
   createStackedAgentWorkFixture,
   createStrangeSequenceFixture,
@@ -167,6 +169,34 @@ export const ScheduledActivities: Story = {
       viewport: {
         leftBoundaryTime: now - 100 * 60 * 1000,
         rightBoundaryTime: now + 180 * 60 * 1000,
+      },
+    };
+  })(),
+};
+
+/** Canonical bug: past/future plans must sit below an open begun block, never above. */
+export const ScheduledUnderBegun: Story = {
+  args: (() => {
+    const now = Date.now();
+    return {
+      fixture: createScheduledUnderBegunFixture(now),
+      viewport: {
+        leftBoundaryTime: now - 80 * 60 * 1000,
+        rightBoundaryTime: now + 140 * 60 * 1000,
+      },
+    };
+  })(),
+};
+
+/** Nested open work, completed+missed plan, and non-overlapping future plan. */
+export const ScheduledStackingEdges: Story = {
+  args: (() => {
+    const now = Date.now();
+    return {
+      fixture: createScheduledStackingEdgesFixture(now),
+      viewport: {
+        leftBoundaryTime: now - 120 * 60 * 1000,
+        rightBoundaryTime: now + 120 * 60 * 1000,
       },
     };
   })(),

@@ -19,6 +19,7 @@ export default defineConfig({
     globals: true,
     include: [
       'packages/core/src/**/*.test.ts',
+      'packages/core/src/**/*.test.tsx',
       'packages/share-viewer/src/**/*.test.ts',
       'viteRemoteProxy.test.ts',
     ],

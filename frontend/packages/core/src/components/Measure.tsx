@@ -15,23 +15,20 @@ interface Props {
   onResize: (contentRect: { bounds: Bounds }) => void;
 }
 
-interface State {
-  measurementVersion: number;
-}
-
 type WindowWithResizeObserver = Window & {
   ResizeObserver?: typeof ResizeObserver;
 };
 
 // A native ResizeObserver version of react-measure's bounds-only API.
-class Measure extends Component<Props, State> {
+// Do not setState here: FlameChart draws into a canvas after onResize, and a
+// re-render that rewrites canvas width/height attributes clears that buffer
+// (visible as flashing while dragging split panes).
+class Measure extends Component<Props> {
   element: HTMLElement | null = null;
   observer: ResizeObserver | null = null;
   animationFrame: number | null = null;
   view: Window | null = null;
   mounted = false;
-
-  state: State = { measurementVersion: 0 };
 
   componentDidMount(): void {
     this.mounted = true;
@@ -79,7 +76,6 @@ class Measure extends Component<Props, State> {
     this.animationFrame = this.view.requestAnimationFrame(() => {
       this.animationFrame = null;
       if (!this.observer) return;
-      this.setState(({ measurementVersion }) => ({ measurementVersion: measurementVersion + 1 }));
       this.props.onResize({ bounds });
     });
   };

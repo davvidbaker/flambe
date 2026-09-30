@@ -708,7 +708,10 @@ export function projectActorLaneLayout(
     if (threadId === undefined || threadId === null) continue;
 
     const ordered = threadBlocks.slice().sort((left, right) =>
-      left.startTime - right.startTime
+      // Lived work claims upper rows first so past/overlapping plans never
+      // stack above already-begun blocks (start-time packing alone inverts them).
+      Number(Boolean(left.scheduled)) - Number(Boolean(right.scheduled))
+      || left.startTime - right.startTime
       || forestDepth(left.activity_id) - forestDepth(right.activity_id)
       || Number(left.activity_id) - Number(right.activity_id));
 

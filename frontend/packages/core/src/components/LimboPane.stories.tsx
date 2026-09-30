@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import LimboPane from './LimboPane';
 import type { Category } from '../types/Category';
 import type { ProcessedActivity } from '../utilities/processTrace';
+import type { Thread } from '../types/Thread';
 
 const categories: Category[] = [
   { id: 1, name: 'coding', color_background: '#efc360', color_text: '#000000' },
@@ -11,17 +12,22 @@ const categories: Category[] = [
   { id: 4, name: 'operations', color_background: '#34d399', color_text: '#000000' },
 ];
 
+const threads: Record<string, Thread> = {
+  1: { id: 1, name: 'flambé🔥' },
+  2: { id: 2, name: 'sell van 🚐' },
+};
+
 function item(
   id: number,
   name: string,
   status: 'suspended' | 'unstarted',
-  options: { category?: number; weight?: number } = {},
+  options: { category?: number; weight?: number; threadId?: number } = {},
 ): ProcessedActivity {
   return {
     id,
     name,
     status,
-    thread_id: 1,
+    thread_id: options.threadId ?? 1,
     categories: [options.category ?? 1],
     events: [],
     suspendedChildren: [],
@@ -42,7 +48,7 @@ const meta = {
   },
   decorators: [
     Story => (
-      <div style={{ height: 180 }}>
+      <div style={{ height: 360 }}>
         <Story />
       </div>
     ),
@@ -53,29 +59,51 @@ const meta = {
     categories,
     deleteActivity: () => undefined,
     focusActivity: () => undefined,
+    onToggleCollapsed: () => undefined,
+    threads,
+    updateActivity: () => undefined,
   },
 } satisfies Meta<typeof LimboPane>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Unstarted and paused work are separated; weight is metadata rather than geometry. */
+/** Weighted items are hexes sized by weight, heaviest in the middle; the rest wait in the side list. */
 export const Mixed: Story = {
   args: {
     activities: byId([
-      item(1, 'Review the activity detail flow', 'unstarted', { category: 3, weight: 8 }),
+      item(1, 'Bring back the hex field', 'unstarted', { category: 3, weight: 8 }),
       item(2, 'Rework reducer placement', 'suspended', { category: 2, weight: 5 }),
-      item(3, 'Detail the interior', 'unstarted', { category: 4, weight: 3 }),
+      item(3, 'Detail the interior', 'unstarted', { category: 4, weight: 3, threadId: 2 }),
       item(4, 'Write a CLI walkthrough', 'unstarted', { category: 3, weight: 2 }),
       item(5, 'Tiny idea', 'unstarted', { weight: 1 }),
       item(6, 'Maybe a mobile view', 'unstarted', { category: 2 }),
-      item(7, 'Touch up scratch on rear', 'suspended', { category: 4 }),
+      item(7, 'Touch up scratch on rear', 'suspended', { category: 4, threadId: 2 }),
     ]),
   },
 };
 
-/** A busy tray stays compact and scrolls horizontally within each group. */
-export const ManyCards: Story = {
+/** Collapsed to a bottom strip with a weighted/unweighted summary. */
+export const Collapsed: Story = {
+  args: {
+    collapsed: true,
+    activities: byId([
+      item(1, 'Bring back the hex field', 'unstarted', { category: 3, weight: 8 }),
+      item(2, 'Maybe a mobile view', 'unstarted', { category: 2 }),
+      item(3, 'Touch up scratch on rear', 'suspended', { category: 4 }),
+    ]),
+  },
+  decorators: [
+    Story => (
+      <div style={{ height: 36 }}>
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+/** Many weighted items, to check the honeycomb spiral stays readable and scrolls. */
+export const ManyWeighted: Story = {
   args: {
     activities: byId(
       Array.from({ length: 19 }, (_, index) =>
@@ -87,7 +115,7 @@ export const ManyCards: Story = {
   },
 };
 
-/** Long names stay inside their cards and show in full on hover. */
+/** A long name must stay inside its hex and show in full on hover. */
 export const LongNames: Story = {
   args: {
     activities: byId([

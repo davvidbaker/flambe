@@ -11,7 +11,6 @@ import {
 } from '../utilities/timelineGeometry';
 import zoom from '../utilities/zoom';
 import pan from '../utilities/pan';
-import { limboItems } from '../utilities/limbo';
 import { persistCollapsedThreadState } from '../utilities/threadCollapseState';
 import { savedRangeIsUsable } from '../utilities/timelineViewport';
 import {
@@ -55,9 +54,10 @@ import FocusedBlock from './FocusedBlock';
 
 const MIN_GRID_SLICE_PX = 60;
 const ABSOLUTE_MIN_GRID_SLICE_PX = 100;
+const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
+const limboCollapsedStorageKey = 'flambe.limbo.collapsed.v1';
 const isValidTime = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
-const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
 
 function readLocalStorage(key: string): string | null {
   if (typeof window === 'undefined') return null;
@@ -66,6 +66,19 @@ function readLocalStorage(key: string): string | null {
   } catch {
     return null;
   }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // ignore quota / private-mode failures
+  }
+}
+
+function readLimboCollapsed(): boolean {
+  return readLocalStorage(limboCollapsedStorageKey) === '1';
 }
 
 // minTime is smallest timestamp in the entire timeline
@@ -95,13 +108,13 @@ export interface TimelineProps {
   attentionShifts: AttentionShift[];
   darkerAsWeGoDown: boolean;
   rightAlignTimelineText: boolean;
-  showLimbo: boolean;
   blocks: TraceBlock[];
   categories: Category[];
   focusBlock: (input: { index: number | null; activity_id: EntityId | null; activityStatus?: string | null; thread_id: EntityId | null }) => unknown;
   focusedBlockIndex?: number | null;
   hoverBlock: (index: number | string | null) => unknown;
   hoveredBlockIndex?: number | null;
+  showActivityDetails: () => unknown;
   leftBoundaryTimeOverride?: number;
   mantras: Mantra[];
   observations?: Observation[];
@@ -120,6 +133,7 @@ export interface TimelineProps {
   beginActivity?: (id: EntityId) => unknown;
   deleteActivity?: (id: EntityId, threadId: EntityId) => unknown;
   planActivity?: (threadId: EntityId, time: number) => unknown;
+  planActivityInLimbo?: (name: string) => unknown;
   updateActivity?: (id: EntityId, updates: Record<string, unknown>) => unknown;
 }
 
@@ -127,6 +141,7 @@ interface TimelineComponentState {
   composingZoomChord: boolean;
   dividersData: DividerData;
   height: number;
+  limboCollapsed: boolean;
   threadModal_id: number | null;
   timeSeriesHeight: number;
   width: number;
@@ -143,6 +158,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     },
     composingZoomChord: false,
     height: 0,
+    limboCollapsed: readLimboCollapsed(),
     threadModal_id: null,
     timeSeriesHeight: 100,
     width: 0,
@@ -778,6 +794,25 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     this.setState({ timeSeriesHeight: size });
   };
 
+  toggleLimboCollapsed = (): void => {
+    this.setState(({ limboCollapsed }) => {
+      const next = !limboCollapsed;
+      writeLocalStorage(limboCollapsedStorageKey, next ? '1' : '0');
+      return { limboCollapsed: next };
+    });
+  };
+
+  selectLimboActivity = (id: EntityId): void => {
+    const activity = this.props.activities[String(id)];
+    this.props.focusBlock({
+      index: null,
+      activity_id: id,
+      activityStatus: activity?.status,
+      thread_id: activity?.thread_id ?? null,
+    });
+    this.props.showActivityDetails();
+  };
+
   /**
    * 💁 I didn't want left and right boundary times to be part of redux, because they were changing too fast for a super silky smooth animation, but I did want them to persist through reloads. So, when this component will mount, if they exist in localStorage, they will take that initial value. They are then set in localStorage at most once a second.
    *
@@ -797,7 +832,6 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
   render() {
     const { props } = this;
-    const hasLimbo = limboItems(props.activities).length > 0;
 
     const rightBoundaryTime = this.rightBoundaryTime || props.maxTime;
     const leftBoundaryTime = this.leftBoundaryTime || props.minTime;
@@ -962,9 +996,33 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       )}
                       zoom={this.zoom}
                     />
-                    {props.showLimbo && hasLimbo ? (
+                    {this.state.limboCollapsed ? (
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: '100%',
+                            minHeight: 0,
+                          }}
+                        >
+                          <div style={{ flex: '1 1 0', minHeight: 0, position: 'relative' }}>
+                            {flameChart}
+                          </div>
+                          <LimboPane
+                            activities={props.activities}
+                            beginActivity={props.beginActivity ?? (() => undefined)}
+                            categories={props.categories}
+                            collapsed
+                            deleteActivity={props.deleteActivity ?? (() => undefined)}
+                            focusActivity={this.selectLimboActivity}
+                            onToggleCollapsed={this.toggleLimboCollapsed}
+                            planInLimbo={props.planActivityInLimbo}
+                            threads={threads}
+                            updateActivity={props.updateActivity}
+                          />
+                        </div>
+                      ) : (
                     <SplitPane
-                      key={this.state.width < 800 ? 'mobile-limbo' : 'desktop-limbo'}
                       split="horizontal"
                       primary="second"
                       defaultSize={this.state.width < 800 ? 120 : 180}
@@ -976,18 +1034,14 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                                               beginActivity={props.beginActivity ?? (() => undefined)}
                                               categories={props.categories}
                                               deleteActivity={props.deleteActivity ?? (() => undefined)}
-                                              focusActivity={id => {
-                                                const activity = props.activities[String(id)];
-                                                props.focusBlock({
-                                                  index: null,
-                                                  activity_id: id,
-                                                  activityStatus: activity?.status,
-                                                  thread_id: activity?.thread_id ?? null,
-                                                });
-                                              }}
+                                              focusActivity={this.selectLimboActivity}
+                                              onToggleCollapsed={this.toggleLimboCollapsed}
+                                              planInLimbo={props.planActivityInLimbo}
+                                              threads={threads}
+                                              updateActivity={props.updateActivity}
                                             />
                     </SplitPane>
-                  ) : flameChart}
+                      )}
                   </SplitPane>
 
                   {/* ⚠️ Moved these up? */}

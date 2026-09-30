@@ -5,6 +5,8 @@ import { connect } from 'react-redux';
 import {
   updateActivity,
   showCategoryManager,
+  hideActivityDetailModal,
+  ACTIVITY_DELETE,
   ACTIVITY_DETAILS_SHOW,
 } from '../actions';
 import { getUser, type UserState } from '../reducers/user';
@@ -175,6 +177,7 @@ export interface ActivityDetailProps {
   agents: Agent[];
   blocks: TraceBlock[];
   categories: CategoryType[];
+  hideActivityDetailModal: () => unknown;
   showCategoryManager: () => unknown;
   events: TraceEvent[];
   submitCommand: (command: Command & { activity_id: EntityId; message?: string; thread_id: EntityId }) => unknown;
@@ -188,6 +191,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     activity_id,
     agents,
     blocks,
+    hideActivityDetailModal,
     updateActivity,
     categories,
     showCategoryManager,
@@ -421,6 +425,22 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       </div>
       <ActivityEventFlow activityBlocks={[...activityBlocks, ...falseBlocks]} />
       <Actions>
+        {activity.status === 'unstarted' && (
+          <Button
+            looksLikeButton
+            onClick={() => {
+              submitCommand({
+                action: ACTIVITY_DELETE,
+                copy: 'delete',
+                activity_id: activity.id,
+                thread_id: threadId,
+              });
+              hideActivityDetailModal();
+            }}
+          >
+            delete
+          </Button>
+        )}
         {activity.status && activity.status !== 'parent_suspended' && activity.status !== 'unstarted' && activityCommandsByStatus(activity.status)
           .filter(cmd => cmd.action !== ACTIVITY_DETAILS_SHOW)
           .map(
@@ -528,6 +548,7 @@ export default connect(
     threads: getTimeline(state).threads,
   }),
   dispatch => ({
+    hideActivityDetailModal: () => dispatch(hideActivityDetailModal()),
     showCategoryManager: () => dispatch(showCategoryManager()),
     updateActivity: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateActivity(id, updates)),
   }),
