@@ -91,6 +91,8 @@ interface Props {
   deleteCurrentTrace: () => unknown;
   deleteTrace: (id: EntityId) => unknown;
   logout: () => unknown;
+  /** Opens the start-activity command flow (palette / Commander). */
+  onStart: () => unknown;
   selectTrace: (trace: Trace) => unknown;
   traces: Trace[];
 }
@@ -103,6 +105,7 @@ const Header = ({
   deleteCurrentTrace,
   currentMantra,
   createMantra,
+  onStart,
   logout,
 }: Props) => (
   <StyledHeader>
@@ -129,6 +132,9 @@ const Header = ({
       {currentMantra || 'Note to self'}
     </InputFromButton>
     {currentTrace && <h1>{currentTrace.name}</h1>}
+    <button type="button" onClick={onStart} title="Start a new activity">
+      Start
+    </button>
     <button type="button" onClick={logout}>Log out</button>
   </StyledHeader>
 );
