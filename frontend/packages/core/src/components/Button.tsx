@@ -85,6 +85,11 @@ export class InputFromButton extends Component<Props, State> {
     }
   };
 
+  /** Keep document-level Trace/Timeline shortcuts from stealing edit keys (e.g. E → end). */
+  stopShortcutKeys = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+    event.stopPropagation();
+  };
+
   transformIntoButton = (): void => this.setState({ isInput: false });
 
   setTextareaSize = ({ width, height }: Bounds): void => this.setState({ width, height });
@@ -122,6 +127,8 @@ export class InputFromButton extends Component<Props, State> {
         style={{ width: `${this.state.width}px`, height: `${this.state.height}px` }}
         placeholder={placeholder || childText}
         onBlur={this.transformIntoButton}
+        onKeyDown={this.stopShortcutKeys}
+        onKeyUp={this.stopShortcutKeys}
         onKeyPress={this.onKeyPress}
         defaultValue={placeholderIsDefaultValue ? placeholder || childText : undefined}
         ref={element => { this.transformedInput = element; }}

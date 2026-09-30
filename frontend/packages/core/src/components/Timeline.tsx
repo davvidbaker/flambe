@@ -25,6 +25,7 @@ import {
   loadSuspendedActivityCount,
 } from '../utilities/timeline';
 import { scheduleIdleCallback } from '../utilities/requestIdleCallback';
+import { isShortcutBlockedByTextEntry } from '../utilities/swyzzleIdle';
 import {
   panDeltaFromTouchMove,
   touchDistance,
@@ -885,7 +886,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
             'keyup',
             ((event: Event) => {
               const e = event as KeyboardEvent;
-              if (!(e.target instanceof HTMLInputElement)) {
+              if (!isShortcutBlockedByTextEntry(e)) {
                 if (this.state.composingZoomChord) {
                   if (this.state.zoomChord.length === 0) {
                     let zoomChord: ZoomPeriod | '' = '';

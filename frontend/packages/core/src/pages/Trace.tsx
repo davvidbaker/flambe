@@ -41,6 +41,7 @@ import {
   undoLastCommand,
 } from '../actions';
 import { isKeyboardShortcutsHotkey } from '../utilities/keyboardShortcuts';
+import { isShortcutBlockedByTextEntry } from '../utilities/swyzzleIdle';
 import COMMANDS, {
   ACTIVITY_COMMANDS,
   activityCommandsByStatus,
@@ -272,8 +273,7 @@ class App extends React.Component<AppProps, AppState> {
                 if (
                   !e.shiftKey &&
                   !this.props.aModalIsOpen &&
-                  !(e.target instanceof HTMLInputElement) &&
-                  !(e.target instanceof HTMLTextAreaElement)
+                  !isShortcutBlockedByTextEntry(e)
                 ) {
                   e.preventDefault();
                   this.props.undoLastCommand();
@@ -314,8 +314,7 @@ class App extends React.Component<AppProps, AppState> {
             }
           }
           if (
-            !(e.target instanceof HTMLInputElement) &&
-            !(e.target instanceof HTMLTextAreaElement)
+            !isShortcutBlockedByTextEntry(e)
           ) {
             if (e.shiftKey && e.key === '}') {
               this.props.expandAllThreads();
@@ -333,8 +332,8 @@ class App extends React.Component<AppProps, AppState> {
           if (
             /* ⚠️ maybe don't want this.props.operand here */
             this.props.operand &&
-            !(e.target instanceof HTMLInputElement) &&
-            !(e.target instanceof HTMLTextAreaElement)
+            !this.props.aModalIsOpen &&
+            !isShortcutBlockedByTextEntry(e)
           ) {
             switch (this.props.operand.type) {
               case 'activity':

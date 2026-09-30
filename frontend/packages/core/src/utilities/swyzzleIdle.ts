@@ -54,15 +54,57 @@ const TEXT_INPUT_TYPES = new Set([
   '',
 ]);
 
+function tagNameOf(target: object): string {
+  if (!('tagName' in target)) return '';
+  return String((target as { tagName?: string }).tagName ?? '').toUpperCase();
+}
+
+/** True when keyboard shortcuts must not steal keystrokes from a text field. */
 export function isTextEntryTarget(target: EventTarget | null): boolean {
-  if (typeof HTMLElement === 'undefined') return false;
-  if (!(target instanceof HTMLElement)) return false;
-  if (target instanceof HTMLTextAreaElement) return true;
-  if (target.isContentEditable) return true;
-  if (target instanceof HTMLInputElement) {
+  if (target == null || typeof target !== 'object') return false;
+
+  if (typeof HTMLTextAreaElement !== 'undefined' && target instanceof HTMLTextAreaElement) {
+    return true;
+  }
+  if (typeof HTMLSelectElement !== 'undefined' && target instanceof HTMLSelectElement) {
+    return true;
+  }
+  if (typeof HTMLInputElement !== 'undefined' && target instanceof HTMLInputElement) {
     return TEXT_INPUT_TYPES.has(target.type);
   }
+
+  const tag = tagNameOf(target);
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (tag === 'INPUT') {
+    const type = 'type' in target
+      ? String((target as { type?: string }).type ?? 'text')
+      : 'text';
+    return TEXT_INPUT_TYPES.has(type);
+  }
+
+  if ('isContentEditable' in target && Boolean((target as HTMLElement).isContentEditable)) {
+    return true;
+  }
+
+  if (typeof Element !== 'undefined' && target instanceof Element) {
+    return Boolean(
+      target.closest(
+        'input:not([type="button"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="file"]), textarea, select, [contenteditable="true"]',
+      ),
+    );
+  }
+
   return false;
+}
+
+/** Prefer this for document-level shortcut handlers: target or focus may disagree. */
+export function isShortcutBlockedByTextEntry(
+  event: Pick<KeyboardEvent, 'target'>,
+  activeElement: EventTarget | null = typeof document === 'undefined'
+    ? null
+    : document.activeElement,
+): boolean {
+  return isTextEntryTarget(event.target) || isTextEntryTarget(activeElement);
 }
 
 type TimeoutHandle = ReturnType<typeof setTimeout>;

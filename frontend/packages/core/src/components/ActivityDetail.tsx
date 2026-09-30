@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { connect } from 'react-redux';
 
 import {
+  beginActivity,
   updateActivity,
   showCategoryManager,
   hideActivityDetailModal,
@@ -175,6 +176,7 @@ export interface ActivityDetailProps {
   activities: Record<string, ProcessedActivity>;
   activity_id: EntityId | null;
   agents: Agent[];
+  beginActivity: (id: EntityId) => unknown;
   blocks: TraceBlock[];
   categories: CategoryType[];
   hideActivityDetailModal: () => unknown;
@@ -190,6 +192,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     activities,
     activity_id,
     agents,
+    beginActivity,
     blocks,
     hideActivityDetailModal,
     updateActivity,
@@ -426,20 +429,31 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       <ActivityEventFlow activityBlocks={[...activityBlocks, ...falseBlocks]} />
       <Actions>
         {activity.status === 'unstarted' && (
-          <Button
-            looksLikeButton
-            onClick={() => {
-              submitCommand({
-                action: ACTIVITY_DELETE,
-                copy: 'delete',
-                activity_id: activity.id,
-                thread_id: threadId,
-              });
-              hideActivityDetailModal();
-            }}
-          >
-            delete
-          </Button>
+          <>
+            <Button
+              looksLikeButton
+              onClick={() => {
+                beginActivity(activity.id);
+                hideActivityDetailModal();
+              }}
+            >
+              Begin
+            </Button>
+            <Button
+              looksLikeButton
+              onClick={() => {
+                submitCommand({
+                  action: ACTIVITY_DELETE,
+                  copy: 'delete',
+                  activity_id: activity.id,
+                  thread_id: threadId,
+                });
+                hideActivityDetailModal();
+              }}
+            >
+              delete
+            </Button>
+          </>
         )}
         {activity.status && activity.status !== 'parent_suspended' && activity.status !== 'unstarted' && activityCommandsByStatus(activity.status)
           .filter(cmd => cmd.action !== ACTIVITY_DETAILS_SHOW)
@@ -548,6 +562,7 @@ export default connect(
     threads: getTimeline(state).threads,
   }),
   dispatch => ({
+    beginActivity: (id: EntityId) => dispatch(beginActivity(id)),
     hideActivityDetailModal: () => dispatch(hideActivityDetailModal()),
     showCategoryManager: () => dispatch(showCategoryManager()),
     updateActivity: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateActivity(id, updates)),

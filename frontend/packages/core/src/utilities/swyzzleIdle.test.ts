@@ -5,11 +5,37 @@ import {
   SWYZZLE_IDLE_SECONDS_DEFAULT,
   SwyzzleIdleGate,
   clampSwyzzleIdleSeconds,
+  isShortcutBlockedByTextEntry,
   isSwyzzleClearKey,
+  isTextEntryTarget,
   rememberSwyzzleClearKey,
   swyzzleIdleMs,
   takeSwyzzleClearKey,
 } from './swyzzleIdle';
+
+describe('isTextEntryTarget', () => {
+  it('treats textareas and text inputs as text entry', () => {
+    expect(isTextEntryTarget({ tagName: 'TEXTAREA' } as unknown as EventTarget)).toBe(true);
+    expect(isTextEntryTarget({ tagName: 'INPUT', type: 'text' } as unknown as EventTarget)).toBe(true);
+    expect(isTextEntryTarget({ tagName: 'INPUT', type: 'checkbox' } as unknown as EventTarget)).toBe(false);
+    expect(isTextEntryTarget({ tagName: 'BUTTON' } as unknown as EventTarget)).toBe(false);
+  });
+
+  it('treats contenteditable as text entry', () => {
+    expect(isTextEntryTarget({ tagName: 'DIV', isContentEditable: true } as unknown as EventTarget)).toBe(true);
+    expect(isTextEntryTarget({ tagName: 'DIV', isContentEditable: false } as unknown as EventTarget)).toBe(false);
+  });
+});
+
+describe('isShortcutBlockedByTextEntry', () => {
+  it('blocks when either the event target or active element is a text field', () => {
+    const textarea = { tagName: 'TEXTAREA' } as unknown as EventTarget;
+    const button = { tagName: 'BUTTON' } as unknown as EventTarget;
+    expect(isShortcutBlockedByTextEntry({ target: textarea }, button)).toBe(true);
+    expect(isShortcutBlockedByTextEntry({ target: button }, textarea)).toBe(true);
+    expect(isShortcutBlockedByTextEntry({ target: button }, button)).toBe(false);
+  });
+});
 
 describe('isSwyzzleClearKey', () => {
   it('matches Space and Escape', () => {
