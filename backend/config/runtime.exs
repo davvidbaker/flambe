@@ -85,6 +85,7 @@ if config_env() == :prod do
       """
 
   config :flambe_next, invite_code: invite_code
+  config :flambe_next, :mcp_allowed_hosts, [host]
   # Keep the compile-time default in sync when the release is started with an
   # explicit scheme (Endpoint reads this via Application.compile_env).
   config :flambe_next, session_cookie_secure: url_scheme != "http"

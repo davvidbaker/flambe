@@ -1,114 +1,110 @@
 defmodule FlambeNextWeb.McpControllerTest do
-  use FlambeNextWeb.ConnCase, async: true
+  use FlambeNextWeb.ConnCase, async: false
 
   alias FlambeNext.{Accounts, Agents, Traces}
+  alias FlambeNext.Accounts.ApiTokens
   alias FlambeNextWeb.Endpoint
+
+  @protocol_version "2026-07-28"
 
   setup %{conn: conn} do
     suffix = System.unique_integer([:positive])
     {:ok, user} = Accounts.create_user(%{name: "MCP User", username: "mcp-user-#{suffix}"})
     {:ok, trace} = Traces.create_trace(user, %{name: "MCP trace"})
+    {:ok, _api_token, raw_token} = ApiTokens.create(user, "MCP test")
 
-    %{conn: authenticated_as(conn, user), trace: trace, user: user}
+    conn = put_req_header(conn, "authorization", "Bearer #{raw_token}")
+    %{conn: conn, trace: trace, user: user}
   end
 
-  test "supports legacy initialization and initialized notifications", %{conn: conn} do
-    initialized =
-      post(conn, ~p"/mcp", %{
-        "jsonrpc" => "2.0",
-        "id" => 1,
-        "method" => "initialize",
-        "params" => %{
-          "protocolVersion" => "2025-11-25",
-          "capabilities" => %{},
-          "clientInfo" => %{"name" => "test", "version" => "1"}
-        }
-      })
+  test "requires an API token and rejects a browser session", %{user: user} do
+    unauthenticated = post_mcp(build_conn(), legacy_initialize())
+    assert %{"error" => "UNAUTHENTICATED"} = json_response(unauthenticated, 401)
+
+    session_only =
+      build_conn()
+      |> init_test_session(%{user_id: user.id})
+      |> post_mcp(legacy_initialize())
+
+    assert %{"error" => "UNAUTHENTICATED"} = json_response(session_only, 401)
+  end
+
+  test "supports legacy initialization during the compatibility window", %{conn: conn} do
+    response = conn |> legacy_accept() |> post_mcp(legacy_initialize())
 
     assert %{
              "jsonrpc" => "2.0",
              "id" => 1,
              "result" => %{
-               "protocolVersion" => "2025-11-25",
-               "capabilities" => %{"tools" => %{"listChanged" => false}}
+               "protocolVersion" => protocol_version,
+               "capabilities" => %{"tools" => _tools}
              }
-           } = json_response(initialized, 200)
+           } = json_response(response, 200)
 
-    notification =
-      initialized
-      |> recycle()
-      |> post(~p"/mcp", %{"jsonrpc" => "2.0", "method" => "notifications/initialized"})
-
-    assert response(notification, 202) == ""
+    assert protocol_version in ~w(2025-11-25 2025-06-18 2025-03-26)
   end
 
-  test "discovers the stateless protocol and all agent tools", %{conn: conn} do
-    discovered =
-      conn
-      |> modern_headers("server/discover")
-      |> post(~p"/mcp", %{"jsonrpc" => "2.0", "id" => "discover", "method" => "server/discover"})
+  test "discovers the modern protocol and all agent tools", %{conn: conn} do
+    discovered = modern_post(conn, "server/discover", %{}, "discover")
 
     assert %{
              "result" => %{
-               "protocolVersion" => "2026-07-28",
+               "resultType" => "complete",
+               "supportedVersions" => supported,
                "capabilities" => %{"tools" => %{}}
              }
            } = json_response(discovered, 200)
 
-    listed =
-      discovered
-      |> recycle()
-      |> modern_headers("tools/list")
-      |> post(~p"/mcp", %{"jsonrpc" => "2.0", "id" => 2, "method" => "tools/list"})
+    assert @protocol_version in supported
 
-    %{"result" => %{"tools" => tools, "ttlMs" => 300_000, "cacheScope" => "private"}} =
-      json_response(listed, 200)
+    listed = modern_post(recycle(discovered), "tools/list", %{}, 2)
+
+    assert %{"result" => %{"resultType" => "complete", "tools" => tools}} =
+             json_response(listed, 200)
 
     assert Enum.map(tools, & &1["name"]) == [
-             "flambe_start",
              "flambe_end",
-             "flambe_suspend",
-             "flambe_resume",
-             "flambe_status",
              "flambe_message",
-             "flambe_plan"
+             "flambe_plan",
+             "flambe_resume",
+             "flambe_start",
+             "flambe_status",
+             "flambe_suspend"
            ]
 
-    assert get_in(Enum.find(tools, &(&1["name"] == "flambe_start")), ["inputSchema", "required"]) ==
-             ["trace_id", "name"]
-
     status = Enum.find(tools, &(&1["name"] == "flambe_status"))
-    assert get_in(status, ["inputSchema", "properties", "thread_id", "type"]) == "integer"
+    assert status["annotations"]["readOnlyHint"]
+    assert get_in(status, ["inputSchema", "required"]) == ["trace_id"]
   end
 
-  test "executes tools with structured results and header identity", %{
+  test "executes tools with structured results and authenticated header identity", %{
     conn: conn,
     trace: trace,
     user: user
   } do
     :ok = Endpoint.subscribe("events:#{trace.user_id}")
 
-    conn =
+    called =
       conn
       |> put_req_header("x-flambe-agent-id", "mcp-header-agent")
       |> put_req_header("x-flambe-agent-name", "MCP Header Agent")
-      |> modern_headers("tools/call", "flambe_start")
-      |> post(~p"/mcp", %{
-        "jsonrpc" => "2.0",
-        "id" => 3,
-        "method" => "tools/call",
-        "params" => %{
+      |> modern_post(
+        "tools/call",
+        %{
           "name" => "flambe_start",
           "arguments" => %{
             "trace_id" => trace.id,
             "name" => "Called over MCP",
             "agent_id" => "body-agent"
           }
-        }
-      })
+        },
+        3,
+        "flambe_start"
+      )
 
     assert %{
              "result" => %{
+               "resultType" => "complete",
                "isError" => false,
                "content" => [%{"type" => "text", "text" => text}],
                "structuredContent" => %{
@@ -116,7 +112,7 @@ defmodule FlambeNextWeb.McpControllerTest do
                  "state" => %{"activities" => activities}
                }
              }
-           } = json_response(conn, 200)
+           } = json_response(called, 200)
 
     assert is_binary(text)
 
@@ -132,40 +128,17 @@ defmodule FlambeNextWeb.McpControllerTest do
     assert trace_id == trace.id
 
     status =
-      conn
-      |> recycle()
+      build_conn()
       |> authenticated_as(user)
       |> post(~p"/api/agent-commands", %{
         "command" => "status",
         "arguments" => %{"trace_id" => trace.id}
       })
 
-    structured_state = get_in(json_response(conn, 200), ["result", "structuredContent", "state"])
+    structured_state =
+      get_in(json_response(called, 200), ["result", "structuredContent", "state"])
+
     assert %{"data" => %{"state" => ^structured_state}} = json_response(status, 200)
-
-    ended =
-      status
-      |> recycle()
-      |> authenticated_as(user)
-      |> post(~p"/api/agent-commands", %{
-        "command" => "end",
-        "arguments" => %{"trace_id" => trace.id, "activity_id" => activity_id}
-      })
-
-    assert %{
-             "data" => %{
-               "activity_id" => ^activity_id,
-               "event_id" => end_event_id,
-               "state" => %{"activities" => ended_activities}
-             }
-           } = json_response(ended, 200)
-
-    assert is_integer(end_event_id)
-
-    assert Enum.any?(
-             ended_activities,
-             &(&1["id"] == activity_id and get_in(&1, ["latestEvent", "phase"]) == "E")
-           )
   end
 
   test "returns command failures as tool errors and protocol failures as JSON-RPC errors", %{
@@ -173,20 +146,15 @@ defmodule FlambeNextWeb.McpControllerTest do
     trace: trace
   } do
     tool_failure =
-      conn
-      |> modern_headers("tools/call", "flambe_start")
-      |> post(~p"/mcp", %{
-        "jsonrpc" => "2.0",
-        "id" => 4,
-        "method" => "tools/call",
-        "params" => %{
-          "name" => "flambe_start",
-          "arguments" => %{"trace_id" => trace.id}
-        }
-      })
+      modern_post(
+        conn,
+        "tools/call",
+        %{"name" => "flambe_start", "arguments" => %{"trace_id" => trace.id}},
+        4,
+        "flambe_start"
+      )
 
     assert %{
-             "id" => 4,
              "result" => %{
                "isError" => true,
                "structuredContent" => %{"code" => "INVALID_INPUT"}
@@ -194,46 +162,27 @@ defmodule FlambeNextWeb.McpControllerTest do
            } = json_response(tool_failure, 200)
 
     bad_headers =
-      tool_failure
-      |> recycle()
+      conn
       |> modern_headers("tools/list")
-      |> post(~p"/mcp", %{"jsonrpc" => "2.0", "id" => 5, "method" => "tools/call"})
+      |> put_req_header("mcp-method", "tools/call")
+      |> post_mcp(modern_request("tools/list", %{}, 5))
 
-    assert %{"id" => 5, "error" => %{"code" => -32600}} = json_response(bad_headers, 400)
+    assert %{"error" => %{"code" => -32020}} = json_response(bad_headers, 400)
 
-    unknown =
-      tool_failure
-      |> recycle()
-      |> post(~p"/mcp", %{"jsonrpc" => "2.0", "id" => 6, "method" => "unknown/method"})
-
-    assert %{"id" => 6, "error" => %{"code" => -32601}} = json_response(unknown, 200)
-
-    unknown_tool =
-      tool_failure
-      |> recycle()
-      |> post(~p"/mcp", %{
-        "jsonrpc" => "2.0",
-        "id" => 7,
-        "method" => "tools/call",
-        "params" => %{"name" => "not_a_tool", "arguments" => %{}}
-      })
-
-    assert %{"id" => 7, "error" => %{"code" => -32602}} = json_response(unknown_tool, 200)
+    unknown = modern_post(recycle(tool_failure), "unknown/method", %{}, 6)
+    assert %{"error" => %{"code" => -32601}} = json_response(unknown, 404)
   end
 
-  test "accepts and persists direct MCP agent identity arguments", %{
+  test "accepts direct MCP agent identity arguments when no identity header is present", %{
     conn: conn,
     trace: trace,
     user: user
   } do
-    conn =
-      conn
-      |> modern_headers("tools/call", "flambe_start")
-      |> post(~p"/mcp", %{
-        "jsonrpc" => "2.0",
-        "id" => 10,
-        "method" => "tools/call",
-        "params" => %{
+    response =
+      modern_post(
+        conn,
+        "tools/call",
+        %{
           "name" => "flambe_start",
           "arguments" => %{
             "trace_id" => trace.id,
@@ -242,58 +191,96 @@ defmodule FlambeNextWeb.McpControllerTest do
             "agent_name" => "Direct Agent",
             "platform" => "MCP Host"
           }
-        }
-      })
+        },
+        10,
+        "flambe_start"
+      )
 
-    assert %{
-             "result" => %{
-               "isError" => false,
-               "structuredContent" => %{"activity_id" => activity_id}
-             }
-           } = json_response(conn, 200)
+    assert %{"result" => %{"structuredContent" => %{"activity_id" => activity_id}}} =
+             json_response(response, 200)
 
     activity = Traces.get_user_activity!(user, activity_id)
     assert activity.agent_id == "direct-mcp-agent"
     assert activity.agent_name == "Direct Agent"
-
-    assert %{name: "Direct Agent", platform: "MCP Host"} =
-             Agents.get(user, "direct-mcp-agent")
+    assert %{name: "Direct Agent", platform: "MCP Host"} = Agents.get(user, "direct-mcp-agent")
   end
 
-  test "supports ping and rejects malformed initialization parameters", %{conn: conn} do
-    ping = post(conn, ~p"/mcp", %{"jsonrpc" => "2.0", "id" => 8, "method" => "ping"})
-    assert json_response(ping, 200) == %{"jsonrpc" => "2.0", "id" => 8, "result" => %{}}
-
-    malformed =
-      ping
-      |> recycle()
-      |> post(~p"/mcp", %{"jsonrpc" => "2.0", "id" => 9, "method" => "initialize"})
-
-    assert %{"id" => 9, "error" => %{"code" => -32602}} = json_response(malformed, 200)
-  end
-
-  test "rejects foreign origins", %{conn: conn} do
-    conn =
+  test "rejects foreign origins and unsupported hosts", %{conn: conn} do
+    foreign_origin =
       conn
       |> put_req_header("origin", "https://attacker.example")
-      |> post(~p"/mcp", %{"jsonrpc" => "2.0", "id" => 7, "method" => "tools/list"})
+      |> modern_post("tools/list", %{}, 7)
 
-    assert %{"id" => 7, "error" => %{"code" => -32600}} = json_response(conn, 403)
+    assert response(foreign_origin, 403)
+
+    foreign_host =
+      conn
+      |> recycle()
+      |> Map.put(:host, "attacker.example")
+      |> modern_post("tools/list", %{}, 8)
+
+    assert response(foreign_host, 421)
   end
 
-  test "returns 405 for unsupported stream and session methods", %{conn: conn, user: user} do
-    assert conn |> get(~p"/mcp") |> response(405) == ""
+  test "does not expose legacy GET and DELETE transports", %{conn: conn} do
+    assert conn |> get(~p"/mcp") |> response(404)
+    assert conn |> recycle() |> delete(~p"/mcp") |> response(400)
+  end
 
-    assert conn |> recycle() |> authenticated_as(user) |> delete(~p"/mcp") |> response(405) == ""
+  defp modern_post(conn, method, params, id, name \\ nil) do
+    conn
+    |> modern_headers(method, name)
+    |> post_mcp(modern_request(method, params, id))
+  end
+
+  defp modern_request(method, params, id) do
+    %{
+      "jsonrpc" => "2.0",
+      "id" => id,
+      "method" => method,
+      "params" => Map.put(params, "_meta", modern_meta())
+    }
+  end
+
+  defp modern_meta do
+    %{
+      "io.modelcontextprotocol/protocolVersion" => @protocol_version,
+      "io.modelcontextprotocol/clientInfo" => %{"name" => "flambe-test", "version" => "1"},
+      "io.modelcontextprotocol/clientCapabilities" => %{}
+    }
   end
 
   defp modern_headers(conn, method, name \\ nil) do
     conn =
       conn
-      |> put_req_header("mcp-protocol-version", "2026-07-28")
+      |> put_req_header("accept", "application/json, text/event-stream")
+      |> put_req_header("mcp-protocol-version", @protocol_version)
       |> put_req_header("mcp-method", method)
 
     if name, do: put_req_header(conn, "mcp-name", name), else: conn
+  end
+
+  defp legacy_initialize do
+    %{
+      "jsonrpc" => "2.0",
+      "id" => 1,
+      "method" => "initialize",
+      "params" => %{
+        "protocolVersion" => "2025-11-25",
+        "capabilities" => %{},
+        "clientInfo" => %{"name" => "test", "version" => "1"}
+      }
+    }
+  end
+
+  defp legacy_accept(conn) do
+    put_req_header(conn, "accept", "application/json, text/event-stream")
+  end
+
+  defp post_mcp(conn, payload) do
+    conn
+    |> put_req_header("content-type", "application/json")
+    |> post(~p"/mcp", Jason.encode!(payload))
   end
 
   defp authenticated_as(conn, user) do

@@ -1,5 +1,7 @@
 import Config
 
+config :flambe_next, :mcp_allowed_hosts, ["www.example.com"]
+
 database_port = String.to_integer(System.get_env("PGPORT") || "5432")
 
 # Configure your database

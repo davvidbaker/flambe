@@ -11,6 +11,7 @@ config :flambe_next,
   ecto_repos: [FlambeNext.Repo],
   generators: [timestamp_type: :utc_datetime],
   session_cookie_secure: false,
+  mcp_allowed_hosts: ["localhost", "127.0.0.1", "::1", "[::1]"],
   invite_code: nil,
   share_store: FlambeNext.Shares.VercelBlob
 

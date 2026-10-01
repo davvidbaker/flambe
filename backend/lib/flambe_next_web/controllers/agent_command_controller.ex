@@ -1,7 +1,7 @@
 defmodule FlambeNextWeb.AgentCommandController do
   use FlambeNextWeb, :controller
 
-  alias FlambeNext.AgentCommands
+  alias FlambeNext.{AgentCommandIdentity, AgentCommands}
 
   @commands ~w(start end suspend resume status message plan)
 
@@ -9,7 +9,7 @@ defmodule FlambeNextWeb.AgentCommandController do
 
   def create(conn, %{"command" => command, "arguments" => arguments})
       when command in @commands and is_map(arguments) do
-    arguments = put_agent_identity(conn, arguments)
+    arguments = AgentCommandIdentity.from_conn(conn, arguments)
 
     case AgentCommands.execute(conn.assigns.current_user, command, arguments) do
       {:ok, result} -> json(conn, %{data: result})
@@ -19,20 +19,6 @@ defmodule FlambeNextWeb.AgentCommandController do
 
   def create(conn, _params),
     do: render_error(conn, {:invalid_input, "command and arguments are required"})
-
-  def put_agent_identity(%{assigns: %{agent: agent}} = conn, arguments) do
-    arguments =
-      arguments
-      |> Map.put("agent_id", agent.id)
-      |> Map.put("agent_name", agent.name)
-
-    case get_req_header(conn, "x-flambe-agent-platform") do
-      [_platform] -> Map.put(arguments, "platform", agent.platform)
-      _ -> arguments
-    end
-  end
-
-  def put_agent_identity(_conn, arguments), do: arguments
 
   def render_error(conn, :not_found) do
     conn
