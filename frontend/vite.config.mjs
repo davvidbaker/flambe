@@ -1,11 +1,37 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 import { viteDevProxy } from './viteRemoteProxy.mjs';
 
 const configDirectory = path.dirname(fileURLToPath(import.meta.url));
+
+/** Root-scoped PWA files must live in Phoenix priv/static (not /assets/). */
+const PWA_ROOT_FILES = [
+  'manifest.webmanifest',
+  'sw.js',
+  'apple-touch-icon.png',
+  'pwa-192.png',
+  'pwa-512.png',
+];
+
+function syncPwaRootAssets() {
+  return {
+    name: 'flambe-sync-pwa-root-assets',
+    closeBundle() {
+      const publicDir = path.resolve(configDirectory, 'public');
+      const phoenixStatic = path.resolve(configDirectory, '../backend/priv/static');
+      fs.mkdirSync(phoenixStatic, { recursive: true });
+      for (const fileName of PWA_ROOT_FILES) {
+        const from = path.join(publicDir, fileName);
+        if (!fs.existsSync(from)) continue;
+        fs.copyFileSync(from, path.join(phoenixStatic, fileName));
+      }
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
@@ -19,12 +45,27 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       {
-        name: 'flambe-env-favicon',
+        name: 'flambe-html-asset-urls',
+        enforce: 'post',
         transformIndexHtml(html) {
-          if (mode !== 'development') return html;
-          return html.replace('href="/favicon.png"', 'href="/favicon_dev.png"');
+          let next = html;
+          if (mode === 'development') {
+            next = next.replaceAll('href="/favicon.png"', 'href="/favicon_dev.png"');
+          }
+          // Vite's /assets/ base rewrites public-file hrefs; PWA install URLs must
+          // stay at the site root (same as /sw.js registration and icon paths).
+          for (const file of [
+            'manifest.webmanifest',
+            'apple-touch-icon.png',
+            'favicon.png',
+            'favicon_dev.png',
+          ]) {
+            next = next.replaceAll(`href="/assets/${file}"`, `href="/${file}"`);
+          }
+          return next;
         },
       },
+      syncPwaRootAssets(),
       react({
         babel: {
           babelrc: false,

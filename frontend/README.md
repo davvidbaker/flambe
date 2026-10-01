@@ -23,6 +23,8 @@ VITE_API_URL=https://flambe.fly.dev npm run dev
 
 Use `npm run build` to place the production bundle in
 `../backend/priv/static/assets`, then visit http://localhost:4001.
+Root-scoped PWA files (`manifest.webmanifest`, `sw.js`, install icons) are
+copied into `../backend/priv/static` so Add to Home Screen works.
 
 ```text
 npm run typecheck
