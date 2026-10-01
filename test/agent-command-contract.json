@@ -1,0 +1,13 @@
+[
+  {"command":"plan","arguments":{"name":"Contract work"},"capture":true},
+  {"command":"status","arguments":{},"visible":false},
+  {"command":"status","arguments":{"include_unstarted":true},"status":"unstarted"},
+  {"command":"start","arguments":{"name":"Contract work","activity_id":"$activity"},"same_activity":true,"status":"running"},
+  {"command":"suspend","arguments":{"activity_id":"$activity"},"status":"suspended"},
+  {"command":"resume","arguments":{"activity_id":"$activity"},"status":"running"},
+  {"command":"message","arguments":{"activity_id":"$activity","message":"Contract update"},"error":"REDUCER_NOT_CONFIGURED"},
+  {"command":"end","arguments":{"activity_id":"$activity"},"status":"ended"},
+  {"command":"status","arguments":{},"status":"ended"},
+  {"command":"start","arguments":{"name":""},"error":"INVALID_INPUT"},
+  {"command":"status","arguments":{"trace_id":999999999},"error":"NOT_FOUND"}
+]

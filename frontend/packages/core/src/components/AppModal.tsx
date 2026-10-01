@@ -48,7 +48,7 @@ const sheetStyleOverrides: Styles = {
   },
 };
 
-const ActualContent = styled.div<{ $sheet: boolean; $wide?: boolean }>`
+const ActualContent = styled.div<{ $sheet: boolean; $wide?: boolean; $split: boolean }>`
   border-radius: ${props => (props.$sheet ? '12px 12px 0 0' : '4px')};
   background: white;
   border: 1px solid rgb(204, 204, 204);
@@ -60,7 +60,11 @@ const ActualContent = styled.div<{ $sheet: boolean; $wide?: boolean }>`
   )};
   pointer-events: all;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.2);
-  overflow: auto;
+  display: ${props => (props.$split ? 'flex' : 'block')};
+  flex-direction: column;
+  /* Split chrome+body so a sticky-less header (e.g. Activity close) cannot
+     scroll away on long mobile sheets. Unsplit modals keep one scroller. */
+  overflow: ${props => (props.$split ? 'hidden' : 'auto')};
   max-height: ${props => (props.$sheet ? 'min(88dvh, 100%)' : 'min(80vh, 640px)')};
   max-width: ${props => {
     if (props.$sheet) return '100%';
@@ -71,8 +75,23 @@ const ActualContent = styled.div<{ $sheet: boolean; $wide?: boolean }>`
   -webkit-overflow-scrolling: touch;
 `;
 
+const Chrome = styled.div`
+  flex: 0 0 auto;
+`;
+
+const ScrollBody = styled.div<{ $split: boolean }>`
+  ${props => (props.$split ? `
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  ` : '')}
+`;
+
 interface Props {
   children: ReactNode;
+  /** Fixed above the scrollable body (title + close). Keeps dismiss reachable. */
+  chrome?: ReactNode;
   contentLabel?: string;
   isOpen: boolean;
   onRequestClose: () => unknown;
@@ -123,12 +142,14 @@ function useSheetLayout(): boolean {
 const AppModal = ({
   isOpen,
   children,
+  chrome,
   onRequestClose,
   contentLabel = 'Dialog',
   shouldFocusAfterRender = true,
   wide = false,
 }: Props) => {
   const sheet = useSheetLayout();
+  const split = chrome != null;
 
   return (
     <Modal
@@ -138,8 +159,16 @@ const AppModal = ({
       shouldFocusAfterRender={shouldFocusAfterRender}
       style={sheet ? sheetStyleOverrides : desktopStyleOverrides}
     >
-      <ActualContent $sheet={sheet} $wide={wide} data-app-modal-sheet={sheet ? 'true' : 'false'}>
-        {children}
+      <ActualContent
+        $sheet={sheet}
+        $wide={wide}
+        $split={split}
+        data-app-modal-sheet={sheet ? 'true' : 'false'}
+      >
+        {split ? <Chrome data-app-modal-chrome="true">{chrome}</Chrome> : null}
+        <ScrollBody $split={split} data-app-modal-body="true">
+          {children}
+        </ScrollBody>
       </ActualContent>
     </Modal>
   );

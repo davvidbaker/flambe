@@ -347,9 +347,11 @@ test('opens activity details from a tap and supports renaming', async ({ page })
     return detail.isVisible();
   }, { timeout: 15_000 }).toBe(true);
 
-  await expect(page.getByRole('dialog', { name: 'Activity details' })).toBeVisible();
+  const dialog = page.getByRole('dialog', { name: 'Activity details' });
+  await expect(dialog).toBeVisible();
   await expect(detail.getByRole('button', { name: activityName })).toBeVisible();
   await expect(page.locator('[data-app-modal-sheet="true"]')).toBeVisible();
+  await expect(dialog.locator('[data-app-modal-chrome="true"]')).toBeVisible();
 
   const renamed = `${activityName} renamed`;
   await detail.getByRole('button', { name: activityName }).click();
@@ -359,7 +361,16 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   await nameField.press('Enter');
   await expect(detail.getByRole('button', { name: renamed })).toBeVisible();
 
-  await detail.getByTitle('close').click();
+  // Long message/reducer history used to scroll the close control away on
+  // mobile sheets; chrome stays fixed above the body scroller.
+  const body = dialog.locator('[data-app-modal-body="true"]');
+  await body.evaluate(el => {
+    el.scrollTop = el.scrollHeight;
+  });
+  const close = dialog.getByTitle('close');
+  await expect(close).toBeVisible();
+  await expect(close).toBeInViewport();
+  await close.click();
   await expect(detail).toHaveCount(0);
 });
 

@@ -42,11 +42,20 @@ const X = styled.div`
   }
 `;
 
+const HitTarget = styled(Unbutton)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -12px -12px -12px 0;
+`;
+
 const CloseButton = ({ onClick }: { onClick: MouseEventHandler<HTMLButtonElement> }) => {
   return (
-    <Unbutton title="close" onClick={onClick}>
+    <HitTarget title="close" onClick={onClick}>
       <X />
-    </Unbutton>
+    </HitTarget>
   );
 };
 
