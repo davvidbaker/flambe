@@ -23,4 +23,24 @@ defmodule FlambeNextWeb.EndpointTest do
 
     assert File.read!(prod_file) != File.read!(dev_file)
   end
+
+  test "serves PWA install assets at the site root", %{conn: conn} do
+    manifest = get(conn, "/manifest.webmanifest")
+    service_worker = get(conn, "/sw.js")
+    apple_icon = get(conn, "/apple-touch-icon.png")
+    icon_192 = get(conn, "/pwa-192.png")
+    icon_512 = get(conn, "/pwa-512.png")
+
+    assert manifest.status == 200
+    assert service_worker.status == 200
+    assert apple_icon.status == 200
+    assert icon_192.status == 200
+    assert icon_512.status == 200
+
+    body = Jason.decode!(manifest.resp_body)
+    assert body["display"] == "standalone"
+    assert body["start_url"] == "/?source=pwa"
+    assert body["scope"] == "/"
+    assert Enum.any?(body["icons"], &(&1["src"] == "/pwa-192.png"))
+  end
 end

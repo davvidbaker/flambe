@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './pages';
 import store from './store';
 import { reportDeployedVersion } from './utilities/buildInfo';
+import { registerServiceWorker } from './utilities/registerServiceWorker';
 
 const rootElement = document.getElementById('app-root');
 
@@ -14,6 +15,7 @@ if (!rootElement) {
 }
 
 void reportDeployedVersion();
+registerServiceWorker();
 
 createRoot(rootElement).render(
   <Provider store={store}>

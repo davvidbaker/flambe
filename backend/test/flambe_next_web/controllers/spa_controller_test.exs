@@ -6,7 +6,10 @@ defmodule FlambeNextWeb.SpaControllerTest do
 
     case conn.status do
       200 ->
-        assert response(conn, 200) =~ "<div id=\"app-root\"></div>"
+        html = response(conn, 200)
+        assert html =~ "<div id=\"app-root\"></div>"
+        assert html =~ ~s(rel="manifest")
+        assert html =~ ~s(apple-mobile-web-app-capable)
         assert get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
 
       503 ->
