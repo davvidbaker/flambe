@@ -42,12 +42,14 @@ const ActivityDetailModal = (props: Props) => {
       isOpen={activityDetailModalVisible}
       onRequestClose={hideActivityDetailModal}
       shouldFocusAfterRender={!activityDetailEditName}
-    >
-      <div data-activity-detail="true">
+      chrome={(
         <Header>
           <Title>Activity</Title>
           <CloseButton onClick={hideActivityDetailModal} />
         </Header>
+      )}
+    >
+      <div data-activity-detail="true">
         <ActivityDetail {...passedThroughProps} />
       </div>
     </AppModal>

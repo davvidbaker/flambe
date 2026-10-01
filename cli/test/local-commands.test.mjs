@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -20,6 +20,31 @@ function fixture(t) {
   const start = (name, attrs = {}) => call('start', { name, ...attrs });
   return { store, traceId, call, start };
 }
+
+test('local SQLite satisfies the shared agent command contract', t => {
+  const { call } = fixture(t);
+  const steps = JSON.parse(readFileSync(new URL('../../test/agent-command-contract.json', import.meta.url), 'utf8'));
+  let activityId;
+  for (const step of steps) {
+    const args = Object.fromEntries(Object.entries(step.arguments).map(([key, value]) =>
+      [key, value === '$activity' ? activityId : value]));
+    if (step.error) {
+      assert.throws(() => call(step.command, args), error => error.body?.error?.code === step.error, step.command);
+      continue;
+    }
+    const result = call(step.command, args);
+    if (step.same_activity) assert.equal(result.activity_id, activityId);
+    if (step.capture) {
+      activityId = result.activity_id;
+      assert.ok(Number.isInteger(activityId));
+    }
+    if (step.status || Object.hasOwn(step, 'visible')) {
+      const activity = result.state.activities.find(a => a.id === activityId);
+      if (step.visible === false) assert.equal(activity, undefined);
+      else assert.equal(activity?.status, step.status, step.command);
+    }
+  }
+});
 
 test('local commands infer each agent stack, inherit categories, and reuse duplicate starts', t => {
   const { store, start, call } = fixture(t);
