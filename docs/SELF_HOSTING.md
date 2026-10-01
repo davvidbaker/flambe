@@ -115,6 +115,8 @@ the same SHA on load and lists it under Settings → Developer.
    ```
 
 MCP is `https://your-flambe.fly.dev/mcp` with `Authorization: Bearer <token>`.
+It is an external-agent endpoint: browser session cookies are not accepted. Its
+Host allow-list is derived from `PHX_HOST` (or `FLY_APP_NAME.fly.dev`).
 
 ### GitHub Actions deploy
 

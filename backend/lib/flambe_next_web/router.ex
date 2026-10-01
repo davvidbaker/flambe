@@ -12,6 +12,13 @@ defmodule FlambeNextWeb.Router do
     plug FlambeNextWeb.Plugs.AgentIdentity
   end
 
+  pipeline :mcp_api do
+    plug :accepts, ["json"]
+    plug FlambeNextWeb.Plugs.RequireApiToken
+    plug FlambeNextWeb.Plugs.TrackAgentPresence
+    plug FlambeNextWeb.Plugs.AgentIdentity
+  end
+
   pipeline :spa do
     plug :accepts, ["html"]
   end
@@ -67,14 +74,11 @@ defmodule FlambeNextWeb.Router do
     resources "/api-tokens", ApiTokenController, only: [:index, :create, :delete]
   end
 
-  # MCP is agent-facing rather than part of the browser API namespace. Reuse the same
-  # bearer-token authentication Flambe already exposes for external agents.
-  scope "/", FlambeNextWeb do
-    pipe_through [:api, :authenticated_api]
+  # MCP is an external-agent protocol endpoint. Browser sessions do not authenticate it.
+  scope "/" do
+    pipe_through :mcp_api
 
-    get "/mcp", McpController, :unsupported
-    post "/mcp", McpController, :handle
-    delete "/mcp", McpController, :unsupported
+    forward "/mcp", FlambeNextWeb.McpPlug
   end
 
   scope "/", FlambeNextWeb do

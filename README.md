@@ -86,8 +86,10 @@ Copy the `flambe-cli` skill into the agent product you use
 trace as a live stack instead of logging every shell command.
 
 Hosted agents can call the same commands over MCP at `/mcp` with
-`Authorization: Bearer <API_TOKEN>`. See the [CLI README](cli/README.md) for
-install, Cloud secrets, and command details.
+`Authorization: Bearer <API_TOKEN>`. Browser login cookies do not authenticate
+the MCP endpoint. The server prefers MCP `2026-07-28` and retains legacy
+initialization compatibility during migration. See the [CLI README](cli/README.md)
+for install, Cloud secrets, and command details.
 
 ## Host your own instance
 
