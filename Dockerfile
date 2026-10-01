@@ -31,6 +31,12 @@ COPY backend/priv priv
 COPY backend/lib lib
 COPY backend/rel rel
 COPY --from=assets /app/backend/priv/static/assets priv/static/assets
+# Vite also syncs root-scoped PWA install files into priv/static during build.
+COPY --from=assets /app/backend/priv/static/manifest.webmanifest priv/static/manifest.webmanifest
+COPY --from=assets /app/backend/priv/static/sw.js priv/static/sw.js
+COPY --from=assets /app/backend/priv/static/apple-touch-icon.png priv/static/apple-touch-icon.png
+COPY --from=assets /app/backend/priv/static/pwa-192.png priv/static/pwa-192.png
+COPY --from=assets /app/backend/priv/static/pwa-512.png priv/static/pwa-512.png
 
 RUN chmod +x rel/overlays/bin/server rel/overlays/bin/migrate \
   && mix compile \
