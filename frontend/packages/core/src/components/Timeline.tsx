@@ -31,7 +31,10 @@ import {
   touchDistance,
   touchHasMoved,
   touchMidpoint,
+  dominantPanAxis,
+  isNativeScrollTouchTarget,
   wheelDeltaFromPinchScale,
+  type PanAxis,
   type TouchPoint,
 } from '../utilities/timelineTouch';
 import type { Command } from '../constants/commands';
@@ -172,7 +175,8 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   focusedBlock = React.createRef<React.ComponentRef<typeof FocusedBlock>>();
   timelineSurface: HTMLDivElement | null = null;
   touchPoints = new Map<number, TouchPoint>();
-  touchMode: 'none' | 'pan' | 'pinch' = 'none';
+  touchMode: 'none' | 'pan' | 'pinch' | 'native' = 'none';
+  panAxis: PanAxis | null = null;
   panStartX = 0;
   panStartY = 0;
   panLastX = 0;
@@ -274,15 +278,25 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   touchPointsList = (): TouchPoint[] => Array.from(this.touchPoints.values());
 
   onTouchStart = (event: TouchEvent): void => {
+    if (isNativeScrollTouchTarget(event.target)) {
+      this.touchMode = 'native';
+      this.panAxis = null;
+      this.touchPoints.clear();
+      this.pinchLastDistance = 0;
+      return;
+    }
+
     this.syncTouchPoints(event.touches);
     const points = this.touchPointsList();
     if (points.length >= 2) {
       this.touchMode = 'pinch';
+      this.panAxis = null;
       this.pinchLastDistance = touchDistance(points[0]!, points[1]!);
       return;
     }
     if (points.length === 1) {
       this.touchMode = 'none';
+      this.panAxis = null;
       this.panStartX = points[0]!.clientX;
       this.panStartY = points[0]!.clientY;
       this.panLastX = points[0]!.clientX;
@@ -291,6 +305,8 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   };
 
   onTouchMove = (event: TouchEvent): void => {
+    if (this.touchMode === 'native') return;
+
     this.syncTouchPoints(event.touches);
     const points = this.touchPointsList();
     const width = this.state.width;
@@ -304,6 +320,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       const distance = touchDistance(first!, second!);
       if (!(this.pinchLastDistance > 0)) {
         this.touchMode = 'pinch';
+        this.panAxis = null;
         this.pinchLastDistance = distance;
         return;
       }
@@ -311,6 +328,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       const scaleRatio = distance / this.pinchLastDistance;
       this.pinchLastDistance = distance;
       this.touchMode = 'pinch';
+      this.panAxis = null;
 
       const surface = this.timelineSurface;
       if (!surface || !(scaleRatio > 0) || scaleRatio === 1) return;
@@ -344,13 +362,20 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
           return;
         }
         this.touchMode = 'pan';
+        this.panAxis = dominantPanAxis(
+          { clientX: this.panStartX, clientY: this.panStartY },
+          { clientX: currentX, clientY: currentY },
+        );
       }
 
       event.preventDefault();
-      const deltaX = panDeltaFromTouchMove(this.panLastX, currentX);
-      const deltaY = panDeltaFromTouchMove(this.panLastY, currentY);
+      const rawDeltaX = panDeltaFromTouchMove(this.panLastX, currentX);
+      const rawDeltaY = panDeltaFromTouchMove(this.panLastY, currentY);
       this.panLastX = currentX;
       this.panLastY = currentY;
+      const axis = this.panAxis ?? 'x';
+      const deltaX = axis === 'x' ? rawDeltaX : 0;
+      const deltaY = axis === 'y' ? rawDeltaY : 0;
       if (deltaX === 0 && deltaY === 0) return;
       this.pan(deltaX, deltaY, width);
       requestAnimationFrame(this.drawChildren.bind(this));
@@ -358,15 +383,25 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   };
 
   onTouchEnd = (event: TouchEvent): void => {
+    if (this.touchMode === 'native') {
+      if (event.touches.length === 0) {
+        this.touchMode = 'none';
+        this.panAxis = null;
+      }
+      return;
+    }
+
     this.syncTouchPoints(event.touches);
     const points = this.touchPointsList();
     if (points.length >= 2) {
       this.touchMode = 'pinch';
+      this.panAxis = null;
       this.pinchLastDistance = touchDistance(points[0]!, points[1]!);
       return;
     }
     if (points.length === 1) {
       this.touchMode = 'none';
+      this.panAxis = null;
       this.panStartX = points[0]!.clientX;
       this.panStartY = points[0]!.clientY;
       this.panLastX = points[0]!.clientX;
@@ -375,6 +410,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       return;
     }
     this.touchMode = 'none';
+    this.panAxis = null;
     this.pinchLastDistance = 0;
   };
 

@@ -7,6 +7,7 @@ import TraceThreadFilter from './TraceThreadFilter';
 import { InputFromButton } from './Button';
 import TraceList from './TraceList';
 import { colors, layout } from '../styles';
+import { formatShortcut } from '../utilities/keyboardShortcuts';
 import type { Trace } from '../types/Trace';
 import type { EntityId } from '../types/ids';
 
@@ -91,8 +92,8 @@ interface Props {
   deleteCurrentTrace: () => unknown;
   deleteTrace: (id: EntityId) => unknown;
   logout: () => unknown;
-  /** Opens the start-activity command flow (palette / Commander). */
-  onStart: () => unknown;
+  /** Opens the command palette (same as Mod+Shift+P). */
+  onOpenCommander: () => unknown;
   selectTrace: (trace: Trace) => unknown;
   traces: Trace[];
 }
@@ -105,7 +106,7 @@ const Header = ({
   deleteCurrentTrace,
   currentMantra,
   createMantra,
-  onStart,
+  onOpenCommander,
   logout,
 }: Props) => (
   <StyledHeader>
@@ -132,8 +133,13 @@ const Header = ({
       {currentMantra || 'Note to self'}
     </InputFromButton>
     {currentTrace && <h1>{currentTrace.name}</h1>}
-    <button type="button" onClick={onStart} title="Start a new activity">
-      Start
+    <button
+      type="button"
+      onClick={onOpenCommander}
+      title="Command palette"
+      aria-label="Command palette"
+    >
+      {formatShortcut(['Mod', 'Shift', 'P'], true)}
     </button>
     <button type="button" onClick={logout}>Log out</button>
   </StyledHeader>

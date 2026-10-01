@@ -26,7 +26,7 @@ export function StoryHeader() {
       deleteCurrentTrace={noop}
       currentMantra={user.mantras[user.mantras.length - 1]?.name}
       createMantra={noop}
-      onStart={noop}
+      onOpenCommander={noop}
       logout={noop}
     />
   );

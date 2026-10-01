@@ -20,7 +20,6 @@ import Settings from '../components/Settings';
 import ShareTimeline from '../components/ShareTimeline';
 import KeyboardShortcuts from '../components/KeyboardShortcuts';
 import {
-  ACTIVITY_CREATE_B,
   collapseAllThreads,
   createMantra,
   createToast,
@@ -414,12 +413,7 @@ class App extends React.Component<AppProps, AppState> {
                   this.props.user.mantras[this.props.user.mantras.length - 1]?.name
                 }
                 createMantra={name => this.props.createMantra(name)}
-                onStart={() => {
-                  const start = COMMANDS.find(
-                    command => command.action === ACTIVITY_CREATE_B,
-                  );
-                  if (start) this.setCommanderCommand(start);
-                }}
+                onOpenCommander={this.showCommander}
                 logout={this.logout}
               />
               <main style={{ position: 'relative', height: '100%' }}>

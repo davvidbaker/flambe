@@ -148,6 +148,7 @@ function LimboPane({
     return (
       <div
         aria-label="Limbo"
+        data-native-scroll="true"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -256,6 +257,7 @@ function LimboPane({
   return (
     <div
       aria-label="Limbo"
+      data-native-scroll="true"
       style={{
         display: 'flex',
         flexDirection: 'row',
@@ -264,6 +266,8 @@ function LimboPane({
         color: TEXT,
         overflow: 'hidden',
         fontFamily: 'sans-serif',
+        // Keep browser scrolling here; the parent timeline surface uses touch-action: none.
+        touchAction: 'pan-x pan-y',
       }}
     >
       <div

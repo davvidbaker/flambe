@@ -5,7 +5,7 @@ export type MediaQueryListLike = { matches: boolean };
 
 /**
  * Whether selecting a flame-chart block should also open activity details.
- * Phone / coarse-pointer: first tap opens (Space is unavailable; Start is in the header).
+ * Phone / coarse-pointer: first tap opens (Space is unavailable; command palette is in the header).
  * Desktop: second select of the already-focused activity opens details.
  */
 export function shouldOpenActivityDetailsOnSelect(options: {

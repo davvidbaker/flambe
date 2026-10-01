@@ -1,10 +1,36 @@
 /** Pixel movement before a one-finger touch becomes a scrub (vs a tap). */
 export const TOUCH_PAN_THRESHOLD_PX = 8;
 
+/** Mark regions nested under the timeline surface that keep native scrolling. */
+export const NATIVE_SCROLL_ATTR = 'data-native-scroll';
+
 export type TouchPoint = {
   clientX: number;
   clientY: number;
 };
+
+export type PanAxis = 'x' | 'y';
+
+/**
+ * Limbo (and similar) live inside the timeline surface. Touches that start there
+ * must not enter chart pan/pinch, or preventDefault kills their overflow scroll.
+ */
+export function isNativeScrollTouchTarget(
+  target: EventTarget | null | undefined,
+): boolean {
+  if (!target || typeof (target as Element).closest !== 'function') return false;
+  return Boolean((target as Element).closest(`[${NATIVE_SCROLL_ATTR}]`));
+}
+
+/** Lock one-finger pan to the dominant axis once the drag threshold is crossed. */
+export function dominantPanAxis(
+  start: TouchPoint,
+  current: TouchPoint,
+): PanAxis {
+  const dx = Math.abs(current.clientX - start.clientX);
+  const dy = Math.abs(current.clientY - start.clientY);
+  return dx >= dy ? 'x' : 'y';
+}
 
 export function touchDistance(a: TouchPoint, b: TouchPoint): number {
   const dx = a.clientX - b.clientX;
