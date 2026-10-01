@@ -1,4 +1,7 @@
 import {
+  dominantPanAxis,
+  isNativeScrollTouchTarget,
+  NATIVE_SCROLL_ATTR,
   panDeltaFromTouchMove,
   touchDistance,
   touchHasMoved,
@@ -32,5 +35,28 @@ describe('timelineTouch', () => {
   it('treats a mostly-vertical drag as movement once the hypot crosses the threshold', () => {
     expect(touchHasMoved({ clientX: 10, clientY: 10 }, { clientX: 12, clientY: 12 })).toBe(false);
     expect(touchHasMoved({ clientX: 10, clientY: 10 }, { clientX: 10, clientY: 20 })).toBe(true);
+  });
+
+  it('locks pan to the dominant axis', () => {
+    expect(dominantPanAxis(
+      { clientX: 0, clientY: 0 },
+      { clientX: 3, clientY: 10 },
+    )).toBe('y');
+    expect(dominantPanAxis(
+      { clientX: 0, clientY: 0 },
+      { clientX: 10, clientY: 3 },
+    )).toBe('x');
+  });
+
+  it('detects native-scroll regions nested under the timeline surface', () => {
+    const child = {
+      closest: (selector: string) => (selector === `[${NATIVE_SCROLL_ATTR}]` ? child : null),
+    };
+    const surface = {
+      closest: () => null,
+    };
+    expect(isNativeScrollTouchTarget(child as unknown as EventTarget)).toBe(true);
+    expect(isNativeScrollTouchTarget(surface as unknown as EventTarget)).toBe(false);
+    expect(isNativeScrollTouchTarget(null)).toBe(false);
   });
 });
