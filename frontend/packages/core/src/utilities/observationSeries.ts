@@ -3,7 +3,9 @@ import type { Observation } from '../reducers/user';
 export const CARBON_COLOR = '#C45C26';
 
 export interface ObservationPoint {
+  key: string;
   kind: string;
+  label: string;
   time: number;
   value: number;
   unit?: string | null;
@@ -11,7 +13,9 @@ export interface ObservationPoint {
 }
 
 export interface ObservationSeries {
+  key: string;
   kind: string;
+  label: string;
   dated: boolean;
   unit?: string | null;
   color: string;
@@ -19,7 +23,9 @@ export interface ObservationSeries {
 }
 
 export interface HoverSample {
+  key: string;
   kind: string;
+  label: string;
   value: number;
   unit?: string | null;
   color: string;
@@ -59,32 +65,71 @@ export function kindColor(kind: string): string {
   return `hsl(${hue} 55% 38%)`;
 }
 
+function numericEntries(value: unknown): Array<[string, number]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  return Object.entries(value as Record<string, unknown>).flatMap(([label, raw]) =>
+    typeof raw === 'number' && Number.isFinite(raw) ? [[label, raw] as [string, number]] : [],
+  );
+}
+
+function observationValues(observation: Observation): Array<{
+  key: string;
+  label: string;
+  value: number;
+}> {
+  const payload = observation.payload ?? {};
+  const explicit = numericEntries(payload.series);
+  const legacyCarbon = observation.kind === 'carbon'
+    ? numericEntries(payload.ba_g_per_kwh)
+    : [];
+  const expanded = explicit.length > 0 ? explicit : legacyCarbon;
+
+  if (expanded.length > 0) {
+    return expanded.map(([label, value]) => ({
+      key: `${observation.kind}::${label}`,
+      label,
+      value,
+    }));
+  }
+
+  if (!Number.isFinite(observation.value)) return [];
+  return [{ key: observation.kind, label: observation.kind, value: observation.value }];
+}
+
 export function groupObservationSeries(observations: Observation[] = []): ObservationSeries[] {
-  const byKind = new Map<string, ObservationPoint[]>();
+  const byKey = new Map<string, ObservationPoint[]>();
 
   observations.forEach(observation => {
-    if (!Number.isFinite(observation.value)) return;
     const time = observationTime(observation);
     if (!Number.isFinite(time)) return;
     const dated = Boolean(observation.observed_on);
-    const point: ObservationPoint = {
-      kind: observation.kind,
-      time,
-      value: observation.value,
-      unit: observation.unit,
-      dated,
-    };
-    const points = byKind.get(observation.kind) ?? [];
-    points.push(point);
-    byKind.set(observation.kind, points);
+
+    observationValues(observation).forEach(({ key, label, value }) => {
+      const point: ObservationPoint = {
+        key,
+        kind: observation.kind,
+        label,
+        time,
+        value,
+        unit: observation.unit,
+        dated,
+      };
+      const points = byKey.get(key) ?? [];
+      points.push(point);
+      byKey.set(key, points);
+    });
   });
 
-  return [...byKind.entries()].map(([kind, points]) => {
+  return [...byKey.entries()].map(([key, points]) => {
     const sorted = [...points].sort((left, right) => left.time - right.time);
     const dated = sorted.length > 0 && sorted.every(point => point.dated);
     const unit = [...sorted].reverse().find(point => point.unit)?.unit ?? null;
+    const kind = sorted[0]?.kind ?? key;
+    const label = sorted[0]?.label ?? kind;
     return {
+      key,
       kind,
+      label,
       dated,
       unit,
       color: kindColor(kind),
@@ -171,7 +216,7 @@ export function pickAxisSeries(
 ): ObservationSeries | null {
   if (seriesList.length === 0) return null;
   if (hover.length === 0) return seriesList[0];
-  return seriesList.find(series => series.kind === hover[0].kind) ?? seriesList[0];
+  return seriesList.find(series => series.key === hover[0].key) ?? seriesList[0];
 }
 
 export function pathPoints(
@@ -243,7 +288,9 @@ export function hoverSamples(
     const value = sampleSeriesAtTime(series, time);
     if (value === null) return [];
     return [{
+      key: series.key,
       kind: series.kind,
+      label: series.label,
       value,
       unit: series.unit,
       color: series.color,
