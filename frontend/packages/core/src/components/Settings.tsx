@@ -4,9 +4,16 @@ import styled from 'styled-components';
 
 import AppModal from '../components/AppModal';
 import ApiTokensPanel from './ApiTokensPanel';
+import CubicBezierEditor from './CubicBezierEditor';
 import { hideSettings as hideSettingsAction, setSetting, toggleSetting } from '../actions';
 import type { SettingsState } from '../reducers/settings';
 import { formatShortcut } from '../utilities/keyboardShortcuts';
+import {
+  parsePresetZoomCurve,
+  savePresetZoomSettings,
+  serializePresetZoomCurve,
+  type PresetZoomCurve,
+} from '../utilities/presetZoomSettings';
 import { commitUrl, fetchBuildInfo, shortSha, type BuildInfo } from '../utilities/buildInfo';
 import {
   SWYZZLE_IDLE_SECONDS_MAX,
@@ -165,6 +172,25 @@ const IdleSecondsInput = styled.input`
   margin-top: 4px;
   font-size: 11px;
   width: 4.5em;
+`;
+
+const ZoomTuning = styled.div`
+  margin-bottom: 14px;
+
+  > label {
+    display: block;
+    font-weight: 600;
+  }
+
+  input[type='range'] {
+    width: 220px;
+    margin: 5px 0 0;
+  }
+
+  > p {
+    margin: 10px 0 4px;
+    font-weight: 600;
+  }
 `;
 
 const Wrapper = styled.div`
@@ -336,6 +362,40 @@ const Settings = ({
     };
   }, [settingsVisible]);
 
+  const panCurve = parsePresetZoomCurve(settings.presetPanCurve);
+  const zoomCurve = parsePresetZoomCurve(settings.presetZoomCurve);
+
+  useEffect(() => {
+    savePresetZoomSettings({
+      durationMs: settings.presetZoomDurationMs,
+      curvesLinked: settings.presetZoomCurvesLinked,
+      panCurve,
+      zoomCurve,
+    });
+  }, [
+    settings.presetZoomDurationMs,
+    settings.presetZoomCurvesLinked,
+    settings.presetPanCurve,
+    settings.presetZoomCurve,
+  ]);
+
+  const setZoomCurve = (curve: PresetZoomCurve) => {
+    const serialized = serializePresetZoomCurve(curve);
+    setSettingValue('presetZoomCurve', serialized);
+    if (settings.presetZoomCurvesLinked) setSettingValue('presetPanCurve', serialized);
+  };
+
+  const setPanCurve = (curve: PresetZoomCurve) => {
+    const serialized = serializePresetZoomCurve(curve);
+    setSettingValue('presetPanCurve', serialized);
+    if (settings.presetZoomCurvesLinked) setSettingValue('presetZoomCurve', serialized);
+  };
+
+  const setCurvesLinked = (linked: boolean) => {
+    if (linked) setSettingValue('presetZoomCurve', settings.presetPanCurve);
+    setSettingValue('presetZoomCurvesLinked', linked);
+  };
+
   const sha = buildInfo?.git_sha ?? '…';
   const url = buildInfo ? commitUrl(buildInfo.git_sha) : null;
 
@@ -351,6 +411,34 @@ const Settings = ({
       </ul>
       <DeveloperPanel>
         <h2>Developer</h2>
+        <ZoomTuning>
+          <label htmlFor="presetZoomDurationMs">
+            Preset zoom motion — {settings.presetZoomDurationMs} ms
+          </label>
+          <input
+            id="presetZoomDurationMs"
+            type="range"
+            min="100"
+            max="1000"
+            step="10"
+            value={settings.presetZoomDurationMs}
+            onChange={event => setSettingValue('presetZoomDurationMs', event.target.valueAsNumber)}
+          />
+          <label htmlFor="presetZoomCurvesLinked">
+            <input
+              id="presetZoomCurvesLinked"
+              type="checkbox"
+              checked={settings.presetZoomCurvesLinked}
+              onChange={event => setCurvesLinked(event.target.checked)}
+            />
+            {' '}
+            Link pan and zoom curves
+          </label>
+          <p>Pan curve</p>
+          <CubicBezierEditor value={panCurve} onChange={setPanCurve} />
+          <p>Zoom curve</p>
+          <CubicBezierEditor value={zoomCurve} onChange={setZoomCurve} />
+        </ZoomTuning>
         <ul>
           {DEVELOPER_SETTINGS.map(item =>
             renderSetting(item, settings, toggleSetting, setSettingValue),

@@ -8,6 +8,12 @@ import {
   resolveSwyzzleEffect,
   type SwyzzleEffect,
 } from '../vendor/swyzzle';
+import {
+  clampPresetZoomDuration,
+  loadPresetZoomSettings,
+  normalizePresetZoomCurve,
+  serializePresetZoomCurve,
+} from '../utilities/presetZoomSettings';
 
 export interface SettingsState {
   absoluteTimeLabels: boolean;
@@ -16,6 +22,10 @@ export interface SettingsState {
   activityMuteOpacity: number;
   attentionDrivenThreadOrder: boolean;
   attentionFlows: boolean;
+  presetPanCurve: string;
+  presetZoomCurve: string;
+  presetZoomCurvesLinked: boolean;
+  presetZoomDurationMs: number;
   /** Shade nested flame-chart blocks darker at each deeper level. */
   darkerAsWeGoDown: boolean;
   /** Draw activity names against the right edge of each flame-chart block. */
@@ -41,11 +51,17 @@ export function isUserSettingKey(setting: string): setting is UserSettingKey {
   return (USER_SETTING_KEYS as readonly string[]).includes(setting);
 }
 
+const presetZoom = loadPresetZoomSettings();
+
 const defaultState: SettingsState = {
   absoluteTimeLabels: false,
   twelveHourClock: false,
   attentionDrivenThreadOrder: true,
   attentionFlows: false,
+  presetPanCurve: serializePresetZoomCurve(presetZoom.panCurve),
+  presetZoomCurve: serializePresetZoomCurve(presetZoom.zoomCurve),
+  presetZoomCurvesLinked: presetZoom.curvesLinked,
+  presetZoomDurationMs: presetZoom.durationMs,
   darkerAsWeGoDown: true,
   rightAlignTimelineText: false,
   activityMuteOpacity: 0.1,
@@ -85,6 +101,24 @@ function settings(state: SettingsState = defaultState, action: SettingsAction): 
     }
     if (setting === 'swyzzleIdleSeconds') {
       return { ...state, swyzzleIdleSeconds: clampSwyzzleIdleSeconds(action.value) };
+    }
+    if (setting === 'presetZoomDurationMs') {
+      return { ...state, presetZoomDurationMs: clampPresetZoomDuration(action.value) };
+    }
+    if (
+      (setting === 'presetPanCurve' || setting === 'presetZoomCurve')
+      && typeof action.value === 'string'
+    ) {
+      try {
+        return {
+          ...state,
+          [setting]: serializePresetZoomCurve(
+            normalizePresetZoomCurve(JSON.parse(action.value)),
+          ),
+        };
+      } catch {
+        return state;
+      }
     }
     if (typeof state[setting] === 'boolean') {
       return { ...state, [setting]: Boolean(action.value) } as SettingsState;
