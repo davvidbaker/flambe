@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build:share-viewer",
+  "buildCommand": "npm run build:vercel",
   "outputDirectory": "packages/share-viewer/dist",
   "rewrites": [
     {
