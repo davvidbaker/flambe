@@ -30,6 +30,7 @@ const TEXT = '#262421';
 const MUTED = '#6f6b63';
 const BORDER = '#d9d6d0';
 const FALLBACK_FILL = '#c47b2b';
+const TIMELINE_FALLBACK_FILL = '#efc360';
 const PADDING = 12;
 const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
 
@@ -45,6 +46,216 @@ function swatch(activity: ProcessedActivity, categories: Category[]) {
 
 function statusLabel(activity: ProcessedActivity): string {
   return activity.status === 'suspended' ? 'suspended' : 'not started';
+}
+
+function setActivityDragPreview(
+  event: React.DragEvent<HTMLElement>,
+  activity: ProcessedActivity,
+  categories: Category[],
+): void {
+  const category = categories.find(
+    entry => String(entry.id) === String(activity.categories?.[0]),
+  );
+  const fill = category?.color_background ?? TIMELINE_FALLBACK_FILL;
+  const text = readableTextOn(fill, category?.color_text);
+  const width = 420;
+  const height = 220;
+  const blockLeft = 100;
+  const blockWidth = 220;
+  const blockTop = 140;
+  const scale = Math.min(window.devicePixelRatio || 1, 2);
+  const preview = document.createElement('canvas');
+  preview.width = width * scale;
+  preview.height = height * scale;
+  preview.style.width = `${width}px`;
+  preview.style.height = `${height}px`;
+  Object.assign(preview.style, {
+    filter: 'drop-shadow(0 0 18px rgba(255, 74, 0, 0.85))',
+    left: `${event.clientX - blockLeft - 18}px`,
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: `${event.clientY - blockTop - 8}px`,
+    zIndex: '2147483647',
+  });
+  const ctx = preview.getContext('2d');
+  if (!ctx) return;
+  ctx.scale(scale, scale);
+
+  // Deterministic flame particles keep each activity visually stable while
+  // their phase evolves continuously during the drag.
+  let seed = Array.from(String(activity.id)).reduce(
+    (value, char) => ((value * 31) + char.charCodeAt(0)) >>> 0,
+    0x9e3779b9,
+  );
+  const random = () => {
+    seed = ((seed * 1664525) + 1013904223) >>> 0;
+    return seed / 0x100000000;
+  };
+  const tongues = Array.from({ length: 15 }, (_, index) => ({
+    x: blockLeft + 5 + index * 15 + (random() - 0.5) * 8,
+    width: 12 + random() * 18,
+    height: 22 + random() * 43,
+    lean: (random() - 0.5) * 18,
+    phase: random() * Math.PI * 2,
+    speed: 2.2 + random() * 2.4,
+  }));
+  const embers = Array.from({ length: 34 }, () => ({
+    x: blockLeft + random() * blockWidth,
+    rise: random() * 62,
+    radius: 0.6 + random() * 1.5,
+    speed: 13 + random() * 24,
+    phase: random() * Math.PI * 2,
+    hot: random() > 0.35,
+  }));
+  const fullLabel = activity.name || '';
+  ctx.font = '11px sans-serif';
+  let label = fullLabel;
+  while (label.length > 0 && ctx.measureText(label).width > blockWidth - 10) {
+    label = label.slice(0, -1);
+  }
+  if (label !== fullLabel) label = `${label.slice(0, -1)}…`;
+
+  document.body.appendChild(preview);
+  const transparentDragImage = document.createElement('canvas');
+  transparentDragImage.width = 1;
+  transparentDragImage.height = 1;
+  event.dataTransfer.setDragImage(transparentDragImage, 0, 0);
+
+  const startedAt = performance.now();
+  let animationFrame = 0;
+  let disposed = false;
+  const render = (now: number) => {
+    if (disposed) return;
+    const elapsed = (now - startedAt) / 1000;
+    ctx.clearRect(0, 0, width, height);
+
+    // Wide translucent light fields make the fire illuminate the timeline
+    // beneath it instead of reading as an effect clipped to the tile.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const pulse = 0.84 + Math.sin(elapsed * 4.5) * 0.16;
+    const ambient = ctx.createRadialGradient(
+      width / 2,
+      blockTop - 15,
+      2,
+      width / 2,
+      blockTop - 15,
+      95,
+    );
+    ambient.addColorStop(0, `rgba(255, 228, 94, ${0.34 * pulse})`);
+    ambient.addColorStop(0.2, `rgba(255, 92, 0, ${0.3 * pulse})`);
+    ambient.addColorStop(0.55, `rgba(244, 31, 0, ${0.15 * pulse})`);
+    ambient.addColorStop(1, 'rgba(105, 0, 255, 0)');
+    ctx.fillStyle = ambient;
+    ctx.fillRect(0, 0, width, height);
+
+    const hotCore = ctx.createRadialGradient(
+      width / 2,
+      blockTop,
+      0,
+      width / 2,
+      blockTop,
+      70,
+    );
+    hotCore.addColorStop(0, `rgba(255, 255, 206, ${0.4 * pulse})`);
+    hotCore.addColorStop(0.3, `rgba(255, 177, 31, ${0.25 * pulse})`);
+    hotCore.addColorStop(1, 'rgba(255, 55, 0, 0)');
+    ctx.fillStyle = hotCore;
+    ctx.fillRect(blockLeft - 70, blockTop - 70, blockWidth + 140, 140);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.shadowColor = 'rgba(255, 73, 0, 1)';
+    ctx.shadowBlur = 21;
+
+    tongues.forEach(tongue => {
+      const wave = Math.sin(elapsed * tongue.speed + tongue.phase);
+      const flicker = 0.83 + Math.sin(elapsed * tongue.speed * 1.7 + tongue.phase) * 0.17;
+      const tongueHeight = tongue.height * flicker;
+      const lean = tongue.lean + wave * 7;
+      const gradient = ctx.createLinearGradient(
+        tongue.x,
+        blockTop,
+        tongue.x + lean,
+        blockTop - tongueHeight,
+      );
+      gradient.addColorStop(0, 'rgba(255, 238, 125, 0.98)');
+      gradient.addColorStop(0.28, 'rgba(255, 133, 18, 0.92)');
+      gradient.addColorStop(0.68, 'rgba(255, 34, 0, 0.62)');
+      gradient.addColorStop(1, 'rgba(126, 0, 255, 0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(tongue.x - tongue.width / 2, blockTop + 1);
+      ctx.bezierCurveTo(
+        tongue.x - tongue.width * 0.45 + wave * 2,
+        blockTop - tongueHeight * 0.34,
+        tongue.x + lean - tongue.width * 0.08,
+        blockTop - tongueHeight * 0.72,
+        tongue.x + lean,
+        blockTop - tongueHeight,
+      );
+      ctx.bezierCurveTo(
+        tongue.x + lean + tongue.width * 0.25,
+        blockTop - tongueHeight * 0.62,
+        tongue.x + tongue.width * 0.48 - wave * 2,
+        blockTop - tongueHeight * 0.3,
+        tongue.x + tongue.width / 2,
+        blockTop + 1,
+      );
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    ctx.shadowBlur = 7;
+    embers.forEach(ember => {
+      const rise = (ember.rise + elapsed * ember.speed) % 62;
+      const x = ember.x + Math.sin(elapsed * 3 + ember.phase) * 4;
+      ctx.globalAlpha = Math.max(0, 1 - rise / 62);
+      ctx.fillStyle = ember.hot ? '#ffe08a' : '#ff4d00';
+      ctx.beginPath();
+      ctx.arc(x, blockTop - rise, ember.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 72, 0, 1)';
+    ctx.shadowBlur = 22 + Math.sin(elapsed * 7) * 6;
+    ctx.fillStyle = fill;
+    ctx.fillRect(blockLeft, blockTop, blockWidth, 20);
+    ctx.restore();
+    ctx.fillStyle = fill;
+    ctx.fillRect(blockLeft, blockTop, blockWidth, 20);
+    ctx.fillStyle = text;
+    ctx.font = '11px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, blockLeft + 5, blockTop + 10);
+    animationFrame = requestAnimationFrame(render);
+  };
+
+  const move = (dragEvent: DragEvent) => {
+    if (dragEvent.clientX === 0 && dragEvent.clientY === 0) return;
+    preview.style.left = `${dragEvent.clientX - blockLeft - 18}px`;
+    preview.style.top = `${dragEvent.clientY - blockTop - 8}px`;
+  };
+  const source = event.currentTarget;
+  const cleanup = () => {
+    if (disposed) return;
+    disposed = true;
+    cancelAnimationFrame(animationFrame);
+    preview.remove();
+    document.removeEventListener('dragover', move);
+    source.removeEventListener('drag', move);
+    source.removeEventListener('dragend', cleanup);
+    document.removeEventListener('drop', cleanup);
+  };
+
+  document.addEventListener('dragover', move);
+  source.addEventListener('drag', move);
+  source.addEventListener('dragend', cleanup, { once: true });
+  document.addEventListener('drop', cleanup, { once: true });
+  animationFrame = requestAnimationFrame(render);
 }
 
 function parseWeight(raw: string): number | null {
@@ -295,7 +506,6 @@ function LimboPane({
               const item = weighted.find(entry => String(entry.activity.id) === hex.id);
               if (!item) return null;
               const { activity } = item;
-              const unstarted = activity.status === 'unstarted';
               const halfWidth = hexHalfWidth(hex.radius);
               const { fill, text } = swatch(activity, categories);
               const thread = threadFor(activity);
@@ -306,14 +516,11 @@ function LimboPane({
                   role="button"
                   tabIndex={0}
                   title={`${activity.name ?? ''} (${statusLabel(activity)}, weight ${activity.weight}${thread?.name ? `, ${thread.name}` : ''})`}
-                  draggable={unstarted}
+                  draggable
                   onDragStart={event => {
-                    if (!unstarted) {
-                      event.preventDefault();
-                      return;
-                    }
                     event.dataTransfer.setData('text/flambe-activity', String(activity.id));
                     event.dataTransfer.effectAllowed = 'move';
+                    setActivityDragPreview(event, activity, categories);
                   }}
                   onClick={() => focusActivity(activity.id)}
                   onKeyDown={event => {
@@ -339,10 +546,10 @@ function LimboPane({
                     background: fill,
                     color: text,
                     border: 'none',
-                    cursor: unstarted ? 'grab' : 'pointer',
+                    cursor: 'grab',
                     fontSize: Math.max(10, Math.min(13, hex.radius / 4)),
                     lineHeight: 1.15,
-                    fontStyle: unstarted ? 'normal' : 'italic',
+                    fontStyle: activity.status === 'suspended' ? 'italic' : 'normal',
                     userSelect: 'none',
                   }}
                 >
@@ -499,14 +706,11 @@ function LimboPane({
                       role="button"
                       tabIndex={0}
                       title={`${activity.name ?? ''} (${statusLabel(activity)})`}
-                      draggable={activity.status === 'unstarted'}
+                      draggable
                       onDragStart={event => {
-                        if (activity.status !== 'unstarted') {
-                          event.preventDefault();
-                          return;
-                        }
                         event.dataTransfer.setData('text/flambe-activity', String(activity.id));
                         event.dataTransfer.effectAllowed = 'move';
+                        setActivityDragPreview(event, activity, categories);
                       }}
                       onClick={() => focusActivity(activity.id)}
                       onKeyDown={event => {
@@ -526,7 +730,7 @@ function LimboPane({
                         fontStyle: activity.status === 'suspended' ? 'italic' : 'normal',
                         background: 'transparent',
                         color: 'inherit',
-                        cursor: activity.status === 'unstarted' ? 'grab' : 'pointer',
+                        cursor: 'grab',
                         padding: '4px 6px',
                         userSelect: 'none',
                       }}

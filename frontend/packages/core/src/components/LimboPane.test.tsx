@@ -55,6 +55,7 @@ describe('LimboPane', () => {
     expect(markup).toContain('Begin');
     expect(markup).toContain('Give up');
     expect(markup).toContain('View');
+    expect(markup.match(/draggable="true"/g)).toHaveLength(3);
     expect(markup).toContain('placeholder="🏋️"');
     expect(markup).toContain('Collapse limbo');
   });
