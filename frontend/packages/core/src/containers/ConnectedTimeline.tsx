@@ -18,6 +18,7 @@ import {
   focusBlock,
   hoverBlock,
   planActivity,
+  resumeActivity,
   showActivityDetails,
   updateActivity,
   updateEvent,
@@ -97,6 +98,18 @@ function mergeProps(
     ...ownProps,
     ...stateProps,
     ...restDispatch,
+    dropLimboActivity: (id: EntityId, updates: Record<string, unknown>) => {
+      const activity = stateProps.activities[String(id)];
+      if (activity?.status !== 'suspended') {
+        dispatch(updateActivity(id, updates));
+        return;
+      }
+
+      const threadId = updates.thread_id as EntityId;
+      const timestamp = Number(updates.scheduled_start_integer);
+      dispatch(updateActivity(id, { thread_id: threadId }));
+      dispatch(resumeActivity({ id, timestamp, thread_id: threadId }));
+    },
     planActivityInLimbo: (name: string) => {
       const trimmed = name.trim();
       if (!trimmed) return;

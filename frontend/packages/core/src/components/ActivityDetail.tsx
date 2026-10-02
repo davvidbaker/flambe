@@ -440,6 +440,19 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       <Actions>
         {activity.status === 'unstarted' && (
           <>
+            {activity.scheduled_start != null && (
+              <Button
+                looksLikeButton
+                onClick={() => {
+                  updateActivity(activity.id, {
+                    scheduled_start: null,
+                    scheduled_end: null,
+                  });
+                }}
+              >
+                Unschedule
+              </Button>
+            )}
             <Button
               looksLikeButton
               onClick={() => {
