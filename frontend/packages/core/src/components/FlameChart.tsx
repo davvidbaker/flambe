@@ -103,6 +103,7 @@ interface OwnProps {
   topOffset?: number;
   updateEvent: (id: EntityId, updates: Record<string, unknown>) => unknown;
   updateScheduled?: (id: EntityId, updates: Record<string, unknown>) => unknown;
+  dropLimboActivity?: (id: EntityId, updates: Record<string, unknown>) => unknown;
   planAt?: (threadId: EntityId, time: number) => unknown;
   zoom?: (...args: any[]) => unknown;
 }
@@ -692,8 +693,8 @@ export class FlameChart extends Component<Props, State> {
       this.setFlamechartState({ dropTargetThread: null });
       this.redrawChart();
     }
-    if (!activityId || threadId == null || !this.props.updateScheduled) return;
-    this.props.updateScheduled(activityId, {
+    if (!activityId || threadId == null || !this.props.dropLimboActivity) return;
+    this.props.dropLimboActivity(activityId, {
       thread_id: threadId,
       scheduled_start_integer: Math.floor(this.pixelsToTime(event.nativeEvent.offsetX)),
       scheduled_end: null,

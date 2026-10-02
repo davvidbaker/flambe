@@ -136,6 +136,7 @@ export interface TimelineProps {
   updateEvent: (id: EntityId, updates: Record<string, unknown>) => unknown;
   beginActivity?: (id: EntityId) => unknown;
   deleteActivity?: (id: EntityId, threadId: EntityId) => unknown;
+  dropLimboActivity?: (id: EntityId, updates: Record<string, unknown>) => unknown;
   planActivity?: (threadId: EntityId, time: number) => unknown;
   planActivityInLimbo?: (name: string) => unknown;
   updateActivity?: (id: EntityId, updates: Record<string, unknown>) => unknown;
@@ -909,6 +910,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                             topOffset={this.topOffset || 0}
                             updateEvent={props.updateEvent}
                             updateScheduled={props.updateActivity}
+                            dropLimboActivity={props.dropLimboActivity ?? props.updateActivity}
                             planAt={props.planActivity}
                             zoom={this.zoom}
                           />
