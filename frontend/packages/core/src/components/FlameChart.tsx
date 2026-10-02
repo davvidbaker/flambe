@@ -1098,6 +1098,20 @@ export class FlameChart extends Component<Props, State> {
     this.ctx.fill();
   }
 
+  actorChromeOpacity(rootActivityIds: EntityId[]): number {
+    if (!this.props.activityMute) return 1;
+    const layout = this.actorLaneLayout;
+    if (!layout) return this.props.activityMuteOpacity;
+
+    const activeRootIds = [this.focusActivity_id, this.hoverActivity_id]
+      .filter((activityId): activityId is EntityId => activityId !== null)
+      .map(activityId => layout.rootIdByActivity[String(activityId)]);
+    const sameActor = rootActivityIds.some(rootId => (
+      activeRootIds.some(activeRootId => String(activeRootId) === String(rootId))
+    ));
+    return sameActor ? 1 : this.props.activityMuteOpacity;
+  }
+
   drawActorLaneChrome(phase: 'wash' | 'rail' = 'wash'): void {
     const layout = this.actorLaneLayout;
     if (!layout) return;
@@ -1127,19 +1141,7 @@ export class FlameChart extends Component<Props, State> {
       const nestedPad = chrome.depth > 0 ? FlameChart.actorLaneNestedPad : 0;
       const margin = FlameChart.actorLaneVerticalMargin;
       const accent = actorAccentColor(chrome.actorKey);
-      const focusedRootId = this.focusActivity_id === null
-        ? null
-        : layout.rootIdByActivity[String(this.focusActivity_id)];
-      const hoveredRootId = this.hoverActivity_id === null
-        ? null
-        : layout.rootIdByActivity[String(this.hoverActivity_id)];
-      const sameActor = chrome.rootActivityIds.some(rootId => (
-        String(rootId) === String(focusedRootId)
-        || String(rootId) === String(hoveredRootId)
-      ));
-      const muteOpacity = this.props.activityMute && !sameActor
-        ? this.props.activityMuteOpacity
-        : 1;
+      const muteOpacity = this.actorChromeOpacity(chrome.rootActivityIds);
 
       const rects = chrome.washRects.length
         ? chrome.washRects
@@ -1260,7 +1262,6 @@ export class FlameChart extends Component<Props, State> {
     this.ctx.save();
     this.ctx.globalCompositeOperation = 'source-over';
     this.ctx.lineWidth = 2;
-    this.ctx.globalAlpha = 0.75;
 
     layout.flames.forEach(flame => {
       const rootActivity = this.props.activities[String(flame.rootActivityId)];
@@ -1287,6 +1288,7 @@ export class FlameChart extends Component<Props, State> {
       }
 
       const accent = actorAccentColor(flame.actorKey);
+      this.ctx.globalAlpha = 0.75 * this.actorChromeOpacity([flame.rootActivityId]);
       const rootY = rootTransform.blockY + rootTransform.blockHeight / 2;
       this.ctx.strokeStyle = accent;
       this.ctx.fillStyle = accent;
