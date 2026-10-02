@@ -38,6 +38,75 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+
+export const GridObservatory: Story = {
+  args: (() => {
+    const now = Date.now();
+    const start = now - 8 * 60 * 60 * 1000;
+    const observations = Array.from({ length: 9 }, (_, index) => {
+      const timestamp = start + index * 60 * 60 * 1000;
+      const wave = Math.sin(index / 1.5);
+      return [
+        {
+          kind: 'carbon',
+          value: 310 + wave * 25,
+          unit: 'gCO2eq/kWh',
+          timestamp,
+          payload: {
+            series: {
+              CISO: 190 + wave * 35 + index * 2,
+              ERCO: 360 - wave * 20 + index * 3,
+              PJM: 405 + wave * 18 - index * 2,
+              MISO: 445 - wave * 28,
+              NYIS: 245 + wave * 22 + index,
+            },
+          },
+        },
+        {
+          kind: 'hub_price',
+          value: 42 + wave * 9,
+          unit: '$/MWh',
+          timestamp,
+          payload: {
+            series: {
+              'CAISO · NP15': 31 + wave * 14 + index,
+              'CAISO · SP15': 28 + wave * 17 + index * 1.5,
+              'MISO · ILLINOIS.HUB': 39 - wave * 8 + index * 0.8,
+              'MISO · MICHIGAN.HUB': 41 - wave * 7 + index,
+              'ERCOT · HB_NORTH': 47 + wave * 12 - index * 0.4,
+              'ERCOT · HB_HOUSTON': 50 + wave * 10 - index * 0.2,
+            },
+          },
+        },
+        {
+          kind: 'generation',
+          value: 32_000 + wave * 2_000,
+          unit: 'MW',
+          timestamp,
+          payload: {
+            series: {
+              CAISO: 27_000 + wave * 2_400 + index * 300,
+              ERCOT: 48_000 - wave * 3_000 + index * 450,
+              MISO: 52_000 + wave * 1_800 - index * 250,
+              NYISO: 18_000 + wave * 1_200 + index * 120,
+            },
+          },
+        },
+      ];
+    }).flat();
+
+    return {
+      fixture: createAppChartFixture({ now }),
+      demoOverlays: false,
+      storeExtras: { observations },
+      viewport: {
+        leftBoundaryTime: start,
+        rightBoundaryTime: now,
+      },
+    };
+  })(),
+};
+
 export const Frontiers: Story = {
   args: {
     fixture: createFrontiersFixture(),
