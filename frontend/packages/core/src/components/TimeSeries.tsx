@@ -161,8 +161,9 @@ export class TimeSeries extends Component<Props, State> {
             tabs: {this.state.hoverTabCount}
           </div>
           {this.state.hoverObservations.map(sample => (
-            <div key={sample.kind} style={{ color: sample.color }}>
-              {sample.kind}: {formatObservationValue(sample.value)}
+            <div key={sample.key} style={{ color: sample.color }}>
+              {sample.label === sample.kind ? sample.kind : `${sample.kind} · ${sample.label}`}: {' '}
+              {formatObservationValue(sample.value)}
               {sample.unit ? ` ${sample.unit}` : ''}
             </div>
           ))}
@@ -285,9 +286,14 @@ export class TimeSeries extends Component<Props, State> {
 
   seriesScale(series: ObservationSeries) {
     const points = pathPoints(series, this.leftBoundaryTime, this.rightBoundaryTime);
+    const siblingValues = this.observationSeries
+      .filter(candidate => candidate.kind === series.kind && candidate.unit === series.unit)
+      .flatMap(candidate =>
+        pathPoints(candidate, this.leftBoundaryTime, this.rightBoundaryTime).map(point => point.value),
+      );
     return {
       points,
-      scale: observationScale(points.map(point => point.value)),
+      scale: observationScale(siblingValues),
     };
   }
 
@@ -302,7 +308,7 @@ export class TimeSeries extends Component<Props, State> {
     let best: ObservationSeries | null = null;
     let bestDist = Infinity;
     hoverObservations.forEach(sample => {
-      const series = this.observationSeries.find(candidate => candidate.kind === sample.kind);
+      const series = this.observationSeries.find(candidate => candidate.key === sample.key);
       if (!series) return;
       const { scale } = this.seriesScale(series);
       const y = valueToY(sample.value, scale.min, scale.max, chartHeight, paddingY);
@@ -327,8 +333,11 @@ export class TimeSeries extends Component<Props, State> {
       const { points, scale } = this.seriesScale(series);
       if (points.length === 0) return;
 
-      ctx.globalAlpha = 1;
-      ctx.lineWidth = 2;
+      const siblingCount = this.observationSeries.filter(
+        candidate => candidate.kind === series.kind && candidate.unit === series.unit,
+      ).length;
+      ctx.globalAlpha = siblingCount > 1 ? 0.24 : 1;
+      ctx.lineWidth = siblingCount > 1 ? 1.5 : 2;
       ctx.strokeStyle = series.color;
       ctx.fillStyle = series.color;
       ctx.beginPath();
@@ -359,6 +368,7 @@ export class TimeSeries extends Component<Props, State> {
       }
 
       ctx.stroke();
+      ctx.globalAlpha = 1;
 
       if (this.state.mouseIsOver) {
         const hoverValue = sampleSeriesAtTime(series, cursorTime);
