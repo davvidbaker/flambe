@@ -1126,6 +1126,19 @@ export class FlameChart extends Component<Props, State> {
       const nestedPad = chrome.depth > 0 ? FlameChart.actorLaneNestedPad : 0;
       const margin = FlameChart.actorLaneVerticalMargin;
       const accent = actorAccentColor(chrome.actorKey);
+      const focusedRootId = this.focusActivity_id === null
+        ? null
+        : layout.rootIdByActivity[String(this.focusActivity_id)];
+      const hoveredRootId = this.hoverActivity_id === null
+        ? null
+        : layout.rootIdByActivity[String(this.hoverActivity_id)];
+      const sameActor = chrome.rootActivityIds.some(rootId => (
+        String(rootId) === String(focusedRootId)
+        || String(rootId) === String(hoveredRootId)
+      ));
+      const muteOpacity = this.props.activityMute && !sameActor
+        ? this.props.activityMuteOpacity
+        : 1;
 
       const rects = chrome.washRects.length
         ? chrome.washRects
@@ -1173,19 +1186,6 @@ export class FlameChart extends Component<Props, State> {
 
       if (phase === 'wash') {
         // Time-clipped wash rectangles: paint only where the agent actually was.
-        const focusedRootId = this.focusActivity_id === null
-          ? null
-          : layout.rootIdByActivity[String(this.focusActivity_id)];
-        const hoveredRootId = this.hoverActivity_id === null
-          ? null
-          : layout.rootIdByActivity[String(this.hoverActivity_id)];
-        const sameActor = chrome.rootActivityIds.some(rootId => (
-          String(rootId) === String(focusedRootId)
-          || String(rootId) === String(hoveredRootId)
-        ));
-        const muteOpacity = this.props.activityMute && !sameActor
-          ? this.props.activityMuteOpacity
-          : 1;
         this.ctx.globalAlpha = 0.16 * muteOpacity;
         this.ctx.fillStyle = accent;
         rects.forEach(rect => {
@@ -1216,12 +1216,12 @@ export class FlameChart extends Component<Props, State> {
         this.ctx.globalAlpha = 1;
         this.ctx.fillStyle = colors.background;
         this.fillActorLaneRoundRect(railX, top, gutter, height);
-        this.ctx.globalAlpha = 0.16;
+        this.ctx.globalAlpha = 0.16 * muteOpacity;
         this.ctx.fillStyle = accent;
         this.fillActorLaneRoundRect(railX, top, gutter, height);
       }
 
-      this.ctx.globalAlpha = 0.95;
+      this.ctx.globalAlpha = 0.95 * muteOpacity;
       this.ctx.fillStyle = accent;
       this.ctx.fillRect(railX, top, 3, height);
 
@@ -1239,7 +1239,7 @@ export class FlameChart extends Component<Props, State> {
       if (!drawn) return;
 
       this.ctx.save();
-      this.ctx.globalAlpha = 0.95;
+      this.ctx.globalAlpha = 0.95 * muteOpacity;
       this.ctx.fillStyle = accent;
       this.ctx.textAlign = 'left';
       this.ctx.textBaseline = 'middle';
