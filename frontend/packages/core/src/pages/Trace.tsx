@@ -40,7 +40,7 @@ import {
   toggleSetting,
   undoLastCommand,
 } from '../actions';
-import { isKeyboardShortcutsHotkey } from '../utilities/keyboardShortcuts';
+import { formatShortcut, isKeyboardShortcutsHotkey } from '../utilities/keyboardShortcuts';
 import { isShortcutBlockedByTextEntry } from '../utilities/swyzzleIdle';
 import COMMANDS, {
   ACTIVITY_COMMANDS,
@@ -471,7 +471,7 @@ class App extends React.Component<AppProps, AppState> {
                     fontSize: 12,
                   }}
                 >
-                  Activities muted — ⌘M / Ctrl+M to unmute
+                  Activities muted — {formatShortcut(['Mod', 'M'])} to unmute
                 </div>
               )}
               <CategoryManager />

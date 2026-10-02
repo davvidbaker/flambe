@@ -1173,7 +1173,20 @@ export class FlameChart extends Component<Props, State> {
 
       if (phase === 'wash') {
         // Time-clipped wash rectangles: paint only where the agent actually was.
-        this.ctx.globalAlpha = 0.16;
+        const focusedRootId = this.focusActivity_id === null
+          ? null
+          : layout.rootIdByActivity[String(this.focusActivity_id)];
+        const hoveredRootId = this.hoverActivity_id === null
+          ? null
+          : layout.rootIdByActivity[String(this.hoverActivity_id)];
+        const sameActor = chrome.rootActivityIds.some(rootId => (
+          String(rootId) === String(focusedRootId)
+          || String(rootId) === String(hoveredRootId)
+        ));
+        const muteOpacity = this.props.activityMute && !sameActor
+          ? this.props.activityMuteOpacity
+          : 1;
+        this.ctx.globalAlpha = 0.16 * muteOpacity;
         this.ctx.fillStyle = accent;
         rects.forEach(rect => {
           const extendGutter = pinnedLeft || rect === anchor;

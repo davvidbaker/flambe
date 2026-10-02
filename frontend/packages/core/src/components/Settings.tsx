@@ -6,6 +6,7 @@ import AppModal from '../components/AppModal';
 import ApiTokensPanel from './ApiTokensPanel';
 import { hideSettings as hideSettingsAction, setSetting, toggleSetting } from '../actions';
 import type { SettingsState } from '../reducers/settings';
+import { formatShortcut } from '../utilities/keyboardShortcuts';
 import { commitUrl, fetchBuildInfo, shortSha, type BuildInfo } from '../utilities/buildInfo';
 import {
   SWYZZLE_IDLE_SECONDS_MAX,
@@ -60,7 +61,7 @@ const SETTINGS: SettingDefinition[] = [
   {
     setting: 'activityMute',
     copy: 'Mute Activities',
-    description: 'Dim every activity except the focused one (⌘M / Ctrl+M).',
+    description: `Dim every activity except the focused one (${formatShortcut(['Mod', 'M'])}).`,
   },
   {
     setting: 'reactiveThreadHeight',
