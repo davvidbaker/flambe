@@ -164,6 +164,11 @@ const AppModal = ({
         $wide={wide}
         $split={split}
         data-app-modal-sheet={sheet ? 'true' : 'false'}
+        onWheel={event => {
+          // react-modal portals to document.body, but React still bubbles
+          // wheel events to Timeline's onWheel ancestor and zooms the chart.
+          event.stopPropagation();
+        }}
       >
         {split ? <Chrome data-app-modal-chrome="true">{chrome}</Chrome> : null}
         <ScrollBody $split={split} data-app-modal-body="true">

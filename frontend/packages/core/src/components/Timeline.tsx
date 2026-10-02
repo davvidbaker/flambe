@@ -1109,15 +1109,15 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                       : props.threads[this.state.threadModal_id]?.name}
                     activities={props.activities}
                   />
-                  <ActivityDetailModal
-                    blocks={props.blocks}
-                    activities={props.activities}
-                    submitCommand={props.submitCommand}
-                  />
                   <SwyzzleTraceOverlay />
                 </div>
               )}
             </Measure>
+            <ActivityDetailModal
+              blocks={props.blocks}
+              activities={props.activities}
+              submitCommand={props.submitCommand}
+            />
             {this.state.composingZoomChord && (
               <div style={{ position: 'fixed', bottom: 0, left: 0 }}>
                 Zoom to... (Waiting for second key of chord)
