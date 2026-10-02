@@ -14,6 +14,12 @@ import pan from '../utilities/pan';
 import { persistCollapsedThreadState } from '../utilities/threadCollapseState';
 import { savedRangeIsUsable } from '../utilities/timelineViewport';
 import {
+  interpolateTimelineTimeRange,
+  piecewiseBezier,
+  prefersReducedTimelineMotion,
+} from '../utilities/timelineViewportAnimation';
+import { parsePresetZoomCurve } from '../utilities/presetZoomSettings';
+import {
   MINUTE, DAY, WEEK, MONTH,
 } from '../utilities/time';
 import {
@@ -122,6 +128,9 @@ export interface TimelineProps {
   leftBoundaryTimeOverride?: number;
   mantras: Mantra[];
   observations?: Observation[];
+  presetPanCurve: string;
+  presetZoomCurve: string;
+  presetZoomDurationMs: number;
   maxTime?: number;
   minTime?: number;
   modifiers: ModifiersState;
@@ -188,6 +197,8 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   rightBoundaryTime = 0;
   topOffset = 0;
   dividersData: DividerData = { offsets: [], precision: 0, gridSliceTime: 0 };
+  viewportAnimationFrame: number | null = null;
+  zoomChordTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(props: TimelineProps) {
     super(props);
@@ -235,8 +246,28 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   }
 
   componentWillUnmount(): void {
+    this.cancelViewportAnimation();
+    this.clearZoomChordTimeout();
     this.detachTouchListeners();
   }
+
+  clearZoomChordTimeout = (): void => {
+    if (this.zoomChordTimeout === null) return;
+    clearTimeout(this.zoomChordTimeout);
+    this.zoomChordTimeout = null;
+  };
+
+  scheduleZoomChordTimeout = (): void => {
+    this.clearZoomChordTimeout();
+    this.zoomChordTimeout = setTimeout(() => {
+      this.zoomChordTimeout = null;
+      this.setState({
+        composingZoomChord: false,
+        zoomChord: '',
+        zoomChordMultiplier: 1,
+      });
+    }, 1500);
+  };
 
   setTimelineSurface = (element: HTMLDivElement | null): void => {
     if (element === this.timelineSurface) return;
@@ -427,6 +458,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       || nextProps.rightBoundaryTimeOverride
         !== previousProps.rightBoundaryTimeOverride
     ) {
+      this.cancelViewportAnimation();
       this.viewportTraceId = String(nextProps.trace_id);
       this.setTimelineState({
         leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
@@ -458,6 +490,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       && traceHasTimeRange
       && (!hasSavedRange || !savedRangeOverlapsTrace)
     ) {
+      this.cancelViewportAnimation();
       this.viewportTraceId = String(nextProps.trace_id);
       this.setTimelineState({
         leftBoundaryTime: nextProps.minTime!,
@@ -688,65 +721,119 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
   zoomTo(timePeriod: ZoomPeriod | ''): void {
     this.viewportTraceId = String(this.props.trace_id);
+    const now = Date.now();
+    let target: { leftBoundaryTime: number; rightBoundaryTime: number } | null = null;
 
     switch (timePeriod) {
       // shows about the last 10 minutes
       case 'now':
-        this.setTimelineState({
-          dividersData: this.calculateGridOffsets(),
-          leftBoundaryTime: Date.now() - 10 * MINUTE,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
-        });
+        target = {
+          leftBoundaryTime: now - 10 * MINUTE,
+          rightBoundaryTime: now + MAX_TIME_INTO_FUTURE,
+        };
         break;
       case 'hour':
-        this.setTimelineState({
-          dividersData: this.calculateGridOffsets(),
-          leftBoundaryTime: Date.now() - 60 * MINUTE,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
-        });
+        target = {
+          leftBoundaryTime: now - 60 * MINUTE,
+          rightBoundaryTime: now + MAX_TIME_INTO_FUTURE,
+        };
         break;
       case 'day':
-        this.setTimelineState({
-          dividersData: this.calculateGridOffsets(),
-          leftBoundaryTime: Date.now() - 1 * DAY,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
-        });
+        target = {
+          leftBoundaryTime: now - DAY,
+          rightBoundaryTime: now + MAX_TIME_INTO_FUTURE,
+        };
         break;
       case 'week':
-        this.setTimelineState({
-          dividersData: this.calculateGridOffsets(),
-          leftBoundaryTime: Date.now() - 1 * WEEK,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
-        });
+        target = {
+          leftBoundaryTime: now - WEEK,
+          rightBoundaryTime: now + MAX_TIME_INTO_FUTURE,
+        };
         break;
       case 'month':
-        this.setTimelineState({
-          dividersData: this.calculateGridOffsets(),
-          leftBoundaryTime: Date.now() - 1 * MONTH,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
-        });
+        target = {
+          leftBoundaryTime: now - MONTH,
+          rightBoundaryTime: now + MAX_TIME_INTO_FUTURE,
+        };
         break;
       case 'year':
-        this.setTimelineState({
-          dividersData: this.calculateGridOffsets(),
-          leftBoundaryTime: Date.now() - 12 * MONTH,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
-        });
+        target = {
+          leftBoundaryTime: now - 12 * MONTH,
+          rightBoundaryTime: now + MAX_TIME_INTO_FUTURE,
+        };
         break;
       case 'all':
-        this.setTimelineState({
-          dividersData: this.calculateGridOffsets(),
-          leftBoundaryTime: this.props.minTime,
-          rightBoundaryTime: Date.now() + MAX_TIME_INTO_FUTURE,
-        });
+        if (isValidTime(this.props.minTime)) {
+          target = {
+            leftBoundaryTime: this.props.minTime,
+            rightBoundaryTime: now + MAX_TIME_INTO_FUTURE,
+          };
+        }
         break;
       default:
         break;
     }
-    requestAnimationFrame(this.drawChildren.bind(this));
+    if (target && isValidTime(target.leftBoundaryTime) && isValidTime(target.rightBoundaryTime)) {
+      this.animateToTimeRange(target);
+    }
   }
 
+  cancelViewportAnimation = (): void => {
+    if (this.viewportAnimationFrame === null) return;
+    cancelAnimationFrame(this.viewportAnimationFrame);
+    this.viewportAnimationFrame = null;
+  };
+
+  animateToTimeRange = (target: {
+    leftBoundaryTime: number;
+    rightBoundaryTime: number;
+  }): void => {
+    this.cancelViewportAnimation();
+    const visible = this.getVisibleTimeRange();
+    if (
+      !isValidTime(visible.leftBoundaryTime)
+      || !isValidTime(visible.rightBoundaryTime)
+      || prefersReducedTimelineMotion()
+    ) {
+      this.setTimelineState(target);
+      this.drawChildren();
+      return;
+    }
+
+    const from = {
+      leftBoundaryTime: visible.leftBoundaryTime,
+      rightBoundaryTime: visible.rightBoundaryTime,
+    };
+    const panEasing = piecewiseBezier(parsePresetZoomCurve(this.props.presetPanCurve));
+    const zoomEasing = piecewiseBezier(parsePresetZoomCurve(this.props.presetZoomCurve));
+    let startedAt: number | null = null;
+    const drawFrame = (timestamp: number) => {
+      startedAt ??= timestamp;
+      const progress = Math.min(1, (timestamp - startedAt) / this.props.presetZoomDurationMs);
+      const frame = interpolateTimelineTimeRange(
+        from,
+        target,
+        progress,
+        panEasing,
+        zoomEasing,
+      );
+      this.leftBoundaryTime = frame.leftBoundaryTime;
+      this.rightBoundaryTime = frame.rightBoundaryTime;
+      this.drawChildren();
+
+      if (progress < 1) {
+        this.viewportAnimationFrame = requestAnimationFrame(drawFrame);
+      } else {
+        this.viewportAnimationFrame = null;
+        this.setTimelineState(target);
+      }
+    };
+
+    this.viewportAnimationFrame = requestAnimationFrame(drawFrame);
+  };
+
   zoom = (dy: number, offsetX: number, zoomCenterTime: number, canvasWidth: number): void => {
+    this.cancelViewportAnimation();
     this.viewportTraceId = String(this.props.trace_id);
     const dividersData = this.calculateGridOffsets();
 
@@ -769,6 +856,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   };
 
   pan = (dx: number, dy: number, canvasWidth: number): void => {
+    this.cancelViewportAnimation();
     this.viewportTraceId = String(this.props.trace_id);
     const dividersData = this.calculateGridOffsets();
     const maxTopOffset = this.flameChart.current?.maxTopOffset
@@ -926,6 +1014,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
               const e = event as KeyboardEvent;
               if (!isShortcutBlockedByTextEntry(e)) {
                 if (this.state.composingZoomChord) {
+                  this.clearZoomChordTimeout();
                   if (this.state.zoomChord.length === 0) {
                     let zoomChord: ZoomPeriod | '' = '';
                     switch (e.key) {
@@ -964,6 +1053,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                     }
                     this.zoomTo(zoomChord);
                     this.setState({ zoomChord });
+                    if (zoomChord) this.scheduleZoomChordTimeout();
                   } else if (e.key.match(/\d/)) {
                     this.setState({ zoomChordMultiplier: Number(e.key) });
                     this.setState({ composingZoomChord: false });
@@ -977,7 +1067,12 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                 } else if (e.key === 'n') {
                   this.zoomTo('now');
                 } else if (e.key === 'z') {
-                  this.setState({ composingZoomChord: true });
+                  this.setState({
+                    composingZoomChord: true,
+                    zoomChord: '',
+                    zoomChordMultiplier: 1,
+                  });
+                  this.scheduleZoomChordTimeout();
                 }
               }
             }) as EventListener,
@@ -1119,7 +1214,17 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
               submitCommand={props.submitCommand}
             />
             {this.state.composingZoomChord && (
-              <div style={{ position: 'fixed', bottom: 0, left: 0 }}>
+              <div
+                style={{
+                  position: 'fixed',
+                  bottom: 0,
+                  left: 0,
+                  padding: '3px 6px',
+                  borderRadius: '0 4px 0 0',
+                  background: 'rgba(255, 255, 255, 0.82)',
+                  zIndex: 10,
+                }}
+              >
                 Zoom to... (Waiting for second key of chord)
                 {' '}
                 {this.state.zoomChord}

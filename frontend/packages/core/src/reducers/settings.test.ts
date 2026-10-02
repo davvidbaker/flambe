@@ -127,6 +127,39 @@ describe('settings', () => {
     expect(next.swyzzleIdleSeconds).toBe(7);
     expect(next).toBe(initial);
   });
+
+  it('clamps graphical preset zoom tuning values', () => {
+    const initial = settings(undefined, { type: '@@INIT' });
+    expect(initial.presetZoomCurvesLinked).toBe(false);
+    const duration = settings(initial, {
+      type: SETTING_SET,
+      setting: 'presetZoomDurationMs',
+      value: 2_000,
+    });
+    const curve = settings(duration, {
+      type: SETTING_SET,
+      setting: 'presetZoomCurve',
+      value: JSON.stringify([
+        { x: 0, y: 0, inX: 0, inY: 0, outX: -0.5, outY: 1.5 },
+        { x: 1, y: 1, inX: 0.8, inY: 1.5, outX: 1, outY: 1 },
+      ]),
+    });
+    const panCurve = settings(curve, {
+      type: SETTING_SET,
+      setting: 'presetPanCurve',
+      value: JSON.stringify([
+        { x: 0, y: 0, inX: 0, inY: 0, outX: 0.2, outY: 0.1 },
+        { x: 1, y: 1, inX: 0.7, inY: 0.9, outX: 1, outY: 1 },
+      ]),
+    });
+
+    expect(duration.presetZoomDurationMs).toBe(1_000);
+    const parsed = JSON.parse(curve.presetZoomCurve);
+    expect(parsed[0].outX).toBe(0);
+    expect(parsed[0].outY).toBe(1.5);
+    expect(JSON.parse(panCurve.presetPanCurve)[0].outY).toBe(0.1);
+    expect(panCurve.presetZoomCurve).toBe(curve.presetZoomCurve);
+  });
 });
 
 describe('createChartStore swyzzle extras', () => {
