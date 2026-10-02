@@ -58,6 +58,47 @@ describe('observationTime', () => {
 });
 
 describe('groupObservationSeries', () => {
+  it('expands generic and legacy payload maps into sibling traces', () => {
+    const timestamp = Date.parse('2026-10-01T11:00:00Z');
+    const series = groupObservationSeries([
+      {
+        kind: 'hub_price',
+        value: 40,
+        unit: '$/MWh',
+        timestamp,
+        payload: {
+          series: {
+            'CAISO · SP15': 41,
+            'MISO · ILLINOIS.HUB': 38,
+          },
+        },
+      },
+      {
+        kind: 'carbon',
+        value: 300,
+        unit: 'gCO2eq/kWh',
+        timestamp,
+        payload: {
+          ba_g_per_kwh: {
+            CISO: 200,
+            PJM: 400,
+          },
+        },
+      },
+    ]);
+
+    expect(series.map(item => item.key)).toEqual([
+      'hub_price::CAISO · SP15',
+      'hub_price::MISO · ILLINOIS.HUB',
+      'carbon::CISO',
+      'carbon::PJM',
+    ]);
+    expect(series[0].label).toBe('CAISO · SP15');
+    expect(series[0].color).toBe(series[1].color);
+    expect(series[2].color).toBe(CARBON_COLOR);
+    expect(series.map(item => item.points[0].value)).toEqual([41, 38, 200, 400]);
+  });
+
   it('groups finite values by kind and skips non-finite values', () => {
     const series = groupObservationSeries([
       carbon('2026-09-03', 300),
@@ -132,7 +173,9 @@ describe('independentScale and sampleSeriesAtTime', () => {
     ]);
     expect(pickAxisSeries(series, [])?.kind).toBe('carbon');
     expect(pickAxisSeries(series, [{
+      key: 'mood',
       kind: 'mood',
+      label: 'mood',
       value: 2,
       unit: null,
       color: series[1].color,
@@ -157,13 +200,17 @@ describe('independentScale and sampleSeriesAtTime', () => {
     const samples = hoverSamples([carbonSeries, moodSeries], morning);
     expect(samples).toEqual([
       {
+        key: 'carbon',
         kind: 'carbon',
+        label: 'carbon',
         value: 280,
         unit: 'gCO2eq/kWh',
         color: CARBON_COLOR,
       },
       {
+        key: 'mood',
         kind: 'mood',
+        label: 'mood',
         value: 4,
         unit: null,
         color: moodSeries.color,
