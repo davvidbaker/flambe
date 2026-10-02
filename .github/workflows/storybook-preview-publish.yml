@@ -35,9 +35,6 @@ jobs:
         )
       )
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.pages.outputs.page_url }}
     steps:
       - name: Resolve publish target
         id: target
@@ -191,9 +188,6 @@ jobs:
   cleanup:
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.pages.outputs.page_url }}
     steps:
       - name: Remove preview from GitHub Pages branch
         id: remove
