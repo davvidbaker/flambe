@@ -1,7 +1,7 @@
-name: Publish Storybook preview
+name: Publish Storybook
 
 on:
-  # This privileged workflow runs from the default branch, not from PR code.
+  # Runs from the default branch after an unprivileged Storybook build finishes.
   workflow_run:
     workflows: ['Build Storybook preview']
     types: [completed]
@@ -16,7 +16,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: storybook-preview-pages
+  group: storybook-pages
   cancel-in-progress: false
 
 env:
@@ -27,70 +27,79 @@ jobs:
     if: >-
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request'
+      (
+        github.event.workflow_run.event == 'pull_request' ||
+        (
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main'
+        )
+      )
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.pages.outputs.page_url }}
     steps:
-      - name: Resolve pull request
-        id: pr
+      - name: Resolve publish target
+        id: target
         uses: actions/github-script@v7
         with:
           script: |
+            if (context.payload.workflow_run.event === 'push') {
+              core.setOutput('kind', 'main');
+              core.setOutput('artifact', 'storybook-main');
+              return;
+            }
+
             const direct = context.payload.workflow_run.pull_requests[0]?.number;
+            let pull = null;
             if (direct) {
-              const { data: pull } = await github.rest.pulls.get({
+              ({ data: pull } = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: direct,
+              }));
+            } else {
+              const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.payload.workflow_run.head_sha,
               });
-              if (pull.state !== 'open') {
-                core.notice(`PR #${direct} closed before its preview was deployed.`);
-                core.setOutput('open', 'false');
-                return;
-              }
-              core.setOutput('number', direct);
-              core.setOutput('open', 'true');
+              pull = pulls.find(candidate => candidate.state === 'open') ?? null;
+            }
+
+            if (!pull || pull.state !== 'open') {
+              core.notice('No open pull request remains for this Storybook build.');
+              core.setOutput('kind', 'skip');
               return;
             }
 
-            const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.payload.workflow_run.head_sha,
-            });
-            const openPull = pulls.find(pull => pull.state === 'open');
-            if (!openPull) {
-              core.notice('No open pull request remains for this Storybook build.');
-              core.setOutput('open', 'false');
-              return;
-            }
-            core.setOutput('number', openPull.number);
-            core.setOutput('open', 'true');
+            core.setOutput('kind', 'pr');
+            core.setOutput('number', String(pull.number));
+            core.setOutput('artifact', `storybook-pr-${pull.number}`);
 
       - name: Download Storybook artifact
-        if: steps.pr.outputs.open == 'true'
+        if: steps.target.outputs.kind != 'skip'
         uses: actions/download-artifact@v4
         with:
-          name: storybook-preview-${{ steps.pr.outputs.number }}
+          name: ${{ steps.target.outputs.artifact }}
           path: preview
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Reject unsafe artifact entries
-        if: steps.pr.outputs.open == 'true'
+        if: steps.target.outputs.kind != 'skip'
         run: |
           if find preview -type l -print -quit | grep -q .; then
             echo 'The Storybook artifact contains a symbolic link.'
             exit 1
           fi
 
-      - name: Publish preview to GitHub Pages branch
-        if: steps.pr.outputs.open == 'true'
+      - name: Publish Storybook to GitHub Pages branch
+        if: steps.target.outputs.kind != 'skip'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          TARGET_KIND: ${{ steps.target.outputs.kind }}
+          PR_NUMBER: ${{ steps.target.outputs.number }}
         run: |
           git clone --no-checkout "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pages
           cd pages
@@ -101,47 +110,57 @@ jobs:
             git rm -rf . >/dev/null 2>&1 || true
           fi
 
-          rm -rf "pr-${PR_NUMBER}"
-          mkdir "pr-${PR_NUMBER}"
-          cp -R ../preview/. "pr-${PR_NUMBER}/"
-          touch .nojekyll
-          cat > index.html <<'HTML'
-          <!doctype html>
-          <html lang="en">
-            <head><meta charset="utf-8"><title>Flambe Storybook previews</title></head>
-            <body><h1>Flambe Storybook previews</h1><p>Open a preview from its pull request.</p></body>
-          </html>
-          HTML
+          if [ "${TARGET_KIND}" = "pr" ]; then
+            rm -rf "pr-${PR_NUMBER}"
+            mkdir "pr-${PR_NUMBER}"
+            cp -R ../preview/. "pr-${PR_NUMBER}/"
+          else
+            # Replace the canonical Storybook while preserving open PR previews.
+            find . -mindepth 1 -maxdepth 1 \
+              ! -name '.git' \
+              ! -name 'pr-*' \
+              -exec rm -rf {} +
+            cp -R ../preview/. ./
+          fi
 
+          touch .nojekyll
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add --all
-          git commit -m "Publish Storybook preview for PR #${PR_NUMBER}"
-          git push origin HEAD:gh-pages
+          if git diff --cached --quiet; then
+            echo "No Storybook Pages changes to publish."
+          else
+            if [ "${TARGET_KIND}" = "pr" ]; then
+              git commit -m "Publish Storybook preview for PR #${PR_NUMBER}"
+            else
+              git commit -m "Publish live Storybook from main"
+            fi
+            git push origin HEAD:gh-pages
+          fi
           rm -rf .git
 
       - name: Configure GitHub Pages
-        if: steps.pr.outputs.open == 'true'
+        if: steps.target.outputs.kind != 'skip'
         uses: actions/configure-pages@v5
         with:
           enablement: true
 
-      - name: Upload complete preview site
-        if: steps.pr.outputs.open == 'true'
+      - name: Upload complete Storybook site
+        if: steps.target.outputs.kind != 'skip'
         uses: actions/upload-pages-artifact@v3
         with:
           path: pages
 
       - name: Deploy GitHub Pages
-        if: steps.pr.outputs.open == 'true'
+        if: steps.target.outputs.kind != 'skip'
         id: pages
         uses: actions/deploy-pages@v4
 
-      - name: Comment with preview link
-        if: steps.pr.outputs.open == 'true'
+      - name: Comment with PR preview link
+        if: steps.target.outputs.kind == 'pr'
         uses: actions/github-script@v7
         env:
-          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          PR_NUMBER: ${{ steps.target.outputs.number }}
           MARKER: ${{ env.PREVIEW_COMMENT_MARKER }}
           PAGE_URL: ${{ steps.pages.outputs.page_url }}
         with:
@@ -210,7 +229,7 @@ jobs:
         with:
           enablement: true
 
-      - name: Upload complete preview site
+      - name: Upload complete Storybook site
         if: steps.remove.outputs.changed == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
