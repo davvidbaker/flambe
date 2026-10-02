@@ -18,7 +18,8 @@
     "typecheck": "tsc --noEmit",
     "test:smoke": "playwright test",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "build:vercel": "npm run build:share-viewer && storybook build -o packages/share-viewer/dist/storybook"
   },
   "repository": {
     "type": "git",
