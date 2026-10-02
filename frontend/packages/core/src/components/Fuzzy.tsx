@@ -3,12 +3,25 @@ import fuzzaldrin from 'fuzzaldrin-plus';
 import { useCombobox } from 'downshift';
 import styled from 'styled-components';
 
+import Button from './Button';
+
 export interface FuzzyItem {
   [key: string]: unknown;
   label?: { background?: string; copy: React.ReactNode };
   shortcut?: React.ReactNode;
 }
-interface Props<T extends FuzzyItem> { onChange: (item: T) => void; placeholder?: string; items: T[]; itemStringKey: keyof T & string }
+interface Props<T extends FuzzyItem> {
+  autoFocus?: boolean;
+  onBlur?: () => void;
+  onChange: (item: T) => void;
+  placeholder?: string;
+  items: T[];
+  itemStringKey: keyof T & string;
+}
+
+interface MagicFuzzyProps<T extends FuzzyItem> extends Omit<Props<T>, 'autoFocus' | 'onBlur'> {
+  children: React.ReactNode;
+}
 
 const Wrap = styled.div<{ $open: boolean }>`
   position: relative;
@@ -43,6 +56,8 @@ const StyledResults = styled.div<{ $open: boolean }>`
 `;
 
 const Fuzzy = <T extends FuzzyItem,>({
+  autoFocus = false,
+  onBlur,
   onChange,
   placeholder,
   items,
@@ -81,8 +96,9 @@ const Fuzzy = <T extends FuzzyItem,>({
     <Wrap $open={menuOpen}>
       <label {...getLabelProps()} />
       <input
+        autoFocus={autoFocus}
         style={{ width: '100%' }}
-        {...getInputProps({ placeholder, 'aria-label': placeholder })}
+        {...getInputProps({ placeholder, 'aria-label': placeholder, onBlur })}
       />
       <StyledResults {...getMenuProps()} $open={menuOpen}>
         {menuOpen && filteredItems.map((item, index) => (
@@ -141,3 +157,32 @@ const Fuzzy = <T extends FuzzyItem,>({
 };
 
 export default Fuzzy;
+
+/** A value button that turns into a fuzzy autocomplete while it is being changed. */
+export const MagicFuzzy = <T extends FuzzyItem,>({
+  children,
+  onChange,
+  ...fuzzyProps
+}: MagicFuzzyProps<T>) => {
+  const [editing, setEditing] = React.useState(false);
+
+  if (!editing) {
+    return (
+      <Button onClick={() => setEditing(true)}>
+        {children}
+      </Button>
+    );
+  }
+
+  return (
+    <Fuzzy
+      {...fuzzyProps}
+      autoFocus
+      onBlur={() => setEditing(false)}
+      onChange={item => {
+        onChange(item);
+        setEditing(false);
+      }}
+    />
+  );
+};

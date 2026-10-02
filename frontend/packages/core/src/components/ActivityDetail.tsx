@@ -28,7 +28,7 @@ import { activityAgentChoices } from '../utilities/activityAgents';
 import ActivityEventFlow from './ActivityEventFlow';
 import CategoryChip from './CategoryChip';
 import Button, { InputFromButton } from './Button';
-import Fuzzy from './Fuzzy';
+import Fuzzy, { MagicFuzzy } from './Fuzzy';
 import AppModal from './AppModal';
 import { openCategorySettingsWindow } from '../utilities/openCategorySettingsWindow';
 
@@ -320,16 +320,19 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       <Field>
         <FieldLabel>Thread</FieldLabel>
         <FieldBody>
-          <div>{currentThread?.name ?? threadId}</div>
-          {threadChoices.length > 0 && (
+          {threadChoices.length > 0 ? (
             <AssignBox>
-              <Fuzzy
+              <MagicFuzzy
                 itemStringKey="name"
                 onChange={moveToThread}
                 placeholder="Move to thread…"
                 items={threadChoices}
-              />
+              >
+                {currentThread?.name ?? threadId}
+              </MagicFuzzy>
             </AssignBox>
+          ) : (
+            <div>{currentThread?.name ?? threadId}</div>
           )}
         </FieldBody>
       </Field>
@@ -345,10 +348,9 @@ const ActivityDetail = (props: ActivityDetailProps) => {
       <Field>
         <FieldLabel>Agent</FieldLabel>
         <FieldBody>
-          <div>{actorName(activity)}</div>
-          {agentChoices.length > 0 && (
+          {agentChoices.length > 0 ? (
             <AssignBox>
-              <Fuzzy
+              <MagicFuzzy
                 itemStringKey="name"
                 onChange={choice => {
                   const agentId = Object.prototype.hasOwnProperty.call(choice, 'id')
@@ -361,8 +363,12 @@ const ActivityDetail = (props: ActivityDetailProps) => {
                 }}
                 placeholder="Assign an agent…"
                 items={agentChoices}
-              />
+              >
+                {actorName(activity)}
+              </MagicFuzzy>
             </AssignBox>
+          ) : (
+            <div>{actorName(activity)}</div>
           )}
         </FieldBody>
       </Field>
