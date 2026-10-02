@@ -5,12 +5,20 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'frontend/**'
+      - '.github/workflows/storybook-preview-build.yml'
+      - '.github/workflows/storybook-preview-publish.yml'
+  push:
+    branches: ['main']
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/storybook-preview-build.yml'
+      - '.github/workflows/storybook-preview-publish.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: storybook-preview-build-${{ github.event.pull_request.number }}
+  group: storybook-preview-build-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -29,10 +37,10 @@ jobs:
       - name: Build Storybook
         working-directory: frontend
         run: npm run build-storybook
-      - name: Upload preview
+      - name: Upload Storybook build
         uses: actions/upload-artifact@v4
         with:
-          name: storybook-preview-${{ github.event.pull_request.number }}
+          name: storybook-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || 'main' }}
           path: frontend/storybook-static
           if-no-files-found: error
           retention-days: 7
