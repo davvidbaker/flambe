@@ -51,9 +51,11 @@ defmodule FlambeNext.OAuth do
 
       {:ok,
        %{
+         response_type: "code",
          client_id: client_id,
          redirect_uri: redirect_uri,
          code_challenge: challenge,
+         code_challenge_method: "S256",
          resource: requested_resource,
          scope: scope,
          state: params["state"]
