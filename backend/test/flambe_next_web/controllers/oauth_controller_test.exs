@@ -114,12 +114,14 @@ defmodule FlambeNextWeb.OAuthControllerTest do
              }
            } = json_response(mcp, 200)
 
+    [session_id] = get_resp_header(mcp, "mcp-session-id")
 
     traces_call =
       build_conn()
       |> put_req_header("authorization", "Bearer " <> token_response["access_token"])
       |> put_req_header("accept", "application/json, text/event-stream")
       |> put_req_header("content-type", "application/json")
+      |> put_req_header("mcp-session-id", session_id)
       |> post(
         "/mcp",
         Jason.encode!(%{
@@ -148,6 +150,7 @@ defmodule FlambeNextWeb.OAuthControllerTest do
       |> put_req_header("authorization", "Bearer " <> token_response["access_token"])
       |> put_req_header("accept", "application/json, text/event-stream")
       |> put_req_header("content-type", "application/json")
+      |> put_req_header("mcp-session-id", session_id)
       |> post(
         "/mcp",
         Jason.encode!(%{
