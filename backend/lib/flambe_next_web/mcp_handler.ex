@@ -3,9 +3,9 @@ defmodule FlambeNextWeb.MCPHandler do
 
   use ExMCP.Server.Handler
 
-  alias FlambeNext.{AgentCommandIdentity, AgentCommands}
+  alias FlambeNext.{AgentCommandIdentity, AgentCommands, Traces}
 
-  @tools ~w(flambe_start flambe_end flambe_suspend flambe_resume flambe_status flambe_message flambe_plan)
+  @tools ~w(flambe_traces flambe_start flambe_end flambe_suspend flambe_resume flambe_status flambe_message flambe_plan)
 
   @impl GenServer
   def init(%{user: user} = context), do: {:ok, Map.put(context, :user, user)}
@@ -26,6 +26,19 @@ defmodule FlambeNextWeb.MCPHandler do
   end
 
   @impl ExMCP.Server.Handler
+  def handle_call_tool("flambe_traces", _arguments, state) do
+    traces =
+      state.user
+      |> Traces.list_user_traces()
+      |> Enum.map(fn trace -> %{id: trace.id, name: trace.name} end)
+
+    {:ok,
+     tool_result(%{
+       traces: traces,
+       default_trace_id: traces |> List.first() |> then(&(&1 && &1.id))
+     }), state}
+  end
+
   def handle_call_tool("flambe_" <> command, arguments, state)
       when command in ~w(start end suspend resume status message plan) and is_map(arguments) do
     arguments =
@@ -42,6 +55,17 @@ defmodule FlambeNextWeb.MCPHandler do
 
   def handle_call_tool(name, _arguments, state) do
     {:error, ExMCP.Error.protocol_error(-32602, "Unknown tool: #{name}"), state}
+  end
+
+  defp tool_definition("flambe_traces") do
+    tool(
+      "flambe_traces",
+      "List Flambe traces",
+      "List the authenticated user's Flambe traces. Use this only when the target trace id is not already known.",
+      %{},
+      [],
+      %{readOnlyHint: true, destructiveHint: false, openWorldHint: false}
+    )
   end
 
   defp tool_definition("flambe_start") do
@@ -110,7 +134,7 @@ defmodule FlambeNextWeb.MCPHandler do
         }
       }),
       ["trace_id"],
-      %{readOnlyHint: true, destructiveHint: false}
+      %{readOnlyHint: true, destructiveHint: false, openWorldHint: false}
     )
   end
 
@@ -170,10 +194,13 @@ defmodule FlambeNextWeb.MCPHandler do
   end
 
   defp tool(name, title, description, properties, required, annotations \\ nil) do
+    scopes = ["flambe"]
+
     definition = %{
       name: name,
       title: title,
       description: description,
+      securitySchemes: [%{type: "oauth2", scopes: scopes}],
       inputSchema: %{
         type: "object",
         additionalProperties: false,

@@ -69,12 +69,17 @@ defmodule FlambeNextWeb.McpControllerTest do
              "flambe_resume",
              "flambe_start",
              "flambe_status",
-             "flambe_suspend"
+             "flambe_suspend",
+             "flambe_traces"
            ]
 
     status = Enum.find(tools, &(&1["name"] == "flambe_status"))
     assert status["annotations"]["readOnlyHint"]
     assert get_in(status, ["inputSchema", "required"]) == ["trace_id"]
+
+    traces = Enum.find(tools, &(&1["name"] == "flambe_traces"))
+    assert traces["annotations"]["readOnlyHint"]
+    assert get_in(traces, ["inputSchema", "required"]) == []
   end
 
   test "executes tools with structured results and authenticated header identity", %{

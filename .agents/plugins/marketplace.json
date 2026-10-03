@@ -1,0 +1,20 @@
+{
+  "name": "flambe-local",
+  "interface": {
+    "displayName": "Flambé"
+  },
+  "plugins": [
+    {
+      "name": "flambe",
+      "source": {
+        "source": "local",
+        "path": "./plugins/flambe"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
