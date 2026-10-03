@@ -44,6 +44,7 @@ defmodule FlambeNextWeb.Router do
     get "/oauth-protected-resource", OAuthController, :protected_resource
     get "/oauth-protected-resource/mcp", OAuthController, :protected_resource
     get "/oauth-authorization-server", OAuthController, :authorization_server
+    get "/openai-apps-challenge", OpenAIAppsChallengeController, :show
   end
 
   scope "/oauth", FlambeNextWeb do
