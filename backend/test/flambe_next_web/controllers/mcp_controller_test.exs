@@ -80,6 +80,21 @@ defmodule FlambeNextWeb.McpControllerTest do
     traces = Enum.find(tools, &(&1["name"] == "flambe_traces"))
     assert traces["annotations"]["readOnlyHint"]
     assert get_in(traces, ["inputSchema", "required"]) == []
+
+    Enum.each(tools, fn tool ->
+      annotations = tool["annotations"]
+      assert is_boolean(annotations["readOnlyHint"])
+      assert is_boolean(annotations["destructiveHint"])
+      assert is_boolean(annotations["openWorldHint"])
+    end)
+
+    for name <- ~w(flambe_start flambe_plan flambe_message) do
+      assert Enum.find(tools, &(&1["name"] == name))["annotations"]["openWorldHint"]
+    end
+
+    for name <- ~w(flambe_end flambe_suspend flambe_resume) do
+      refute Enum.find(tools, &(&1["name"] == name))["annotations"]["openWorldHint"]
+    end
   end
 
   test "executes tools with structured results and authenticated header identity", %{
