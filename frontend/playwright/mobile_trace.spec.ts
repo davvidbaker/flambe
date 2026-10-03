@@ -84,7 +84,7 @@ test('keeps the flame chart usable in a phone-sized viewport', async ({ page }) 
   await page.getByRole('button', { name: 'Log In' }).click();
   await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
 
-  const canvas = page.locator('#chart-wrapper canvas');
+  const canvas = page.locator('#chart-wrapper canvas:not([aria-hidden="true"])');
   await expect(canvas).toBeVisible();
 
   await expect.poll(async () => {
@@ -124,7 +124,7 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
   await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
 
   const surface = page.locator('[data-timeline-surface="true"]');
-  const canvas = page.locator('#chart-wrapper canvas');
+  const canvas = page.locator('#chart-wrapper canvas:not([aria-hidden="true"])');
   await expect(canvas).toBeVisible();
   await expect.poll(async () => (await canvas.boundingBox())?.height ?? 0).toBeGreaterThan(100);
   await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBeGreaterThan(0);
@@ -320,7 +320,7 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   await page.reload();
   await page.setViewportSize(phone);
 
-  const canvas = page.locator('#chart-wrapper canvas');
+  const canvas = page.locator('#chart-wrapper canvas:not([aria-hidden="true"])');
   const surface = page.locator('[data-timeline-surface="true"]');
   await expect(canvas).toBeVisible();
   await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBeGreaterThan(0);
@@ -389,10 +389,10 @@ test('renders the post-login timeline on WebKit without requestIdleCallback', as
   await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
 
   await expect(page.getByRole('banner')).toBeVisible();
-  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+  await expect(page.locator('#chart-wrapper canvas:not([aria-hidden="true"])')).toBeVisible();
 
   const metrics = await page.evaluate(() => {
-    const canvas = document.querySelector('#chart-wrapper canvas');
+    const canvas = document.querySelector('#chart-wrapper canvas:not([aria-hidden="true"])');
     const box = canvas?.getBoundingClientRect();
     return {
       hasIdle: typeof (window as Window & { requestIdleCallback?: unknown }).requestIdleCallback,
