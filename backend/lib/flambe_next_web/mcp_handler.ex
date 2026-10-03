@@ -86,7 +86,8 @@ defmodule FlambeNextWeb.MCPHandler do
         category_ids: %{type: "array", items: %{type: "integer", minimum: 1}},
         timestamp: timestamp_schema()
       }),
-      ["trace_id", "name"]
+      ["trace_id", "name"],
+      mutation_annotations(true)
     )
   end
 
@@ -152,7 +153,8 @@ defmodule FlambeNextWeb.MCPHandler do
         scheduled_end: timestamp_schema(),
         category_ids: %{type: "array", items: %{type: "integer", minimum: 1}}
       }),
-      ["trace_id", "name"]
+      ["trace_id", "name"],
+      mutation_annotations(true)
     )
   end
 
@@ -171,7 +173,8 @@ defmodule FlambeNextWeb.MCPHandler do
           description: "Set false for advice only"
         }
       }),
-      ["trace_id", "message"]
+      ["trace_id", "message"],
+      mutation_annotations(true)
     )
   end
 
@@ -190,7 +193,18 @@ defmodule FlambeNextWeb.MCPHandler do
       })
       |> Map.merge(extras)
 
-    tool(name, title, description, properties, ["trace_id", "activity_id"])
+    tool(
+      name,
+      title,
+      description,
+      properties,
+      ["trace_id", "activity_id"],
+      mutation_annotations(false)
+    )
+  end
+
+  defp mutation_annotations(open_world) do
+    %{readOnlyHint: false, destructiveHint: false, openWorldHint: open_world}
   end
 
   defp tool(name, title, description, properties, required, annotations \\ nil) do
