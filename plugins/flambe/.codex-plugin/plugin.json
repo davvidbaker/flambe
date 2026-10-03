@@ -1,6 +1,6 @@
 {
   "name": "flambe",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Track substantial work as a live Flambe call stack and coordinate scope through the Reducer Agent.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"
