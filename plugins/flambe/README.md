@@ -23,13 +23,15 @@ The MCP server is implemented by the main Flambe Phoenix backend. It exposes:
 
 The hosted MCP endpoint uses OAuth 2.1 authorization-code + PKCE for ChatGPT. The authorization flow signs into the normal Flambe account and mints a revocable Flambe API token after approval.
 
-For development testing:
+For repo-local testing:
 
 1. Deploy the branch so `https://flambe.fly.dev/mcp` and the OAuth metadata endpoints are current.
-2. In ChatGPT, enable Developer mode under Settings → Security and login.
-3. Go to ChatGPT Plugins and add an MCP connection for `https://flambe.fly.dev/mcp`.
-4. Complete the Flambe sign-in/consent flow.
-5. Package or register this plugin folder as a personal plugin so the bundled skill is loaded alongside the MCP connection.
+2. Open this repository in the ChatGPT desktop app.
+3. Restart the app after pulling the repo marketplace at `.agents/plugins/marketplace.json`.
+4. Open the Plugins Directory, choose the **Flambé** local source, and install **flambe**.
+5. Complete the Flambe sign-in/consent flow when prompted.
+
+You can also register the MCP endpoint directly in ChatGPT Developer mode at `https://flambe.fly.dev/mcp`, but that tests the tools without the bundled skill. The repo marketplace tests the complete plugin.
 
 For a public plugin, upload this folder as the plugin package and use the same remote MCP endpoint during submission.
 
