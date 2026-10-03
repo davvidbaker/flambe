@@ -207,7 +207,7 @@ defmodule FlambeNextWeb.MCPHandler do
     %{readOnlyHint: false, destructiveHint: false, openWorldHint: open_world}
   end
 
-  defp tool(name, title, description, properties, required, annotations \\ nil) do
+  defp tool(name, title, description, properties, required, annotations) do
     scopes = ["flambe"]
 
     definition = %{
