@@ -44,7 +44,7 @@ test('logs in, renders a trace, and persists thread collapse', async ({ page }) 
   const [firstThread] = [...trace.data.threads].sort((left, right) => left.rank - right.rank);
   const traceId = String(trace.data.id);
 
-  const canvas = page.locator('#chart-wrapper canvas');
+  const canvas = page.locator('#chart-wrapper canvas:not([aria-hidden="true"])');
   await expect(canvas).toBeVisible();
 
   await expect
@@ -168,11 +168,11 @@ test('renders overlapping root activities in separate flame-chart lanes', async 
 
   expect(created.map(result => result.status)).toEqual([201, 201]);
   await page.reload();
-  const canvas = page.locator('#chart-wrapper canvas');
+  const canvas = page.locator('#chart-wrapper canvas:not([aria-hidden="true"])');
   await expect(canvas).toBeVisible();
 
   await expect.poll(() => page.evaluate(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>('#chart-wrapper canvas');
+    const canvas = document.querySelector<HTMLCanvasElement>('#chart-wrapper canvas:not([aria-hidden="true"])');
     const context = canvas?.getContext('2d');
     if (!canvas || !context) return 0;
 
@@ -267,7 +267,7 @@ test('starts a new activity through the command palette', async ({ page }) => {
   const traceMatch = page.url().match(/\/traces\/(\d+)$/);
   if (!traceMatch) throw new Error(`Trace ID missing from ${page.url()}`);
   const traceId = Number(traceMatch[1]);
-  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+  await expect(page.locator('#chart-wrapper canvas:not([aria-hidden="true"])')).toBeVisible();
 
   // Playwright's Linux shortcut mapping does not emulate macOS Command keys,
   // so dispatch the same browser event the keyboard shortcut produces.
@@ -371,7 +371,7 @@ test('hides threads across reload and persists a manual thread order', async ({ 
   expect(createdThread.status).toBe(201);
 
   await page.reload();
-  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+  await expect(page.locator('#chart-wrapper canvas:not([aria-hidden="true"])')).toBeVisible();
 
   await page.getByRole('button', { name: 'Manage threads' }).click();
   const attentionOrder = page.getByRole('checkbox', { name: 'Order by recent attention' });
@@ -390,7 +390,7 @@ test('hides threads across reload and persists a manual thread order', async ({ 
     .toEqual(expect.arrayContaining([createdThread.body.data.id]));
 
   await page.reload();
-  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+  await expect(page.locator('#chart-wrapper canvas:not([aria-hidden="true"])')).toBeVisible();
   await page.getByRole('button', { name: 'Manage threads' }).click();
   await expect(page.getByRole('checkbox', { name: `Show ${laterName}` })).not.toBeChecked();
   await page.getByRole('checkbox', { name: `Show ${laterName}` }).check();
