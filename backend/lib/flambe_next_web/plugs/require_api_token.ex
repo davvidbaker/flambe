@@ -27,7 +27,7 @@ defmodule FlambeNextWeb.Plugs.RequireApiToken do
         conn
         |> put_resp_header(
           "www-authenticate",
-          ~s(Bearer resource_metadata="#{resource_metadata}", scope="flambe:read flambe:write")
+          ~s(Bearer resource_metadata="#{resource_metadata}", scope="flambe")
         )
         |> put_status(:unauthorized)
         |> json(%{error: "UNAUTHENTICATED"})
