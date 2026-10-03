@@ -110,7 +110,6 @@ defmodule FlambeNextWeb.OAuthController do
 
     hidden =
       request
-      |> Map.from_struct()
       |> Enum.reject(fn {_key, value} -> is_nil(value) end)
       |> Enum.map_join("\n", fn {key, value} ->
         ~s(<input type="hidden" name="#{h(key)}" value="#{h(value)}">)
