@@ -134,7 +134,7 @@ defmodule FlambeNextWeb.MCPHandler do
         }
       }),
       ["trace_id"],
-      %{readOnlyHint: true, destructiveHint: false}
+      %{readOnlyHint: true, destructiveHint: false, openWorldHint: false}
     )
   end
 
@@ -194,10 +194,16 @@ defmodule FlambeNextWeb.MCPHandler do
   end
 
   defp tool(name, title, description, properties, required, annotations \\ nil) do
+    scopes =
+      if name in ["flambe_status", "flambe_traces"],
+        do: ["flambe:read"],
+        else: ["flambe:write"]
+
     definition = %{
       name: name,
       title: title,
       description: description,
+      securitySchemes: [%{type: "oauth2", scopes: scopes}],
       inputSchema: %{
         type: "object",
         additionalProperties: false,
