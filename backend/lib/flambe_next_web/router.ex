@@ -19,6 +19,10 @@ defmodule FlambeNextWeb.Router do
     plug FlambeNextWeb.Plugs.AgentIdentity
   end
 
+  pipeline :oauth_api do
+    plug :accepts, ["json"]
+  end
+
   pipeline :spa do
     plug :accepts, ["html"]
   end
@@ -32,6 +36,27 @@ defmodule FlambeNextWeb.Router do
 
   pipeline :authenticated_browser do
     plug FlambeNextWeb.Plugs.RequireBrowserUser
+  end
+
+  scope "/.well-known", FlambeNextWeb do
+    pipe_through :oauth_api
+
+    get "/oauth-protected-resource", OAuthController, :protected_resource
+    get "/oauth-protected-resource/mcp", OAuthController, :protected_resource
+    get "/oauth-authorization-server", OAuthController, :authorization_server
+  end
+
+  scope "/oauth", FlambeNextWeb do
+    pipe_through :oauth_api
+
+    post "/token", OAuthController, :token
+  end
+
+  scope "/oauth", FlambeNextWeb do
+    pipe_through :browser
+
+    get "/authorize", OAuthController, :authorize
+    post "/authorize", OAuthController, :authorize_login
   end
 
   scope "/api", FlambeNextWeb do
