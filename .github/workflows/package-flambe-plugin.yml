@@ -1,0 +1,70 @@
+name: Package Flambe plugin
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "plugins/flambe/**"
+      - ".github/workflows/package-flambe-plugin.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "plugins/flambe/**"
+      - ".github/workflows/package-flambe-plugin.yml"
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate public plugin package
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import struct
+
+          root = pathlib.Path("plugins/flambe")
+          manifest = json.loads((root / "plugin.json").read_text())
+          mcp = json.loads((root / "mcp.json").read_text())
+          interface = manifest["extensions"]["com.openai"]["interface"]
+          cases = manifest["extensions"]["com.openai"]["review"]["test_cases"]
+
+          assert manifest["name"] == "flambe"
+          assert len(interface["shortDescription"]) <= 30
+          assert interface["websiteURL"].startswith("https://")
+          assert interface["supportURL"].startswith("https://")
+          assert interface["privacyPolicyURL"].startswith("https://")
+          assert interface["termsOfServiceURL"].startswith("https://")
+          assert len(cases["positive"]) == 5
+          assert len(cases["negative"]) == 3
+          assert mcp["mcpServers"]["flambe"]["url"] == "https://flambe.fly.dev/mcp"
+          assert not (root / ".app.json").exists()
+
+          for key in ("logo", "composerIcon"):
+              path = root / interface[key]
+              assert path.is_file(), path
+              raw = path.read_bytes()
+              assert raw[:8] == b"\x89PNG\r\n\x1a\n"
+              width, height = struct.unpack(">II", raw[16:24])
+              assert width == height
+              if key == "logo":
+                  assert width >= 256
+              else:
+                  assert width >= 48
+
+          print("Flambe public plugin package is structurally valid")
+          PY
+
+      - name: Build plugin ZIP
+        run: |
+          cd plugins
+          zip -r "../flambe-plugin-${GITHUB_SHA}.zip" flambe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flambe-public-plugin
+          path: flambe-plugin-${{ github.sha }}.zip
+          if-no-files-found: error
