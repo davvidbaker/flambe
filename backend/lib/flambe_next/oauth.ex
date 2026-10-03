@@ -7,12 +7,11 @@ defmodule FlambeNext.OAuth do
 
   @code_salt "flambe-oauth-code-v1"
   @code_max_age_seconds 300
-  @read_scope "flambe:read"
-  @write_scope "flambe:write"
+  @scope "flambe"
 
   def issuer, do: Endpoint.url()
   def resource, do: issuer() <> "/mcp"
-  def scopes, do: [@read_scope, @write_scope]
+  def scopes, do: [@scope]
 
   def protected_resource_metadata do
     %{
