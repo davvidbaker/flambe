@@ -22,7 +22,13 @@ defmodule FlambeNextWeb.Plugs.RequireApiToken do
       |> assign(:api_token, api_token)
     else
       _ ->
+        resource_metadata = FlambeNextWeb.Endpoint.url() <> "/.well-known/oauth-protected-resource"
+
         conn
+        |> put_resp_header(
+          "www-authenticate",
+          ~s(Bearer resource_metadata="#{resource_metadata}", scope="flambe")
+        )
         |> put_status(:unauthorized)
         |> json(%{error: "UNAUTHENTICATED"})
         |> halt()

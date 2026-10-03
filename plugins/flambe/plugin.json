@@ -1,0 +1,20 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flambe",
+  "version": "0.1.0",
+  "description": "Track substantial work as a live Flambe call stack and coordinate scope through the Reducer Agent.",
+  "author": {
+    "name": "David Baker",
+    "url": "https://github.com/davvidbaker"
+  },
+  "homepage": "https://github.com/davvidbaker/flambe",
+  "repository": "https://github.com/davvidbaker/flambe",
+  "license": "MIT",
+  "keywords": [
+    "productivity",
+    "agents",
+    "flame-chart",
+    "work-tracking",
+    "coordination"
+  ]
+}

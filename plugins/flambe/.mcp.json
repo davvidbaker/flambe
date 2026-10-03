@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "flambe": {
+      "type": "http",
+      "url": "https://flambe.fly.dev/mcp",
+      "bearer_token_env_var": "FLAMBE_API_TOKEN"
+    }
+  }
+}
