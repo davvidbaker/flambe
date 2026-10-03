@@ -12,8 +12,7 @@ defmodule FlambeNextWeb.OAuthControllerTest do
 
     assert resource["resource"] == OAuth.resource()
     assert resource["authorization_servers"] == [OAuth.issuer()]
-    assert "flambe:read" in resource["scopes_supported"]
-    assert "flambe:write" in resource["scopes_supported"]
+    assert resource["scopes_supported"] == ["flambe"]
 
     authorization =
       build_conn()
@@ -54,7 +53,7 @@ defmodule FlambeNextWeb.OAuthControllerTest do
       "code_challenge" => challenge,
       "code_challenge_method" => "S256",
       "resource" => OAuth.resource(),
-      "scope" => "flambe:read flambe:write",
+      "scope" => "flambe",
       "state" => "state-123",
       "approve" => "1"
     }
@@ -87,7 +86,7 @@ defmodule FlambeNextWeb.OAuthControllerTest do
       |> json_response(200)
 
     assert token_response["token_type"] == "Bearer"
-    assert token_response["scope"] == "flambe:read flambe:write"
+    assert token_response["scope"] == "flambe"
     assert String.starts_with?(token_response["access_token"], "flb_")
 
     mcp =
@@ -134,6 +133,6 @@ defmodule FlambeNextWeb.OAuthControllerTest do
     assert response.status == 401
     [challenge] = get_resp_header(response, "www-authenticate")
     assert challenge =~ "/.well-known/oauth-protected-resource"
-    assert challenge =~ "flambe:read flambe:write"
+    assert challenge =~ ~s(scope="flambe")
   end
 end
