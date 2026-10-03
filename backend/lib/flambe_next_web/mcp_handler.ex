@@ -194,10 +194,7 @@ defmodule FlambeNextWeb.MCPHandler do
   end
 
   defp tool(name, title, description, properties, required, annotations \\ nil) do
-    scopes =
-      if name in ["flambe_status", "flambe_traces"],
-        do: ["flambe:read"],
-        else: ["flambe:write"]
+    scopes = ["flambe"]
 
     definition = %{
       name: name,
