@@ -1,5 +1,5 @@
 defmodule FlambeNextWeb.OAuthControllerTest do
-  use FlambeNextWeb.ConnCase, async: true
+  use FlambeNextWeb.ConnCase, async: false
 
   alias FlambeNext.{Accounts, OAuth, Traces}
 
