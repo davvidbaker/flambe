@@ -623,6 +623,8 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
       if (!activity) return state;
 
       const nextThreadId = action.updates.thread_id;
+      const hasScheduledStart = Object.prototype.hasOwnProperty.call(action.updates, 'scheduled_start_integer');
+      const hasScheduledEnd = Object.prototype.hasOwnProperty.call(action.updates, 'scheduled_end_integer');
       const moveChildIds = action.updates.move_child_ids as EntityId[] | undefined;
       let subtreeIds: string[];
       let detachChildIds: string[] = [];
@@ -676,6 +678,12 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
             ? action.updates.weight
             : current.weight,
           ...(nextThreadId === undefined ? {} : { thread_id: nextThreadId }),
+          ...(key === String(action.id) && hasScheduledStart
+            ? { scheduled_start: action.updates.scheduled_start_integer }
+            : {}),
+          ...(key === String(action.id) && hasScheduledEnd
+            ? { scheduled_end: action.updates.scheduled_end_integer }
+            : {}),
           ...(detachMovedRoot && key === String(action.id) ? { parent_id: null } : {}),
           ...(key === String(action.id) && Object.prototype.hasOwnProperty.call(action.updates, 'agent_id')
             ? {
@@ -718,6 +726,21 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
         ...state,
         lastThread_id: action.thread_id,
         activities,
+        blocks: hasScheduledStart || hasScheduledEnd
+          ? state.blocks.map(block => {
+            if (!block.scheduled || String(block.activity_id) !== String(action.id)) return block;
+            const updated = activities[String(action.id)];
+            const start = updated.scheduled_start ?? null;
+            const end = updated.scheduled_end ?? null;
+            const point = start === null && end !== null;
+            return {
+              ...block,
+              scheduledPoint: point,
+              startTime: start ?? end ?? block.startTime,
+              ...(end === null ? { endTime: undefined } : { endTime: end }),
+            };
+          })
+          : state.blocks,
         events,
       };
     }
@@ -893,6 +916,8 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
       };
 
     case BLOCK_HOVER:
+      if (state.hoveredBlockIndex == null && action.index == null) return state;
+      if (String(state.hoveredBlockIndex) === String(action.index)) return state;
       return {
         ...state,
         hoveredBlockIndex: action.index,

@@ -102,6 +102,57 @@ export function isVisible(
   );
 }
 
+/** Skip spans that cannot occupy a full CSS pixel at the current zoom. */
+export function isPaintableBlock(
+  block: Pick<TraceBlock, 'startTime' | 'endTime' | 'scheduledPoint'>,
+  leftBoundaryTime: number,
+  rightBoundaryTime: number,
+  canvasWidth: number,
+): boolean {
+  if (!(rightBoundaryTime > leftBoundaryTime) || !(canvasWidth > 0)) return false;
+  if (block.scheduledPoint) {
+    return block.startTime >= leftBoundaryTime && block.startTime <= rightBoundaryTime;
+  }
+  const start = Math.max(block.startTime, leftBoundaryTime);
+  const end = Math.min(block.endTime ?? rightBoundaryTime, rightBoundaryTime);
+  return (end - start) * canvasWidth >= rightBoundaryTime - leftBoundaryTime;
+}
+
+/** The viewport edge is the draggable end of a plan without an end time. */
+export function isOpenScheduledEndHandle(
+  block: Pick<TraceBlock, 'scheduled' | 'scheduledPoint' | 'endTime'>,
+  blockStartX: number,
+  mouseX: number,
+  canvasWidth: number,
+): boolean {
+  return Boolean(block.scheduled)
+    && !block.scheduledPoint
+    && block.endTime == null
+    && blockStartX <= canvasWidth - 12
+    && mouseX >= canvasWidth - 12
+    && mouseX <= canvasWidth;
+}
+
+export function shiftedScheduledActivity(
+  block: Pick<TraceBlock, 'startTime' | 'endTime' | 'scheduledPoint'>,
+  deltaTime: number,
+  threadId: EntityId,
+): Record<string, number | EntityId> {
+  if (block.scheduledPoint) {
+    return {
+      thread_id: threadId,
+      scheduled_end_integer: Math.floor((block.endTime ?? block.startTime) + deltaTime),
+    };
+  }
+  return {
+    thread_id: threadId,
+    scheduled_start_integer: Math.floor(block.startTime + deltaTime),
+    ...(block.endTime == null
+      ? {}
+      : { scheduled_end_integer: Math.floor(block.endTime + deltaTime) }),
+  };
+}
+
 export function visibleThreadLevels(
   blocks: TraceBlock[],
   activities: Record<string, TimelineActivity>,

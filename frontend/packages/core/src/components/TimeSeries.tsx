@@ -34,6 +34,61 @@ const CountsBar = styled.div<{ $hidden: boolean }>`
   visibility: ${({ $hidden }) => ($hidden ? 'hidden' : 'visible')};
 `;
 
+const Legend = styled.div`
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: calc(100% - 12px);
+  font: 11px sans-serif;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 6px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #333;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  button:hover, button:focus-visible {
+    background: #fff;
+  }
+`;
+
+const LegendPanel = styled.div`
+  position: absolute;
+  top: calc(100% + 3px);
+  right: 0;
+  box-sizing: border-box;
+  width: min(260px, calc(100vw - 24px));
+  max-height: 220px;
+  overflow: auto;
+  padding: 6px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+
+  header { margin-bottom: 3px; color: #555; font-weight: 600; }
+  div { display: flex; align-items: center; gap: 6px; min-height: 16px; }
+  span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+`;
+
+const LegendSwatch = styled.i<{ $color: string }>`
+  flex: 0 0 12px;
+  height: 0;
+  border-top: 2px solid ${({ $color }) => $color};
+`;
+
 interface Props {
   height?: string;
   mantras: Mantra[];
@@ -45,6 +100,7 @@ interface Props {
 }
 
 interface State {
+  openLegendKind: string | null;
   mouseIsOver: boolean;
   hoverWindowCount: number;
   hoverTabCount: number;
@@ -67,6 +123,7 @@ export class TimeSeries extends Component<Props, State> {
   observationSeries: ObservationSeries[] = [];
 
   state: State = {
+    openLegendKind: null,
     mouseIsOver: false,
     hoverWindowCount: 0,
     hoverTabCount: 0,
@@ -123,6 +180,12 @@ export class TimeSeries extends Component<Props, State> {
 
   render() {
     const pixelRatio = window.devicePixelRatio || 1;
+    const series = groupObservationSeries(this.props.observations);
+    const groups = [...new Set(series.map(item => item.kind))].map(kind => ({
+      kind,
+      series: series.filter(item => item.kind === kind),
+    }));
+    const openGroup = groups.find(group => group.kind === this.state.openLegendKind);
 
     return (
       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -153,6 +216,35 @@ export class TimeSeries extends Component<Props, State> {
             />
           )}
         </Measure>
+        {series.length > 0 && (
+          <Legend>
+            {groups.map(({ kind, series: items }) => (
+              <button
+                key={kind}
+                type="button"
+                aria-expanded={this.state.openLegendKind === kind}
+                aria-label={`${kind}: ${items.length} plotted series; ${this.state.openLegendKind === kind ? 'hide' : 'show'} legend`}
+                onClick={() => this.setState(({ openLegendKind }) => ({
+                  openLegendKind: openLegendKind === kind ? null : kind,
+                }))}
+              >
+                <LegendSwatch $color={items[0].color} />
+                {kind} {items.length > 1 ? items.length : ''} {this.state.openLegendKind === kind ? '▴' : '▾'}
+              </button>
+            ))}
+            {openGroup && (
+              <LegendPanel>
+                <header>{openGroup.kind}{openGroup.series[0].unit ? ` (${openGroup.series[0].unit})` : ''}</header>
+                {openGroup.series.map(item => (
+                  <div key={item.key} title={item.label}>
+                    <LegendSwatch $color={item.color} />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </LegendPanel>
+            )}
+          </Legend>
+        )}
         <CountsBar $hidden={!this.state.mouseIsOver}>
           <div style={{ color: windowColor }}>
             windows: {this.state.hoverWindowCount}
@@ -430,11 +522,6 @@ export class TimeSeries extends Component<Props, State> {
       paintLabel(formatObservationValue(tick), labelX, y);
     });
 
-    const heading = series.unit ? `${series.kind} (${series.unit})` : series.kind;
-    const headingText = trimTextMiddle(ctx, heading, Math.min(240, this.width / 2));
-    const headingWidth = ctx.measureText(headingText).width;
-    ctx.textBaseline = 'middle';
-    paintLabel(headingText, Math.max(labelX, this.width - headingWidth - 10), 10);
     ctx.restore();
   }
 

@@ -39,6 +39,7 @@ import {
   toggleKeyboardShortcuts,
   toggleSetting,
   undoLastCommand,
+  updateActivity,
 } from '../actions';
 import { formatShortcut, isKeyboardShortcutsHotkey } from '../utilities/keyboardShortcuts';
 import { isShortcutBlockedByTextEntry } from '../utilities/swyzzleIdle';
@@ -120,6 +121,7 @@ interface AppProps {
   threads: Record<string, Thread>;
   toggleActivityMute: () => unknown;
   undoLastCommand: () => unknown;
+  updateActivity: (id: EntityId, updates: Record<string, unknown>) => unknown;
   trace: Trace | null;
   user: UserState;
   view: string;
@@ -134,6 +136,8 @@ interface AppState {
 }
 
 class App extends React.Component<AppProps, AppState> {
+  timelineCursorTime: number | null = null;
+
   state: AppState = {
     // modalIsOpen,
     searchBarVisible: false,
@@ -228,6 +232,7 @@ class App extends React.Component<AppProps, AppState> {
         /* ⚠️ I don't like this api too much. Should mabye use context? */
         addCommand={this.addCommand}
         submitCommand={this.submitCommand}
+        onCursorTimeChange={time => { this.timelineCursorTime = time; }}
       />
     ) : null;
   };
@@ -348,6 +353,18 @@ class App extends React.Component<AppProps, AppState> {
                       const activity = activityId === undefined
                         ? undefined
                         : this.props.activities[String(activityId)];
+                      if (e.key === 'e' && activity?.status === 'unstarted'
+                        && activity.scheduled_start != null) {
+                        const end = this.timelineCursorTime;
+                        if (end == null || !Number.isFinite(end)) {
+                          this.props.createToast('Move the cursor over the timeline to choose an end time.', 'error');
+                        } else if (end < activity.scheduled_start) {
+                          this.props.createToast('The scheduled end must be after the scheduled start.', 'error');
+                        } else {
+                          this.props.updateActivity(activity.id, { scheduled_end_integer: Math.floor(end) });
+                        }
+                        break;
+                      }
                       if (activity &&
                         isEndable(
                           activity,
@@ -541,6 +558,8 @@ const ConnectedTrace = connect(
       toggleKeyboardShortcuts: () => dispatch(toggleKeyboardShortcuts()),
       toggleActivityMute: () => dispatch(toggleSetting('activityMute')),
       undoLastCommand: () => dispatch(undoLastCommand()),
+      updateActivity: (id: EntityId, updates: Record<string, unknown>) =>
+        dispatch(updateActivity(id, updates)),
     }),
 )(App);
 
