@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flambe",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Track substantial work as a live Flambe call stack and coordinate scope through the Reducer Agent.",
   "author": {
     "name": "David Baker",
@@ -85,10 +85,13 @@
               "prompt": "What is the weather in Denver today?"
             }
           ]
-        }
+        },
+        "commerce": false,
+        "commerce_description": "Flambé does not sell products or services, initiate purchases, or process payments through the plugin."
       },
       "publication": {
-        "release_notes": "Initial public Flambé plugin release with the bundled call-stack skill, OAuth-authenticated MCP tools, trace discovery, lifecycle actions, planning, reducer messaging, and public-review metadata."
+        "release_notes": "Initial public Flambé plugin release with the bundled call-stack skill, OAuth-authenticated MCP tools, trace discovery, lifecycle actions, planning, reducer messaging, and public-review metadata.",
+        "countries": []
       }
     }
   }
