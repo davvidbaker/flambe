@@ -41,4 +41,11 @@ describe('zoom function', () => {
     expect(rightBoundaryTime).toBeGreaterThan(oldRightBoundaryTime);
     expect(rightBoundaryTime).toBeGreaterThan(leftBoundaryTime);
   });
+
+  it('can zoom out beyond the first activity', () => {
+    const { leftBoundaryTime } = zoom(
+      120, 50, 1_500, 1_000, 2_000, 100, Date.now(), Number.NEGATIVE_INFINITY,
+    );
+    expect(leftBoundaryTime).toBeLessThan(1_000);
+  });
 });

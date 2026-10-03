@@ -35,6 +35,34 @@ describe('activity category_ids', () => {
   });
 });
 
+describe('scheduled activity updates', () => {
+  it('moves the rendered block immediately with its optimistic activity update', () => {
+    const current = activity({ id: 7, status: 'unstarted', thread_id: 1, scheduled_start: 100, scheduled_end: 200 });
+    const state = {
+      ...stateWithActivity(current),
+      blocks: [{ activity_id: 7, beginning: 'B' as const, events: [], level: 0, scheduled: true, startTime: 100, endTime: 200 }],
+    };
+    const next = timeline(state, updateActivity(7, {
+      thread_id: 2,
+      scheduled_start_integer: 150,
+      scheduled_end_integer: 250,
+    }));
+    expect(next.activities['7']).toMatchObject({ thread_id: 2, scheduled_start: 150, scheduled_end: 250 });
+    expect(next.blocks[0]).toMatchObject({ startTime: 150, endTime: 250 });
+  });
+
+  it('sets the end of an open scheduled block without flashing back to an open span', () => {
+    const current = activity({ id: 7, status: 'unstarted', scheduled_start: 100, scheduled_end: null });
+    const state = {
+      ...stateWithActivity(current),
+      blocks: [{ activity_id: 7, beginning: 'B' as const, events: [], level: 0, scheduled: true, startTime: 100 }],
+    };
+    const next = timeline(state, updateActivity(7, { scheduled_end_integer: 200 }));
+    expect(next.activities['7'].scheduled_end).toBe(200);
+    expect(next.blocks[0].endTime).toBe(200);
+  });
+});
+
 describe('activity agent_id', () => {
   it('assigns an agent without touching other activities', () => {
     const current = activity({ id: 7, agent_id: null, agent_name: null });

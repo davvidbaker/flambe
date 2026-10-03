@@ -1,9 +1,12 @@
 import {
   getBlockTransform,
   insetBlockHeight,
+  isOpenScheduledEndHandle,
+  isPaintableBlock,
   isVisible,
   pixelsToTime,
   rankThreadsByAttention,
+  shiftedScheduledActivity,
   sortThreadsByRank,
   timeToPixels,
   visibleThreadLevels,
@@ -37,6 +40,36 @@ describe('timeline geometry', () => {
     expect(visibleThreadLevels([block], { 4: { thread_id: 2 } }, 100, 200, { 2: { id: 2 } })).toEqual({
       2: { current: 2, max: 3 },
     });
+  });
+
+  it('omits subpixel spans while retaining scheduled point markers', () => {
+    const span = { startTime: 100, endTime: 100.5 };
+    expect(isPaintableBlock(span, 0, 1000, 100)).toBe(false);
+    expect(isPaintableBlock(span, 100, 110, 100)).toBe(true);
+    expect(isPaintableBlock({ ...span, scheduledPoint: true }, 0, 1000, 100)).toBe(true);
+    expect(isPaintableBlock({ startTime: -10, endTime: 10 }, 0, 1000, 100)).toBe(true);
+  });
+
+  it('uses the viewport edge as the end handle for an open scheduled span', () => {
+    const plan = { scheduled: true, endTime: undefined };
+    expect(isOpenScheduledEndHandle(plan, 40, 95, 100)).toBe(true);
+    expect(isOpenScheduledEndHandle(plan, 40, 80, 100)).toBe(false);
+    expect(isOpenScheduledEndHandle({ ...plan, endTime: 90 }, 40, 95, 100)).toBe(false);
+    expect(isOpenScheduledEndHandle({ ...plan, scheduledPoint: true }, 40, 95, 100)).toBe(false);
+  });
+
+  it('moves scheduled spans together and keeps end-only plans as points', () => {
+    expect(shiftedScheduledActivity({ startTime: 100, endTime: 200 }, 25, 4)).toEqual({
+      thread_id: 4,
+      scheduled_start_integer: 125,
+      scheduled_end_integer: 225,
+    });
+    expect(shiftedScheduledActivity({ startTime: 100 }, 25, 4)).toEqual({
+      thread_id: 4,
+      scheduled_start_integer: 125,
+    });
+    expect(shiftedScheduledActivity({ startTime: 100, endTime: 100, scheduledPoint: true }, 25, 4))
+      .toEqual({ thread_id: 4, scheduled_end_integer: 125 });
   });
 
   it('orders threads by their most recent attention shift', () => {

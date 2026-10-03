@@ -124,6 +124,7 @@ export interface TimelineProps {
   focusedBlockIndex?: number | null;
   hoverBlock: (index: number | string | null) => unknown;
   hoveredBlockIndex?: number | null;
+  onCursorTimeChange?: (time: number | null) => void;
   showActivityDetails: () => unknown;
   leftBoundaryTimeOverride?: number;
   mantras: Mantra[];
@@ -845,7 +846,8 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       this.rightBoundaryTime,
       canvasWidth,
       Date.now(),
-      this.props.minTime ?? 0,
+      // The first activity determines the initial view, not the earliest navigable time.
+      Number.NEGATIVE_INFINITY,
     );
 
     this.setTimelineState({
@@ -869,7 +871,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       canvasWidth,
       this.topOffset,
       Date.now(),
-      this.props.minTime ?? 0,
+      Number.NEGATIVE_INFINITY,
       maxTopOffset,
     );
 
@@ -993,6 +995,8 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
                             focusBlock={props.focusBlock}
                             focusedBlockIndex={props.focusedBlockIndex}
                             hoveredBlockIndex={props.hoveredBlockIndex}
+                            onPreviewGeometryChange={() => this.focusedBlock.current?.forceUpdate()}
+                            onCursorTimeChange={props.onCursorTimeChange}
                             threads={threads}
                             toggleThread={props.toggleThread}
                             topOffset={this.topOffset || 0}
@@ -1012,7 +1016,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
             'keyup',
             ((event: Event) => {
               const e = event as KeyboardEvent;
-              if (!isShortcutBlockedByTextEntry(e)) {
+              if (!e.metaKey && !e.ctrlKey && !e.altKey && !isShortcutBlockedByTextEntry(e)) {
                 if (this.state.composingZoomChord) {
                   this.clearZoomChordTimeout();
                   if (this.state.zoomChord.length === 0) {

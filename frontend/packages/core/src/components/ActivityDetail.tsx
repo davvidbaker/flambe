@@ -24,6 +24,7 @@ import type { ProcessedActivity, TraceBlock } from '../utilities/processTrace';
 import { activityCommandsByStatus, type Command } from '../constants/commands';
 import { actorName } from '../utilities/actorFlames';
 import { activityAgentChoices } from '../utilities/activityAgents';
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../utilities/timelineViewport';
 
 import ActivityEventFlow from './ActivityEventFlow';
 import CategoryChip from './CategoryChip';
@@ -171,6 +172,71 @@ const MoveActions = styled.div`
   gap: 8px;
   justify-content: flex-end;
 `;
+
+const ScheduleControls = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+
+  input { font: inherit; min-width: 0; }
+  button { font: inherit; }
+`;
+
+function ScheduledEndField({
+  activity,
+  updateActivity,
+}: {
+  activity: ProcessedActivity;
+  updateActivity: ActivityDetailProps['updateActivity'];
+}) {
+  const [endValue, setEndValue] = React.useState(
+    activity.scheduled_end == null ? '' : toDatetimeLocalValue(activity.scheduled_end),
+  );
+  React.useEffect(() => {
+    setEndValue(activity.scheduled_end == null ? '' : toDatetimeLocalValue(activity.scheduled_end));
+  }, [activity.id, activity.scheduled_end]);
+
+  const start = activity.scheduled_start!;
+  const end = fromDatetimeLocalValue(endValue);
+  const validEnd = end !== null && end >= start;
+
+  return (
+    <Field>
+      <FieldLabel>Scheduled end</FieldLabel>
+      <FieldBody>
+        <ScheduleControls>
+          <input
+            type="datetime-local"
+            step="1"
+            aria-label="Scheduled end"
+            min={toDatetimeLocalValue(start)}
+            value={endValue}
+            onChange={event => setEndValue(event.target.value)}
+          />
+          <Button
+            looksLikeButton
+            disabled={!validEnd || end === activity.scheduled_end}
+            onClick={() => {
+              if (validEnd) updateActivity(activity.id, { scheduled_end_integer: end });
+            }}
+          >
+            Save end
+          </Button>
+          {activity.scheduled_end != null && (
+            <Button
+              looksLikeButton
+              onClick={() => updateActivity(activity.id, { scheduled_end_integer: null })}
+            >
+              Clear end
+            </Button>
+          )}
+        </ScheduleControls>
+        {endValue && !validEnd && <FieldHint>End must be at or after the scheduled start.</FieldHint>}
+      </FieldBody>
+    </Field>
+  );
+}
 
 export interface ActivityDetailProps {
   activities: Record<string, ProcessedActivity>;
@@ -425,6 +491,9 @@ const ActivityDetail = (props: ActivityDetailProps) => {
           </ManageRow>
         </FieldBody>
       </Field>
+      {activity.status === 'unstarted' && activity.scheduled_start != null && (
+        <ScheduledEndField activity={activity} updateActivity={updateActivity} />
+      )}
       <div>
         Description:
         <InputFromButton

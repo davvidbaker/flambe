@@ -29,4 +29,10 @@ describe('pan', () => {
     expect(pan(0, 50, 0, 1000, 100, 80, now, minTime, 100).topOffset).toBe(100);
     expect(pan(0, -50, 0, 1000, 100, 10, now, minTime, 100).topOffset).toBe(0);
   });
+
+  it('can move the viewport earlier than the first activity', () => {
+    const next = pan(-100, 0, 1_000, 2_000, 100, 0, now, Number.NEGATIVE_INFINITY);
+    expect(next.leftBoundaryTime).toBe(0);
+    expect(next.rightBoundaryTime).toBe(1_000);
+  });
 });
