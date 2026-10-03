@@ -19,7 +19,7 @@ defmodule Mix.Tasks.FlambeNext.ProvisionPluginReviewer do
 
     password =
       System.get_env("FLAMBE_PLUGIN_REVIEWER_PASSWORD")
-      |> present!('FLAMBE_PLUGIN_REVIEWER_PASSWORD')
+      |> present!("FLAMBE_PLUGIN_REVIEWER_PASSWORD")
 
     Mix.Task.run("app.start")
 
