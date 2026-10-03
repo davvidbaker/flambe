@@ -182,6 +182,29 @@ defmodule FlambeNextWeb.OAuthControllerTest do
     assert activity.agent_id == "chatgpt:test-session"
   end
 
+
+  test "serves the OpenAI Apps challenge as plain text", %{conn: conn} do
+    previous = System.get_env("OPENAI_APPS_CHALLENGE_TOKEN")
+    System.put_env("OPENAI_APPS_CHALLENGE_TOKEN", "challenge-token")
+
+    on_exit(fn ->
+      if previous do
+        System.put_env("OPENAI_APPS_CHALLENGE_TOKEN", previous)
+      else
+        System.delete_env("OPENAI_APPS_CHALLENGE_TOKEN")
+      end
+    end)
+
+    response =
+      conn
+      |> put_req_header("accept", "text/plain")
+      |> get(~p"/.well-known/openai-apps-challenge")
+
+    assert response.status == 200
+    assert get_resp_header(response, "content-type") |> List.first() =~ "text/plain"
+    assert response.resp_body == "challenge-token"
+  end
+
   test "MCP authentication challenge points ChatGPT at protected resource metadata", %{conn: conn} do
     response =
       conn
