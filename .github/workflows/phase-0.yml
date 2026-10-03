@@ -243,7 +243,7 @@ jobs:
     name: CI
     runs-on: ubuntu-latest
     needs: [changes, backend, cli, browser-smoke, prod-mode-smoke]
-    if: always()
+    if: ${{ always() && !cancelled() }}
     steps:
       - name: Require each job to succeed or skip
         env:
