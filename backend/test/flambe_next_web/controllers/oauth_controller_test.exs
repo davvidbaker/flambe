@@ -35,7 +35,7 @@ defmodule FlambeNextWeb.OAuthControllerTest do
         credentials: [%{email: "plugin@example.com", password: "password123"}]
       })
 
-    {:ok, _trace} = Traces.create_trace(user, %{name: "Plugin trace"})
+    {:ok, trace} = Traces.create_trace(user, %{name: "Plugin trace"})
 
     verifier = String.duplicate("v", 48)
 
@@ -113,6 +113,70 @@ defmodule FlambeNextWeb.OAuthControllerTest do
                "serverInfo" => %{"name" => "flambe"}
              }
            } = json_response(mcp, 200)
+
+
+    traces_call =
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> token_response["access_token"])
+      |> put_req_header("accept", "application/json, text/event-stream")
+      |> put_req_header("content-type", "application/json")
+      |> post(
+        "/mcp",
+        Jason.encode!(%{
+          "jsonrpc" => "2.0",
+          "id" => 2,
+          "method" => "tools/call",
+          "params" => %{"name" => "flambe_traces", "arguments" => %{}}
+        })
+      )
+
+    assert %{
+             "result" => %{
+               "isError" => false,
+               "structuredContent" => %{
+                 "default_trace_id" => default_trace_id,
+                 "traces" => traces
+               }
+             }
+           } = json_response(traces_call, 200)
+
+    assert default_trace_id == trace.id
+    assert Enum.any?(traces, &(&1["id"] == trace.id and &1["name"] == "Plugin trace"))
+
+    start_call =
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> token_response["access_token"])
+      |> put_req_header("accept", "application/json, text/event-stream")
+      |> put_req_header("content-type", "application/json")
+      |> post(
+        "/mcp",
+        Jason.encode!(%{
+          "jsonrpc" => "2.0",
+          "id" => 3,
+          "method" => "tools/call",
+          "params" => %{
+            "name" => "flambe_start",
+            "arguments" => %{
+              "trace_id" => trace.id,
+              "name" => "Started through OAuth MCP",
+              "parent_id" => nil,
+              "agent_id" => "chatgpt:test-session",
+              "platform" => "ChatGPT"
+            }
+          }
+        })
+      )
+
+    assert %{
+             "result" => %{
+               "isError" => false,
+               "structuredContent" => %{"activity_id" => activity_id}
+             }
+           } = json_response(start_call, 200)
+
+    activity = Traces.get_user_activity!(user, activity_id)
+    assert activity.name == "Started through OAuth MCP"
+    assert activity.agent_id == "chatgpt:test-session"
   end
 
   test "MCP authentication challenge points ChatGPT at protected resource metadata", %{conn: conn} do
