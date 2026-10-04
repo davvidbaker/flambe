@@ -51,6 +51,14 @@ const Actions = styled.div`
   }
 `;
 
+const MobileDismiss = styled(Button)`
+  display: none;
+
+  @media (max-width: 640px) {
+    display: inline-flex;
+  }
+`;
+
 const Field = styled.div`
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr);
@@ -585,6 +593,13 @@ const ActivityDetail = (props: ActivityDetailProps) => {
                 </Button>
               ),
           )}
+        <MobileDismiss
+          looksLikeButton
+          data-mobile-dismiss="true"
+          onClick={hideActivityDetailModal}
+        >
+          close
+        </MobileDismiss>
       </Actions>
       <AppModal
         isOpen={pendingMove !== null}
