@@ -1,5 +1,6 @@
 import * as React from 'react';
 import tinycolor from 'tinycolor2';
+import styled from 'styled-components';
 import { hexHalfWidth, hexPlacements, limboItems } from '../utilities/limbo';
 import { threadEmojiLabel } from '../utilities/threadEmoji';
 import type { ProcessedActivity } from '../utilities/processTrace';
@@ -33,6 +34,50 @@ const FALLBACK_FILL = '#c47b2b';
 const TIMELINE_FALLBACK_FILL = '#efc360';
 const PADDING = 12;
 const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
+
+const LimboLayout = styled.div`
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  background: ${BACKGROUND};
+  color: ${TEXT};
+  overflow: hidden;
+  font-family: sans-serif;
+  touch-action: pan-x pan-y;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+  }
+`;
+
+const LimboField = styled.div`
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+
+  @media (max-width: 640px) {
+    width: 100%;
+  }
+`;
+
+const LimboSidebar = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  flex: none;
+  border-left: 1px solid ${BORDER};
+  background: ${SURFACE};
+  min-height: 0;
+
+  @media (max-width: 640px) {
+    width: 100%;
+    max-height: 44%;
+    border-left: 0;
+    border-top: 1px solid ${BORDER};
+  }
+`;
 
 function swatch(activity: ProcessedActivity, categories: Category[]) {
   const category = categories.find(entry => String(entry.id) === String(activity.categories?.[0]));
@@ -466,31 +511,13 @@ function LimboPane({
   }
 
   return (
-    <div
+    <LimboLayout
       aria-label="Limbo"
       data-native-scroll="true"
-      style={{
-        display: 'flex',
-        flexDirection: 'row',
-        height: '100%',
-        background: BACKGROUND,
-        color: TEXT,
-        overflow: 'hidden',
-        fontFamily: 'sans-serif',
-        // Keep browser scrolling here; the parent timeline surface uses touch-action: none.
-        touchAction: 'pan-x pan-y',
-      }}
     >
-      <div
+      <LimboField
         role="img"
         aria-label="Limbo hex field"
-        style={{
-          display: 'flex',
-          flex: 1,
-          minWidth: 0,
-          height: '100%',
-          overflow: 'auto',
-        }}
       >
         {placed.length > 0 && (
           <div
@@ -588,19 +615,9 @@ function LimboPane({
             Set a weight on the list to grow the hex field.
           </p>
         )}
-      </div>
+      </LimboField>
       {(plain.length > 0 || planInLimbo || onToggleCollapsed) && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            width: 280,
-            flex: 'none',
-            borderLeft: `1px solid ${BORDER}`,
-            background: SURFACE,
-            minHeight: 0,
-          }}
-        >
+        <LimboSidebar>
           {(planInLimbo || onToggleCollapsed) && (
             <div
               style={{
@@ -754,9 +771,9 @@ function LimboPane({
               })}
             </ul>
           )}
-        </div>
+        </LimboSidebar>
       )}
-    </div>
+    </LimboLayout>
   );
 }
 
