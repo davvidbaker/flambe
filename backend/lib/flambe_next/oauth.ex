@@ -30,6 +30,7 @@ defmodule FlambeNext.OAuth do
       response_types_supported: ["code"],
       grant_types_supported: ["authorization_code"],
       code_challenge_methods_supported: ["S256"],
+      client_id_metadata_document_supported: true,
       token_endpoint_auth_methods_supported: ["none"],
       scopes_supported: scopes(),
       authorization_response_iss_parameter_supported: true
