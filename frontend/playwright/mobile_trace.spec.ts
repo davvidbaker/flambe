@@ -367,10 +367,15 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   await body.evaluate(el => {
     el.scrollTop = el.scrollHeight;
   });
+  const mobileDismiss = dialog.locator('[data-mobile-dismiss="true"]');
+  await expect(mobileDismiss).toBeVisible();
+  await expect(mobileDismiss).toBeInViewport();
+
   const close = dialog.getByTitle('close');
   await expect(close).toBeVisible();
   await expect(close).toBeInViewport();
-  await close.click();
+
+  await mobileDismiss.click();
   await expect(detail).toHaveCount(0);
 });
 
