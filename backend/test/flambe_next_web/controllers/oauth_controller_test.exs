@@ -24,6 +24,7 @@ defmodule FlambeNextWeb.OAuthControllerTest do
     assert authorization["authorization_endpoint"] == OAuth.issuer() <> "/oauth/authorize"
     assert authorization["token_endpoint"] == OAuth.issuer() <> "/oauth/token"
     assert authorization["code_challenge_methods_supported"] == ["S256"]
+    assert authorization["client_id_metadata_document_supported"] == true
     assert authorization["authorization_response_iss_parameter_supported"]
   end
 
