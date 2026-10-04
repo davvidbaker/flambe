@@ -169,6 +169,7 @@ seconds (outlined / orange / blue sparkling flame) over one SSE connection to
 |-----|------------|
 | [Host your own instance](docs/SELF_HOSTING.md) | Fly / Docker production |
 | [Product principles](docs/PRODUCT_PRINCIPLES.md) | What Flambé owns vs agent runtimes |
+| [Glossary](GLOSSARY.md) | Shared product and call-stack vocabulary |
 | [Docs index](docs/README.md) | ADRs, local database, release checklist |
 
 ## License
