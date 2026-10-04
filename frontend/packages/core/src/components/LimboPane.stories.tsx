@@ -141,3 +141,24 @@ export const OnlyUnweighted: Story = {
 };
 
 export const Empty: Story = {};
+
+
+/** Phone-width layout keeps the hex field usable and moves the list below it. */
+export const Mobile: Story = {
+  args: {
+    activities: byId([
+      item(1, 'Fix mobile experience', 'unstarted', { category: 1, weight: 8 }),
+      item(2, 'Another weighted idea', 'suspended', { category: 2, weight: 4 }),
+      item(3, 'Maybe later', 'unstarted', { category: 3 }),
+      item(4, 'Touch up scratch on rear', 'suspended', { category: 4, threadId: 2 }),
+    ]),
+    planInLimbo: () => undefined,
+  },
+  decorators: [
+    Story => (
+      <div style={{ width: 390, height: 360 }}>
+        <Story />
+      </div>
+    ),
+  ],
+};
