@@ -1,0 +1,38 @@
+{
+  "name": "@davvidbaker/flambe-single-burner",
+  "version": "0.1.0",
+  "description": "Self-contained local Flambé with SQLite and a bundled UI",
+  "type": "module",
+  "bin": {
+    "flambe-single-burner": "./bin/flambe-single-burner.mjs"
+  },
+  "files": [
+    "bin",
+    "static",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "prepare:static": "node scripts/prepare-static.mjs",
+    "prepack": "npm --prefix ../frontend ci && npm --prefix ../frontend run build:local && npm run prepare:static && npm test"
+  },
+  "dependencies": {
+    "@davvidbaker/flambe-cli": "0.1.1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davvidbaker/flambe.git",
+    "directory": "single-burner"
+  },
+  "homepage": "https://github.com/davvidbaker/flambe/tree/main/single-burner",
+  "bugs": {
+    "url": "https://github.com/davvidbaker/flambe/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
