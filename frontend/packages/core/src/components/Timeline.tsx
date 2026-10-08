@@ -67,7 +67,7 @@ const ABSOLUTE_MIN_GRID_SLICE_PX = 100;
 const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
 const limboCollapsedStorageKey = 'flambe.limbo.collapsed.v1';
 const isValidTime = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value) && value > 0;
+  typeof value === 'number' && Number.isFinite(value);
 
 function readLocalStorage(key: string): string | null {
   if (typeof window === 'undefined') return null;

@@ -12,5 +12,12 @@
     "deploymentEnabled": {
       "gh-pages": false
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/storybook",
+      "destination": "/storybook/",
+      "permanent": false
+    }
+  ]
 }
