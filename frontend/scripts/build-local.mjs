@@ -1,10 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-// A saved .env.local may target production. A local build always uses its own origin.
+// Single Burner needs a self-contained build rooted at its own HTTP origin.
+// Use a dedicated Vite mode so the normal Phoenix production asset layout is
+// left untouched while local packaging can emit a root-relative SPA.
 const result = spawnSync(process.execPath, [
   fileURLToPath(new URL('../node_modules/vite/bin/vite.js', import.meta.url)),
-  'build', '--config', 'vite.config.mjs',
+  'build', '--mode', 'local', '--config', 'vite.config.mjs',
 ], {
   cwd: fileURLToPath(new URL('..', import.meta.url)),
   env: { ...process.env, VITE_API_URL: '', VITE_SOCKET_URL: '' },

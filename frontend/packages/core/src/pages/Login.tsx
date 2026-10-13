@@ -1,26 +1,23 @@
-import React, { useState, type FormEvent } from 'react';
+import React, { useEffect, useState, type FormEvent } from 'react';
 
 import AuthShell, { AuthForm, AuthLogoWrap } from '../components/AuthShell';
 import Logo from '../components/Logo/src';
 
+const isSingleBurner = import.meta.env.MODE === 'local';
+
 const Login = () => {
   const [error, setError] = useState<string | null>(null);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
+  const finishLogin = async (credentials: Record<string, FormDataEntryValue | null> = {}) => {
     const response = await fetch(`${SERVER}/auth/identity/callback`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        email: form.get('email'),
-        password: form.get('password'),
-      }),
+      body: JSON.stringify(credentials),
     });
 
     if (!response.ok) {
-      setError('That email and password do not match.');
+      setError(isSingleBurner ? 'Unable to start Single Burner.' : 'That email and password do not match.');
       return;
     }
 
@@ -31,6 +28,31 @@ const Login = () => {
     localStorage.setItem('state', JSON.stringify({ ...existing, user: { ...existing.user, ...data }, loggedIn: true }));
     window.location.assign(data.trace_id ? `/${data.username}/traces/${data.trace_id}` : `/${data.username}`);
   };
+
+  useEffect(() => {
+    if (isSingleBurner) void finishLogin();
+  }, []);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await finishLogin({
+      email: form.get('email'),
+      password: form.get('password'),
+    });
+  };
+
+  if (isSingleBurner) {
+    return (
+      <AuthShell>
+        <AuthLogoWrap>
+          <Logo isAnimated size={90} />
+        </AuthLogoWrap>
+        <h1>Lighting Single Burner…</h1>
+        {error && <p>{error}</p>}
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell>
