@@ -40,7 +40,8 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_URL || 'http://127.0.0.1:4001';
   const socketTarget = env.VITE_SOCKET_URL || apiTarget;
   const useDevProxy = mode === 'development';
-  const phoenixStaticDir = '../backend/priv/static/assets';
+  const isLocalBuild = mode === 'local';
+  const phoenixStaticDir = isLocalBuild ? '../backend/priv/static' : '../backend/priv/static/assets';
 
   return {
     plugins: [
@@ -99,14 +100,14 @@ export default defineConfig(({ mode }) => {
       // rather than leaking that separate origin into legacy API call sites.
       SERVER: JSON.stringify(useDevProxy ? '' : env.VITE_API_URL || ''),
       SOCKET_SERVER: JSON.stringify(useDevProxy ? '' : env.VITE_SOCKET_URL || ''),
-      NODE_ENV: JSON.stringify(mode),
+      NODE_ENV: JSON.stringify(isLocalBuild ? 'production' : mode),
       FLAMBE_ASSET_SHA: JSON.stringify(
         process.env.VITE_GIT_SHA || process.env.GIT_SHA || env.VITE_GIT_SHA || 'unknown',
       ),
     },
-    // Phoenix serves the Vite output directory at /assets. Keep generated
-    // files directly in that directory so URLs and on-disk paths match.
-    base: mode === 'production' ? '/assets/' : '/',
+    // Hosted Phoenix serves its Vite output at /assets. Single Burner instead
+    // owns the whole origin, so emit and reference the SPA from the static root.
+    base: isLocalBuild ? '/' : mode === 'production' ? '/assets/' : '/',
     // Keep dependency discovery deterministic for this restored workspace.
     optimizeDeps: {
       include: [
