@@ -14,7 +14,7 @@
   "scripts": {
     "test": "node --test",
     "prepare:static": "node scripts/prepare-static.mjs",
-    "prepack": "npm --prefix ../frontend ci --include=dev && npm --prefix ../frontend run build:local && npm run prepare:static && npm test"
+    "prepack": "npm --prefix ../frontend ci --include=dev --dry-run=false && npm --prefix ../frontend run build:local && npm run prepare:static && npm test"
   },
   "dependencies": {
     "@davvidbaker/flambe-cli": "0.1.2"
