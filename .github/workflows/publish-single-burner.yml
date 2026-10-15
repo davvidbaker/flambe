@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'single-burner/package.json'
+      - '.github/workflows/publish-single-burner.yml'
 
 permissions:
   contents: read
