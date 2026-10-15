@@ -4,10 +4,9 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  listenLocal,
-  printServeBanner,
-} from '@davvidbaker/flambe-cli/src/local/serve.mjs';
+import { listenLocal } from '@davvidbaker/flambe-cli/src/local/serve.mjs';
+
+import { printStartup } from './startup.mjs';
 
 const usage = `Flambé Single Burner
 
@@ -70,7 +69,7 @@ try {
     dbPath: options.dbPath,
     staticDir,
   });
-  printServeBanner(result);
+  printStartup(result);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
