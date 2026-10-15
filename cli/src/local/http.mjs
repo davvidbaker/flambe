@@ -397,7 +397,8 @@ function isoNow() {
 function tryStatic(staticDir, urlPath, res) {
   if (!staticDir) return false;
   const root = resolve(staticDir);
-  const indexPath = join(root, 'assets', 'index.html');
+  const rootIndex = join(root, 'index.html');
+  const indexPath = existsSync(rootIndex) ? rootIndex : join(root, 'assets', 'index.html');
   const requested = urlPath === '/' || !urlPath.includes('.')
     ? indexPath
     : join(root, urlPath.replace(/^\//, ''));
