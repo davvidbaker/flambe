@@ -24,7 +24,27 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - run: npm install
-      - run: npm pack --dry-run
+
+      - name: Read package version
+        id: package
+        run: |
+          echo "name=$(node -p \"require('./package.json').name\")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this version is already published
+        id: published
+        run: |
+          if npm view "${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }} is already published; nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.published.outputs.exists != 'true'
+        run: npm install
+      - if: steps.published.outputs.exists != 'true'
+        run: npm pack --dry-run
       - name: Publish to npm with trusted publishing
+        if: steps.published.outputs.exists != 'true'
         run: npm publish --access public
