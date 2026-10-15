@@ -246,7 +246,9 @@ export class LocalStore {
     const events = this.db.prepare(`
       SELECT events.*, activities.name AS activity_name, activities.parent_id,
         activities.thread_id, activities.weight, activities.agent_id, activities.agent_name,
-        activities.description AS activity_description
+        activities.description AS activity_description,
+        activities.scheduled_start_ms, activities.scheduled_end_ms,
+        activities.proposed_by_agent_id, activities.proposed_by_agent_name
       FROM events
       LEFT JOIN activities ON activities.id = events.activity_id
       WHERE events.trace_id = ?
@@ -258,6 +260,7 @@ export class LocalStore {
       name: trace.name,
       threads: threads.map(thread => ({ id: thread.id, name: thread.name, rank: thread.rank })),
       events: events.map(event => this.#eventPayload(event)),
+      unstarted: this.listUnstarted(trace.id).map(activity => this.#traceActivityPayload(activity)),
     };
   }
 
@@ -437,7 +440,19 @@ export class LocalStore {
    * rules apply: an absent parent_id infers this agent's newest active activity, a child
    * lives in its parent's thread and inherits categories, and thread_id may be omitted.
    */
-  createActivity(userId, { traceId, threadId, activity, event, agent, reduce = false }) {
+  createActivity(userId, options) {
+    this.db.exec('SAVEPOINT create_activity');
+    try {
+      const result = this.#createActivity(userId, options);
+      this.db.exec('RELEASE create_activity');
+      return result;
+    } catch (error) {
+      this.db.exec('ROLLBACK TO create_activity; RELEASE create_activity');
+      throw error;
+    }
+  }
+
+  #createActivity(userId, { traceId, threadId, activity, event, agent, reduce = false }) {
     const trace = this.db.prepare('SELECT id FROM traces WHERE id = ? AND user_id = ?').get(Number(traceId), userId);
     if (!trace) return { error: 'not_found' };
 
@@ -507,8 +522,8 @@ export class LocalStore {
       activity.weight ?? null,
       agentColumns.agent_id,
       agentColumns.agent_name,
-      activity.scheduled_start_ms ?? null,
-      activity.scheduled_end_ms ?? null,
+      activity.scheduled_start_integer ?? activity.scheduled_start_ms ?? null,
+      activity.scheduled_end_integer ?? activity.scheduled_end_ms ?? null,
       activity.proposed_by_agent_id ?? agentColumns.agent_id,
       activity.proposed_by_agent_name ?? agentColumns.agent_name,
       randomUUID(),
@@ -520,11 +535,15 @@ export class LocalStore {
       ).run(activityId, categoryId);
     }
 
-    const timestamp = Number(event.timestamp_integer);
-    const eventRow = this.db.prepare(`
-      INSERT INTO events (trace_id, activity_id, timestamp_ms, phase, message, export_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(thread.trace_id, activityId, timestamp, event.phase, event.message ?? null, randomUUID());
+    let createdEvent = null;
+    if (event) {
+      const timestamp = Number(event.timestamp_integer);
+      const eventRow = this.db.prepare(`
+        INSERT INTO events (trace_id, activity_id, timestamp_ms, phase, message, export_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(thread.trace_id, activityId, timestamp, event.phase, event.message ?? null, randomUUID());
+      createdEvent = { id: Number(eventRow.lastInsertRowid), phase: event.phase };
+    }
 
     return {
       activity: {
@@ -535,7 +554,7 @@ export class LocalStore {
         parent_id: parentId,
         thread_id: thread.id,
       },
-      event: { id: Number(eventRow.lastInsertRowid), phase: event.phase },
+      event: createdEvent,
       ...(reduce ? { reducer: notes } : {}),
     };
   }
@@ -566,7 +585,7 @@ export class LocalStore {
         AND NOT EXISTS (
           SELECT 1 FROM events
           WHERE events.activity_id = activities.id
-            AND events.phase IN ('B','R','X','S','E','J','V')
+            AND events.phase IN ('B','Q','R','X','S','E','J','V')
         )
       ORDER BY activities.id
     `).all(Number(traceId));
@@ -878,27 +897,36 @@ export class LocalStore {
   }
 
   #eventPayload(event) {
-    const categoryIds = event.activity_id == null
-      ? []
-      : this.db.prepare(
-        'SELECT category_id FROM activities_categories WHERE activity_id = ?',
-      ).all(event.activity_id).map(row => row.category_id);
-
     return {
       id: event.id,
       timestamp: isoFromMs(event.timestamp_ms),
       phase: event.phase,
       message: event.message ?? null,
-      activity: event.activity_id == null ? null : {
-        id: event.activity_id,
-        name: event.activity_name,
-        agent_id: event.agent_id ?? null,
-        agent_name: event.agent_name ?? null,
-        parent_id: event.parent_id ?? null,
-        thread: { id: event.thread_id },
-        categories: categoryIds,
-        weight: event.weight ?? null,
-      },
+      activity: event.activity_id == null ? null : this.#traceActivityPayload({
+        ...event, id: event.activity_id, name: event.activity_name,
+        description: event.activity_description,
+      }),
+    };
+  }
+
+  #traceActivityPayload(activity) {
+    const categoryIds = this.db.prepare(
+      'SELECT category_id FROM activities_categories WHERE activity_id = ?',
+    ).all(activity.id).map(row => row.category_id);
+    return {
+      id: activity.id,
+      name: activity.name,
+      agent_id: activity.agent_id ?? null,
+      agent_name: activity.agent_name ?? null,
+      parent_id: activity.parent_id ?? null,
+      thread: { id: activity.thread_id },
+      categories: categoryIds,
+      weight: activity.weight ?? null,
+      description: activity.description ?? null,
+      scheduled_start: activity.scheduled_start_ms ?? null,
+      scheduled_end: activity.scheduled_end_ms ?? null,
+      proposed_by_agent_id: activity.proposed_by_agent_id ?? null,
+      proposed_by_agent_name: activity.proposed_by_agent_name ?? null,
     };
   }
 
