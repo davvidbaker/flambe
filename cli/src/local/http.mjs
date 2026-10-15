@@ -257,6 +257,18 @@ async function dispatch(store, req, url, body, { auth, agent }) {
   }
 
   if (method === 'POST' && path === '/api/activities') {
+    if (!Object.hasOwn(body, 'event') && auth.tokenName !== null) {
+      const activity = body.activity ?? {};
+      const planned = executeCommand(store, userId, 'plan', {
+        trace_id: body.trace_id, name: activity.name, description: activity.description,
+        weight: activity.weight, category_ids: activity.categories,
+        scheduled_start: activity.scheduled_start_integer,
+        scheduled_end: activity.scheduled_end_integer,
+      }, agent);
+      return { status: 201, json: { data: {
+        activity: store.getActivity(userId, planned.activity_id), event: null,
+      } } };
+    }
     if (auth.tokenName !== null) {
       const activity = body.activity ?? {};
       const folded = executeCommand(store, userId, 'start', {
@@ -278,7 +290,7 @@ async function dispatch(store, req, url, body, { auth, agent }) {
       traceId: body.trace_id,
       threadId: body.thread_id,
       activity: body.activity ?? {},
-      event: body.event ?? {},
+      event: body.event,
       agent,
     });
     if (result.error) return { status: 404, json: { error: 'NOT_FOUND' } };

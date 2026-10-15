@@ -201,6 +201,93 @@ test('login on the local server sets a session cookie and serves the user dashbo
   });
 });
 
+test('session planning survives trace refresh and begins the same scheduled activity', async () => {
+  await withServer(async ({ origin, traceId, store }) => {
+    const login = await fetch(`${origin}/auth/identity/callback`, { method: 'POST' });
+    const headers = {
+      'content-type': 'application/json',
+      cookie: login.headers.get('set-cookie').split(';')[0],
+    };
+    const thread = store.createThread(1, traceId, { name: 'Planned work' });
+    const scheduledStart = 1_788_360_000_123;
+    const scheduledEnd = scheduledStart + 60_000;
+    const response = await fetch(`${origin}/api/activities`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        trace_id: traceId, thread_id: thread.id,
+        activity: {
+          name: 'Scheduled locally', description: 'Keep the plan', categories: [1],
+          scheduled_start_integer: scheduledStart, scheduled_end_integer: scheduledEnd,
+        },
+      }),
+    });
+    assert.equal(response.status, 201);
+    const created = (await response.json()).data;
+    assert.equal(created.event, null);
+    const readTrace = () => fetch(`${origin}/api/traces/${traceId}`, { headers }).then(r => r.json());
+    const planned = (await readTrace()).data;
+    assert.deepEqual(planned.events, []);
+    assert.equal(planned.unstarted.length, 1);
+    assert.equal(planned.unstarted[0].id, created.activity.id);
+    assert.equal(planned.unstarted[0].thread.id, thread.id);
+    assert.equal(planned.unstarted[0].scheduled_start, scheduledStart);
+    assert.equal(planned.unstarted[0].scheduled_end, scheduledEnd);
+    assert.equal(planned.unstarted[0].description, 'Keep the plan');
+    assert.deepEqual(planned.unstarted[0].categories, [1]);
+
+    const begin = await fetch(`${origin}/api/events`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ trace_id: traceId, activity_id: created.activity.id,
+        event: { phase: 'B', timestamp_integer: scheduledStart } }),
+    });
+    assert.equal(begin.status, 201);
+    const started = (await readTrace()).data;
+    assert.deepEqual(started.unstarted, []);
+    assert.equal(started.events[0].activity.id, created.activity.id);
+    assert.equal(started.events[0].activity.scheduled_start, scheduledStart);
+
+    store.createActivity(1, { traceId, threadId: thread.id,
+      activity: { name: 'An active question' },
+      event: { phase: 'Q', timestamp_integer: scheduledStart + 1 },
+    });
+    assert.deepEqual((await readTrace()).data.unstarted, []);
+  });
+});
+
+test('agent planning appears in the trace without assigning an executing agent', async () => {
+  await withServer(async ({ origin, traceId, rawToken }) => {
+    const headers = {
+      authorization: `Bearer ${rawToken}`, 'content-type': 'application/json',
+      'x-flambe-agent-id': 'test:planner', 'x-flambe-agent-name': 'Planner',
+    };
+    const response = await fetch(`${origin}/api/activities`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ trace_id: traceId, activity: { name: 'Proposed locally' } }),
+    });
+    assert.equal(response.status, 201);
+    const created = (await response.json()).data;
+    assert.equal(created.event, null);
+    const trace = (await fetch(`${origin}/api/traces/${traceId}`, { headers }).then(r => r.json())).data;
+    assert.equal(trace.unstarted[0].id, created.activity.id);
+    assert.equal(trace.unstarted[0].agent_id, null);
+    assert.equal(trace.unstarted[0].proposed_by_agent_id, 'test:planner');
+    assert.equal(trace.unstarted[0].proposed_by_agent_name, 'Planner');
+  });
+});
+
+test('failed activity event insertion does not leave an orphaned plan', async () => {
+  await withServer(async ({ traceId, store }) => {
+    assert.throws(() => store.createActivity(1, {
+      traceId, threadId: 1, activity: { name: 'Invalid begin', categories: [1] },
+      event: { timestamp_integer: 1 },
+    }));
+    const trace = store.getTrace(1, traceId);
+    assert.deepEqual(trace.events, []);
+    assert.deepEqual(trace.unstarted, []);
+    assert.equal(store.db.prepare('SELECT COUNT(*) AS count FROM activities_categories').get().count, 0);
+  });
+});
+
 test('session can reassign an activity agent and a later trace fetch keeps it', async () => {
   await withServer(async ({ origin, rawToken, traceId, store }) => {
     store.identifyAgent(1, 'cursor:steve', 'Steve');
