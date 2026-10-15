@@ -29,6 +29,7 @@ jobs:
               - 'cli/**'
             frontend:
               - 'frontend/**'
+              - 'single-burner/**'
             workflow:
               - '.github/workflows/phase-0.yml'
             runtime:
@@ -110,6 +111,11 @@ jobs:
       - name: Build Storybook for the app chart
         working-directory: frontend
         run: npm run build-storybook
+      - name: Build Single Burner UI
+        working-directory: frontend
+        run: npm run build:local
+      - name: Bundle Single Burner UI
+        run: node single-burner/scripts/prepare-static.mjs
       - name: Build frontend
         working-directory: frontend
         run: npm run build

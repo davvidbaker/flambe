@@ -3,7 +3,7 @@ import React, { useEffect, useState, type FormEvent } from 'react';
 import AuthShell, { AuthForm, AuthLogoWrap } from '../components/AuthShell';
 import Logo from '../components/Logo/src';
 
-const isSingleBurner = import.meta.env.MODE === 'local';
+const isSingleBurner = import.meta.env.MODE === 'single-burner';
 
 const Login = () => {
   const [error, setError] = useState<string | null>(null);

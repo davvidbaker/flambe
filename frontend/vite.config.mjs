@@ -40,7 +40,7 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_URL || 'http://127.0.0.1:4001';
   const socketTarget = env.VITE_SOCKET_URL || apiTarget;
   const useDevProxy = mode === 'development';
-  const isLocalBuild = mode === 'local';
+  const isLocalBuild = mode === 'single-burner';
   const phoenixStaticDir = isLocalBuild ? '../backend/priv/static' : '../backend/priv/static/assets';
 
   return {

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 // left untouched while local packaging can emit a root-relative SPA.
 const result = spawnSync(process.execPath, [
   fileURLToPath(new URL('../node_modules/vite/bin/vite.js', import.meta.url)),
-  'build', '--mode', 'local', '--config', 'vite.config.mjs',
+  'build', '--mode', 'single-burner', '--config', 'vite.config.mjs',
 ], {
   cwd: fileURLToPath(new URL('..', import.meta.url)),
   env: { ...process.env, VITE_API_URL: '', VITE_SOCKET_URL: '' },
