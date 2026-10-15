@@ -4,7 +4,7 @@
   "description": "Self-contained local Flambé with SQLite and a bundled UI",
   "type": "module",
   "bin": {
-    "flambe-single-burner": "./bin/flambe-single-burner.mjs"
+    "flambe-single-burner": "bin/flambe-single-burner.mjs"
   },
   "files": [
     "bin",
