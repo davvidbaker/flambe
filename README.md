@@ -19,16 +19,17 @@
 </p>
 
 <p align="center">
-  <a href="https://flambe-share.vercel.app"><img src="https://img.shields.io/badge/Open_live_demo-f97316?style=for-the-badge" alt="Open live demo" /></a>
-  <a href="#run-it-locally"><img src="https://img.shields.io/badge/Run_it_locally-334155?style=for-the-badge" alt="Run it locally" /></a>
+  <a href="https://flambe-share.vercel.app"><img src="https://img.shields.io/badge/View_sample_timeline-f97316?style=for-the-badge" alt="View sample timeline" /></a>
+  <a href="#quick-start-single-burner"><img src="https://img.shields.io/badge/Run_Single_Burner-334155?style=for-the-badge" alt="Run Single Burner" /></a>
 </p>
 
 <p align="center">
   <a href="#what-is-flambé">What is it?</a> ·
-  <a href="#run-it-locally">Quick start</a> ·
+  <a href="#choose-how-to-run-flambé">Choose a version</a> ·
+  <a href="#quick-start-single-burner">Quick start</a> ·
   <a href="#connect-coding-agents">Agents</a> ·
-  <a href="#host-your-own-instance">Self-host</a> ·
-  <a href="#develop-from-this-repo">Develop</a> ·
+  <a href="#hosted-flambé">Hosted</a> ·
+  <a href="#develop-flambé">Develop</a> ·
   <a href="#docs">Docs</a>
 </p>
 
@@ -38,7 +39,7 @@
   </a>
 </p>
 
-<p align="center"><em>Actual Flambé UI.</em></p>
+<p align="center"><em>Actual Flambé UI. The link opens a read-only sample timeline.</em></p>
 
 ## What is Flambé?
 
@@ -58,30 +59,79 @@ Coding agents can report into the same trace, so your work and their work share 
 | Logging every tiny action | A high-level stack of meaningful work |
 | Rabbit holes hidden in notes or terminal history | Rabbit holes visible in context |
 
-**[Open the live demo →](https://flambe-share.vercel.app)** and pan or zoom a real sample timeline in your browser.
+**[View the sample timeline →](https://flambe-share.vercel.app)** and pan or zoom it in your browser.
 
-## Run it locally
+## Choose how to run Flambé
 
-Local mode uses Node 22 and SQLite and binds to loopback only.
+There are three useful ways to run Flambé. They use the same activity model and UI, but they are meant for different situations.
+
+| | **Single Burner** | **Hosted Flambé** | **Development checkout** |
+|---|---|---|---|
+| Best for | One person on one machine | Multiple machines or remote/cloud agents | Working on Flambé itself |
+| App stack | Bundled web UI + local API | Phoenix app + web UI | Phoenix backend + Vite frontend |
+| Data | SQLite | PostgreSQL | PostgreSQL |
+| Network | Loopback only | Network-accessible | Local development servers |
+| Setup | One `npx` command | Deploy with Fly.io or Docker | Clone the repo and install dev dependencies |
+| Cloud agents | No | Yes | Only if you expose the dev instance yourself |
+
+### Single Burner
+
+**Single Burner is the normal local app.** It packages the Flambé UI with the local API and SQLite runtime, so you can use Flambé without installing Elixir, PostgreSQL, or deploying anything.
+
+Use it when Flambé and your coding agents are running on the same computer.
+
+### Hosted Flambé
+
+**Hosted Flambé is the networked production shape.** It runs the Phoenix application with PostgreSQL and gives remote machines and cloud-hosted agents an address they can reach.
+
+Use it when you want Flambé across multiple machines, need cloud agents to report into it, or want a persistent self-hosted instance.
+
+### Development checkout
+
+**The repository checkout is for developing Flambé.** It runs the backend and frontend development servers separately and requires the full Node, Elixir, and PostgreSQL toolchain.
+
+You do not need to clone this repository just to use Flambé.
+
+### Companion tools
+
+These are not separate versions of Flambé:
+
+- **`@davvidbaker/flambe-cli`** is the agent-facing command-line client. It can talk to either Single Burner or Hosted Flambé.
+- **Desktop status flame** is a small macOS/Windows helper that shows recent agent activity.
+- **Public timeline viewer** displays shared snapshots, including the sample linked above. It is not a writable Flambé instance.
+
+## Quick start: Single Burner
+
+Requires Node 22 or newer.
 
 ```sh
-npm --prefix frontend ci
-npm --prefix frontend run build:local
-node cli/bin/flambe.mjs serve
+npx @davvidbaker/flambe-single-burner
 ```
 
-Open **http://127.0.0.1:4001**. Sign-in accepts any password and opens the local user.
+Open **http://127.0.0.1:4001**.
 
-That is enough to use Flambé on one machine. If you later point agents at it, the process prints `FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID` for you.
+Single Burner runs the web UI and local API together, backed by SQLite. The process prints `FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID` so local coding agents can write into the same flame.
+
+If you want a global command instead:
+
+```sh
+npm install -g @davvidbaker/flambe-single-burner
+flambe-single-burner
+```
+
+Options:
+
+```text
+--port <n>   Port to listen on (default: 4001)
+--db <path>  SQLite database path (default: ~/.flambe/local.sqlite)
+```
+
+Single Burner binds to loopback only. If an agent runs in the cloud or on another machine, use [Hosted Flambé](#hosted-flambé).
 
 <details>
-<summary><strong>Local mode details and escape hatches</strong></summary>
+<summary><strong>Moving local history to a hosted instance</strong></summary>
 
-The command serves the built SPA from `backend/priv/static`. The npm CLI package does not ship those assets; pass `--static /path/to/backend/priv/static`, or run Vite against the local API with `VITE_API_URL=http://127.0.0.1:4001` in `frontend/.env.local`.
-
-Cloud agents cannot reach loopback. [Host an instance](#host-your-own-instance) when they run elsewhere.
-
-To copy selected history onto a hosted instance later:
+The CLI can export selected local history and import it into a hosted instance:
 
 ```sh
 flambe export work.json
@@ -94,7 +144,7 @@ Import creates a **new** trace on that account, or skips it if that export was a
 
 ## Connect coding agents
 
-Agents are optional. They use the same nested activity model as human work.
+Agents use the CLI to report activities into either Single Burner or Hosted Flambé.
 
 Install the CLI:
 
@@ -102,9 +152,9 @@ Install the CLI:
 npm install -g @davvidbaker/flambe-cli
 ```
 
-Create a token in **Settings → API tokens**. It is shown once; the server stores a SHA-256 hash. From a local Mix checkout, `mix flambe_next.create_api_token you@example.com "Claude"` also works.
+For **Single Burner**, use the `FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID` printed when it starts.
 
-In the project where the agent runs:
+For **Hosted Flambé**, create a token in **Settings → API tokens** and configure the project where the agent runs:
 
 ```dotenv
 FLAMBE_URL=https://your-app.fly.dev
@@ -138,15 +188,17 @@ Do not put `FLAMBE_AGENT_ID`, `FLAMBE_AGENT_NAME`, or `FLAMBE_AGENT_PLATFORM` in
 
 </details>
 
-## Host your own instance
+## Hosted Flambé
 
-Production Flambé is a Phoenix 1.8 app with PostgreSQL: invite-gated signup, one Machine, and in-memory agent presence. Fly.io is the deployment path this repo ships with (`Dockerfile` + `fly.toml`).
+The hosted production stack is a Phoenix 1.8 app with PostgreSQL: invite-gated signup, one Machine, and in-memory agent presence. Fly.io is the deployment path this repo ships with (`Dockerfile` + `fly.toml`), and the same image can run elsewhere with PostgreSQL and the required secrets.
 
 **[Host your own Flambé →](docs/SELF_HOSTING.md)** covers Fly setup, secrets, first login, GitHub deploys, and running the Docker image elsewhere.
 
 For now, keep `fly scale count` at 1. A second Machine would split presence until that signal moves out of memory.
 
-## Develop from this repo
+## Develop Flambé
+
+This section is for working on Flambé itself, not for normal installation.
 
 Requirements: **Node 22 LTS**, **Elixir 1.18 / OTP 27**, and **PostgreSQL**. Native Windows, macOS, and Linux are supported.
 
@@ -204,7 +256,9 @@ A native helper shows whether agents have talked to Flambé in the last 30 secon
 
 | Doc | What it is |
 |---|---|
+| [Single Burner](single-burner/README.md) | Self-contained local app |
 | [Host your own instance](docs/SELF_HOSTING.md) | Fly / Docker production |
+| [CLI](cli/README.md) | Agent-facing command-line client |
 | [Product principles](docs/PRODUCT_PRINCIPLES.md) | What Flambé owns vs. agent runtimes |
 | [Glossary](GLOSSARY.md) | Shared product and call-stack vocabulary |
 | [Docs index](docs/README.md) | ADRs, local database, release checklist |
