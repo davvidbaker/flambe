@@ -7,8 +7,8 @@
 <p align="center"><strong>See where the work actually went.</strong></p>
 
 <p align="center">
-  A glorified todo app with delusions of being a profiler.<br />
-  Flambé turns human and agent work into a live flame chart, so rabbit holes look like rabbit holes instead of mysteriously becoming 4:37 PM.
+  A glorified todo app organized like a profiler.<br />
+  Flambé turns human and agent work into a live flame chart, so nested work stays visible.
 </p>
 
 <p align="center">
@@ -38,15 +38,15 @@
   </a>
 </p>
 
-<p align="center"><em>Actual Flambé UI. No artist's conception of a task manager was harmed in the making of this screenshot.</em></p>
+<p align="center"><em>Actual Flambé UI.</em></p>
 
 ## What is Flambé?
 
-Most task systems flatten work into a list. Real work is not a list. It is a stack of interruptions, detours, subtasks, half-useful investigations, agent runs, and the occasional miraculous return to the thing you meant to do.
+Most task systems flatten work into a list. Real work is not a list. It is a stack of interruptions, detours, subtasks, investigations, and agent runs.
 
 Flambé keeps that shape.
 
-Activities **nest** and sit on a **timeline**, the way a profiler shows a call stack. Start a task, descend into a subproblem, hand something to an agent, come back up, and the chart records the structure instead of politely pretending you followed the plan.
+Activities **nest** and sit on a **timeline**, the way a profiler shows a call stack. Start a task, descend into a subproblem, hand something to an agent, come back up, and the chart preserves that structure.
 
 Coding agents can report into the same trace, so your work and their work share one flame.
 
@@ -56,7 +56,7 @@ Coding agents can report into the same trace, so your work and their work share 
 | "Where did the afternoon go?" | A timeline you can actually inspect |
 | Agent work disappearing into terminal scrollback | Agent activity on the same chart as yours |
 | Logging every tiny action | A high-level stack of meaningful work |
-| Pretending rabbit holes did not happen | Extremely visible rabbit holes |
+| Rabbit holes hidden in notes or terminal history | Rabbit holes visible in context |
 
 **[Open the live demo →](https://flambe-share.vercel.app)** and pan or zoom a real sample timeline in your browser.
 
@@ -94,7 +94,7 @@ Import creates a **new** trace on that account, or skips it if that export was a
 
 ## Connect coding agents
 
-Agents are optional. Flambé is still useful if the only chaotic process involved is you.
+Agents are optional. They use the same nested activity model as human work.
 
 Install the CLI:
 
@@ -123,7 +123,7 @@ flambe message "Auth fix needs the session module refactored too; widening scope
 
 `start` nests under that agent's newest active activity unless you pass `--parent` or `--root`. `message` asks the reducer whether the work is still on track; it needs `OPENAI_API_KEY` on the server. Lifecycle commands (`start`, `end`, `suspend`, `resume`) work without a model.
 
-Copy the `flambe-cli` skill into the agent product you use ([`.cursor/skills/flambe-cli`](.cursor/skills/flambe-cli), [`.codex/skills/flambe-cli`](.codex/skills/flambe-cli)) so agents treat the trace as a live stack instead of enthusiastically logging every shell command they have ever met.
+Copy the `flambe-cli` skill into the agent product you use ([`.cursor/skills/flambe-cli`](.cursor/skills/flambe-cli), [`.codex/skills/flambe-cli`](.codex/skills/flambe-cli)) so agents treat the trace as a live stack rather than logging every shell command.
 
 Hosted agents can call the same commands over MCP at `/mcp` with `Authorization: Bearer <API_TOKEN>`. Browser login cookies do not authenticate the MCP endpoint. The server prefers MCP `2026-07-28` and retains legacy initialization compatibility during migration.
 
@@ -144,7 +144,7 @@ Production Flambé is a Phoenix 1.8 app with PostgreSQL: invite-gated signup, on
 
 **[Host your own Flambé →](docs/SELF_HOSTING.md)** covers Fly setup, secrets, first login, GitHub deploys, and running the Docker image elsewhere.
 
-For now, keep `fly scale count` at 1. A second Machine would split presence until that signal moves out of memory. Distributed systems remain undefeated.
+For now, keep `fly scale count` at 1. A second Machine would split presence until that signal moves out of memory.
 
 ## Develop from this repo
 
@@ -171,7 +171,7 @@ Open **http://localhost:5173**, register, and you land on the default `Main` tra
 <details>
 <summary><strong>Development notes</strong></summary>
 
-On Windows, install Visual Studio Build Tools with the **Desktop development with C++** workload. `bcrypt_elixir` needs it, because apparently a todo app was not complicated enough. The repo's Windows scripts locate that toolchain.
+On Windows, install Visual Studio Build Tools with the **Desktop development with C++** workload. `bcrypt_elixir` needs it. The repo's Windows scripts locate that toolchain.
 
 The backend defaults to `localhost:5432` with `postgres` / `postgres`. Override with the usual `PG*` environment variables if yours differ.
 
@@ -211,4 +211,4 @@ A native helper shows whether agents have talked to Flambé in the last 30 secon
 
 ## License
 
-[MIT](LICENSE). Burn responsibly.
+[MIT](LICENSE).
