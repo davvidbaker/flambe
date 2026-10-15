@@ -12,7 +12,7 @@ npx @davvidbaker/flambe-single-burner
 
 Then open http://127.0.0.1:4001.
 
-The process prints the local `FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID` so local coding agents can write into the same flame.
+The startup walkthrough explains how to install the agent CLI, copy the local connection settings into your agent project’s `.env`, give your agent the Flambé tracking instructions, and check the connection. It also explains what the local API token is for. Keep Single Burner running while your agent works.
 
 ## Install it
 
