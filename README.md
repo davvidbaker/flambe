@@ -34,9 +34,11 @@
 
 <p align="center">
   <a href="https://flambe-share.vercel.app">
-    <img src="docs/images/flambe-readme-hero.svg" alt="Flambé showing nested human and agent work on a shared flame chart" width="900" />
+    <img src="docs/images/flambe-timeline.png" alt="Actual Flambé timeline with nested human and agent activities across threads" width="900" />
   </a>
 </p>
+
+<p align="center"><em>Actual Flambé UI. No artist's conception of a task manager was harmed in the making of this screenshot.</em></p>
 
 ## What is Flambé?
 
@@ -56,11 +58,7 @@ Coding agents can report into the same trace, so your work and their work share 
 | Logging every tiny action | A high-level stack of meaningful work |
 | Pretending rabbit holes did not happen | Extremely visible rabbit holes |
 
-### What it actually looks like
-
-[![Flambé timeline with nested human and agent activities across threads](docs/images/flambe-timeline.png)](https://flambe-share.vercel.app)
-
-**[Open the live demo →](https://flambe-share.vercel.app)** and pan or zoom the sample timeline in your browser.
+**[Open the live demo →](https://flambe-share.vercel.app)** and pan or zoom a real sample timeline in your browser.
 
 ## Run it locally
 
