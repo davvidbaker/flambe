@@ -40,6 +40,8 @@ import {
   showShareTimeline,
   suspendActivity,
 } from '../actions';
+import { ACTIVITIES_BULK_MOVE, ACTIVITIES_BULK_DELETE } from '../reducers/activitySelection';
+import { supportsActivitySelection } from '../utilities/activitySelection';
 import { getTimeline, type TimelineState } from '../reducers/timeline';
 import type { OperandState } from '../reducers/operand';
 import type { Command } from '../constants/commands';
@@ -77,6 +79,19 @@ function* handleCommand({ operand, command }: CommandRunAction): SagaIterator {
     const thread_id = command.thread_id || selectedOperand.thread_id;
 
     switch (command.action) {
+      case ACTIVITIES_BULK_MOVE:
+      case ACTIVITIES_BULK_DELETE: {
+        if (!supportsActivitySelection() || !Array.isArray(command.activity_ids)) return;
+        const ids = command.activity_ids.filter((id): id is string =>
+          typeof id === 'string' && Boolean(timeline.activities[id]));
+        if (ids.length < 2) return;
+        if (command.action === ACTIVITIES_BULK_MOVE && thread_id === undefined) return;
+        if (command.action === ACTIVITIES_BULK_DELETE
+          && !window.confirm(`Delete ${ids.length} selected activities and their events? Unselected children will remain.`)) return;
+        yield put({ type: command.action, ids, thread_id });
+        break;
+      }
+
       case ACTIVITY_CREATE_B:
         if (thread_id === undefined) return;
         yield put(
