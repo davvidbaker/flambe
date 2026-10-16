@@ -33,9 +33,12 @@ import {
 import { scheduleIdleCallback } from '../utilities/requestIdleCallback';
 import { isShortcutBlockedByTextEntry } from '../utilities/swyzzleIdle';
 import {
+  decayTouchVelocity,
   panDeltaFromTouchMove,
+  smoothTouchVelocity,
   touchDistance,
   touchHasMoved,
+  touchInertiaIsActive,
   touchMidpoint,
   dominantPanAxis,
   isNativeScrollTouchTarget,
@@ -192,6 +195,11 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   panStartY = 0;
   panLastX = 0;
   panLastY = 0;
+  touchVelocityX = 0;
+  touchVelocityY = 0;
+  touchLastMoveTime = 0;
+  touchInertiaFrame: number | null = null;
+  touchInertiaLastFrameTime = 0;
   pinchLastDistance = 0;
   viewportTraceId: string | null = null;
   leftBoundaryTime = 0;
@@ -248,6 +256,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
   componentWillUnmount(): void {
     this.cancelViewportAnimation();
+    this.cancelTouchInertia();
     this.clearZoomChordTimeout();
     this.detachTouchListeners();
   }
@@ -310,7 +319,16 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
   touchPointsList = (): TouchPoint[] => Array.from(this.touchPoints.values());
 
+  resetTouchVelocity = (timestamp = 0): void => {
+    this.touchVelocityX = 0;
+    this.touchVelocityY = 0;
+    this.touchLastMoveTime = timestamp;
+  };
+
   onTouchStart = (event: TouchEvent): void => {
+    this.cancelTouchInertia();
+    this.resetTouchVelocity(event.timeStamp);
+
     if (isNativeScrollTouchTarget(event.target)) {
       this.touchMode = 'native';
       this.panAxis = null;
@@ -349,6 +367,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
     if (points.length >= 2) {
       event.preventDefault();
+      this.resetTouchVelocity(event.timeStamp);
       const [first, second] = points;
       const distance = touchDistance(first!, second!);
       if (!(this.pinchLastDistance > 0)) {
@@ -410,6 +429,16 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       const deltaX = axis === 'x' ? rawDeltaX : 0;
       const deltaY = axis === 'y' ? rawDeltaY : 0;
       if (deltaX === 0 && deltaY === 0) return;
+
+      const elapsedMs = Math.max(1, event.timeStamp - this.touchLastMoveTime);
+      this.touchLastMoveTime = event.timeStamp;
+      this.touchVelocityX = axis === 'x'
+        ? smoothTouchVelocity(this.touchVelocityX, deltaX, elapsedMs)
+        : 0;
+      this.touchVelocityY = axis === 'y'
+        ? smoothTouchVelocity(this.touchVelocityY, deltaY, elapsedMs)
+        : 0;
+
       this.pan(deltaX, deltaY, width);
       requestAnimationFrame(this.drawChildren.bind(this));
     }
@@ -424,17 +453,21 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       return;
     }
 
+    const releasedFromPan = this.touchMode === 'pan';
+    const releasedAxis = this.panAxis;
     this.syncTouchPoints(event.touches);
     const points = this.touchPointsList();
     if (points.length >= 2) {
       this.touchMode = 'pinch';
       this.panAxis = null;
+      this.resetTouchVelocity(event.timeStamp);
       this.pinchLastDistance = touchDistance(points[0]!, points[1]!);
       return;
     }
     if (points.length === 1) {
       this.touchMode = 'none';
       this.panAxis = null;
+      this.resetTouchVelocity(event.timeStamp);
       this.panStartX = points[0]!.clientX;
       this.panStartY = points[0]!.clientY;
       this.panLastX = points[0]!.clientX;
@@ -442,9 +475,78 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       this.pinchLastDistance = 0;
       return;
     }
+
     this.touchMode = 'none';
     this.panAxis = null;
     this.pinchLastDistance = 0;
+    if (releasedFromPan && releasedAxis) {
+      this.startTouchInertia(releasedAxis);
+    }
+  };
+
+  cancelTouchInertia = (): void => {
+    if (this.touchInertiaFrame !== null) {
+      cancelAnimationFrame(this.touchInertiaFrame);
+      this.touchInertiaFrame = null;
+    }
+    this.touchInertiaLastFrameTime = 0;
+  };
+
+  startTouchInertia = (axis: PanAxis): void => {
+    this.cancelTouchInertia();
+    if (prefersReducedTimelineMotion()) {
+      this.resetTouchVelocity();
+      return;
+    }
+
+    let velocityX = axis === 'x' ? this.touchVelocityX : 0;
+    let velocityY = axis === 'y' ? this.touchVelocityY : 0;
+    if (!touchInertiaIsActive(axis === 'x' ? velocityX : velocityY)) {
+      this.resetTouchVelocity();
+      return;
+    }
+
+    const drawFrame = (timestamp: number) => {
+      if (this.touchInertiaLastFrameTime === 0) {
+        this.touchInertiaLastFrameTime = timestamp;
+        this.touchInertiaFrame = requestAnimationFrame(drawFrame);
+        return;
+      }
+
+      const elapsedMs = Math.min(32, Math.max(1, timestamp - this.touchInertiaLastFrameTime));
+      this.touchInertiaLastFrameTime = timestamp;
+      velocityX = decayTouchVelocity(velocityX, elapsedMs);
+      velocityY = decayTouchVelocity(velocityY, elapsedMs);
+      const velocity = axis === 'x' ? velocityX : velocityY;
+      if (!touchInertiaIsActive(velocity)) {
+        this.cancelTouchInertia();
+        this.resetTouchVelocity();
+        return;
+      }
+
+      const beforeLeftBoundaryTime = this.leftBoundaryTime;
+      const beforeTopOffset = this.topOffset;
+      this.pan(
+        axis === 'x' ? velocityX * elapsedMs : 0,
+        axis === 'y' ? velocityY * elapsedMs : 0,
+        this.state.width,
+        false,
+      );
+      this.drawChildren();
+
+      const hitBoundary = axis === 'x'
+        ? this.leftBoundaryTime === beforeLeftBoundaryTime
+        : this.topOffset === beforeTopOffset;
+      if (hitBoundary) {
+        this.cancelTouchInertia();
+        this.resetTouchVelocity();
+        return;
+      }
+
+      this.touchInertiaFrame = requestAnimationFrame(drawFrame);
+    };
+
+    this.touchInertiaFrame = requestAnimationFrame(drawFrame);
   };
 
   componentDidUpdate(previousProps: TimelineProps): void {
@@ -460,6 +562,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
         !== previousProps.rightBoundaryTimeOverride
     ) {
       this.cancelViewportAnimation();
+      this.cancelTouchInertia();
       this.viewportTraceId = String(nextProps.trace_id);
       this.setTimelineState({
         leftBoundaryTime: nextProps.leftBoundaryTimeOverride,
@@ -492,6 +595,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       && (!hasSavedRange || !savedRangeOverlapsTrace)
     ) {
       this.cancelViewportAnimation();
+      this.cancelTouchInertia();
       this.viewportTraceId = String(nextProps.trace_id);
       this.setTimelineState({
         leftBoundaryTime: nextProps.minTime!,
@@ -789,6 +893,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     leftBoundaryTime: number;
     rightBoundaryTime: number;
   }): void => {
+    this.cancelTouchInertia();
     this.cancelViewportAnimation();
     const visible = this.getVisibleTimeRange();
     if (
@@ -834,6 +939,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   };
 
   zoom = (dy: number, offsetX: number, zoomCenterTime: number, canvasWidth: number): void => {
+    this.cancelTouchInertia();
     this.cancelViewportAnimation();
     this.viewportTraceId = String(this.props.trace_id);
     const dividersData = this.calculateGridOffsets();
@@ -857,7 +963,8 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     });
   };
 
-  pan = (dx: number, dy: number, canvasWidth: number): void => {
+  pan = (dx: number, dy: number, canvasWidth: number, cancelInertia = true): void => {
+    if (cancelInertia) this.cancelTouchInertia();
     this.cancelViewportAnimation();
     this.viewportTraceId = String(this.props.trace_id);
     const dividersData = this.calculateGridOffsets();
