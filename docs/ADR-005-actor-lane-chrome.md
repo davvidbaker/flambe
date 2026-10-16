@@ -127,6 +127,22 @@ activity intervals would allow other actors to reuse those rows while their wash
 still spans the time, causing settled wash overlap. Delegated sub-bands may reuse
 rows only when their full sustained spans are disjoint.
 
+## Trial refinement: settle navigation before compacting
+
+On October 16, David agreed to try preserving row positions during pan/zoom,
+then animating compaction after navigation settles, using the October 14 overnight
+capture to judge the result. The goal is to reduce loss of place while retaining
+the bounded height of viewport-scoped layout; permanent per-agent lanes are not
+being restored.
+
+During navigation, known blocks retain their band positions. Newly revealed blocks
+join their agent's band, reusing its rows where possible. If revealing work requires
+more space, the band grows and neighboring bands ease aside; new blocks are not
+staged separately below the thread. After a short idle interval, bars, agent chrome,
+and thread heights ease together into the compact visible-window layout.
+Reduced-motion preferences skip the settling animation. This remains a trial
+pending visual feedback on the overnight story.
+
 ## Follow-ups
 
 - Explicit provider field on activities (replace `agent_id` prefix inference).
