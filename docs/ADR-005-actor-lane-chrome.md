@@ -121,6 +121,12 @@ the human stack's rows.
 - Chrome/height derive from visible blocks, so the layout is viewport-dependent
   and recomputes on pan/zoom.
 
+The same sustained row reservation applies within each top-level band: delegated
+actors pack their own contiguous sub-bands. Reserving only individual delegated
+activity intervals would allow other actors to reuse those rows while their wash
+still spans the time, causing settled wash overlap. Delegated sub-bands may reuse
+rows only when their full sustained spans are disjoint.
+
 ## Follow-ups
 
 - Explicit provider field on activities (replace `agent_id` prefix inference).

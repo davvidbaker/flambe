@@ -797,25 +797,47 @@ export function projectActorLaneLayout(
       let spanStart = Number.POSITIVE_INFINITY;
       let spanEnd = Number.NEGATIVE_INFINITY;
 
+      // Delegated actors need the same exclusive sustained bands as their
+      // top-level owner. Per-block packing lets a later parent activity reuse
+      // a child's row, even though the child's wash still spans that time.
+      const actorGroups = new Map<string, TraceBlock[]>();
       for (const block of ownerBlocks) {
-        const interval: TimeInterval = {
-          start: block.startTime,
-          end: block.endTime ?? Number.POSITIVE_INFINITY,
-        };
-        spanStart = Math.min(spanStart, interval.start);
-        spanEnd = interval.end === Number.POSITIVE_INFINITY
-          ? Number.POSITIVE_INFINITY
-          : Math.max(spanEnd, interval.end);
-
-        const minRel = nestedMinRow(block, ownerKey,
-          parentBlock => relativeRow[blockLayoutKey(parentBlock)]);
-        let rel = Math.max(0, minRel);
-        while (anyIntervalOverlap(localOccupied.get(rel) ?? [], [interval])) rel += 1;
-        relativeRow[blockLayoutKey(block)] = rel;
-        const list = localOccupied.get(rel) ?? [];
-        list.push(interval);
-        localOccupied.set(rel, list);
-        height = Math.max(height, rel + 1);
+        const key = actorKey(activities[keyFor(block.activity_id)]!);
+        actorGroups.set(key, [...(actorGroups.get(key) ?? []), block]);
+      }
+      const actorDepth = (group: TraceBlock[]) => Math.min(...group.map(block => {
+        const root = rootIdByActivity[keyFor(block.activity_id)];
+        const flame = root == null ? undefined : flameByRoot[keyFor(root)];
+        return flame ? flameDepth(flame) : 0;
+      }));
+      const actorGroupsInOrder = [...actorGroups.values()].sort((a, b) => actorDepth(a) - actorDepth(b)
+        || a[0]!.startTime - b[0]!.startTime);
+      for (const actorBlocks of actorGroupsInOrder) {
+        const actorRows: Record<string, number> = {};
+        const actorOccupied = new Map<number, TimeInterval[]>();
+        let actorHeight = 0;
+        const start = Math.min(...actorBlocks.map(block => block.startTime));
+        const end = Math.max(...actorBlocks.map(block => block.endTime ?? Infinity));
+        const actorSpan = { start, end };
+        spanStart = Math.min(spanStart, start);
+        spanEnd = Math.max(spanEnd, end);
+        for (const block of actorBlocks) {
+          const interval = { start: block.startTime, end: block.endTime ?? Infinity };
+          const minRel = nestedMinRow(block, ownerKey, parentBlock => actorRows[blockLayoutKey(parentBlock)]);
+          let row = Math.max(0, minRel);
+          while (anyIntervalOverlap(actorOccupied.get(row) ?? [], [interval])) row += 1;
+          actorRows[blockLayoutKey(block)] = row;
+          actorOccupied.set(row, [...(actorOccupied.get(row) ?? []), interval]);
+          actorHeight = Math.max(actorHeight, row + 1);
+        }
+        let actorBase = 0;
+        while (Array.from({ length: actorHeight }, (_, index) => actorBase + index)
+          .some(row => anyIntervalOverlap(localOccupied.get(row) ?? [], [actorSpan]))) actorBase += 1;
+        for (const block of actorBlocks) relativeRow[blockLayoutKey(block)] = actorBase + actorRows[blockLayoutKey(block)]!;
+        for (let row = actorBase; row < actorBase + actorHeight; row += 1) {
+          localOccupied.set(row, [...(localOccupied.get(row) ?? []), actorSpan]);
+        }
+        height = Math.max(height, actorBase + actorHeight);
       }
 
       if (!Number.isFinite(spanStart)) continue;

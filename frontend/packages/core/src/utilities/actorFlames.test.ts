@@ -1,5 +1,8 @@
 import type { Activity } from '../types/Activity';
 import type { TraceBlock } from './processTrace';
+import processTrace from './processTrace';
+import { createOctober14OvernightFixture } from '../storybook/october14OvernightFixture';
+import { isPaintableBlock } from './timelineGeometry';
 import {
   actorAccentColor,
   actorKey,
@@ -17,6 +20,28 @@ import {
 function activity(fields: Partial<Activity> & Pick<Activity, 'id'>): Activity {
   return { categories: [], thread_id: 1, ...fields };
 }
+
+describe('settled parallel-agent screenshot regression', () => {
+  it('keeps each wash contiguous and prevents tint from covering another agent', () => {
+    const fixture = createOctober14OvernightFixture();
+    const trace = processTrace(fixture.events, fixture.threads);
+    const visible = trace.blocks.filter(block => isPaintableBlock(block,
+      Date.parse('2026-10-14T23:25:00-06:00'), Date.parse('2026-10-14T23:55:00-06:00'), 1500));
+    const layout = projectActorLaneLayout(trace.activities, visible);
+    const chrome = coalesceActorLaneChrome(layout, visible);
+    expect(chrome.length).toBe(5);
+    for (const band of chrome) {
+      expect(band.washRects).toHaveLength(1);
+      for (const other of chrome.filter(candidate => candidate.actorKey !== band.actorKey)) {
+        for (const a of band.washRects) for (const b of other.washRects) {
+          const shareRows = a.rowStart <= b.rowEnd && b.rowStart <= a.rowEnd;
+          const shareTime = a.startTime < (b.endTime ?? Infinity) && b.startTime < (a.endTime ?? Infinity);
+          expect(shareRows && shareTime, `${band.actorName} overlaps ${other.actorName}`).toBe(false);
+        }
+      }
+    }
+  });
+});
 
 function block(activity_id: number, startTime: number, endTime?: number): TraceBlock {
   return {
