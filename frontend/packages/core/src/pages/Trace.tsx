@@ -43,8 +43,10 @@ import {
 } from '../actions';
 import { formatShortcut, isKeyboardShortcutsHotkey } from '../utilities/keyboardShortcuts';
 import { isShortcutBlockedByTextEntry } from '../utilities/swyzzleIdle';
+import { supportsActivitySelection } from '../utilities/activitySelection';
 import COMMANDS, {
   ACTIVITY_COMMANDS,
+  bulkActivityCommands,
   activityCommandsByStatus,
 } from '../constants/commands';
 import { getTimeline } from '../reducers/timeline';
@@ -91,6 +93,7 @@ const MaybeSplitPane = ({ children, isSplit, hideSidePanel, threads }: {
   );
 
 interface AppProps {
+  activitySelection?: string[];
   aModalIsOpen: boolean;
   activities: Record<string, ProcessedActivity>;
   advancedSearchVisible: boolean;
@@ -135,7 +138,7 @@ interface AppState {
   searchBarVisible: boolean;
 }
 
-class App extends React.Component<AppProps, AppState> {
+export class App extends React.Component<AppProps, AppState> {
   timelineCursorTime: number | null = null;
 
   state: AppState = {
@@ -240,6 +243,10 @@ class App extends React.Component<AppProps, AppState> {
   getCommands = (operand: OperandState | null): Command[] => {
     const baseCommands = [...COMMANDS, ...this.state.additionalCommands];
 
+    const selected = (this.props.activitySelection ?? []).filter(id => this.props.activities[id]);
+    if (supportsActivitySelection() && selected.length > 1) {
+      return [...bulkActivityCommands(selected), ...baseCommands];
+    }
     if (operand) {
       switch (operand.type) {
         case 'activity':
@@ -302,6 +309,7 @@ class App extends React.Component<AppProps, AppState> {
                 break;
 
               case 'p':
+              case 'P':
                 if (e.shiftKey) {
                   /** 💁 By default, if chrome devtools are open, this will pull up their command palette, even if focus is in the page, not dev tools. */
                   e.preventDefault();
@@ -530,6 +538,7 @@ const ConnectedTrace = connect(
       threadLevels: timeline.threadLevels,
       threads: timeline.threads,
       operand: state.operand,
+      activitySelection: state.activitySelection,
       settings: state.settings,
       trace,
       user: getUser(state),

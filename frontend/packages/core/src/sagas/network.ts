@@ -1,4 +1,5 @@
-import { call, put, takeEvery, takeLatest, select } from 'redux-saga/effects';
+import { ACTIVITIES_BULK_MOVE, ACTIVITIES_BULK_DELETE, selectActivities } from '../reducers/activitySelection';
+import { call, put, takeEvery, takeLatest, takeLeading, select } from 'redux-saga/effects';
 
 import {
   createToast,
@@ -217,6 +218,29 @@ function* suspendActivity({ type, id, timestamp, message, weight }: NetworkActio
 
   if (weight && id !== undefined) {
     yield put(updateActivityAction(id, { weight }));
+  }
+}
+
+export function* bulkActivities({ type, ids, thread_id }: {
+  type: string; ids: string[]; thread_id?: EntityId;
+}): SagaIterator {
+  try {
+    // Serialize mutations so a parent move cannot race a selected child's move.
+    for (const id of ids) {
+      yield call(hitNetwork, {
+        resource: { path: 'activities', id },
+        params: type === ACTIVITIES_BULK_DELETE
+          ? { method: 'DELETE' }
+          : { method: 'PUT', body: JSON.stringify({
+            activity: { thread_id, move_child_ids: [] },
+          }) },
+      });
+    }
+    yield put(selectActivities([]));
+  } catch {
+    yield put(createToast('Bulk action stopped. Some activities may have changed; review the timeline before retrying.', 'error'));
+  } finally {
+    yield* refetchTrace();
   }
 }
 
@@ -615,6 +639,7 @@ function* networkSaga(): SagaIterator {
   yield takeEvery(ACTIVITY_CREATE_B, createActivity);
   yield takeEvery(ACTIVITY_CREATE_Q, createActivity);
   yield takeEvery(ACTIVITY_DELETE, deleteActivity);
+  yield takeLeading([ACTIVITIES_BULK_MOVE, ACTIVITIES_BULK_DELETE], bulkActivities);
   yield takeEvery(ACTIVITY_END, endActivity);
   yield takeEvery(ACTIVITY_RESUME, resumeActivity);
   yield takeEvery(ACTIVITY_RESURRECT, resurrectActivity);

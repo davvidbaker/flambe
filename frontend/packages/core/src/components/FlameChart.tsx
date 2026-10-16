@@ -50,6 +50,8 @@ import {
   shouldOpenActivityDetailsOnSelect,
 } from '../utilities/activityDetailGesture';
 import { showActivityDetails } from '../actions';
+import { selectActivities } from '../reducers/activitySelection';
+import { activitiesInRectangle, supportsActivitySelection, type SelectionRect } from '../utilities/activitySelection';
 import { colors, timelineActivityCanvasFont } from '../styles';
 import type { RootState } from '../rootReducer';
 import type { EntityId } from '../types/ids';
@@ -127,6 +129,7 @@ interface OwnProps {
 }
 
 const connector = connect((state: RootState) => ({
+  selectedActivityIds: state.activitySelection,
   absoluteTimeLabels: state.settings.absoluteTimeLabels,
   twelveHourClock: state.settings.twelveHourClock,
   activityMute: state.settings.activityMute,
@@ -142,6 +145,7 @@ const connector = connect((state: RootState) => ({
     state.settings.suspendResumeFlowsOnlyForFocusedActivity,
 }), {
   showActivityDetails,
+  selectActivities,
 }, null, { forwardRef: true });
 
 type Props = OwnProps & ConnectedProps<typeof connector>;
@@ -152,6 +156,58 @@ export class FlameChart extends Component<Props, State> {
   canvas!: HTMLCanvasElement;
   tooltip: HTMLElement | null = null;
   minTextWidth = 0;
+  selectedForDrawing = new Set<string>();
+  marquee: { startX: number; startY: number; x: number; y: number; moved: boolean } | null = null;
+
+  selectionRectangle = (): SelectionRect | null => {
+    const m = this.marquee;
+    return m ? { x: Math.min(m.startX, m.x), y: Math.min(m.startY, m.y),
+      width: Math.abs(m.x - m.startX), height: Math.abs(m.y - m.startY) } : null;
+  };
+
+  onSelectionKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape' || !supportsActivitySelection()) return;
+    if (event.target instanceof HTMLElement
+      && event.target.closest('input, textarea, [contenteditable="true"], [role="dialog"]')) return;
+    this.cancelMarquee();
+    this.props.selectActivities([]);
+  };
+
+  cancelMarquee = (): void => {
+    this.marquee = null;
+    window.removeEventListener('mousemove', this.onMarqueeMove);
+    window.removeEventListener('mouseup', this.onMarqueeUp);
+    window.removeEventListener('blur', this.cancelMarquee);
+    this.redrawMeasurement();
+  };
+
+  onMarqueeMove = (event: globalThis.MouseEvent): void => {
+    const m = this.marquee;
+    if (!m) return;
+    const bounds = this.canvas.getBoundingClientRect();
+    m.x = Math.max(0, Math.min(this.width, event.clientX - bounds.left));
+    m.y = Math.max(0, Math.min(this.state.canvasHeight, event.clientY - bounds.top));
+    m.moved ||= Math.hypot(m.x - m.startX, m.y - m.startY) > 4;
+    this.redrawMeasurement();
+  };
+
+  onMarqueeUp = (): void => {
+    const rectangle = this.selectionRectangle();
+    if (this.marquee?.moved && rectangle) {
+      const blocks = this.paintableBlocks.flatMap(block => {
+        const activity = this.renderActivities[String(block.activity_id)];
+        if (!activity || this.props.threads[String(activity.thread_id)]?.collapsed) return [];
+        const t = this.getAnimatedBlockTransform(block, activity);
+        return [{ activityId: block.activity_id, x: t.blockX, y: t.blockY,
+          width: block.scheduledPoint ? Math.max(t.blockWidth, 8) : t.blockWidth, height: t.blockHeight }];
+      });
+      this.props.focusBlock({ index: null, activity_id: null, thread_id: null });
+      this.props.selectActivities(activitiesInRectangle(rectangle, blocks));
+      this.suppressNextClick = true;
+      window.setTimeout(() => { this.suppressNextClick = false; }, 0);
+    }
+    this.cancelMarquee();
+  };
 
   static textPadding = { x: 5, y: 13.5 };
 
@@ -269,6 +325,7 @@ export class FlameChart extends Component<Props, State> {
   }
 
   componentDidMount() {
+    window.addEventListener('keydown', this.onSelectionKeyDown);
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;
     this.ctx = ctx;
@@ -277,11 +334,19 @@ export class FlameChart extends Component<Props, State> {
   }
 
   componentWillUnmount() {
+    window.removeEventListener('keydown', this.onSelectionKeyDown);
+    window.removeEventListener('mousemove', this.onMarqueeMove);
+    window.removeEventListener('mouseup', this.onMarqueeUp);
+    window.removeEventListener('blur', this.cancelMarquee);
     if (this.redrawFrame != null) cancelAnimationFrame(this.redrawFrame);
     if (this.measurementFrame != null) cancelAnimationFrame(this.measurementFrame);
   }
 
   shouldComponentUpdate(_nextProps: Props, _nextState: State): boolean {
+    if (_nextProps.selectedActivityIds !== this.props.selectedActivityIds) {
+      this.redrawChart();
+      this.redrawMeasurement();
+    }
     return false;
   }
 
@@ -467,6 +532,18 @@ export class FlameChart extends Component<Props, State> {
       return;
     }
     const hit = this.hitTest(e);
+    if (supportsActivitySelection() && (e.metaKey || e.ctrlKey)
+      && hit && (hit.type === 'block' || hit.type === 'block_edge_left' || hit.type === 'block_edge_right')) {
+      const id = String(hit.value[1].activity_id);
+      const selected = this.props.selectedActivityIds ?? [];
+      const focused = activityByBlockIndex(this.props.blocks, this.props.focusedBlockIndex);
+      const current = selected.length ? selected : focused == null ? [] : [String(focused)];
+      const next = current.includes(id) ? current.filter(value => value !== id) : [...current, id];
+      this.props.focusBlock({ index: null, activity_id: null, thread_id: null });
+      this.props.selectActivities(next);
+      return;
+    }
+    this.props.selectActivities([]);
 
     if (hit) {
       switch (hit.type) {
@@ -529,6 +606,7 @@ export class FlameChart extends Component<Props, State> {
   };
 
   onMouseMove = (e: MouseEvent<HTMLCanvasElement>): void => {
+    if (this.marquee) return;
     this.setFlamechartState({
       cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
     });
@@ -673,7 +751,21 @@ export class FlameChart extends Component<Props, State> {
   };
 
   onMouseDown = (e: MouseEvent<HTMLCanvasElement>): void => {
-    // e.preventDefault();
+    if (e.button !== 0) return;
+    if (supportsActivitySelection() && !e.shiftKey) {
+      const hit = this.hitTest(e);
+      if ((e.metaKey || e.ctrlKey) && hit
+        && (hit.type === 'block' || hit.type === 'block_edge_left' || hit.type === 'block_edge_right')) return;
+      if (!hit) {
+        e.preventDefault();
+        this.marquee = { startX: e.nativeEvent.offsetX, startY: e.nativeEvent.offsetY,
+          x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, moved: false };
+        window.addEventListener('mousemove', this.onMarqueeMove);
+        window.addEventListener('mouseup', this.onMarqueeUp);
+        window.addEventListener('blur', this.cancelMarquee);
+        return;
+      }
+    }
     const eTimeX = this.pixelsToTime(e.nativeEvent.offsetX);
     this.setFlamechartState({ mousedown: true, mousedownX: eTimeX });
     if (this.props.modifiers.shift) {
@@ -765,6 +857,26 @@ export class FlameChart extends Component<Props, State> {
       ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
       ctx.clearRect(0, 0, this.width, this.state.canvasHeight);
       this.drawMeasurementWindow(ctx, this.measurement);
+      if (supportsActivitySelection()) {
+        const rect = this.selectionRectangle();
+        if (rect && this.marquee?.moved) {
+          ctx.fillStyle = 'rgba(100, 160, 255, 0.15)';
+          ctx.strokeStyle = '#8bbcff';
+          ctx.lineWidth = 1;
+          ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+          ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        }
+        const count = (this.props.selectedActivityIds ?? []).filter(id => this.props.activities[id]).length;
+        if (count) {
+          ctx.font = '13px sans-serif';
+          const text = `${count} selected · Cmd/Ctrl+Shift+P for actions · Esc to clear`;
+          const width = ctx.measureText(text).width + 20;
+          ctx.fillStyle = '#202636';
+          ctx.fillRect(10, this.state.canvasHeight - 34, width, 26);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(text, 20, this.state.canvasHeight - 16);
+        }
+      }
       if (this.drawActivityEntrance(ctx)) this.redrawMeasurement();
     });
   };
@@ -1185,7 +1297,7 @@ export class FlameChart extends Component<Props, State> {
       this.ctx.scale(0.5, 0.5);
       this.ctx.restore();
     }
-    if (this.measurement.left !== null) this.redrawMeasurement();
+    if (this.measurement.left !== null || (this.props.selectedActivityIds ?? []).length) this.redrawMeasurement();
     const viewport = `${this.leftBoundaryTime}:${this.rightBoundaryTime}:${this.width}`;
     this.lastBlockTransforms = new Map(this.paintableBlocks.flatMap(block => {
       const activity = this.renderActivities[String(block.activity_id)];
@@ -1263,6 +1375,7 @@ export class FlameChart extends Component<Props, State> {
   }
 
   drawBlocks(): void {
+    this.selectedForDrawing = new Set(supportsActivitySelection() ? this.props.selectedActivityIds : []);
     for (const [, block] of this.paintableBlockEntries) {
       if (this.activityEntrance?.startedAt != null
         && this.isEnteringBlock(block, this.renderActivities)) continue;
@@ -1830,6 +1943,14 @@ export class FlameChart extends Component<Props, State> {
     const drawnHeight = collapsed ? adjustedBlockHeight : blockHeight;
     if (block.scheduled) this.ctx.globalAlpha *= 0.55;
     this.ctx.fillRect(drawnX, drawnY, drawnWidth, drawnHeight);
+    if (this.selectedForDrawing.has(String(block.activity_id))) {
+      this.ctx.save();
+      this.ctx.globalAlpha = 1;
+      this.ctx.strokeStyle = '#b8d8ff';
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(drawnX + 1, drawnY + 1, Math.max(0, drawnWidth - 2), Math.max(0, drawnHeight - 2));
+      this.ctx.restore();
+    }
     if (block.scheduled) {
       this.ctx.setLineDash([4, 3]);
       this.ctx.strokeStyle = labelColor;

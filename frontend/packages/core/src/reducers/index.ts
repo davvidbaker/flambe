@@ -17,6 +17,7 @@ import {
   VIEW_CHANGE,
 } from '../actions';
 
+import activitySelection from './activitySelection';
 import timeline from './liveTimeline';
 import modifiers from './modifiers';
 import user from './user';
@@ -146,6 +147,7 @@ function loggedIn(_state = false, _action: RootAction): boolean {
 }
 
 export {
+  activitySelection,
   activityDetailEditName,
   activityDetailModalVisible,
   advancedSearchVisible,

@@ -1,4 +1,5 @@
 import tinycolor from 'tinycolor2';
+import { ACTIVITIES_BULK_MOVE, ACTIVITIES_BULK_DELETE } from '../reducers/activitySelection';
 
 import {
   ACTIVITY_CREATE_B,
@@ -79,6 +80,15 @@ const threadParam = {
   itemStringKey: 'name',
   itemReturnKey: 'id',
 };
+
+export function bulkActivityCommands(ids: string[]): Command[] {
+  if (ids.length < 2) return [];
+  return [
+    { action: ACTIVITIES_BULK_MOVE, copy: `move ${ids.length} activities to thread...`,
+      activity_ids: ids, parameters: [threadParam] },
+    { action: ACTIVITIES_BULK_DELETE, copy: `delete ${ids.length} activities...`, activity_ids: ids },
+  ];
+}
 
 const categoryLabel = (color: string | null | undefined): CommandLabel => ({
   copy: ' ',
