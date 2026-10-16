@@ -1752,9 +1752,11 @@ export class FlameChart extends Component<Props, State> {
       this.ctx.save();
       this.ctx.globalAlpha = 0.95 * muteOpacity;
       this.ctx.fillStyle = accent;
-      this.ctx.textAlign = 'left';
-      this.ctx.textBaseline = 'middle';
-      this.ctx.translate(railX + gutter / 2 + 1, top + height - (singleRow ? 2 : 5));
+      // With the CCW rotation, right-aligned text extends downward from the
+      // top anchor; a bottom baseline keeps glyphs inside the gutter's right edge.
+      this.ctx.textAlign = 'right';
+      this.ctx.textBaseline = 'bottom';
+      this.ctx.translate(railX + gutter - 2, top + (singleRow ? 2 : 5));
       this.ctx.rotate(-Math.PI / 2);
       this.ctx.fillText(drawn, 0, 0);
       this.ctx.restore();
@@ -1769,7 +1771,9 @@ export class FlameChart extends Component<Props, State> {
 
     this.ctx.save();
     this.ctx.globalCompositeOperation = 'source-over';
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = 1;
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
 
     layout.flames.forEach(flame => {
       const rootActivity = this.renderActivities[String(flame.rootActivityId)];
@@ -1796,7 +1800,7 @@ export class FlameChart extends Component<Props, State> {
       }
 
       const accent = actorAccentColor(flame.actorKey);
-      this.ctx.globalAlpha = 0.75 * this.actorChromeOpacity([flame.rootActivityId]);
+      this.ctx.globalAlpha = 0.3 * this.actorChromeOpacity([flame.rootActivityId]);
       const rootY = rootTransform.blockY + rootTransform.blockHeight / 2;
       this.ctx.strokeStyle = accent;
       this.ctx.fillStyle = accent;
@@ -1820,13 +1824,41 @@ export class FlameChart extends Component<Props, State> {
           const parentY = parentTransform.blockY + parentTransform.blockHeight / 2;
           const middleY = parentY + (rootY - parentY) / 2;
 
-          this.ctx.beginPath();
-          this.ctx.moveTo(parentX, parentY);
-          this.ctx.bezierCurveTo(parentX, middleY, joinX, middleY, joinX, rootY);
-          this.ctx.stroke();
+          // Stable, screen-space irregularity: a light graphite trace, not
+          // frame-by-frame random noise that would shimmer while navigating.
+          const seed = Array.from(String(flame.rootActivityId)).reduce(
+            (value, character) => (value * 31 + character.charCodeAt(0)) % 997, 0,
+          );
+          const opacity = this.actorChromeOpacity([flame.rootActivityId]);
+          for (let pass = 0; pass < 2; pass += 1) {
+            let previousX = parentX;
+            let previousY = parentY;
+            for (let step = 1; step <= 32; step += 1) {
+              const t = step / 32;
+              const u = 1 - t;
+              const taper = Math.sin(Math.PI * t);
+              const grain = Math.sin(t * 43 + seed + pass * 2) * 0.35
+                + Math.sin(t * 19 + seed * 0.7) * 0.3;
+              const x = u ** 3 * parentX + 3 * u * u * t * parentX
+                + 3 * u * t * t * joinX + t ** 3 * joinX
+                + taper * (grain + pass * 0.45);
+              const y = u ** 3 * parentY + 3 * u * u * t * middleY
+                + 3 * u * t * t * middleY + t ** 3 * rootY;
+              this.ctx.globalAlpha = (pass === 0 ? 0.27 : 0.1) * opacity;
+              this.ctx.lineWidth = (pass === 0 ? 0.75 : 0.45)
+                + Math.sin(t * 23 + seed) * 0.12;
+              this.ctx.beginPath();
+              this.ctx.moveTo(previousX, previousY);
+              this.ctx.lineTo(x, y);
+              this.ctx.stroke();
+              previousX = x;
+              previousY = y;
+            }
+          }
 
+          this.ctx.globalAlpha = 0.3 * opacity;
           this.ctx.beginPath();
-          this.ctx.arc(joinX, rootY, 3, 0, Math.PI * 2);
+          this.ctx.arc(joinX, rootY, 1.6, 0, Math.PI * 2);
           this.ctx.fill();
         }
       }
