@@ -21,6 +21,13 @@ import {
   visibleThreadLevels,
 } from '../utilities/timelineGeometry';
 import { clampTopOffset } from '../utilities/pan';
+import {
+  retainNavigationRows,
+  interpolateNavigationLayout,
+  interpolateNavigationChrome,
+  NAVIGATION_SETTLE_MS,
+  NAVIGATION_REFLOW_MS,
+} from '../utilities/navigationLayout';
 import { readableTextOn } from '../utilities/readableTextOn';
 import { getShamefulColor } from '../utilities/timeline';
 import {
@@ -297,6 +304,9 @@ export class FlameChart extends Component<Props, State> {
   hoverActivity_id: EntityId | null = null;
   focusActivity_id: EntityId | null = null;
   actorLaneLayout: ActorLaneLayout | null = null;
+  navigationSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  navigationHeldLayout: ActorLaneLayout | null = null;
+  navigationTransition: { from: ActorLaneLayout; to: ActorLaneLayout; startedAt: number } | null = null;
   actorChromeBands: ReturnType<typeof coalesceActorLaneChrome> = [];
   paintableBlockEntries: BlockEntry[] = [];
   paintableBlocks: TraceBlock[] = [];
@@ -334,6 +344,7 @@ export class FlameChart extends Component<Props, State> {
   }
 
   componentWillUnmount() {
+    if (this.navigationSettleTimer != null) clearTimeout(this.navigationSettleTimer);
     window.removeEventListener('keydown', this.onSelectionKeyDown);
     window.removeEventListener('mousemove', this.onMarqueeMove);
     window.removeEventListener('mouseup', this.onMarqueeUp);
@@ -1220,11 +1231,14 @@ export class FlameChart extends Component<Props, State> {
     }
 
     this.ensureActorLaneLayout();
-    this.actorChromeBands = coalesceActorLaneChrome(
-      this.actorLaneLayout!,
-      this.paintableBlocks,
-      this.dividersData.gridSliceTime ?? 0,
-    );
+    this.actorChromeBands = this.navigationTransition
+      ? interpolateNavigationChrome(
+        this.navigationTransition.from,
+        this.navigationTransition.to,
+        this.paintableBlocks,
+        (performance.now() - this.navigationTransition.startedAt) / NAVIGATION_REFLOW_MS,
+      )
+      : coalesceActorLaneChrome(this.actorLaneLayout!, this.paintableBlocks, this.dividersData.gridSliceTime ?? 0);
     const threadLevels = this.renderActivities && this.props.reactiveThreadHeight
       ? visibleThreadLevels(
         this.paintableBlocks,
@@ -1312,7 +1326,7 @@ export class FlameChart extends Component<Props, State> {
         this.reflowTransforms.clear();
       }
     }
-    if (this.movingScheduledDidMove || this.resizing || this.reflowStartedAt != null) {
+    if (this.movingScheduledDidMove || this.resizing || this.reflowStartedAt != null || this.navigationTransition != null) {
       this.props.onPreviewGeometryChange?.();
     }
   }
@@ -1401,6 +1415,34 @@ export class FlameChart extends Component<Props, State> {
 
   ensureActorLaneLayout(): ActorLaneLayout {
     const input = this.actorLaneLayoutInput;
+    const viewportChanged = input != null && (
+      input.leftBoundaryTime !== this.leftBoundaryTime
+      || input.rightBoundaryTime !== this.rightBoundaryTime
+    );
+    const dataChanged = input != null && (
+      input.blocks !== this.renderBlocks || input.activities !== this.renderActivities
+      || input.width !== this.width
+    );
+    if (dataChanged) {
+      if (this.navigationSettleTimer != null) clearTimeout(this.navigationSettleTimer);
+      this.navigationSettleTimer = null;
+      this.navigationHeldLayout = null;
+      this.navigationTransition = null;
+    }
+    if (viewportChanged && !dataChanged && this.actorLaneLayout) {
+      this.navigationHeldLayout ??= this.navigationTransition?.to ?? this.actorLaneLayout;
+      if (this.navigationSettleTimer != null) clearTimeout(this.navigationSettleTimer);
+      this.navigationSettleTimer = setTimeout(() => {
+        this.navigationSettleTimer = null;
+        const from = this.actorLaneLayout!;
+        const to = projectActorLaneLayout(this.renderActivities, this.paintableBlocks);
+        this.navigationHeldLayout = null;
+        this.navigationTransition = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+          ? null : { from, to, startedAt: performance.now() };
+        this.actorLaneLayout = to;
+        this.redrawChart();
+      }, NAVIGATION_SETTLE_MS);
+    }
     if (
       this.actorLaneLayout
       && input?.blocks === this.renderBlocks
@@ -1408,7 +1450,9 @@ export class FlameChart extends Component<Props, State> {
       && input.leftBoundaryTime === this.leftBoundaryTime
       && input.rightBoundaryTime === this.rightBoundaryTime
       && input.width === this.width
-    ) return this.actorLaneLayout;
+    ) {
+      return this.animateNavigationLayout();
+    }
 
     this.paintableBlockEntries = this.renderBlocks.flatMap((block, index): BlockEntry[] =>
       isPaintableBlock(block, this.leftBoundaryTime, this.rightBoundaryTime, this.width)
@@ -1417,7 +1461,24 @@ export class FlameChart extends Component<Props, State> {
     );
     this.paintableBlocks = this.paintableBlockEntries.map(([, block]) => block);
     this.paintableBlockSet = new Set(this.paintableBlocks);
+    const displayedLayout = this.actorLaneLayout;
     this.actorLaneLayout = projectActorLaneLayout(this.renderActivities, this.paintableBlocks);
+    if (this.navigationHeldLayout) {
+      this.actorLaneLayout = retainNavigationRows(
+        this.actorLaneLayout, this.navigationHeldLayout, this.paintableBlocks, this.renderActivities, this.renderBlocks,
+      );
+      const changed = this.paintableBlocks.some(block => {
+        const key = blockLayoutKey(block);
+        const before = this.navigationHeldLayout!.rowByBlock[key];
+        return before !== undefined && before !== this.actorLaneLayout!.rowByBlock[key];
+      });
+      this.navigationHeldLayout = this.actorLaneLayout;
+      if (changed && displayedLayout && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        this.navigationTransition = { from: displayedLayout, to: this.actorLaneLayout, startedAt: performance.now() };
+      } else if (this.navigationTransition) {
+        this.navigationTransition.to = this.actorLaneLayout;
+      }
+    }
     this.actorLaneLayoutInput = {
       blocks: this.renderBlocks,
       activities: this.renderActivities,
@@ -1425,7 +1486,18 @@ export class FlameChart extends Component<Props, State> {
       rightBoundaryTime: this.rightBoundaryTime,
       width: this.width,
     };
-    return this.actorLaneLayout;
+    return this.animateNavigationLayout();
+  }
+
+  animateNavigationLayout(): ActorLaneLayout {
+    if (this.navigationTransition) {
+      const transition = this.navigationTransition;
+      const progress = (performance.now() - transition.startedAt) / NAVIGATION_REFLOW_MS;
+      this.actorLaneLayout = interpolateNavigationLayout(transition.from, transition.to, progress);
+      if (progress < 1) this.redrawChart();
+      else this.navigationTransition = null;
+    }
+    return this.actorLaneLayout!;
   }
 
   threadLevelsFromLayout(
