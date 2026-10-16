@@ -1,6 +1,12 @@
 /** Pixel movement before a one-finger touch becomes a scrub (vs a tap). */
 export const TOUCH_PAN_THRESHOLD_PX = 8;
 
+/** Minimum release speed before a touch pan gets inertial carry. */
+export const TOUCH_INERTIA_MIN_SPEED_PX_PER_MS = 0.02;
+
+/** Exponential drag coefficient used for inertial touch panning. */
+export const TOUCH_INERTIA_FRICTION_PER_MS = 0.0045;
+
 /** Mark regions nested under the timeline surface that keep native scrolling. */
 export const NATIVE_SCROLL_ATTR = 'data-native-scroll';
 
@@ -65,4 +71,32 @@ export function wheelDeltaFromPinchScale(scaleRatio: number): number {
 /** Finger drag right/down should reveal earlier times / lower threads (content follows). */
 export function panDeltaFromTouchMove(previous: number, current: number): number {
   return previous - current;
+}
+
+/** Blend instantaneous touch velocity to avoid a jittery release fling. */
+export function smoothTouchVelocity(
+  previousVelocity: number,
+  deltaPx: number,
+  elapsedMs: number,
+  smoothing = 0.35,
+): number {
+  if (!(elapsedMs > 0) || !Number.isFinite(elapsedMs)) return previousVelocity;
+  const instantaneousVelocity = deltaPx / elapsedMs;
+  const weight = Math.min(1, Math.max(0, smoothing));
+  return previousVelocity * (1 - weight) + instantaneousVelocity * weight;
+}
+
+/** Decay velocity independently of frame rate. */
+export function decayTouchVelocity(
+  velocity: number,
+  elapsedMs: number,
+  frictionPerMs = TOUCH_INERTIA_FRICTION_PER_MS,
+): number {
+  if (!(elapsedMs > 0) || !Number.isFinite(elapsedMs)) return velocity;
+  return velocity * Math.exp(-Math.max(0, frictionPerMs) * elapsedMs);
+}
+
+export function touchInertiaIsActive(velocity: number): boolean {
+  return Number.isFinite(velocity)
+    && Math.abs(velocity) >= TOUCH_INERTIA_MIN_SPEED_PX_PER_MS;
 }
