@@ -139,7 +139,7 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
   const box = await canvas.boundingBox();
   if (!box) throw new Error('missing chart box');
 
-  // One-finger scrub: drag left → later times (higher left bound).
+  // One-finger scrub: drag left → later times (higher left bound), then keep gliding after release.
   await page.evaluate(({ x, y }) => {
     const target = document.querySelector('[data-timeline-surface="true"]');
     if (!target) throw new Error('timeline surface missing');
@@ -169,6 +169,9 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
   }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
 
   await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBeGreaterThan(before.lbt);
+  const afterReleaseLbt = Number(await surface.getAttribute('data-lbt'));
+  await expect.poll(async () => Number(await surface.getAttribute('data-lbt')))
+    .toBeGreaterThan(afterReleaseLbt);
 
   const afterPan = {
     lbt: Number(await surface.getAttribute('data-lbt')),
@@ -176,8 +179,8 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
     topOffset: Number(await surface.getAttribute('data-top-offset')) || 0,
   };
 
-  // One-finger vertical drag: time window stays put; threads scroll when they overflow.
-  await page.evaluate(({ x, y }) => {
+  // One-finger vertical drag: starting the gesture cancels horizontal inertia, then threads scroll.
+  const verticalStartLbt = await page.evaluate(({ x, y }) => {
     const target = document.querySelector('[data-timeline-surface="true"]');
     if (!target) throw new Error('timeline surface missing');
     const touch = (id: number, cx: number, cy: number) =>
@@ -189,6 +192,7 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
       targetTouches: [touch(1, x, y)],
       changedTouches: [touch(1, x, y)],
     }));
+    const lbtAtStart = Number(target.getAttribute('data-lbt'));
     target.dispatchEvent(new TouchEvent('touchmove', {
       bubbles: true,
       cancelable: true,
@@ -203,9 +207,10 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
       targetTouches: [],
       changedTouches: [touch(1, x, y - 120)],
     }));
+    return lbtAtStart;
   }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
 
-  await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBe(afterPan.lbt);
+  await expect.poll(async () => Number(await surface.getAttribute('data-lbt'))).toBe(verticalStartLbt);
   const maxTopOffset = Number(await surface.getAttribute('data-max-top-offset')) || 0;
   if (maxTopOffset > 0) {
     await expect.poll(async () => Number(await surface.getAttribute('data-top-offset')) || 0)
