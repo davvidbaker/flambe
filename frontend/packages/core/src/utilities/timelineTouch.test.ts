@@ -1,10 +1,13 @@
 import {
+  decayTouchVelocity,
   dominantPanAxis,
   isNativeScrollTouchTarget,
   NATIVE_SCROLL_ATTR,
   panDeltaFromTouchMove,
+  smoothTouchVelocity,
   touchDistance,
   touchHasMoved,
+  touchInertiaIsActive,
   touchMidpoint,
   wheelDeltaFromPinchScale,
 } from './timelineTouch';
@@ -46,6 +49,23 @@ describe('timelineTouch', () => {
       { clientX: 0, clientY: 0 },
       { clientX: 10, clientY: 3 },
     )).toBe('x');
+  });
+
+  it('smooths sampled release velocity instead of trusting one frame', () => {
+    expect(smoothTouchVelocity(0, 16, 16)).toBeCloseTo(0.35, 5);
+    expect(smoothTouchVelocity(0.35, 16, 16)).toBeGreaterThan(0.35);
+  });
+
+  it('decays inertial velocity independent of frame size', () => {
+    const oneLongFrame = decayTouchVelocity(1, 32);
+    const twoShortFrames = decayTouchVelocity(decayTouchVelocity(1, 16), 16);
+    expect(oneLongFrame).toBeCloseTo(twoShortFrames, 10);
+    expect(oneLongFrame).toBeLessThan(1);
+  });
+
+  it('stops inertia once velocity is negligible', () => {
+    expect(touchInertiaIsActive(0.5)).toBe(true);
+    expect(touchInertiaIsActive(0.005)).toBe(false);
   });
 
   it('detects native-scroll regions nested under the timeline surface', () => {
