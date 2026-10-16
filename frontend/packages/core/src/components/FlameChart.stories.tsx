@@ -25,6 +25,7 @@ import { createFrontiersFixture } from '../storybook/frontiersFixture';
 import { createNationalTreasureFixture } from '../storybook/nationalTreasureFixture';
 import { createPowerPlantFixture } from '../storybook/powerPlantFixture';
 import { createWinterStormUriFixture } from '../storybook/winterStormUriFixture';
+import { createOctober14OvernightFixture, october14OvernightViewport } from '../storybook/october14OvernightFixture';
 
 const meta = {
   title: 'App/FlameChart',
@@ -37,6 +38,23 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const MultipleParallelAgents: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: 'Real October 14–15, 2026 capture (America/Denver): 189 events, 66 activities, concurrent agents on the Flambé thread. Original IDs, timestamps, nesting, completion events, and reducer messages are preserved. No synthetic attention shifts or overlays. Zoom and pan to inspect the sequence; the initial viewport spans 9:55 p.m.–12:10 a.m. Denver time. Tick labels follow the browser timezone.',
+      },
+    },
+  },
+  args: {
+    fixture: createOctober14OvernightFixture(),
+    viewport: october14OvernightViewport,
+    demoOverlays: false,
+    timeLabels: { absoluteTimeLabels: true, twelveHourClock: true },
+    storeExtras: { settings: { showActivityIds: false } },
+  },
+};
 
 
 export const GridObservatory: Story = {
