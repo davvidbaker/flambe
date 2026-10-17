@@ -3,6 +3,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ChartHarness } from '../storybook/ChartHarness';
 import { createAppChartFixture } from '../storybook/fixtureTrace';
 import {
+  createDeepTimeHistoryFixture,
+  DEEP_TIME_YEAR_MS,
+  DEEP_TIME_YEARS,
+} from '../storybook/deepTimeHistoryFixture';
+import {
   createConcurrentAgentsFixture,
   createDenseTraceFixture,
   createEmptyTraceFixture,
@@ -102,6 +107,29 @@ export const GridObservatory: Story = {
       viewport: {
         leftBoundaryTime: start,
         rightBoundaryTime: now,
+      },
+    };
+  })(),
+};
+
+/**
+ * A deliberately absurd stress test: 66 million years on the same interactive
+ * timeline, from the K–Pg extinction through hominin branching and into states,
+ * empires, global exchange, industrialization, and computing. Zoom aggressively.
+ */
+export const DeepTimeHistory: Story = {
+  args: (() => {
+    const now = Date.now();
+    return {
+      fixture: createDeepTimeHistoryFixture(now),
+      demoOverlays: false,
+      viewport: {
+        leftBoundaryTime: now - DEEP_TIME_YEARS * DEEP_TIME_YEAR_MS,
+        rightBoundaryTime: now,
+      },
+      timeLabels: {
+        absoluteTimeLabels: false,
+        twelveHourClock: false,
       },
     };
   })(),
