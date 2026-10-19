@@ -148,6 +148,8 @@ export interface TimelineState {
   trace: { id: EntityId | null; name: string | null; filterExcludes: EntityId[] } | null;
   activities: Record<string, ProcessedActivity>;
   blocks: TraceBlock[];
+  /** Trace owning the processed blocks; changes only when a snapshot is loaded. */
+  processedTraceId?: EntityId | null;
   events: TraceEvent[];
   threads: Record<string, Thread>;
   threadLevels: Record<string, ThreadLevel>;
@@ -280,6 +282,7 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
 
       return {
         ...state,
+        processedTraceId: state.trace?.id ?? null,
         minTime: min - 1000 * 60 * 10, // 10 minutes before the beginning
         maxTime: max,
         activities,

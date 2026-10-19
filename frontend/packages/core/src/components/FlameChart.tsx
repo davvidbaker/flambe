@@ -21,6 +21,7 @@ import {
   visibleThreadLevels,
 } from '../utilities/timelineGeometry';
 import { clampTopOffset } from '../utilities/pan';
+import { prefersReducedTimelineMotion } from '../utilities/timelineViewportAnimation';
 import {
   retainNavigationRows,
   interpolateNavigationLayout,
@@ -92,16 +93,20 @@ interface DividerData {
   gridSliceTime?: number;
 }
 interface Measurement { left: number | null; right: number | null }
-interface ActivityEntrance {
+interface PendingActivityEntrance {
   threadId: EntityId;
   time: number;
   x: number;
   y: number;
   existingActivityIds: Set<string>;
   clickedAt: number;
-  activityId: EntityId | null;
-  startedAt: number | null;
 }
+interface ActivityEntrance {
+  block: TraceBlock;
+  startedAt: number;
+  origin?: { x: number; y: number };
+}
+const ACTIVITY_ENTRANCE_MS = 620;
 type BlockTransform = ReturnType<FlameChart['getRenderedBlockTransform']>;
 type BlockEntry = [string, TraceBlock];
 type ResizeDirection = 'left' | 'right';
@@ -136,6 +141,8 @@ interface OwnProps {
 }
 
 const connector = connect((state: RootState) => ({
+  arrivalBlocks: state.timeline.blocks,
+  arrivalTraceId: state.timeline.processedTraceId,
   selectedActivityIds: state.activitySelection,
   absoluteTimeLabels: state.settings.absoluteTimeLabels,
   twelveHourClock: state.settings.twelveHourClock,
@@ -281,7 +288,12 @@ export class FlameChart extends Component<Props, State> {
   redrawFrame: number | null = null;
   measurementFrame: number | null = null;
   measurementCanvas: HTMLCanvasElement | null = null;
-  activityEntrance: ActivityEntrance | null = null;
+  pendingActivityEntrance: PendingActivityEntrance | null = null;
+  activityEntrances = new Map<string, ActivityEntrance>();
+  seenArrivalActivityIds = new Set<string>();
+  lastArrivalBlocks: TraceBlock[] | null = null;
+  lastArrivalTraceId: EntityId | null | undefined;
+  optimisticArrival: { startTime: number; threadId: EntityId | undefined; beginning: TraceBlock['beginning'] } | null = null;
   lastBlockTransforms = new Map<string, BlockTransform>();
   lastBlockViewport = '';
   reflowTransforms = new Map<string, { from: BlockTransform; to: BlockTransform }>();
@@ -344,6 +356,8 @@ export class FlameChart extends Component<Props, State> {
   }
 
   componentWillUnmount() {
+    this.activityEntrances.clear();
+    this.pendingActivityEntrance = null;
     if (this.navigationSettleTimer != null) clearTimeout(this.navigationSettleTimer);
     window.removeEventListener('keydown', this.onSelectionKeyDown);
     window.removeEventListener('mousemove', this.onMarqueeMove);
@@ -714,12 +728,12 @@ export class FlameChart extends Component<Props, State> {
   getBlockDetails = (blockIndex: number): FlameBlockDetails | false | undefined => {
     if (blockIndex !== null && blockIndex !== undefined) {
       if (this.props.blocks[blockIndex]
-        && this.isEnteringBlock(this.props.blocks[blockIndex], this.props.activities)) return false;
+        && this.isEnteringBlock(this.props.blocks[blockIndex])) return false;
       const block = this.renderBlocks[blockIndex];
       if (!block) return false;
       const activity = this.renderActivities[String(block.activity_id)];
       if (!activity || activity.thread_id === undefined) return false;
-      if (this.isEnteringBlock(block, this.renderActivities)) return false;
+      if (this.isEnteringBlock(block)) return false;
 
       if (this.threadCollapsed(activity.thread_id)) {
         return false;
@@ -828,15 +842,13 @@ export class FlameChart extends Component<Props, State> {
     const threadId = this.pixelsToThreadId(event.nativeEvent.offsetY);
     if (threadId == null || !this.props.planAt) return;
     const time = Math.floor(this.pixelsToTime(event.nativeEvent.offsetX));
-    this.activityEntrance = {
+    this.pendingActivityEntrance = prefersReducedTimelineMotion() ? null : {
       threadId,
       time,
       x: event.nativeEvent.offsetX,
       y: event.nativeEvent.offsetY,
       existingActivityIds: new Set(Object.keys(this.props.activities)),
       clickedAt: performance.now(),
-      activityId: null,
-      startedAt: null,
     };
     this.redrawMeasurement();
     this.props.planAt(threadId, time);
@@ -892,74 +904,128 @@ export class FlameChart extends Component<Props, State> {
     });
   };
 
-  drawActivityEntrance(ctx: CanvasRenderingContext2D): boolean {
-    const entrance = this.activityEntrance;
-    if (!entrance) return false;
+  trackActivityEntrances(): void {
+    // Observe canonical blocks, so filtering and panning never introduce arrivals.
+    const source = this.props.arrivalBlocks ?? this.props.blocks;
+    const traceId = this.props.arrivalTraceId;
+    const reset = this.lastArrivalBlocks == null || traceId !== this.lastArrivalTraceId;
+    if (!reset && source === this.lastArrivalBlocks) return;
+    this.lastArrivalBlocks = source;
+    this.lastArrivalTraceId = traceId;
+    if (reset) {
+      this.seenArrivalActivityIds = new Set(source.map(block => String(block.activity_id)));
+      this.activityEntrances.clear();
+      this.pendingActivityEntrance = null;
+      this.optimisticArrival = null;
+      this.redrawMeasurement();
+      return;
+    }
+
     const now = performance.now();
-    if (entrance.activityId == null || entrance.startedAt == null) {
-      if (now - entrance.clickedAt > 5000) {
-        this.activityEntrance = null;
-        return false;
+    const reducedMotion = prefersReducedTimelineMotion();
+    const visible = new Map(this.paintableBlocks.map(block => [String(block.activity_id), block]));
+    const present = new Set<string>();
+    let added = false;
+    for (const block of source) {
+      const id = String(block.activity_id);
+      present.add(id);
+      const activity = this.renderActivities[id];
+      const existing = this.activityEntrances.get(id);
+      if (existing && blockLayoutKey(existing.block) === blockLayoutKey(block)) existing.block = block;
+      if (this.seenArrivalActivityIds.has(id)) continue;
+      this.seenArrivalActivityIds.add(id);
+      if (id === 'optimisticActivity') {
+        this.optimisticArrival = { startTime: block.startTime, threadId: activity?.thread_id, beginning: block.beginning };
+      } else if (this.optimisticArrival
+        && block.startTime === this.optimisticArrival.startTime
+        && block.beginning === this.optimisticArrival.beginning
+        && activity?.thread_id === this.optimisticArrival.threadId) {
+        const optimistic = this.activityEntrances.get('optimisticActivity');
+        if (optimistic) this.activityEntrances.set(id, { ...optimistic, block });
+        this.activityEntrances.delete('optimisticActivity');
+        this.optimisticArrival = null;
+        continue;
       }
+      const visibleBlock = visible.get(id);
+      if (reducedMotion || !activity || !visibleBlock || activity.thread_id == null
+        || this.threadCollapsed(activity.thread_id)) continue;
+      const transform = this.getRenderedBlockTransform(visibleBlock, activity);
+      if (transform.blockY + transform.blockHeight < 0 || transform.blockY > this.state.canvasHeight) continue;
+      const pending = this.pendingActivityEntrance;
+      const matchesClick = pending && block.scheduled && block.startTime === pending.time
+        && String(activity.thread_id) === String(pending.threadId)
+        && !pending.existingActivityIds.has(id);
+      this.activityEntrances.set(id, {
+        block: visibleBlock,
+        startedAt: now,
+        ...(matchesClick ? { origin: { x: pending.x, y: pending.y } } : {}),
+      });
+      if (matchesClick) this.pendingActivityEntrance = null;
+      added = true;
+    }
+    for (const id of this.activityEntrances.keys()) {
+      if (!present.has(id) || !visible.has(id) || reducedMotion) this.activityEntrances.delete(id);
+    }
+    if (!present.has('optimisticActivity')) this.seenArrivalActivityIds.delete('optimisticActivity');
+    if (added) this.prepareActivityReflow();
+    this.redrawMeasurement();
+  }
+
+  drawActivityEntrance(ctx: CanvasRenderingContext2D): boolean {
+    const now = performance.now();
+    const pending = this.pendingActivityEntrance;
+    if (pending) {
+      if (now - pending.clickedAt > 5000 || prefersReducedTimelineMotion()) {
+        this.pendingActivityEntrance = null;
+      } else {
+        ctx.save();
+        ctx.fillStyle = colors.flames.main;
+        ctx.globalAlpha = 0.7 + 0.2 * Math.sin((now - pending.clickedAt) / 130);
+        ctx.beginPath();
+        ctx.arc(pending.x, pending.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    for (const [id, entrance] of this.activityEntrances) {
+      const activity = this.renderActivities[id];
+      const progress = Math.min(1, Math.max(0, (now - entrance.startedAt) / ACTIVITY_ENTRANCE_MS));
+      if (progress >= 1 || !activity || prefersReducedTimelineMotion()
+        || activity.thread_id == null || this.threadCollapsed(activity.thread_id)) {
+        this.activityEntrances.delete(id);
+        this.redrawChart();
+        this.props.onPreviewGeometryChange?.();
+        continue;
+      }
+      const target = this.getRenderedBlockTransform(entrance.block, activity);
+      const x = entrance.origin?.x ?? Math.max(0, target.blockX) + Math.min(18, Math.max(4, target.blockWidth / 2));
+      const y = entrance.origin?.y ?? target.blockY + target.blockHeight / 2;
+      const fill = this.props.categories.find(category =>
+        String(category.id) === String(activity.categories[0]))?.color_background ?? colors.flames.main;
+      const spread = 1 - (1 - progress) ** 3;
+      const fade = (1 - progress) ** 2;
       ctx.save();
-      ctx.fillStyle = colors.flames.main;
-      ctx.globalAlpha = 0.7 + 0.2 * Math.sin((now - entrance.clickedAt) / 130);
+      ctx.strokeStyle = fill;
+      ctx.fillStyle = fill;
+      ctx.globalAlpha = 0.55 * fade;
+      ctx.lineWidth = 2 * (1 - progress) + 0.5;
       ctx.beginPath();
-      ctx.arc(entrance.x, entrance.y, 4, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.ellipse(x, y, 4 + 34 * spread, 4 + 22 * spread, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // A small, deterministic spray keeps concurrent arrivals inexpensive.
+      for (let index = 0; index < 7; index += 1) {
+        const angle = (index / 7) * Math.PI * 2 - Math.PI / 2;
+        const distance = 7 + (20 + (index % 3) * 8) * spread;
+        const sparkX = x + Math.cos(angle) * distance;
+        const sparkY = y + Math.sin(angle) * distance * 0.7 + 12 * progress * progress;
+        ctx.globalAlpha = fade * 0.85;
+        ctx.beginPath();
+        ctx.arc(sparkX, sparkY, (index % 2 ? 2 : 2.8) * (1 - progress) + 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
-      return true;
     }
-
-    const block = this.renderBlocks.find(candidate =>
-      candidate.scheduled && String(candidate.activity_id) === String(entrance.activityId));
-    const activity = this.renderActivities[String(entrance.activityId)];
-    if (!block || !activity) return false;
-    const transform = this.getRenderedBlockTransform(block, activity);
-    const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 420;
-    const progress = duration === 0 ? 1 : Math.min(1, (now - entrance.startedAt) / duration);
-    const eased = 1 - (1 - progress) ** 3;
-    const targetWidth = block.scheduledPoint ? Math.max(transform.blockWidth, 8) : transform.blockWidth;
-    const targetX = transform.blockX;
-    const collapsed = activity.thread_id != null && this.threadCollapsed(activity.thread_id);
-    const adjustedHeight = this.blockHeight
-      / Math.max(1, this.props.uniformBlockHeight
-        ? this.maxThreadLevels
-        : (this.threadLevels[String(activity.thread_id)]?.max ?? 1));
-    const targetY = collapsed
-      ? transform.blockY + this.displayRowForBlock(block) * adjustedHeight
-      : transform.blockY;
-    const targetHeight = collapsed ? adjustedHeight : transform.blockHeight;
-    const x = entrance.x - 4 + (targetX - (entrance.x - 4)) * eased;
-    const y = entrance.y - 4 + (targetY - (entrance.y - 4)) * eased;
-    const width = 8 + (targetWidth - 8) * eased;
-    const height = 8 + (targetHeight - 8) * eased;
-    const fill = this.props.categories.find(category =>
-      String(category.id) === String(activity.categories[0]))?.color_background ?? colors.flames.main;
-
-    ctx.save();
-    ctx.fillStyle = fill;
-    ctx.globalAlpha = 0.85 - 0.3 * progress;
-    ctx.beginPath();
-    const radius = 4 * (1 - progress);
-    if (typeof ctx.roundRect === 'function') {
-      ctx.roundRect(x, y, Math.max(1, width), Math.max(1, height), radius);
-    } else {
-      ctx.rect(x, y, Math.max(1, width), Math.max(1, height));
-    }
-    ctx.fill();
-    ctx.setLineDash([4, 3]);
-    ctx.strokeStyle = readableTextOn(fill, colors.text);
-    ctx.stroke();
-    ctx.restore();
-
-    if (progress >= 1) {
-      this.activityEntrance = null;
-      this.redrawChart();
-      this.props.onPreviewGeometryChange?.();
-      return false;
-    }
-    return true;
+    return this.pendingActivityEntrance != null || this.activityEntrances.size > 0;
   }
 
   onDragOver = (event: React.DragEvent<HTMLCanvasElement>): void => {
@@ -1254,20 +1320,14 @@ export class FlameChart extends Component<Props, State> {
     // always uses the same geometry that was painted to the canvas.
     this.threadLevels = this.threadLevelsFromLayout(threadLevels);
     this.offsets = this.setOffsets(this.props.threads, this.threadLevels);
-    const entrance = this.activityEntrance;
-    if (entrance && entrance.activityId == null) {
-      const createdBlock = this.renderBlocks.find(block => {
-        const activity = this.renderActivities[String(block.activity_id)];
-        return block.scheduled
-          && block.startTime === entrance.time
-          && !entrance.existingActivityIds.has(String(block.activity_id))
-          && String(activity?.thread_id) === String(entrance.threadId);
-      });
-      if (createdBlock) {
-        entrance.activityId = createdBlock.activity_id;
-        entrance.startedAt = performance.now();
-        this.prepareActivityReflow();
+    this.trackActivityEntrances();
+    const reducedMotion = prefersReducedTimelineMotion();
+    for (const [id, entrance] of this.activityEntrances) {
+      if (performance.now() - entrance.startedAt >= ACTIVITY_ENTRANCE_MS
+        || reducedMotion) {
+        this.activityEntrances.delete(id);
         this.redrawMeasurement();
+        this.props.onPreviewGeometryChange?.();
       }
     }
 
@@ -1311,7 +1371,9 @@ export class FlameChart extends Component<Props, State> {
       this.ctx.scale(0.5, 0.5);
       this.ctx.restore();
     }
-    if (this.measurement.left !== null || (this.props.selectedActivityIds ?? []).length) this.redrawMeasurement();
+    if (this.measurement.left !== null || (this.props.selectedActivityIds ?? []).length
+      || this.activityEntrances.size || this.pendingActivityEntrance) this.redrawMeasurement();
+    if (this.activityEntrances.size) this.redrawChart();
     const viewport = `${this.leftBoundaryTime}:${this.rightBoundaryTime}:${this.width}`;
     this.lastBlockTransforms = new Map(this.paintableBlocks.flatMap(block => {
       const activity = this.renderActivities[String(block.activity_id)];
@@ -1391,8 +1453,6 @@ export class FlameChart extends Component<Props, State> {
   drawBlocks(): void {
     this.selectedForDrawing = new Set(supportsActivitySelection() ? this.props.selectedActivityIds : []);
     for (const [, block] of this.paintableBlockEntries) {
-      if (this.activityEntrance?.startedAt != null
-        && this.isEnteringBlock(block, this.renderActivities)) continue;
       const activity = this.renderActivities[String(block.activity_id)];
       if (activity) {
         this.ctx.font = timelineActivityCanvasFont(!block.endTime);
@@ -1401,16 +1461,9 @@ export class FlameChart extends Component<Props, State> {
     }
   }
 
-  isEnteringBlock(block: TraceBlock, activities: Props['activities']): boolean {
-    const entrance = this.activityEntrance;
-    if (!entrance || !block.scheduled) return false;
-    if (entrance.activityId != null) {
-      return String(block.activity_id) === String(entrance.activityId);
-    }
-    const activity = activities[String(block.activity_id)];
-    return block.startTime === entrance.time
-      && !entrance.existingActivityIds.has(String(block.activity_id))
-      && String(activity?.thread_id) === String(entrance.threadId);
+  isEnteringBlock(block: TraceBlock): boolean {
+    const entrance = this.activityEntrances.get(String(block.activity_id));
+    return entrance != null && blockLayoutKey(entrance.block) === blockLayoutKey(block);
   }
 
   ensureActorLaneLayout(): ActorLaneLayout {
@@ -1568,6 +1621,21 @@ export class FlameChart extends Component<Props, State> {
   getAnimatedBlockTransform(block: TraceBlock, activity: ProcessedActivity): BlockTransform {
     const settled = this.getRenderedBlockTransform(block, activity);
     const transition = this.reflowTransforms.get(blockLayoutKey(block));
+    const entrance = this.activityEntrances.get(String(block.activity_id));
+    if (entrance && this.isEnteringBlock(block)) {
+      const progress = Math.max(0, Math.min(1, (performance.now() - entrance.startedAt) / ACTIVITY_ENTRANCE_MS));
+      const grow = 1 - (1 - Math.min(1, progress / 0.72)) ** 3;
+      const pop = 1 - Math.exp(-7 * progress) * Math.cos(12 * progress);
+      const originX = entrance.origin?.x ?? Math.max(0, settled.blockX) + Math.min(18, Math.max(4, settled.blockWidth / 2));
+      const originY = entrance.origin?.y ?? settled.blockY + settled.blockHeight / 2;
+      const height = settled.blockHeight * (0.25 + 0.75 * pop);
+      return {
+        blockX: originX + (settled.blockX - originX) * grow,
+        blockY: originY + (settled.blockY + settled.blockHeight / 2 - originY) * grow - height / 2,
+        blockWidth: 4 + (settled.blockWidth - 4) * grow,
+        blockHeight: height,
+      };
+    }
     if (!transition || this.reflowStartedAt == null) return settled;
     const progress = Math.min(1, (performance.now() - this.reflowStartedAt) / 160);
     const eased = 1 - (1 - progress) ** 3;
@@ -1585,7 +1653,7 @@ export class FlameChart extends Component<Props, State> {
     const viewport = `${this.leftBoundaryTime}:${this.rightBoundaryTime}:${this.width}`;
     if (viewport !== this.lastBlockViewport) return;
     for (const block of this.paintableBlocks) {
-      if (this.isEnteringBlock(block, this.renderActivities)) continue;
+      if (this.isEnteringBlock(block)) continue;
       const from = this.lastBlockTransforms.get(blockLayoutKey(block));
       const activity = this.renderActivities[String(block.activity_id)];
       if (!from || !activity) continue;
