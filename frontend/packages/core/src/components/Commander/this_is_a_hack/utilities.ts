@@ -59,3 +59,8 @@ export function parameterDisplayValue(
   ) as Record<string, unknown> | undefined;
   return item?.[parameter.itemStringKey] ?? value;
 }
+
+/** Keep the command's operand snapshot when adding palette input values. */
+export function commandWithParameters(command: Command, parameters: Parameters): Command {
+  return { ...command, ...parameters };
+}

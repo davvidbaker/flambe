@@ -26,7 +26,7 @@ import search from './search';
 import settings from './settings';
 import toaster from './toaster';
 import type { EntityId } from '../types/ids';
-import undo from './undo';
+import undo, { redo } from './undo';
 
 interface RootAction {
   editName?: boolean;
@@ -163,6 +163,7 @@ export {
   timeline,
   toaster,
   undo,
+  redo,
   user,
   view,
   viewThread,

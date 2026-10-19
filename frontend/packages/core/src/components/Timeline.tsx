@@ -31,6 +31,7 @@ import {
   loadSuspendedActivityCount,
 } from '../utilities/timeline';
 import { scheduleIdleCallback } from '../utilities/requestIdleCallback';
+import { ZoomShortcutGuard } from '../utilities/keyboardShortcuts';
 import { isShortcutBlockedByTextEntry } from '../utilities/swyzzleIdle';
 import {
   decayTouchVelocity,
@@ -208,6 +209,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   dividersData: DividerData = { offsets: [], precision: 0, gridSliceTime: 0 };
   viewportAnimationFrame: number | null = null;
   zoomChordTimeout: ReturnType<typeof setTimeout> | null = null;
+  zoomShortcutGuard = new ZoomShortcutGuard();
 
   constructor(props: TimelineProps) {
     super(props);
@@ -248,6 +250,81 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       ],
     });
   }
+
+  onTimelineKeyDown = (event: Event): void => {
+    if (this.zoomShortcutGuard.keyDown(event as KeyboardEvent)) {
+      this.clearZoomChordTimeout();
+      this.setState({ composingZoomChord: false, zoomChord: '', zoomChordMultiplier: 1 });
+    }
+  };
+
+  onTimelineKeyUp = (event: Event): void => {
+    const e = event as KeyboardEvent;
+    if (this.zoomShortcutGuard.keyUp(e)) return;
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && !isShortcutBlockedByTextEntry(e)) {
+      if (this.state.composingZoomChord) {
+        this.clearZoomChordTimeout();
+        if (this.state.zoomChord.length === 0) {
+          let zoomChord: ZoomPeriod | '' = '';
+          switch (e.key) {
+            case 'n':
+              this.setState({ composingZoomChord: false });
+              this.zoomTo('now');
+              break;
+            case 'h':
+              // this.setState({ composingZoomChord: false });
+              zoomChord = 'hour';
+              break;
+            case 'd':
+              // this.setState({ composingZoomChord: false });
+              zoomChord = 'day';
+              break;
+            case 'w':
+              // this.setState({ composingZoomChord: false });
+              zoomChord = 'week';
+              break;
+            case 'm':
+              // this.setState({ composingZoomChord: false });
+              zoomChord = 'month';
+              break;
+            case 'y':
+              // this.setState({ composingZoomChord: false });
+              zoomChord = 'year';
+              break;
+            case 'a':
+              // this.setState({ composingZoomChord: false });
+              zoomChord = 'all';
+              break;
+
+            default:
+              this.setState({ composingZoomChord: false });
+              break;
+          }
+          this.zoomTo(zoomChord);
+          this.setState({ zoomChord });
+          if (zoomChord) this.scheduleZoomChordTimeout();
+        } else if (e.key.match(/\d/)) {
+          this.setState({ zoomChordMultiplier: Number(e.key) });
+          this.setState({ composingZoomChord: false });
+        } else {
+          this.setState({
+            composingZoomChord: false,
+            zoomChord: '',
+            zoomChordMultiplier: 1,
+          });
+        }
+      } else if (e.key === 'n') {
+        this.zoomTo('now');
+      } else if (e.key === 'z') {
+        this.setState({
+          composingZoomChord: true,
+          zoomChord: '',
+          zoomChordMultiplier: 1,
+        });
+        this.scheduleZoomChordTimeout();
+      }
+    }
+  };
 
   componentDidMount() {
     persistCollapsedThreadState(this.props.trace_id, this.props.threads);
@@ -1119,74 +1196,10 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       <WithEventListeners
         node={document}
         eventListeners={[
+          ['keydown', this.onTimelineKeyDown],
           [
             'keyup',
-            ((event: Event) => {
-              const e = event as KeyboardEvent;
-              if (!e.metaKey && !e.ctrlKey && !e.altKey && !isShortcutBlockedByTextEntry(e)) {
-                if (this.state.composingZoomChord) {
-                  this.clearZoomChordTimeout();
-                  if (this.state.zoomChord.length === 0) {
-                    let zoomChord: ZoomPeriod | '' = '';
-                    switch (e.key) {
-                      case 'n':
-                        this.setState({ composingZoomChord: false });
-                        this.zoomTo('now');
-                        break;
-                      case 'h':
-                        // this.setState({ composingZoomChord: false });
-                        zoomChord = 'hour';
-                        break;
-                      case 'd':
-                        // this.setState({ composingZoomChord: false });
-                        zoomChord = 'day';
-                        break;
-                      case 'w':
-                        // this.setState({ composingZoomChord: false });
-                        zoomChord = 'week';
-                        break;
-                      case 'm':
-                        // this.setState({ composingZoomChord: false });
-                        zoomChord = 'month';
-                        break;
-                      case 'y':
-                        // this.setState({ composingZoomChord: false });
-                        zoomChord = 'year';
-                        break;
-                      case 'a':
-                        // this.setState({ composingZoomChord: false });
-                        zoomChord = 'all';
-                        break;
-
-                      default:
-                        this.setState({ composingZoomChord: false });
-                        break;
-                    }
-                    this.zoomTo(zoomChord);
-                    this.setState({ zoomChord });
-                    if (zoomChord) this.scheduleZoomChordTimeout();
-                  } else if (e.key.match(/\d/)) {
-                    this.setState({ zoomChordMultiplier: Number(e.key) });
-                    this.setState({ composingZoomChord: false });
-                  } else {
-                    this.setState({
-                      composingZoomChord: false,
-                      zoomChord: '',
-                      zoomChordMultiplier: 1,
-                    });
-                  }
-                } else if (e.key === 'n') {
-                  this.zoomTo('now');
-                } else if (e.key === 'z') {
-                  this.setState({
-                    composingZoomChord: true,
-                    zoomChord: '',
-                    zoomChordMultiplier: 1,
-                  });
-                  this.scheduleZoomChordTimeout();
-                }
-              }
-            }) as EventListener,
+            this.onTimelineKeyUp,
           ],
         ]}
       >

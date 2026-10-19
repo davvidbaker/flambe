@@ -404,3 +404,47 @@ test('refuses a non-loopback bind', () => {
     /loopback only/,
   );
 });
+
+test('legacy bulk-move fallback remains compatible with the Single Burner API', async () => {
+  await withServer(async ({ origin, traceId, store }) => {
+    const [source] = store.getTrace(1, traceId).threads;
+    const destination = store.createThread(1, traceId, { name: 'Move destination' });
+    const created = ['First', 'Second', 'Leave here'].map(name => store.createActivity(1, {
+      traceId, threadId: source.id, activity: { name },
+      event: { timestamp_integer: 1, phase: 'B' },
+    }).activity);
+    const headers = { cookie: 'flambe_user=1', 'content-type': 'application/json' };
+    const unsupported = await fetch(`${origin}/api/traces/${traceId}/activity_moves`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ activity_ids: created.slice(0, 2).map(activity => activity.id), thread_id: destination.id }),
+    });
+    assert.equal(unsupported.status, 404);
+    for (const activity of created.slice(0, 2)) {
+      const moved = await fetch(`${origin}/api/activities/${activity.id}`, {
+        method: 'PUT', headers,
+        body: JSON.stringify({ activity: { thread_id: destination.id, move_child_ids: [] } }),
+      });
+      assert.equal(moved.status, 200);
+      assert.equal((await moved.json()).data.thread_id, destination.id);
+    }
+    assert.equal(store.getActivity(1, created[2].id).thread_id, source.id);
+  });
+});
+
+test('activity weight can return to its original unset value without changing other fields', async () => {
+  await withServer(async ({ origin, traceId, store }) => {
+    const [thread] = store.getTrace(1, traceId).threads;
+    const { activity } = store.createActivity(1, { traceId, threadId: thread.id,
+      activity: { name: 'Original name' }, event: { timestamp_integer: 1, phase: 'B' } });
+    const headers = { cookie: 'flambe_user=1', 'content-type': 'application/json' };
+    for (const weight of [9, null]) {
+      const updated = await fetch(`${origin}/api/activities/${activity.id}`, {
+        method: 'PUT', headers, body: JSON.stringify({ activity: { weight } }),
+      });
+      assert.equal(updated.status, 200);
+      const data = (await updated.json()).data;
+      assert.equal(data.weight, weight);
+      assert.equal(data.name, 'Original name');
+    }
+  });
+});
