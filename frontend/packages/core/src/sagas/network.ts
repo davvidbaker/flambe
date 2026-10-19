@@ -1,4 +1,5 @@
 import { ACTIVITIES_BULK_MOVE, ACTIVITIES_BULK_DELETE, selectActivities } from '../reducers/activitySelection';
+import { undoScope, type UndoTarget } from '../reducers/undo';
 import { call, put, takeEvery, takeLatest, takeLeading, select } from 'redux-saga/effects';
 
 import {
@@ -8,7 +9,6 @@ import {
   processTimelineTrace,
   setHiddenThreads,
   showActivityDetails,
-  updateActivity as updateActivityAction,
   ACTIVITY_BEGIN,
   ACTIVITY_CREATE_B,
   ACTIVITY_CREATE_Q,
@@ -116,12 +116,20 @@ async function hitNetwork({ resource, params = {} }: ResourceRequest): Promise<N
 }
 
 /** 💁 I tried doing an async generator but was running into call stack exceptions and it seemed to be swallowing put errors. Using Redux-Saga `call works instead */
-function* fetchResource(actionType: string, { resource, params }: ResourceRequest): SagaIterator {
-  // action should be {resourceType, resourceIdentifier}
+function* fetchResource(actionType: string, { resource, params }: ResourceRequest, undoBoundary = true): SagaIterator {
+  // Capture ownership before awaiting the request: navigation may change it.
+  const scope: string | null = yield* currentUndoScope();
   try {
     const json: NetworkResponse = yield call(hitNetwork, { resource, params });
     const { data } = json;
     yield put({ type: `${actionType}_SUCCEEDED`, data });
+    // An unsupported mutation must not let undo silently reach an older command.
+    const unsupported = [ACTIVITY_UPDATE, ACTIVITY_DELETE, EVENT_UPDATE, EVENT_DELETE,
+      CATEGORY_CREATE, CATEGORY_UPDATE, THREAD_CREATE, THREAD_UPDATE, THREAD_DELETE,
+      THREADS_REORDER];
+    if (undoBoundary && unsupported.includes(actionType)) {
+      yield* rememberUndo({ kind: 'unsupported', label: actionType.replace(/_/g, ' ').toLowerCase() }, scope);
+    }
     return data;
   } catch (error: unknown) {
     if (error instanceof Response && error.status === 401) {
@@ -151,6 +159,7 @@ function* createActivity({
   category_id,
   phase = 'B',
 }: NetworkAction): SagaIterator {
+  const scope: string | null = yield* currentUndoScope();
   const timeline: TimelineState = yield select(getTimeline);
 
   const data = yield* fetchResource(type, {
@@ -169,12 +178,13 @@ function* createActivity({
       }),
     },
   });
-  if (data?.activity?.id !== undefined) {
-    yield put(recordUndo({ kind: 'activity', id: data.activity.id, thread_id }));
+  if (data?.activity?.id !== undefined && thread_id !== undefined) {
+    yield* rememberUndo({ kind: 'activity', id: data.activity.id, thread_id }, scope);
   }
 }
 
 function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }: NetworkAction): SagaIterator {
+  const scope: string | null = yield* currentUndoScope();
   const timeline: TimelineState = yield select(getTimeline);
   const data = yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -192,10 +202,11 @@ function* endActivity({ type, id, timestamp, message, eventFlavor = 'E' }: Netwo
       }),
     },
   });
-  if (data?.id !== undefined) yield put(recordUndo({ kind: 'event', id: data.id }));
+  if (data?.id !== undefined) yield* rememberUndo({ kind: 'event', id: data.id }, scope);
 }
 
 function* suspendActivity({ type, id, timestamp, message, weight }: NetworkAction): SagaIterator {
+  const scope: string | null = yield* currentUndoScope();
   const timeline: TimelineState = yield select(getTimeline);
   const data = yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -214,31 +225,113 @@ function* suspendActivity({ type, id, timestamp, message, weight }: NetworkActio
     },
   });
 
-  if (data?.id !== undefined) yield put(recordUndo({ kind: 'event', id: data.id }));
-
+  if (data?.id === undefined) return;
+  const target: UndoTarget = { kind: 'event', id: data.id };
   if (weight && id !== undefined) {
-    yield put(updateActivityAction(id, { weight }));
+    const previousWeight = timeline.activities[String(id)]?.weight ?? null;
+    const updated = yield* fetchResource(ACTIVITY_UPDATE, {
+      resource: { path: 'activities', id },
+      params: { method: 'PUT', body: JSON.stringify({ activity: { weight } }) },
+    }, false);
+    if (updated !== undefined) target.restoreWeight = { activity_id: id, weight: previousWeight };
+    yield* refetchTrace();
+  }
+  yield* rememberUndo(target, scope);
+}
+
+function* currentUndoScope(): SagaIterator<string | null> {
+  const timeline: TimelineState = yield select(getTimeline);
+  const user: UserState = yield select(getUser);
+  return timeline.trace?.id == null || user.id == null ? null : undoScope(user.id, timeline.trace.id);
+}
+
+function* rememberUndo(target: UndoTarget, scope: string | null): SagaIterator {
+  if (scope) yield put({ ...recordUndo(target), scope });
+}
+
+export function* performUndo(
+  target: Exclude<UndoTarget, { kind: 'unsupported' }>, traceId?: EntityId,
+): SagaIterator<UndoTarget | false> {
+  try {
+    const timeline: TimelineState = yield select(getTimeline);
+    const id = target.kind === 'move' || target.kind === 'creation' ? target.trace_id : traceId ?? timeline.trace?.id;
+    if (id == null) return false;
+    const path = target.kind === 'move' ? 'undo_move' : 'reverse_creation';
+    const body = target.kind === 'move' ? { undo_token: target.token }
+      : target.kind === 'creation' ? { token: target.token }
+        : { kind: target.kind, target_id: target.id, ...(target.kind === 'event' && target.restoreWeight
+          ? { restore_weight: target.restoreWeight } : {}) };
+    try {
+      const response: { data: { undo_token: string } } = yield call(hitNetwork, {
+        resource: { path: `traces/${id}/${path}` },
+        params: { method: 'POST', body: JSON.stringify(body) },
+      });
+      if (!response.data?.undo_token) return { kind: 'unsupported', label: 'Redo on this server' };
+      return { kind: target.kind === 'move' ? 'move' : 'creation', token: response.data.undo_token, trace_id: id };
+    } catch (error) {
+      if ((error as { status?: number })?.status !== 404 || target.kind === 'move' || target.kind === 'creation') throw error;
+      // Keep existing lifecycle undo on older servers that cannot issue redo records.
+      if (target.kind === 'event' && target.restoreWeight) {
+        yield call(hitNetwork, {
+          resource: { path: 'activities', id: target.restoreWeight.activity_id },
+          params: { method: 'PUT', body: JSON.stringify({ activity: { weight: target.restoreWeight.weight } }) },
+        });
+      }
+      yield call(hitNetwork, {
+        resource: { path: target.kind === 'activity' ? 'activities' : 'events', id: target.id },
+        params: { method: 'DELETE' },
+      });
+      return { kind: 'unsupported', label: 'Redo on this server' };
+    }
+  } catch (error) {
+    if (error instanceof Response && error.status === 401) yield call(navigate, '/login');
+    yield put(createToast('Undo/redo failed. The change may have been modified since; history has been kept.', 'error'));
+    return false;
+  } finally {
+    yield* refetchTrace();
   }
 }
 
 export function* bulkActivities({ type, ids, thread_id }: {
   type: string; ids: string[]; thread_id?: EntityId;
 }): SagaIterator {
+  const scope: string | null = yield* currentUndoScope();
+  let legacyMove = false;
   try {
-    // Serialize mutations so a parent move cannot race a selected child's move.
-    for (const id of ids) {
-      yield call(hitNetwork, {
-        resource: { path: 'activities', id },
-        params: type === ACTIVITIES_BULK_DELETE
-          ? { method: 'DELETE' }
-          : { method: 'PUT', body: JSON.stringify({
-            activity: { thread_id, move_child_ids: [] },
-          }) },
-      });
+    if (type === ACTIVITIES_BULK_MOVE) {
+      const timeline: TimelineState = yield select(getTimeline);
+      const traceId = timeline.trace?.id;
+      if (traceId == null) return;
+      try {
+        const response: { data: { undo_token: string } } = yield call(hitNetwork, {
+          resource: { path: `traces/${traceId}/activity_moves` },
+          params: { method: 'POST', body: JSON.stringify({ activity_ids: ids, thread_id }) },
+        });
+        yield* rememberUndo({ kind: 'move', token: response.data.undo_token, trace_id: traceId }, scope);
+      } catch (error) {
+        if ((error as { status?: number })?.status !== 404) throw error;
+        // Single Burner and older Phoenix builds only expose individual moves.
+        legacyMove = true;
+        for (const [index, id] of ids.entries()) {
+          yield call(hitNetwork, {
+            resource: { path: 'activities', id },
+            params: { method: 'PUT', body: JSON.stringify({ activity: { thread_id, move_child_ids: [] } }) },
+          });
+          if (index === 0) yield* rememberUndo({ kind: 'unsupported', label: 'Bulk move on this server' }, scope);
+        }
+      }
+    } else {
+      for (const id of ids) {
+        yield call(hitNetwork, { resource: { path: 'activities', id }, params: { method: 'DELETE' } });
+        yield* rememberUndo({ kind: 'unsupported', label: 'Bulk delete' }, scope);
+      }
     }
     yield put(selectActivities([]));
   } catch {
-    yield put(createToast('Bulk action stopped. Some activities may have changed; review the timeline before retrying.', 'error'));
+    yield put(createToast(type === ACTIVITIES_BULK_MOVE
+      ? legacyMove ? 'Move stopped. Some activities may have moved; review the timeline before retrying.'
+        : 'Move failed. No activities were moved.'
+      : 'Bulk delete stopped. Some activities may have changed; review the timeline before retrying.', 'error'));
   } finally {
     yield* refetchTrace();
   }
@@ -267,6 +360,7 @@ function* refetchTrace(): SagaIterator {
 }
 
 function* planActivity({ type, name, thread_id, scheduled_start, scheduled_end }: NetworkAction): SagaIterator {
+  const scope: string | null = yield* currentUndoScope();
   const timeline: TimelineState = yield select(getTimeline);
   const data = yield* fetchResource(type, {
     resource: { path: 'activities' },
@@ -287,6 +381,9 @@ function* planActivity({ type, name, thread_id, scheduled_start, scheduled_end }
   yield* refetchTrace();
 
   const activityId = (data as { activity?: { id?: EntityId } } | undefined)?.activity?.id;
+  if (activityId !== undefined && thread_id !== undefined) {
+    yield* rememberUndo({ kind: 'activity', id: activityId, thread_id }, scope);
+  }
   // Chart double-click schedules with a start time; open details so the name can be typed.
   if (activityId === undefined || scheduled_start == null) return;
 
@@ -305,8 +402,9 @@ function* planActivity({ type, name, thread_id, scheduled_start, scheduled_end }
 }
 
 function* beginActivity({ type, id, timestamp }: NetworkAction): SagaIterator {
+  const scope: string | null = yield* currentUndoScope();
   const timeline: TimelineState = yield select(getTimeline);
-  yield* fetchResource(type, {
+  const data = yield* fetchResource(type, {
     resource: { path: 'events' },
     params: {
       method: 'POST',
@@ -317,6 +415,7 @@ function* beginActivity({ type, id, timestamp }: NetworkAction): SagaIterator {
       }),
     },
   });
+  if (data?.id !== undefined) yield* rememberUndo({ kind: 'event', id: data.id }, scope);
   yield* refetchTrace();
 }
 
@@ -591,6 +690,7 @@ function* createThread({ type, name, rank }: NetworkAction): SagaIterator {
 
 /* ⚠️ Soooo resumeActivity and resurrectActivity are almost identical. Some refactoring is in ofder. */
 function* resumeActivity({ type, id, timestamp, message }: NetworkAction): SagaIterator {
+  const scope: string | null = yield* currentUndoScope();
   const timeline: TimelineState = yield select(getTimeline);
   const data = yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -608,10 +708,11 @@ function* resumeActivity({ type, id, timestamp, message }: NetworkAction): SagaI
       }),
     },
   });
-  if (data?.id !== undefined) yield put(recordUndo({ kind: 'event', id: data.id }));
+  if (data?.id !== undefined) yield* rememberUndo({ kind: 'event', id: data.id }, scope);
 }
 
 function* resurrectActivity({ type, id, timestamp, message }: NetworkAction): SagaIterator {
+  const scope: string | null = yield* currentUndoScope();
   const timeline: TimelineState = yield select(getTimeline);
   const data = yield* fetchResource(type, {
     /** 💁 path of 'events' is not a mistake */
@@ -629,7 +730,7 @@ function* resurrectActivity({ type, id, timestamp, message }: NetworkAction): Sa
       }),
     },
   });
-  if (data?.id !== undefined) yield put(recordUndo({ kind: 'event', id: data.id }));
+  if (data?.id !== undefined) yield* rememberUndo({ kind: 'event', id: data.id }, scope);
 }
 // // // // // // // // // // // // // // // // // // // // // // // //
 

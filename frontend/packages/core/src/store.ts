@@ -7,6 +7,7 @@ import { rootReducer, type RootState } from './rootReducer';
 import { loadState, saveState } from './utilities';
 import { scheduleIdleCallback } from './utilities/requestIdleCallback';
 import sagas from './sagas';
+import { loadUndoHistory, loadRedoHistory, saveUndoHistory } from './utilities/undoStorage';
 
 export type { RootState };
 
@@ -62,7 +63,7 @@ const persistedState = storedState
   : undefined;
 const store = createStore(
   rootReducer,
-  persistedState,
+  { ...(persistedState ?? initialState), undo: loadUndoHistory(), redo: loadRedoHistory() },
   composeEnhancers(
     applyMiddleware(sagaMiddleware),
   ),
@@ -89,3 +90,14 @@ const stateSaver = () => {
 store.subscribe(throttle(1000, () => scheduleIdleCallback(stateSaver)));
 
 export default store;
+
+// Persist undo immediately, so refreshing immediately after a move does not lose it.
+let savedUndo = store.getState().undo;
+let savedRedo = store.getState().redo;
+store.subscribe(() => {
+  const history = store.getState().undo;
+  const redo = store.getState().redo;
+  if (history !== savedUndo || redo !== savedRedo) {
+    savedUndo = history; savedRedo = redo; saveUndoHistory(history, redo);
+  }
+});

@@ -54,6 +54,7 @@ export const EVENT_UPDATE = 'EVENT_UPDATE';
 export const EVENT_DELETE = 'EVENT_DELETE';
 
 export const UNDO_LAST_COMMAND = 'UNDO_LAST_COMMAND';
+export const REDO_LAST_COMMAND = 'REDO_LAST_COMMAND';
 export const UNDO_RECORD = 'UNDO_RECORD';
 export const UNDO_CLEAR = 'UNDO_CLEAR';
 
@@ -436,6 +437,10 @@ export function deleteEvent(id: EntityId) {
 
 export function undoLastCommand() {
   return { type: UNDO_LAST_COMMAND };
+}
+
+export function redoLastCommand() {
+  return { type: REDO_LAST_COMMAND };
 }
 
 export function recordUndo(target: unknown) {

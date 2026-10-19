@@ -628,6 +628,11 @@ export class LocalStore {
       WHERE id = ?
     `).run(attrs.name ?? null, attrs.description ?? null, attrs.weight ?? null, attrs.parent_id ?? null, current.id);
 
+    // Match Phoenix: an explicit null clears the weight, including during undo.
+    if (Object.hasOwn(attrs, 'weight') && attrs.weight == null) {
+      this.db.prepare('UPDATE activities SET weight = NULL WHERE id = ?').run(current.id);
+    }
+
     if (Object.prototype.hasOwnProperty.call(attrs, 'agent_id')) {
       const agentId = attrs.agent_id == null || attrs.agent_id === '' ? null : String(attrs.agent_id);
       const agentName = agentId == null ? null : this.#activityAgentName(userId, agentId, attrs);

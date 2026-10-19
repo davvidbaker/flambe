@@ -195,7 +195,7 @@ function Field({
         actions: {
           submitCommand: ({ context }) => {
             if (context.command) {
-              onFullyLoaded({ action: context.command.action, ...context.parameters });
+              onFullyLoaded(Utilities.commandWithParameters(context.command, context.parameters));
             }
           },
         },

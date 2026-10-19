@@ -39,9 +39,10 @@ import {
   toggleKeyboardShortcuts,
   toggleSetting,
   undoLastCommand,
+  redoLastCommand,
   updateActivity,
 } from '../actions';
-import { formatShortcut, isKeyboardShortcutsHotkey } from '../utilities/keyboardShortcuts';
+import { formatShortcut, isKeyboardShortcutsHotkey, historyShortcut } from '../utilities/keyboardShortcuts';
 import { isShortcutBlockedByTextEntry } from '../utilities/swyzzleIdle';
 import { supportsActivitySelection } from '../utilities/activitySelection';
 import COMMANDS, {
@@ -124,6 +125,7 @@ interface AppProps {
   threads: Record<string, Thread>;
   toggleActivityMute: () => unknown;
   undoLastCommand: () => unknown;
+  redoLastCommand: () => unknown;
   updateActivity: (id: EntityId, updates: Record<string, unknown>) => unknown;
   trace: Trace | null;
   user: UserState;
@@ -274,6 +276,15 @@ export class App extends React.Component<AppProps, AppState> {
           if (e.repeat) return;
           if (e.key === 'Shift') this.props.keyDown(e.key);
 
+          const history = historyShortcut(e);
+          if (history) {
+            if (!this.props.aModalIsOpen && !isShortcutBlockedByTextEntry(e)) {
+              e.preventDefault();
+              if (history === 'redo') this.props.redoLastCommand();
+              else this.props.undoLastCommand();
+            }
+            return;
+          }
           if (e.ctrlKey || e.metaKey) {
             if (isKeyboardShortcutsHotkey(e)) {
               e.preventDefault();
@@ -281,17 +292,6 @@ export class App extends React.Component<AppProps, AppState> {
               return;
             }
             switch (e.key) {
-              case 'z':
-                if (
-                  !e.shiftKey &&
-                  !this.props.aModalIsOpen &&
-                  !isShortcutBlockedByTextEntry(e)
-                ) {
-                  e.preventDefault();
-                  this.props.undoLastCommand();
-                }
-                break;
-
               case 'f':
                 if (!this.props.aModalIsOpen) {
                   e.preventDefault();
@@ -567,6 +567,7 @@ const ConnectedTrace = connect(
       toggleKeyboardShortcuts: () => dispatch(toggleKeyboardShortcuts()),
       toggleActivityMute: () => dispatch(toggleSetting('activityMute')),
       undoLastCommand: () => dispatch(undoLastCommand()),
+      redoLastCommand: () => dispatch(redoLastCommand()),
       updateActivity: (id: EntityId, updates: Record<string, unknown>) =>
         dispatch(updateActivity(id, updates)),
     }),

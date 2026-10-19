@@ -1,5 +1,6 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
+import { reverseCreation } from './history.mjs';
 import { COMMANDS, CommandError, executeCommand } from './commands.mjs';
 
 function sendJson(res, status, body) {
@@ -211,6 +212,9 @@ async function dispatch(store, req, url, body, { auth, agent }) {
     }
     return { status: 200, json: { data: { threads: result.threads } } };
   }
+
+  const historyMatch = path.match(/^\/api\/traces\/(\d+)\/reverse_creation$/);
+  if (method === 'POST' && historyMatch) return reverseCreation(store, userId, historyMatch[1], body);
 
   const traceMatch = path.match(/^\/api\/traces\/(\d+)$/);
   if (traceMatch) {

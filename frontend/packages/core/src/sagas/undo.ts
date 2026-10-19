@@ -1,36 +1,32 @@
-import {
-  ACTIVITY_DELETE,
-  UNDO_LAST_COMMAND,
-  clearUndo,
-  deleteActivity,
-  deleteEvent,
-} from '../actions';
-import { takeEvery, put, select } from 'redux-saga/effects';
+import { UNDO_LAST_COMMAND, REDO_LAST_COMMAND, createToast } from '../actions';
+import { takeLeading, put, select, call } from 'redux-saga/effects';
 import type { SagaIterator } from 'redux-saga';
-import type { UndoTarget } from '../reducers/undo';
+import type { RootState } from '../rootReducer';
+import { UNDO_POP, REDO_POP, undoScope, type UndoTarget } from '../reducers/undo';
+import { performUndo } from './network';
 
-function* undoLastCommand(): SagaIterator {
-  const target: UndoTarget | null = yield select((state: { undo: UndoTarget | null }) => state.undo);
+export function* undoLastCommand(action: { type?: string } = {}): SagaIterator {
+  const state: RootState = yield select();
+  const traceId = state.timeline.trace?.id;
+  if (traceId == null || state.user.id == null) return;
+  const scope = undoScope(state.user.id, traceId);
+  const redoing = action.type === REDO_LAST_COMMAND;
+  const initialUndo = state.undo[scope];
+  const target = (redoing ? state.redo : state.undo)?.[scope]?.at(-1);
   if (!target) return;
-
-  // Consume the one-level history before issuing the request so repeated
-  // shortcuts cannot delete the same server record twice.
-  yield put(clearUndo());
-
-  if (target.kind === 'activity') {
-    yield put(deleteActivity(target.id, target.thread_id));
-  } else {
-    yield put(deleteEvent(target.id));
+  if (target.kind === 'unsupported') {
+    yield put(createToast(`${target.label} cannot be ${redoing ? 'redone' : 'undone'} yet. Earlier changes were left alone.`, 'error'));
+    return;
+  }
+  const inverse: UndoTarget | false = yield call(performUndo, target, traceId);
+  if (inverse !== false) {
+    const latest: RootState = yield select();
+    const transfer = redoing || latest.undo[scope] === initialUndo ? inverse : undefined;
+    yield put({ type: redoing ? REDO_POP : UNDO_POP, scope, target, inverse: transfer });
   }
 }
 
-function* clearUndoAfterManualActivityDelete(): SagaIterator {
-  yield put(clearUndo());
+export default function* undoSaga(): SagaIterator {
+  // One worker serializes both directions; a fast undo/redo cannot race the server.
+  yield takeLeading([UNDO_LAST_COMMAND, REDO_LAST_COMMAND], undoLastCommand);
 }
-
-function* undoSaga(): SagaIterator {
-  yield takeEvery(UNDO_LAST_COMMAND, undoLastCommand);
-  yield takeEvery(ACTIVITY_DELETE, clearUndoAfterManualActivityDelete);
-}
-
-export default undoSaga;

@@ -59,6 +59,7 @@ export const KEYBOARD_SHORTCUT_SECTIONS: ShortcutSection[] = [
       { id: 'settings', label: 'Open settings', keys: ['Mod', ','] },
       { id: 'commander', label: 'Command palette', keys: ['Mod', 'Shift', 'P'] },
       { id: 'undo', label: 'Undo last command', keys: ['Mod', 'Z'] },
+      { id: 'redo', label: 'Redo last undone command', keys: ['Mod', 'Shift', 'Z'] },
       { id: 'mute', label: 'Mute / unmute other activities', keys: ['Mod', 'M'] },
       { id: 'collapse-threads', label: 'Collapse all threads', keys: ['Shift', '{'] },
       { id: 'expand-threads', label: 'Expand all threads', keys: ['Shift', '}'] },
@@ -91,3 +92,24 @@ export const KEYBOARD_SHORTCUT_SECTIONS: ShortcutSection[] = [
     ],
   },
 ];
+
+export function historyShortcut(event: HotkeyEvent): 'undo' | 'redo' | null {
+  if (!(event.metaKey || event.ctrlKey) || event.altKey || event.key.toLowerCase() !== 'z') return null;
+  return event.shiftKey ? 'redo' : 'undo';
+}
+
+/** Remember the modifiers at key-down, even if Cmd/Ctrl is released before Z. */
+export class ZoomShortcutGuard {
+  private modifiedZ = false;
+  keyDown(event: HotkeyEvent & { defaultPrevented?: boolean }): boolean {
+    if (event.key.toLowerCase() !== 'z') return false;
+    this.modifiedZ = event.metaKey || event.ctrlKey || event.altKey || Boolean(event.defaultPrevented);
+    return this.modifiedZ;
+  }
+  keyUp(event: HotkeyEvent & { defaultPrevented?: boolean }): boolean {
+    if (event.key.toLowerCase() !== 'z') return false;
+    const suppress = this.modifiedZ || event.metaKey || event.ctrlKey || event.altKey || Boolean(event.defaultPrevented);
+    this.modifiedZ = false;
+    return suppress;
+  }
+}
