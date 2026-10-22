@@ -85,6 +85,14 @@ The machine-local launcher is `~/.flambe/chatgpt-personal/Start-Single-Burner.co
 it prompts for a runtime key without echoing or saving it. That launcher is not
 part of the published npm package, and automatic startup is not configured.
 
+Live ChatGPT verification on 2026-10-22 exercised all eight tools: discovery,
+root/child creation, status, suspend/resume/end, planning and starting an existing
+plan, and the expected `REDUCER_NOT_CONFIGURED` response. An incorrect instance
+id was rejected with `INSTANCE_MISMATCH`. SQLite confirmed the lifecycle events
+and all three test activities ended; a Cloud status check found no matching test
+activities. One discrepancy remains: starting a planned id silently ignores an
+explicit `parent_id`, unlike creating a new child. See [the follow-up](../../docs/OPEN_WORK.md#follow-ups).
+
 The Phoenix development checkout identifies itself as **Development**. Register
 its `/mcp` endpoint as a separate connection using a development API token and
 database. Production defaults to **Cloud**. `FLAMBE_INSTANCE_NAME` can label a
