@@ -52,6 +52,17 @@ async function fixture(t) {
   return { store, traceId, rawToken, dbPath, url, rpc, call };
 }
 
+test('OAuth discovery probes return 404 without exposing the setup page or local token', async t => {
+  const { url, rawToken } = await fixture(t);
+  for (const path of ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp', '/.well-known/oauth-authorization-server', '/.well-known/openid-configuration']) {
+    const response = await fetch(url + path);
+    assert.equal(response.status, 404);
+    const body = await response.text();
+    assert.equal(body.includes(rawToken), false);
+    assert.deepEqual(JSON.parse(body), { error: 'NOT_FOUND' });
+  }
+});
+
 for (const modern of [false, true]) {
   test(`${modern ? 'modern' : 'legacy'} MCP discovers Single Burner and shares lifecycle state with REST`, async t => {
     const { store, traceId, rawToken, dbPath, url, rpc, call } = await fixture(t);

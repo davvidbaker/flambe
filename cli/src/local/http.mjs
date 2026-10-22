@@ -452,6 +452,13 @@ export async function handleLocalRequest(store, req, res, { staticDir, mcp } = {
     }
   }
 
+  // Single Burner has no OAuth discovery documents. Do not serve the SPA (or
+  // its setup credentials) to MCP clients probing standard metadata paths.
+  if (url.pathname.startsWith('/.well-known/')) {
+    sendJson(res, 404, { error: 'NOT_FOUND' });
+    return;
+  }
+
   if (url.pathname === '/mcp' && mcp) {
     if (req.headers.origin) {
       sendJson(res, 403, { error: 'MCP_BROWSER_ORIGIN_FORBIDDEN' });
