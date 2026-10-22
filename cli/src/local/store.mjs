@@ -405,8 +405,13 @@ export class LocalStore {
   }
 
   listAgents(userId) {
-    return this.db.prepare('SELECT agent_id, name, name_source, platform, last_seen_ms FROM agents WHERE user_id = ? ORDER BY last_seen_ms DESC, id')
-      .all(userId);
+    return this.db.prepare('SELECT agent_id, name, platform, last_seen_ms FROM agents WHERE user_id = ? ORDER BY last_seen_ms DESC, id')
+      .all(userId).map(agent => ({
+        agent_id: agent.agent_id,
+        name: agent.name,
+        platform: agent.platform ?? null,
+        last_seen_at: isoFromMs(agent.last_seen_ms),
+      }));
   }
 
   /** Newest running activity in the trace, optionally for one agent or thread. */
@@ -748,11 +753,7 @@ export class LocalStore {
         timestamp: isoFromMs(row.timestamp_ms),
       })),
       observations: this.listObservations(userId),
-      agents: this.listAgents(userId).map(agent => ({
-        agent_id: agent.agent_id,
-        name: agent.name,
-        platform: agent.platform ?? null,
-      })),
+      agents: this.listAgents(userId),
     };
   }
 

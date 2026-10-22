@@ -72,6 +72,60 @@ function fixture(
   };
 }
 
+/** Three recent agents, including a five-level stack, alongside quiet and completed work. */
+export function createAgentContactFixture(now = Date.now()): AppChartFixture {
+  const app = thread(1, 'Agent contact');
+  const recent = activity(app, 3001, 'Recent contact · open work', { agentName: 'Avery', agentProvider: 'codex' });
+  const recentInspect = activity(app, 3011, 'Trace last-contact updates', {
+    agentName: 'Avery', agentProvider: 'codex', parentId: recent.id, category: 2,
+  });
+  const recentPatch = activity(app, 3012, 'Update presence markers', {
+    agentName: 'Avery', agentProvider: 'codex', parentId: recentInspect.id,
+  });
+  const recentVerify = activity(app, 3013, 'Verify contact expiry', {
+    agentName: 'Avery', agentProvider: 'codex', parentId: recentPatch.id, category: 3,
+  });
+  const recentRecovery = activity(app, 3014, 'Check quiet-agent recovery', {
+    agentName: 'Avery', agentProvider: 'codex', parentId: recentVerify.id, category: 2,
+  });
+  const secondRecent = activity(app, 3020, 'Review reconnect behavior · active', {
+    agentName: 'Emery', agentProvider: 'claude', category: 3,
+  });
+  const secondInspect = activity(app, 3021, 'Exercise reconnect timing', {
+    agentName: 'Emery', agentProvider: 'claude', parentId: secondRecent.id, category: 2,
+  });
+  const thirdRecent = activity(app, 3030, 'Polish activity details · active', {
+    agentName: 'Finley', agentProvider: 'cursor',
+  });
+  const stale = activity(app, 3002, 'Last heard 12 minutes ago · open work', { agentName: 'Blair', agentProvider: 'claude' });
+  const unknown = activity(app, 3003, 'No contact recorded · open work', { agentName: 'Casey', agentProvider: 'cursor' });
+  const finished = activity(app, 3004, 'Completed work · no contact indicator', { agentName: 'Drew', agentProvider: 'codex' });
+  return {
+    ...fixture(9970, 'Recent agent contact', [app], [
+      { id: 9971, timestamp: minutesAgo(now, 30), phase: 'B', activity: recent },
+      { id: 9981, timestamp: minutesAgo(now, 29), phase: 'B', activity: recentInspect },
+      { id: 9985, timestamp: minutesAgo(now, 28.5), phase: 'B', activity: secondRecent },
+      { id: 9972, timestamp: minutesAgo(now, 28), phase: 'B', activity: stale },
+      { id: 9987, timestamp: minutesAgo(now, 27.5), phase: 'B', activity: thirdRecent },
+      { id: 9982, timestamp: minutesAgo(now, 27), phase: 'B', activity: recentPatch },
+      { id: 9973, timestamp: minutesAgo(now, 26), phase: 'B', activity: unknown },
+      { id: 9986, timestamp: minutesAgo(now, 25), phase: 'B', activity: secondInspect },
+      { id: 9974, timestamp: minutesAgo(now, 24), phase: 'B', activity: finished },
+      { id: 9983, timestamp: minutesAgo(now, 23), phase: 'B', activity: recentVerify },
+      { id: 9984, timestamp: minutesAgo(now, 20), phase: 'B', activity: recentRecovery },
+      { id: 9975, timestamp: minutesAgo(now, 10), phase: 'E', activity: finished },
+    ]),
+    agents: [
+      { agent_id: recent.agent_id!, name: 'Avery', last_seen_at: new Date(now).toISOString() },
+      { agent_id: secondRecent.agent_id!, name: 'Emery', last_seen_at: new Date(now).toISOString() },
+      { agent_id: thirdRecent.agent_id!, name: 'Finley', last_seen_at: new Date(now).toISOString() },
+      { agent_id: stale.agent_id!, name: 'Blair', last_seen_at: new Date(minutesAgo(now, 12)).toISOString() },
+      { agent_id: unknown.agent_id!, name: 'Casey', last_seen_at: null },
+      { agent_id: finished.agent_id!, name: 'Drew', last_seen_at: new Date(now).toISOString() },
+    ],
+  };
+}
+
 export function createConcurrentAgentsFixture(now = Date.now()): AppChartFixture {
   const app = thread(1, 'flambe🔥');
   const release = thread(2, 'release 🚀', 1);
