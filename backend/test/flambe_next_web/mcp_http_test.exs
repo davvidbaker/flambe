@@ -48,6 +48,7 @@ defmodule FlambeNextWeb.McpHttpTest do
                  %{
                    "trace_id" => context.trace.id,
                    "name" => "Started by HTTP client",
+                   "expected_instance_id" => FlambeNext.Instance.info().id,
                    "thread_id" => hd(Repo.preload(context.trace, :threads).threads).id,
                    "agent_id" => "http-client"
                  },
@@ -66,7 +67,13 @@ defmodule FlambeNextWeb.McpHttpTest do
       assert response.body["data"]["activity_id"] == id
 
       assert {:ok, %{"structuredContent" => %{"state" => %{"activities" => activities}}}} =
-               ExMCP.Client.call_tool(client, "flambe_status", %{"trace_id" => context.trace.id},
+               ExMCP.Client.call_tool(
+                 client,
+                 "flambe_status",
+                 %{
+                   "trace_id" => context.trace.id,
+                   "expected_instance_id" => FlambeNext.Instance.info().id
+                 },
                  format: :map
                )
 

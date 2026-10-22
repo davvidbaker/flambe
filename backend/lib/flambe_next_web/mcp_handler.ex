@@ -3,7 +3,7 @@ defmodule FlambeNextWeb.MCPHandler do
 
   use ExMCP.Server.Handler
 
-  alias FlambeNext.{AgentCommandIdentity, AgentCommands, Traces}
+  alias FlambeNext.{AgentCommandIdentity, AgentCommands, Instance, Traces}
 
   @tools ~w(flambe_traces flambe_start flambe_end flambe_suspend flambe_resume flambe_status flambe_message flambe_plan)
 
@@ -15,15 +15,31 @@ defmodule FlambeNextWeb.MCPHandler do
     {:ok,
      %{
        protocolVersion: params["protocolVersion"],
-       serverInfo: %{name: "flambe", version: "0.1.0"},
+       serverInfo: %{name: "flambe", title: "Flambe — #{Instance.info().name}", version: "0.1.0"},
+       instructions:
+         "This connection accesses #{Instance.info().name} only. Discover its identity with flambe_traces before acting; never substitute another instance.",
        capabilities: %{tools: %{listChanged: false}}
      }, state}
   end
 
   @impl ExMCP.Server.Handler
   def handle_list_tools(_cursor, state) do
-    {:ok, Enum.map(@tools, &tool_definition/1), nil, state}
+    tools =
+      Enum.map(tool_definitions(), fn tool ->
+        Map.update!(
+          tool,
+          :description,
+          &(&1 <>
+              " Connected instance: #{Instance.info().name}. This connection cannot access another instance.")
+        )
+      end)
+
+    {:ok, tools, nil, state}
   end
+
+  # Exported as cli/src/mcp-tools.json for the packaged Single Burner adapter.
+  # The cross-runtime contract test checks that its schemas remain in sync.
+  def tool_definitions, do: Enum.map(@tools, &tool_definition/1)
 
   @impl ExMCP.Server.Handler
   def handle_call_tool("flambe_traces", _arguments, state) do
@@ -45,7 +61,7 @@ defmodule FlambeNextWeb.MCPHandler do
       AgentCommandIdentity.merge(arguments, state.agent, Map.get(state, :platform?, false))
 
     result =
-      case AgentCommands.execute(state.user, command, arguments) do
+      case execute(state.user, command, arguments) do
         {:ok, command_result} -> tool_result(command_result)
         {:error, reason} -> tool_error(reason)
       end
@@ -57,11 +73,17 @@ defmodule FlambeNextWeb.MCPHandler do
     {:error, ExMCP.Error.protocol_error(-32602, "Unknown tool: #{name}"), state}
   end
 
+  defp execute(user, command, arguments) do
+    with :ok <- Instance.verify(arguments) do
+      AgentCommands.execute(user, command, Map.delete(arguments, "expected_instance_id"))
+    end
+  end
+
   defp tool_definition("flambe_traces") do
     tool(
       "flambe_traces",
       "List Flambe traces",
-      "List the authenticated user's Flambe traces. Use this only when the target trace id is not already known.",
+      "Discover this connection's instance and available traces before the first Flambe action in each chat, even if a trace id is already known. Trace ids cannot select another instance.",
       %{},
       [],
       %{readOnlyHint: true, destructiveHint: false, openWorldHint: false}
@@ -210,6 +232,18 @@ defmodule FlambeNextWeb.MCPHandler do
   defp tool(name, title, description, properties, required, annotations) do
     scopes = ["flambe"]
 
+    {properties, required} =
+      if name == "flambe_traces" do
+        {properties, required}
+      else
+        {Map.put(properties, :expected_instance_id, %{
+           type: "string",
+           minLength: 1,
+           description:
+             "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection."
+         }), ["expected_instance_id" | required]}
+      end
+
     definition = %{
       name: name,
       title: title,
@@ -247,6 +281,8 @@ defmodule FlambeNextWeb.MCPHandler do
   end
 
   defp tool_result(result) do
+    result = Map.put(result, :instance, Instance.info())
+
     %{
       content: [%{type: "text", text: Jason.encode!(result)}],
       structuredContent: result,
@@ -256,14 +292,17 @@ defmodule FlambeNextWeb.MCPHandler do
 
   defp tool_error(reason) do
     {code, message, details} = command_error(reason)
-    structured = %{code: code, message: message} |> Map.merge(details)
+    structured = %{code: code, message: message, instance: Instance.info()} |> Map.merge(details)
 
     %{
-      content: [%{type: "text", text: message}],
+      content: [%{type: "text", text: Jason.encode!(structured)}],
       structuredContent: structured,
       isError: true
     }
   end
+
+  defp command_error({:instance_required, message}), do: {"INSTANCE_REQUIRED", message, %{}}
+  defp command_error({:instance_mismatch, message}), do: {"INSTANCE_MISMATCH", message, %{}}
 
   defp command_error(:not_found),
     do: {"NOT_FOUND", "The requested resource was not found", %{}}

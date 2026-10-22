@@ -163,6 +163,7 @@ defmodule FlambeNextWeb.OAuthControllerTest do
             "arguments" => %{
               "trace_id" => trace.id,
               "name" => "Started through OAuth MCP",
+              "expected_instance_id" => FlambeNext.Instance.info().id,
               "parent_id" => nil,
               "agent_id" => "chatgpt:test-session",
               "platform" => "ChatGPT"
@@ -182,7 +183,6 @@ defmodule FlambeNextWeb.OAuthControllerTest do
     assert activity.name == "Started through OAuth MCP"
     assert activity.agent_id == "chatgpt:test-session"
   end
-
 
   test "serves the OpenAI Apps challenge as plain text", %{conn: conn} do
     previous = System.get_env("OPENAI_APPS_CHALLENGE_TOKEN")

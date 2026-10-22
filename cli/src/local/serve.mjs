@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { handleLocalRequest } from './http.mjs';
 import { LocalStore } from './store.mjs';
+import { createLocalMcpHandler } from './mcp.mjs';
 
 /** Kept in sync with the copy in cli.mjs, which must not import this module eagerly. */
 export function defaultDbPath() {
@@ -18,8 +19,9 @@ export function defaultStaticDir() {
 export function createLocalServer({ dbPath = defaultDbPath(), staticDir } = {}) {
   const store = new LocalStore(dbPath);
   const resolvedStatic = staticDir === undefined ? defaultStaticDir() : staticDir;
+  const mcp = createLocalMcpHandler(store);
   const server = http.createServer((req, res) => {
-    handleLocalRequest(store, req, res, { staticDir: resolvedStatic }).catch(error => {
+    handleLocalRequest(store, req, res, { staticDir: resolvedStatic, mcp }).catch(error => {
       if (!res.headersSent) {
         res.writeHead(500, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ error: 'INTERNAL' }));
@@ -28,6 +30,7 @@ export function createLocalServer({ dbPath = defaultDbPath(), staticDir } = {}) 
     });
   });
   server.store = store;
+  server.on('close', () => { void mcp.close(); });
   return server;
 }
 

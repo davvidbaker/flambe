@@ -1,7 +1,7 @@
 {
   "name": "flambe",
-  "version": "0.2.3",
-  "description": "Track substantial work as a live Flambe call stack and coordinate scope through the Reducer Agent.",
+  "version": "0.2.4",
+  "description": "Track work in Cloud; Single Burner and Development require separate connections.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"
 }

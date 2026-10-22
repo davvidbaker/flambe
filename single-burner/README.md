@@ -30,6 +30,20 @@ Options:
 
 Single Burner binds loopback only. Cloud-hosted agents cannot reach it directly; use a hosted Flambé instance for agents running elsewhere.
 
+## Use it through ChatGPT
+
+Single Burner exposes bearer-authenticated MCP tools at
+`http://127.0.0.1:4001/mcp` using the local API token printed at startup. Connect
+through a private MCP bridge reachable from ChatGPT and name that connection
+**Single Burner**. See the [chat connection setup](../plugins/flambe/README.md#single-burner-and-development).
+
+The first `flambe_traces` call identifies this database and lists its traces.
+Other tools require its exact `instance.id` as `expected_instance_id`, so an id
+from Cloud, Development, or a different local database is rejected before any
+activity is accessed. Every result identifies its instance. Instance selection
+stays with the chat until you explicitly switch; Single Burner never forwards
+activity or model-review requests to Cloud.
+
 ## What is bundled
 
 The npm package contains the built Flambé web UI. The local HTTP/SQLite engine currently comes from `@davvidbaker/flambe-cli`, so the behavior stays identical to the existing `flambe serve` path while the two distributions are separated.
