@@ -28,9 +28,15 @@ Options:
 --db <path>  SQLite database path (default: ~/.flambe/local.sqlite)
 ```
 
-Single Burner binds loopback only. Cloud-hosted agents cannot reach it directly; use a hosted Flambé instance for agents running elsewhere.
+Single Burner binds loopback only. Agents on other machines need a private bridge
+to reach it, or can use a separately hosted Flambe instance.
 
 ## Use it through ChatGPT
+
+For now, use the separate private **Single Burner** plugin alongside the hosted
+Flambe plugin. One Flambe plugin that selects between both is still the preferred
+experience, but grouping the connections has not been validated. This is a
+temporary choice, not a confirmed platform limitation. See [why we chose it](../docs/ADR-020-instance-bound-chat-connections.md#temporary-chatgpt-plugin-decision--2026-10-22).
 
 Single Burner exposes bearer-authenticated MCP tools at
 `http://127.0.0.1:4001/mcp` using the local API token printed at startup. Connect
@@ -43,6 +49,9 @@ from Cloud, Development, or a different local database is rejected before any
 activity is accessed. Every result identifies its instance. Instance selection
 stays with the chat until you explicitly switch; Single Burner never forwards
 activity or model-review requests to Cloud.
+
+Keep both Single Burner and its tunnel client running while using the ChatGPT
+connection. The verified development setup does not start them automatically.
 
 ## What is bundled
 

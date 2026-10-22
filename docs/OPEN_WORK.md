@@ -39,4 +39,8 @@ commit it.
 
 ## Parked (do not implement until asked)
 
+- One Flambe plugin with explicit Cloud/Single Burner selection: validate whether
+  both registered connections can be grouped in the intended personal ChatGPT
+  host. The separate local plugin is the accepted temporary setup, not proof of
+  a platform restriction. See [ADR-020](ADR-020-instance-bound-chat-connections.md#temporary-chatgpt-plugin-decision--2026-10-22).
 - [Deferred: SPA effects without sagas](deferred-spa-async.md)

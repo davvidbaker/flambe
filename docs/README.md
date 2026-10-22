@@ -5,6 +5,7 @@
 | [SELF_HOSTING.md](SELF_HOSTING.md) | Host your own instance (Fly.io or the Docker image) |
 | [PRODUCT_PRINCIPLES.md](PRODUCT_PRINCIPLES.md) | Product boundary: Flambe owns intent/control/observability, not generic agent orchestration |
 | [OPEN_WORK.md](OPEN_WORK.md) | Unfinished and parked work |
+| [ADR-020-instance-bound-chat-connections.md](ADR-020-instance-bound-chat-connections.md) | Instance identity and the temporary separate Single Burner ChatGPT plugin; unified packaging remains unverified |
 | [ADR-018-use-exmcp-for-the-mcp-transport.md](ADR-018-use-exmcp-for-the-mcp-transport.md) | Accepted: use ExMCP with token-only MCP authentication while retaining Flambe commands |
 | [PLAN-exmcp-transport-migration.md](PLAN-exmcp-transport-migration.md) | Phased migration from the custom MCP controller to ExMCP |
 | [ADR-017-unstarted-activities-with-scheduled-times.md](ADR-017-unstarted-activities-with-scheduled-times.md) | Accepted: unstarted activities use `scheduled_start` / `scheduled_end`; begin is a real event |

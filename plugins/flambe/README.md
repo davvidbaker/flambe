@@ -48,6 +48,15 @@ For a public plugin, upload this folder as the plugin package and use the same r
 
 ### Single Burner and Development
 
+**Current temporary setup:** Single Burner is a separate private ChatGPT plugin,
+alongside the existing hosted Flambe plugin. The preferred experience remains
+one Flambe plugin with explicit Cloud/Single Burner selection. Grouping both
+registered connections inside one personal plugin has not been validated; it
+has not been shown to be impossible. The public submission limit alone does not
+answer that personal-plugin question. A routing endpoint was considered but
+would either make Cloud depend on the Mac or pass local traffic through Flambe's
+hosted service. See [the decision and follow-up](../../docs/ADR-020-instance-bound-chat-connections.md#temporary-chatgpt-plugin-decision--2026-10-22).
+
 Single Burner now serves the same eight MCP tools at `http://127.0.0.1:4001/mcp`,
 authenticated with the local API token printed at startup. Its SQLite database
 has a persistent instance id; another database gets a different id, even when
@@ -60,6 +69,21 @@ and name the connection **Single Burner**. Keep the existing loopback Host heade
 the local server continues to reject foreign hosts and browser Origins.
 Do not point the Cloud package at a local server or expose the local token in
 plugin files. Follow the same instance-selection rules with the local connection.
+
+Verify that Platform's organization and the target ChatGPT account/workspace
+are associated before creating the tunnel and its runtime key. A runtime key
+needs **Tunnels Read + Use**; keep it out of chat, plugin files, and git. With a
+bridge that injects the local bearer token, the ChatGPT connection can use
+**No authentication**: the tunnel controls access and the local server still
+requires its token. Keep both the server and tunnel client running.
+
+The personal development setup was verified with the updated server on port
+`4002` and the existing app on `4001`, both opening `~/.flambe/local.sqlite`.
+Those are two processes sharing one local database, not two independent
+histories. Port `4002` is a temporary development detail, not a new default.
+The machine-local launcher is `~/.flambe/chatgpt-personal/Start-Single-Burner.command`;
+it prompts for a runtime key without echoing or saving it. That launcher is not
+part of the published npm package, and automatic startup is not configured.
 
 The Phoenix development checkout identifies itself as **Development**. Register
 its `/mcp` endpoint as a separate connection using a development API token and
