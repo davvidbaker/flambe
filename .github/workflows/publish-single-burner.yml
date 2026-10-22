@@ -44,6 +44,20 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Wait for the CLI dependency to be published
+        if: steps.published.outputs.exists != 'true'
+        run: |
+          cli_version=$(node -p "require('./package.json').dependencies['@davvidbaker/flambe-cli']")
+          for attempt in {1..30}; do
+            if npm view "@davvidbaker/flambe-cli@$cli_version" version >/dev/null 2>&1; then
+              exit 0
+            fi
+            echo "Waiting for CLI $cli_version to reach npm ($attempt/30)."
+            sleep 10
+          done
+          echo "::error::CLI $cli_version is not published; check the CLI publish workflow."
+          exit 1
+
       - if: steps.published.outputs.exists != 'true'
         run: npm install
       - if: steps.published.outputs.exists != 'true'
