@@ -61,7 +61,8 @@ defmodule FlambeNextWeb.UserControllerTest do
     assert %{
              "agent_id" => "cursor:theo",
              "name" => "Theo",
-             "platform" => "Cursor Cloud"
+             "platform" => "Cursor Cloud",
+             "last_seen_at" => DateTime.to_iso8601(agent.last_seen_at)
            } in json_response(conn, 200)["data"]["agents"]
 
     assert agent.name == "Theo"

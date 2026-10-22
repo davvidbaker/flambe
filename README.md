@@ -177,6 +177,8 @@ Copy the `flambe-cli` skill into the agent product you use ([`.cursor/skills/fla
 
 Hosted agents can call the same commands over MCP at `/mcp` with `Authorization: Bearer <API_TOKEN>`. Browser login cookies do not authenticate the MCP endpoint. The server prefers MCP `2026-07-28` and retains legacy initialization compatibility during migration.
 
+On the chart, an agent's neon green rail smoothly fades from fully transparent to fully visible when it has open work and Flambé heard from it within the last minute. Completed work and older or unknown contact keep the rail's usual provider color, with no separate contact dot. Activity details show the last-contact status as text. Reduced motion keeps the recent rail steadily visible. This records contact with Flambé, so an agent can go quiet while still working. Open activities keep their lifecycle status until explicitly ended or suspended. Confirming execution between updates would require a signal from the agent's runtime.
+
 See the **[CLI README](cli/README.md)** for installation, Cloud secrets, and command details.
 
 <details>

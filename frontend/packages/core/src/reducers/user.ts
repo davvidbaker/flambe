@@ -2,6 +2,7 @@ import type { Category } from '../types/Category';
 import type { Agent } from '../types/Agent';
 import type { EntityId } from '../types/ids';
 import type { Trace } from '../types/Trace';
+import { AGENT_CONTACTS_RECEIVED } from '../constants/agentContact';
 import {
   ATTENTION_SHIFT, CATEGORY_CREATE, CATEGORY_UPDATE, MANTRA_CREATE,
   TRACE_DELETE, TRACE_CREATE, USER_FETCH,
@@ -48,6 +49,7 @@ type UserAction = {
   color_text?: string; id?: EntityId; thread_id?: EntityId;
   timestamp?: number; term?: string; tabs_count?: number; window_count?: number;
   updates?: Partial<Category>; data?: Record<string, any>;
+  agents?: Agent[];
 };
 
 export const getUser = (state: { user: UserState }): UserState => state.user;
@@ -62,6 +64,8 @@ function sortByTime<T extends TimedRecord>(records: Array<IncomingTimedRecord<T>
 
 function user(state: UserState = defaultState, action: UserAction): UserState {
   switch (action.type) {
+    case AGENT_CONTACTS_RECEIVED:
+      return action.agents ? { ...state, agents: action.agents } : state;
     case CATEGORY_CREATE:
       return { ...state, categories: [...state.categories, { name: action.name ?? '', id: 'optimisticCategory', color_background: action.color_background ?? '', color_text: action.color_text ?? '#000000' }] };
     case MANTRA_CREATE:

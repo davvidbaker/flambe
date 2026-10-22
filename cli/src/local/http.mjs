@@ -154,6 +154,10 @@ async function dispatch(store, req, url, body, { auth, agent }) {
     } };
   }
 
+  if (method === 'GET' && path === '/api/agents') {
+    return { status: 200, json: { data: store.listAgents(userId) } };
+  }
+
   if (method === 'GET' && path === '/api/agents/me') {
     if (!agent) {
       return { status: 400, json: { error: 'AGENT_ID_REQUIRED', detail: 'Send x-flambe-agent-id with a bearer token' } };

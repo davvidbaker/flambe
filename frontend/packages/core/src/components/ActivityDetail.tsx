@@ -27,6 +27,7 @@ import { activityAgentChoices } from '../utilities/activityAgents';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../utilities/timelineViewport';
 
 import ActivityEventFlow from './ActivityEventFlow';
+import AgentContactStatus from './AgentContactStatus';
 import CategoryChip from './CategoryChip';
 import Button, { InputFromButton } from './Button';
 import Fuzzy, { MagicFuzzy } from './Fuzzy';
@@ -443,6 +444,9 @@ const ActivityDetail = (props: ActivityDetailProps) => {
             </AssignBox>
           ) : (
             <div>{actorName(activity)}</div>
+          )}
+          {activity.agent_id && (
+            <AgentContactStatus lastSeenAt={agents.find(agent => agent.agent_id === activity.agent_id)?.last_seen_at} />
           )}
         </FieldBody>
       </Field>
