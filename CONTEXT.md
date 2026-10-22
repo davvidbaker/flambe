@@ -4,6 +4,16 @@ A trace of work over time, shared by a person and coding agents.
 
 ## Language
 
+**Instance**:
+An independently stored Flambe history. Cloud, Single Burner, and Development
+are separate instances.
+
+**Connection**:
+A chat's access to a particular Flambe instance.
+
+**Trace**:
+A timeline of work within one Flambe instance.
+
 **Unstarted activity**:
 An activity that is already on a thread and has not begun.
 _Avoid_: Future activity, todo, ghost

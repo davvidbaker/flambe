@@ -42,6 +42,9 @@ defmodule FlambeNextWeb.McpControllerTest do
            } = json_response(response, 200)
 
     assert protocol_version in ~w(2025-11-25 2025-06-18 2025-03-26)
+
+    assert get_in(json_response(response, 200), ["result", "serverInfo", "title"]) ==
+             "Flambe — Development"
   end
 
   test "discovers the modern protocol and all agent tools", %{conn: conn} do
@@ -73,9 +76,14 @@ defmodule FlambeNextWeb.McpControllerTest do
              "flambe_traces"
            ]
 
+    assert Enum.all?(
+             tools,
+             &String.contains?(&1["description"], "Connected instance: Development")
+           )
+
     status = Enum.find(tools, &(&1["name"] == "flambe_status"))
     assert status["annotations"]["readOnlyHint"]
-    assert get_in(status, ["inputSchema", "required"]) == ["trace_id"]
+    assert get_in(status, ["inputSchema", "required"]) == ["expected_instance_id", "trace_id"]
 
     traces = Enum.find(tools, &(&1["name"] == "flambe_traces"))
     assert traces["annotations"]["readOnlyHint"]
@@ -114,6 +122,7 @@ defmodule FlambeNextWeb.McpControllerTest do
           "name" => "flambe_start",
           "arguments" => %{
             "trace_id" => trace.id,
+            "expected_instance_id" => FlambeNext.Instance.info().id,
             "name" => "Called over MCP",
             "agent_id" => "body-agent"
           }
@@ -169,7 +178,13 @@ defmodule FlambeNextWeb.McpControllerTest do
       modern_post(
         conn,
         "tools/call",
-        %{"name" => "flambe_start", "arguments" => %{"trace_id" => trace.id}},
+        %{
+          "name" => "flambe_start",
+          "arguments" => %{
+            "trace_id" => trace.id,
+            "expected_instance_id" => FlambeNext.Instance.info().id
+          }
+        },
         4,
         "flambe_start"
       )
@@ -206,6 +221,7 @@ defmodule FlambeNextWeb.McpControllerTest do
           "name" => "flambe_start",
           "arguments" => %{
             "trace_id" => trace.id,
+            "expected_instance_id" => FlambeNext.Instance.info().id,
             "name" => "Direct MCP identity",
             "agent_id" => "direct-mcp-agent",
             "agent_name" => "Direct Agent",
@@ -240,6 +256,68 @@ defmodule FlambeNextWeb.McpControllerTest do
       |> modern_post("tools/list", %{}, 8)
 
     assert response(foreign_host, 421)
+  end
+
+  test "discovery and results identify the connection, and foreign instance ids cannot mutate it",
+       %{conn: conn, trace: trace, user: user} do
+    discovered =
+      modern_post(
+        conn,
+        "tools/call",
+        %{"name" => "flambe_traces", "arguments" => %{}},
+        20,
+        "flambe_traces"
+      )
+
+    data = json_response(discovered, 200)["result"]
+    instance = data["structuredContent"]["instance"]
+    assert instance["name"] == "Development"
+    assert is_binary(instance["id"])
+    assert Jason.decode!(hd(data["content"])["text"])["instance"] == instance
+
+    for expected <- [nil, "different-instance"],
+        command <- ~w(start end suspend resume status message plan) do
+      failed =
+        modern_post(
+          conn,
+          "tools/call",
+          %{
+            "name" => "flambe_#{command}",
+            "arguments" => %{
+              "trace_id" => trace.id,
+              "expected_instance_id" => expected,
+              "name" => "Wrong destination",
+              "activity_id" => 1,
+              "message" => "Wrong destination"
+            }
+          },
+          21,
+          "flambe_#{command}"
+        )
+
+      result = json_response(failed, 200)["result"]
+      assert result["isError"]
+
+      assert result["structuredContent"]["code"] ==
+               if(expected, do: "INSTANCE_MISMATCH", else: "INSTANCE_REQUIRED")
+
+      assert result["structuredContent"]["instance"] == instance
+      assert Jason.decode!(hd(result["content"])["text"])["instance"] == instance
+    end
+
+    {_trace, events} = Traces.get_user_trace_with_events!(user, trace.id)
+    assert events == []
+    assert Traces.list_unstarted_activities(trace) == []
+  end
+
+  test "Single Burner ships the same tool schemas as the hosted server" do
+    packaged =
+      Path.expand("../../../../cli/src/mcp-tools.json", __DIR__)
+      |> File.read!()
+      |> Jason.decode!()
+
+    assert packaged ==
+             FlambeNextWeb.MCPHandler.tool_definitions() |> Jason.encode!() |> Jason.decode!()
   end
 
   test "does not expose legacy GET and DELETE transports", %{conn: conn} do

@@ -433,7 +433,7 @@ function tryStatic(staticDir, urlPath, res) {
   return true;
 }
 
-export async function handleLocalRequest(store, req, res, { staticDir } = {}) {
+export async function handleLocalRequest(store, req, res, { staticDir, mcp } = {}) {
   const host = req.headers.host ?? '127.0.0.1';
   const url = new URL(req.url ?? '/', `http://${host}`);
   // A locally served UI must not send trace content to a compiled-in remote API.
@@ -450,6 +450,15 @@ export async function handleLocalRequest(store, req, res, { staticDir } = {}) {
       sendJson(res, 403, { error: 'LOCAL_ORIGIN_REQUIRED' });
       return;
     }
+  }
+
+  if (url.pathname === '/mcp' && mcp) {
+    if (req.headers.origin) {
+      sendJson(res, 403, { error: 'MCP_BROWSER_ORIGIN_FORBIDDEN' });
+      return;
+    }
+    await mcp.handle(req, res);
+    return;
   }
 
   if (!url.pathname.startsWith('/api') && !url.pathname.startsWith('/auth')) {

@@ -22,7 +22,17 @@ defmodule FlambeNextWeb.McpPlug do
   @impl Plug
   def call(conn, opts) do
     allowed_hosts = Application.fetch_env!(:flambe_next, :mcp_allowed_hosts)
-    ExMCP.HttpPlug.call(conn, Map.put(opts, :allowed_hosts, allowed_hosts))
+
+    opts =
+      opts
+      |> Map.put(:allowed_hosts, allowed_hosts)
+      |> Map.put(:server_info, %{
+        name: "flambe",
+        title: "Flambe — #{FlambeNext.Instance.info().name}",
+        version: "0.1.0"
+      })
+
+    ExMCP.HttpPlug.call(conn, opts)
   end
 
   def handler_opts(conn, _request) do

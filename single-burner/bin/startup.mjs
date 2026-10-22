@@ -43,5 +43,12 @@ FLAMBE_TRACE_ID=${traceId}
 
 The agent must run on this machine and be able to reach ${origin}.
 A cloud-hosted agent cannot reach your machine's localhost.
+
+ChatGPT connection: Single Burner
+
+MCP endpoint: ${origin}/mcp
+Use the local API token above with a private MCP bridge reachable from ChatGPT.
+Keep this connection separate from Cloud and Development. ChatGPT must discover
+this instance with flambe_traces before reading or changing its activities.
 `);
 }

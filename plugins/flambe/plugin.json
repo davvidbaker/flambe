@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flambe",
-  "version": "0.2.3",
-  "description": "Track substantial work as a live Flambe call stack and coordinate scope through the Reducer Agent.",
+  "version": "0.2.4",
+  "description": "Track work in the Cloud Flambe instance with an explicit, verified chat connection.",
   "author": {
     "name": "David Baker",
     "url": "https://github.com/davvidbaker"
@@ -20,9 +20,9 @@
   "extensions": {
     "com.openai": {
       "interface": {
-        "displayName": "Flambé",
-        "shortDescription": "Live call stacks for work",
-        "longDescription": "Flambé tracks substantial human and agent work as a live call stack instead of a flat task list. In ChatGPT, the plugin can inspect your Flambé traces, start meaningful activities, nest rabbit holes under their parent work, suspend and resume work, plan future activities, end completed activities with outcomes, and ask the Flambé Reducer Agent for scope guidance. The bundled skill tells ChatGPT when to use those tools so routine shell commands and file reads do not pollute the flame chart. Flambé requires a connected Flambé account and uses OAuth for the hosted MCP connection.",
+        "displayName": "Flambé — Cloud",
+        "shortDescription": "Work tracking in Cloud",
+        "longDescription": "Flambé tracks substantial human and agent work as a live call stack instead of a flat task list. In ChatGPT, the plugin can inspect your Flambé traces, start meaningful activities, nest rabbit holes under their parent work, suspend and resume work, plan future activities, end completed activities with outcomes, and ask the Flambé Reducer Agent for scope guidance. The bundled skill tells ChatGPT when to use those tools so routine shell commands and file reads do not pollute the flame chart. Flambé requires a connected Flambé account and uses OAuth for the hosted MCP connection. This connection accesses Cloud only, not Single Burner or Development. ChatGPT verifies the connected instance before acting, and every result identifies that instance.",
         "developerName": "David Baker",
         "category": "Productivity",
         "defaultPrompt": [
@@ -44,31 +44,31 @@
               "description": "Creates a new root work activity after discovering the user's available Flambé trace.",
               "prompt": "Start a new root Flambé activity called “Review public plugin”.",
               "tools_triggered": "flambe_traces, flambe_start",
-              "expected_behavior": "The plugin discovers the authenticated user's trace if needed, then calls flambe_start with the selected trace, the requested name, a stable ChatGPT agent identity, platform ChatGPT, and parent_id null. It reports the created activity and follows any reducer direction or reply."
+              "expected_behavior": "The plugin calls flambe_traces to establish Cloud and select an authorized trace. It calls flambe_start with that instance.id as expected_instance_id, the selected trace, requested name, stable conversation-local agent_id, platform ChatGPT, and parent_id null. It identifies Cloud in its response and follows returned reducer direction."
             },
             {
               "description": "Reads active work without mutating the user's trace.",
               "prompt": "Show me my currently active Flambé work.",
               "tools_triggered": "flambe_traces, flambe_status",
-              "expected_behavior": "The plugin discovers the trace if needed and calls flambe_status with active_only true. It summarizes only the returned active activities and does not create, end, suspend, or resume anything."
+              "expected_behavior": "The plugin establishes Cloud and its trace with flambe_traces, then calls flambe_status with the returned instance.id as expected_instance_id and active_only true. It summarizes only returned active work, names the instance, and makes no activity changes."
             },
             {
               "description": "Creates an unstarted planned activity.",
               "prompt": "Plan an unstarted Flambé activity called “Record plugin demo”.",
               "tools_triggered": "flambe_traces, flambe_plan",
-              "expected_behavior": "The plugin resolves the trace and calls flambe_plan with the requested name. With no requested schedule, it leaves scheduled_start and scheduled_end unset and reports the created unstarted activity."
+              "expected_behavior": "The plugin establishes Cloud and its trace with flambe_traces, then calls flambe_plan with the returned instance.id as expected_instance_id and the requested name. It leaves schedule fields unset unless requested and reports the created unstarted activity in Cloud."
             },
             {
               "description": "Uses nested lifecycle actions for a bounded subproblem and records its outcome.",
               "prompt": "Under my current Flambé work, start a child activity called “Check OAuth redirect”, then end that child with the outcome “Verified the redirect flow”.",
               "tools_triggered": "flambe_traces, flambe_status, flambe_start, flambe_end",
-              "expected_behavior": "The plugin resolves the current active activity, starts the requested child without flattening the parent, reuses the returned child id, then ends that child with the requested outcome message while leaving the parent open."
+              "expected_behavior": "The plugin establishes Cloud and its trace, reads that instance's active stack, and starts the requested child under the current activity. Every call includes the verified expected_instance_id. It ends the returned child id with the requested outcome while leaving the parent open."
             },
             {
               "description": "Asks the Reducer Agent for guidance before widening scope.",
               "prompt": "Tell the Flambé reducer that this task now needs a database migration and ask whether I should widen scope.",
               "tools_triggered": "flambe_traces, flambe_status, flambe_message",
-              "expected_behavior": "The plugin resolves the active activity and sends a concise scope-change update with flambe_message. It reports the reducer assessment/reply and obeys any pause, stop, escalate, or other returned direction before doing additional work."
+              "expected_behavior": "The plugin establishes Cloud and its trace, resolves the active activity, and calls flambe_message with the verified expected_instance_id and concise scope update. It reports the reducer reply and obeys any pause, stop, or escalate direction before continuing."
             }
           ],
           "negative": [
@@ -83,6 +83,10 @@
             {
               "description": "An unrelated factual utility request should not invoke Flambé.",
               "prompt": "What is the weather in Denver today?"
+            },
+            {
+              "description": "Single Burner is a separate local connection; Cloud must not receive a local request.",
+              "prompt": "Use Single Burner to start an activity called Private work."
             }
           ]
         },
@@ -91,7 +95,7 @@
         "demo_recording_url": "https://www.loom.com/share/dc51702306f74963814093681af3523f"
       },
       "publication": {
-        "release_notes": "Initial public Flambé plugin release with the bundled call-stack skill, OAuth-authenticated MCP tools, trace discovery, lifecycle actions, planning, reducer messaging, and public-review metadata.",
+        "release_notes": "Explicit Cloud connection identity, instance-bound tool calls and results, and chat instructions that keep Single Burner and Development separate.",
         "countries": []
       }
     }
