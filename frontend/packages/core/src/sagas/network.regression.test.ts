@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runSaga, stdChannel } from 'redux-saga';
 import networkSaga, { bulkActivities, performUndo } from './network';
 import * as actions from '../actions';
+import timelineReducer from '../reducers/timeline';
 
 const response = (data: unknown) => ({ ok: true, status: 200, json: async () => ({ data }) });
 const initial = () => ({ user: { id: 4 }, timeline: {
@@ -36,6 +37,115 @@ async function execute(action: object) {
 }
 
 describe('existing mutation paths with undo history', () => {
+  it.each(['creation', 'refresh'])(
+    'keeps delayed live %s from opening the name editor on another trace', async delayed => {
+      const state = initial();
+      const channel = stdChannel();
+      const dispatched: Array<Record<string, unknown>> = [];
+      let respond!: (value: unknown) => void;
+      const pending = new Promise(resolve => { respond = resolve; });
+      let requested!: () => void;
+      const started = new Promise<void>(resolve => { requested = resolve; });
+      let succeeded!: () => void;
+      const completed = new Promise<void>(resolve => { succeeded = resolve; });
+      const fetch = vi.fn(async (url: string) => {
+        if ((delayed === 'creation') === (url === '/api/activities')) {
+          requested();
+          return pending;
+        }
+        return response({ activity: { id: 42 } });
+      });
+      vi.stubGlobal('fetch', fetch);
+      const task = runSaga({ channel, getState: () => state, dispatch: (action: { type: string }) => {
+        dispatched.push(action);
+        if (action.type === `${delayed === 'creation' ? actions.ACTIVITY_CREATE_B : actions.TRACE_FETCH}_SUCCEEDED`) {
+          succeeded();
+        }
+      } }, networkSaga);
+      channel.put(actions.createActivityB({ name: 'New activity', timestamp: 123, thread_id: 7,
+        description: '', category_id: null, phase: 'B', editName: true }));
+      try {
+        await started;
+        state.timeline = { ...state.timeline, trace: { id: 22 } };
+        respond(response(delayed === 'creation' ? { activity: { id: 42 } } : null));
+        await completed;
+        expect(dispatched.some(action => action.type === actions.ACTIVITY_DETAILS_SHOW)).toBe(false);
+        expect(dispatched.some(action => action.type === actions.BLOCK_FOCUS)).toBe(false);
+        expect(dispatched).toContainEqual({ type: actions.UNDO_RECORD, scope: '4:1',
+          target: { kind: 'activity', id: 42, thread_id: 7 } });
+        expect(fetch.mock.calls.map(([url]) => url)).toEqual(
+          delayed === 'creation' ? ['/api/activities'] : ['/api/activities', '/api/traces/1'],
+        );
+      } finally {
+        task.cancel();
+        await task.toPromise();
+      }
+    },
+  );
+
+  it.each(['live', 'scheduled'] as const)(
+    'persists a %s chart activity at the clicked time and opens its name editor', async mode => {
+      const timestamp = 1_234;
+      const thread = { id: 7, name: 'Work', rank: 0, trace_id: 1 };
+      const activity = { id: 42, name: 'New activity', thread_id: 7, categories: [] };
+      const event = { id: 101, timestamp, phase: 'B', activity };
+      const state = { user: { id: 4 }, timeline: timelineReducer(undefined, { type: 'INIT' }) };
+      state.timeline = timelineReducer(state.timeline, actions.selectTrace({ id: 1, name: 'Main' }));
+      state.timeline = timelineReducer(state.timeline, actions.processTimelineTrace([], [thread]));
+      const fetch = vi.fn().mockResolvedValueOnce(response({ activity, event })).mockResolvedValue(response({
+        id: 1, threads: [thread],
+        events: mode === 'live' ? [event] : [],
+        unstarted: mode === 'scheduled'
+          ? [{ ...activity, status: 'unstarted', scheduled_start: timestamp }]
+          : [],
+      }));
+      vi.stubGlobal('fetch', fetch);
+      const dispatched: Array<Record<string, unknown>> = [];
+      let finish!: () => void;
+      const shown = new Promise<void>(resolve => { finish = resolve; });
+      const channel = stdChannel();
+      const task = runSaga({ channel, getState: () => state, dispatch: (action: { type: string }) => {
+        dispatched.push(action);
+        state.timeline = timelineReducer(state.timeline, action);
+        if (action.type === actions.ACTIVITY_DETAILS_SHOW) finish();
+      } }, networkSaga);
+      const create = mode === 'live'
+        ? actions.createActivityB({ name: activity.name, thread_id: 7, timestamp,
+          description: '', category_id: null, phase: 'B', editName: true })
+        : actions.planActivity({ name: activity.name, thread_id: 7, scheduled_start: timestamp });
+      state.timeline = timelineReducer(state.timeline, create);
+      channel.put(create);
+      try {
+        await shown;
+        expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/activities', '/api/traces/1']);
+        const body = JSON.parse(fetch.mock.calls[0][1].body);
+        expect(body).toMatchObject({ trace_id: 1, thread_id: 7 });
+        if (mode === 'live') {
+          expect(body.event).toEqual({ timestamp_integer: timestamp, phase: 'B' });
+          expect(body.activity).not.toHaveProperty('scheduled_start_integer');
+          expect(state.timeline.activities['42']).toMatchObject({ id: 42, status: 'active', startTime: timestamp });
+          expect(state.timeline.blocks[0]).toMatchObject({ activity_id: 42, beginning: 'B', startTime: timestamp });
+          expect(state.timeline.blocks[0].scheduled).toBeFalsy();
+          expect(state.timeline.blocks[0].endTime).toBeUndefined();
+        } else {
+          expect(body).not.toHaveProperty('event');
+          expect(body.activity.scheduled_start_integer).toBe(timestamp);
+          expect(state.timeline.blocks[0]).toMatchObject({ activity_id: 42, scheduled: true, startTime: timestamp });
+        }
+        expect(dispatched).toContainEqual(actions.focusBlock({
+          index: 0, activity_id: 42, activityStatus: mode === 'live' ? 'active' : 'unstarted', thread_id: 7,
+        }));
+        expect(dispatched.at(-1)).toEqual(actions.showActivityDetails({ editName: true }));
+        expect(dispatched.filter(action => action.type === actions.UNDO_RECORD)).toEqual([
+          { type: actions.UNDO_RECORD, scope: '4:1', target: { kind: 'activity', id: 42, thread_id: 7 } },
+        ]);
+      } finally {
+        task.cancel();
+        await task.toPromise();
+      }
+    },
+  );
+
   it.each([
     [actions.ACTIVITY_CREATE_B, 'activity'], [actions.ACTIVITY_END, 'event'],
     [actions.ACTIVITY_SUSPEND, 'event'], [actions.ACTIVITY_RESUME, 'event'],

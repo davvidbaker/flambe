@@ -28,7 +28,7 @@ function chart(initial: TraceBlock[] = [], traceId: EntityId | null = 1) {
   const instance = new FlameChart({
     arrivalTraceId: traceId, arrivalBlocks: initial, blocks: initial,
     activities: activities(initial), threads: { 1: { id: 1, name: 'Work' } },
-    categories: [], planAt: vi.fn(),
+    categories: [], createAt: vi.fn(),
   } as never);
   instance.state = { canvasHeight: 300 };
   instance.renderActivities = activities(initial);
@@ -146,15 +146,39 @@ describe('activity arrival lifecycle', () => {
     expect(instance.prepareActivityReflow).toHaveBeenCalledTimes(1);
   });
 
-  it('uses the pending double-click position as the matching scheduled arrival origin', () => {
+  it.each([false, true])('uses the double-click position for an arrival with scheduled=%s', scheduled => {
     const instance = chart([block(1)]);
     instance.hitTest = vi.fn(() => null);
     instance.pixelsToThreadId = vi.fn(() => 1);
-    instance.pixelsToTime = vi.fn(() => 250);
+    instance.pixelsToTime = vi.fn(() => 250.9);
     instance.onDoubleClick({ nativeEvent: { offsetX: 80, offsetY: 90 } } as never);
-    expect(instance.props.planAt).toHaveBeenCalledWith(1, 250);
-    update(instance, [block(1), block(2, { startTime: 250, scheduled: true })]);
+    expect(instance.props.createAt).toHaveBeenCalledExactlyOnceWith(1, 250);
+    if (!scheduled) {
+      update(instance, [block(1), block('optimisticActivity', { startTime: 250 })]);
+      expect(instance.activityEntrances.get('optimisticActivity')?.origin).toEqual({ x: 80, y: 90 });
+    }
+    update(instance, [block(1), block(2, { startTime: 250, scheduled })]);
     expect(instance.activityEntrances.get('2')?.origin).toEqual({ x: 80, y: 90 });
+    expect(instance.pendingActivityEntrance).toBeNull();
+  });
+
+  it.each(['block', 'block_edge_left', 'block_edge_right'])('does not create an activity when double-clicking a %s', type => {
+    const instance = chart([block(1)]);
+    instance.hitTest = vi.fn(() => ({ type, value: ['0', block(1)] }) as never);
+    instance.pixelsToThreadId = vi.fn(() => 1);
+    instance.onDoubleClick({ nativeEvent: { offsetX: 80, offsetY: 90 } } as never);
+
+    expect(instance.props.createAt).not.toHaveBeenCalled();
+    expect(instance.pendingActivityEntrance).toBeNull();
+  });
+
+  it('does not create an activity outside a thread', () => {
+    const instance = chart([block(1)]);
+    instance.hitTest = vi.fn(() => null);
+    instance.pixelsToThreadId = vi.fn(() => null);
+    instance.onDoubleClick({ nativeEvent: { offsetX: 80, offsetY: 90 } } as never);
+
+    expect(instance.props.createAt).not.toHaveBeenCalled();
     expect(instance.pendingActivityEntrance).toBeNull();
   });
 
