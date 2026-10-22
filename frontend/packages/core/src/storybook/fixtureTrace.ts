@@ -4,12 +4,14 @@ import type { EntityId } from '../types/ids';
 import type { Thread } from '../types/Thread';
 import type { TraceEvent } from '../types/TraceEvent';
 import type { AttentionShift } from '../reducers/user';
+import type { Agent } from '../types/Agent';
 
 const MINUTE = 60 * 1000;
 
 export const APP_CHART_TRACE_ID = 9001;
 
 export type AppChartFixture = {
+  agents?: Agent[];
   attentionShifts: AttentionShift[];
   categories: Category[];
   events: TraceEvent[];

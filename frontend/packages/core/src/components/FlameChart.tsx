@@ -68,6 +68,9 @@ import type { Thread } from '../types/Thread';
 import type { AttentionShift } from '../reducers/user';
 import type { ProcessedActivity, ThreadLevel, TraceBlock } from '../utilities/processTrace';
 import type { FlameBlockDetails } from '../types/FlameChartHandle';
+import type { Agent } from '../types/Agent';
+import { agentContact, agentsWithOpenWork, nextAgentContactExpiry } from '../utilities/agentContact';
+import { AGENT_CONTACT_COLOR, AGENT_CONTACT_FRESH_MS, AGENT_CONTACT_PULSE_MS } from '../constants/agentContact';
 
 const Wrapper = styled.div`
   height: 100%;
@@ -141,6 +144,7 @@ interface OwnProps {
 }
 
 const connector = connect((state: RootState) => ({
+  agents: state.user.agents ?? [],
   arrivalBlocks: state.timeline.blocks,
   arrivalTraceId: state.timeline.processedTraceId,
   selectedActivityIds: state.activitySelection,
@@ -320,6 +324,8 @@ export class FlameChart extends Component<Props, State> {
   navigationHeldLayout: ActorLaneLayout | null = null;
   navigationTransition: { from: ActorLaneLayout; to: ActorLaneLayout; startedAt: number } | null = null;
   actorChromeBands: ReturnType<typeof coalesceActorLaneChrome> = [];
+  actorContactRails: Array<{ x: number; y: number; width: number; height: number; title: string; expiresAt: number; opacity: number }> = [];
+  contactExpiryTimer: ReturnType<typeof setTimeout> | null = null;
   paintableBlockEntries: BlockEntry[] = [];
   paintableBlocks: TraceBlock[] = [];
   paintableBlockSet = new Set<TraceBlock>();
@@ -348,6 +354,8 @@ export class FlameChart extends Component<Props, State> {
 
   componentDidMount() {
     window.addEventListener('keydown', this.onSelectionKeyDown);
+    document.addEventListener('visibilitychange', this.onContactVisibilityChange);
+    this.scheduleContactExpiry();
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;
     this.ctx = ctx;
@@ -359,6 +367,8 @@ export class FlameChart extends Component<Props, State> {
     this.activityEntrances.clear();
     this.pendingActivityEntrance = null;
     if (this.navigationSettleTimer != null) clearTimeout(this.navigationSettleTimer);
+    if (this.contactExpiryTimer != null) clearTimeout(this.contactExpiryTimer);
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onContactVisibilityChange);
     window.removeEventListener('keydown', this.onSelectionKeyDown);
     window.removeEventListener('mousemove', this.onMarqueeMove);
     window.removeEventListener('mouseup', this.onMarqueeUp);
@@ -368,12 +378,33 @@ export class FlameChart extends Component<Props, State> {
   }
 
   shouldComponentUpdate(_nextProps: Props, _nextState: State): boolean {
+    if (_nextProps.agents !== this.props.agents) {
+      this.scheduleContactExpiry(_nextProps.agents);
+      this.redrawChart();
+    }
     if (_nextProps.selectedActivityIds !== this.props.selectedActivityIds) {
       this.redrawChart();
       this.redrawMeasurement();
     }
     return false;
   }
+
+  onContactVisibilityChange = (): void => {
+    this.scheduleContactExpiry();
+    if (document.visibilityState !== 'hidden') this.redrawChart();
+  };
+
+  scheduleContactExpiry = (agents: Agent[] = this.props.agents ?? []): void => {
+    if (this.contactExpiryTimer != null) clearTimeout(this.contactExpiryTimer);
+    this.contactExpiryTimer = null;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    const now = Date.now();
+    const expiry = nextAgentContactExpiry(agents, now);
+    if (expiry !== null) this.contactExpiryTimer = setTimeout(() => {
+      this.redrawChart();
+      this.scheduleContactExpiry();
+    }, expiry - now);
+  };
 
   // avoiding react state for some stuff
   setFlamechartState = (state: Record<string, unknown>): void => {
@@ -631,6 +662,10 @@ export class FlameChart extends Component<Props, State> {
   };
 
   onMouseMove = (e: MouseEvent<HTMLCanvasElement>): void => {
+    const contactHit = this.actorContactRails.find(hit =>
+      e.nativeEvent.offsetX >= hit.x - 3 && e.nativeEvent.offsetX <= hit.x + hit.width + 3
+      && e.nativeEvent.offsetY >= hit.y - 3 && e.nativeEvent.offsetY <= hit.y + hit.height + 3);
+    this.canvas.title = contactHit?.title ?? '';
     if (this.marquee) return;
     this.setFlamechartState({
       cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
@@ -900,9 +935,30 @@ export class FlameChart extends Component<Props, State> {
           ctx.fillText(text, 20, this.state.canvasHeight - 16);
         }
       }
-      if (this.drawActivityEntrance(ctx)) this.redrawMeasurement();
+      const activityAnimating = this.drawActivityEntrance(ctx);
+      const contactAnimating = this.drawAgentContactPulse(ctx);
+      if (activityAnimating || contactAnimating) this.redrawMeasurement();
     });
   };
+
+  drawAgentContactPulse(ctx: CanvasRenderingContext2D): boolean {
+    if (document.visibilityState === 'hidden') return false;
+    const now = Date.now();
+    const contacts = this.actorContactRails.filter(contact => now <= contact.expiresAt);
+    if (!contacts.length) return false;
+    const reducedMotion = prefersReducedTimelineMotion();
+    const pulse = reducedMotion ? 1 : (1 - Math.cos((now % AGENT_CONTACT_PULSE_MS) / AGENT_CONTACT_PULSE_MS * Math.PI * 2)) / 2;
+    ctx.save();
+    ctx.fillStyle = AGENT_CONTACT_COLOR;
+    ctx.shadowColor = AGENT_CONTACT_COLOR;
+    ctx.shadowBlur = 4 + 6 * pulse;
+    for (const contact of contacts) {
+      ctx.globalAlpha = contact.opacity * pulse;
+      ctx.fillRect(contact.x, contact.y, contact.width, contact.height);
+    }
+    ctx.restore();
+    return !reducedMotion;
+  }
 
   trackActivityEntrances(): void {
     // Observe canonical blocks, so filtering and panning never introduce arrivals.
@@ -1113,6 +1169,7 @@ export class FlameChart extends Component<Props, State> {
   };
 
   onMouseLeave = (): void => {
+    this.canvas.title = '';
     this.props.onCursorTimeChange?.(null);
     if (!this.movingScheduledBlock) return;
     this.setFlamechartState({
@@ -1693,10 +1750,13 @@ export class FlameChart extends Component<Props, State> {
   }
 
   drawActorLaneChrome(phase: 'wash' | 'rail' = 'wash'): void {
+    if (phase === 'rail') this.actorContactRails = [];
     const layout = this.actorLaneLayout;
     if (!layout) return;
 
     const chromeBands = this.actorChromeBands;
+    const agents = new Map((this.props.agents ?? []).map(agent => [agent.agent_id, agent]));
+    const now = Date.now();
 
     this.ctx.save();
     const gutter = FlameChart.actorLaneGutter;
@@ -1800,9 +1860,22 @@ export class FlameChart extends Component<Props, State> {
         this.fillActorLaneRoundRect(railX, top, gutter, height);
       }
 
-      this.ctx.globalAlpha = 0.95 * muteOpacity;
-      this.ctx.fillStyle = accent;
-      this.ctx.fillRect(railX, top, 3, height);
+      const agentId = chrome.actorKey.slice('agent:'.length);
+      const contact = agentContact(agents.get(agentId)?.last_seen_at, now);
+      const recentContact = contact.kind === 'recent'
+        && agentsWithOpenWork(this.paintableBlocks, this.renderActivities, chrome.threadId).has(agentId);
+      // Recent rails live entirely on the overlay so opacity can reach zero.
+      if (!recentContact) {
+        this.ctx.globalAlpha = 0.95 * muteOpacity;
+        this.ctx.fillStyle = accent;
+        this.ctx.fillRect(railX, top, 3, height);
+      }
+
+      if (recentContact) {
+        this.actorContactRails.push({ x: railX, y: top, width: 3, height,
+          title: `${chrome.actorName}: ${contact.label}. ${contact.title}`,
+          expiresAt: contact.lastSeenTime! + AGENT_CONTACT_FRESH_MS, opacity: muteOpacity });
+      }
 
       const label = chrome.actorName;
       if (!label || height < 8) return;
@@ -1831,6 +1904,8 @@ export class FlameChart extends Component<Props, State> {
     });
 
     this.ctx.restore();
+    // Animate only the lightweight overlay; the timeline itself stays cached.
+    if (phase === 'rail' && this.measurementCanvas) this.redrawMeasurement();
   }
 
   drawActorForks(): void {

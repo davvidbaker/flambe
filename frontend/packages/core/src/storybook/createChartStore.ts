@@ -11,6 +11,7 @@ import { MAX_TIME_INTO_FUTURE } from '../constants/defaultParameters';
 import { rootReducer } from '../rootReducer';
 import type { SettingsState } from '../reducers/settings';
 import type { Observation } from '../reducers/user';
+import type { Agent } from '../types/Agent';
 import { DAY, HOUR } from '../utilities/time';
 import type { SnapshotTimeLabels, SnapshotViewport } from '../utilities/timelineSnapshot';
 import {
@@ -71,6 +72,7 @@ function seedObservations(minTime: number, now: number): Observation[] {
 }
 
 export type ChartStoreExtras = {
+  agents?: Agent[];
   demoOverlays?: boolean;
   mantras?: { name: string; timestamp: number }[];
   observations?: Observation[];
@@ -128,6 +130,7 @@ export function createChartStore(
       name: 'Storybook',
       username: 'storybook',
       categories: fixture.categories,
+      agents: extras.agents ?? fixture.agents ?? [],
       attentionShifts: fixture.attentionShifts,
       mantras: extras.mantras ?? (demoOverlays ? [{ name: 'Ship the favicon', timestamp: now }] : []),
       observations: extras.observations ?? (demoOverlays ? seedObservations(minTime, now) : []),

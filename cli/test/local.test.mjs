@@ -201,6 +201,36 @@ test('login on the local server sets a session cookie and serves the user dashbo
   });
 });
 
+test('agent contact timestamps refresh on agent requests, not dashboard polling', async () => {
+  await withServer(async ({ origin, rawToken, store }) => {
+    assert.equal((await fetch(`${origin}/api/agents`)).status, 401);
+
+    store.identifyAgent(1, 'codex:contact', 'Contact', 'Codex');
+    store.db.prepare('UPDATE agents SET last_seen_ms = ? WHERE agent_id = ?')
+      .run(1_000, 'codex:contact');
+    const login = await fetch(`${origin}/auth/identity/callback`, { method: 'POST' });
+    const browserHeaders = { cookie: login.headers.get('set-cookie').split(';')[0] };
+    const list = () => fetch(`${origin}/api/agents`, { headers: browserHeaders }).then(r => r.json());
+    const stale = await list();
+    assert.deepEqual(stale.data, [{
+      agent_id: 'codex:contact', name: 'Contact', platform: 'Codex',
+      last_seen_at: '1970-01-01T00:00:01.000000Z',
+    }]);
+    const user = await fetch(`${origin}/api/users/1`, { headers: browserHeaders }).then(r => r.json());
+    assert.deepEqual(user.data.agents, stale.data);
+    assert.deepEqual((await list()).data, stale.data);
+
+    const beforeRequest = Date.now();
+    const contact = await fetch(`${origin}/api/agents/me`, { headers: {
+      authorization: `Bearer ${rawToken}`, 'x-flambe-agent-id': 'codex:contact',
+    } });
+    assert.equal(contact.status, 200);
+    const updated = await list();
+    assert.ok(Date.parse(updated.data[0].last_seen_at) >= beforeRequest);
+    assert.equal(store.getTrace(1, 1).events.length, 0);
+  });
+});
+
 test('session planning survives trace refresh and begins the same scheduled activity', async () => {
   await withServer(async ({ origin, traceId, store }) => {
     const login = await fetch(`${origin}/auth/identity/callback`, { method: 'POST' });
