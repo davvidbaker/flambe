@@ -55,6 +55,11 @@ defmodule FlambeNextWeb.UserJSON do
   end
 
   defp agent_data(agent) do
-    %{agent_id: agent.agent_id, name: agent.name, platform: agent.platform}
+    %{
+      agent_id: agent.agent_id,
+      name: agent.name,
+      platform: agent.platform,
+      last_seen_at: agent.last_seen_at
+    }
   end
 end

@@ -4,6 +4,7 @@ import { ChartHarness } from '../storybook/ChartHarness';
 import { createAppChartFixture } from '../storybook/fixtureTrace';
 import {
   createConcurrentAgentsFixture,
+  createAgentContactFixture,
   createDenseTraceFixture,
   createEmptyTraceFixture,
   createParentSuspensionFixture,
@@ -54,6 +55,25 @@ export const MultipleParallelAgents: Story = {
     timeLabels: { absoluteTimeLabels: true, twelveHourClock: true },
     storeExtras: { settings: { showActivityIds: false } },
   },
+};
+
+export const RecentAgentContact: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: 'Three active agents work concurrently: Avery has a five-level stack, Emery has two levels, and Finley has one. Their neon green rails smoothly fade from fully transparent to fully visible. Older or unknown contact and completed work retain the usual provider color; there is no separate contact dot. Hover a rail or open activity details for the last-contact status. Reduced motion keeps recent rails steadily visible. Contact expires after 60 seconds; this fixture deliberately does not send more requests.',
+      },
+    },
+  },
+  args: (() => {
+    const now = Date.now();
+    return {
+      fixture: createAgentContactFixture(now),
+      viewport: { leftBoundaryTime: now - 35 * 60_000, rightBoundaryTime: now + 60_000 },
+      demoOverlays: false,
+      storeExtras: { settings: { showActivityIds: false } },
+    };
+  })(),
 };
 
 
