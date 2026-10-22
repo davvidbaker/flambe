@@ -136,7 +136,7 @@ interface OwnProps {
   updateEvent: (id: EntityId, updates: Record<string, unknown>) => unknown;
   updateScheduled?: (id: EntityId, updates: Record<string, unknown>) => unknown;
   dropLimboActivity?: (id: EntityId, updates: Record<string, unknown>) => unknown;
-  planAt?: (threadId: EntityId, time: number) => unknown;
+  createAt?: (threadId: EntityId, time: number) => unknown;
   zoom?: (...args: any[]) => unknown;
 }
 
@@ -840,7 +840,7 @@ export class FlameChart extends Component<Props, State> {
       return;
     }
     const threadId = this.pixelsToThreadId(event.nativeEvent.offsetY);
-    if (threadId == null || !this.props.planAt) return;
+    if (threadId == null || !this.props.createAt) return;
     const time = Math.floor(this.pixelsToTime(event.nativeEvent.offsetX));
     this.pendingActivityEntrance = prefersReducedTimelineMotion() ? null : {
       threadId,
@@ -851,7 +851,7 @@ export class FlameChart extends Component<Props, State> {
       clickedAt: performance.now(),
     };
     this.redrawMeasurement();
-    this.props.planAt(threadId, time);
+    this.props.createAt(threadId, time);
   };
 
   isLimboActivityDrag = (event: React.DragEvent<HTMLCanvasElement>): boolean =>
@@ -952,7 +952,7 @@ export class FlameChart extends Component<Props, State> {
       const transform = this.getRenderedBlockTransform(visibleBlock, activity);
       if (transform.blockY + transform.blockHeight < 0 || transform.blockY > this.state.canvasHeight) continue;
       const pending = this.pendingActivityEntrance;
-      const matchesClick = pending && block.scheduled && block.startTime === pending.time
+      const matchesClick = pending && block.startTime === pending.time
         && String(activity.thread_id) === String(pending.threadId)
         && !pending.existingActivityIds.has(id);
       this.activityEntrances.set(id, {

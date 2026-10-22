@@ -13,6 +13,7 @@ import { getUser } from '../reducers/user';
 import {
   beginActivity,
   collapseThread,
+  createActivityB,
   deleteActivity,
   expandThread,
   focusBlock,
@@ -68,11 +69,21 @@ function mapDispatchToProps(dispatch: Dispatch) {
     updateActivity: (id: EntityId, updates: Record<string, unknown>) => dispatch(updateActivity(id, updates)),
     beginActivity: (id: EntityId) => dispatch(beginActivity(id)),
     deleteActivity: (id: EntityId, threadId: EntityId) => dispatch(deleteActivity(id, threadId)),
-    planActivity: (threadId: EntityId, time: number) => dispatch(planActivity({
-      name: 'Scheduled',
-      thread_id: threadId,
-      scheduled_start: time,
-    })),
+    createActivityAt: (threadId: EntityId, time: number) => dispatch(time > Date.now()
+      ? planActivity({
+        name: 'Scheduled',
+        thread_id: threadId,
+        scheduled_start: time,
+      })
+      : createActivityB({
+        name: 'New activity',
+        timestamp: time,
+        description: '',
+        thread_id: threadId,
+        category_id: null,
+        phase: 'B',
+        editName: true,
+      })),
     focusBlock: ({
       index, activity_id, activityStatus, thread_id,
     }: Parameters<TimelineProps['focusBlock']>[0]) => dispatch(
