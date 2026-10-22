@@ -80,6 +80,7 @@ interface NetworkAction {
   color_text?: string;
   data?: IncomingTrace;
   description?: string | null;
+  editName?: boolean;
   eventFlavor?: EventPhase;
   id?: EntityId;
   message?: string;
@@ -158,6 +159,7 @@ function* createActivity({
   thread_id /* message */,
   category_id,
   phase = 'B',
+  editName,
 }: NetworkAction): SagaIterator {
   const scope: string | null = yield* currentUndoScope();
   const timeline: TimelineState = yield select(getTimeline);
@@ -180,6 +182,14 @@ function* createActivity({
   });
   if (data?.activity?.id !== undefined && thread_id !== undefined) {
     yield* rememberUndo({ kind: 'activity', id: data.activity.id, thread_id }, scope);
+    if (editName) {
+      const currentTimeline: TimelineState = yield select(getTimeline);
+      if (currentTimeline.trace?.id !== timeline.trace?.id) return;
+      yield* refetchTrace();
+      const refreshedTimeline: TimelineState = yield select(getTimeline);
+      if (refreshedTimeline.trace?.id !== timeline.trace?.id) return;
+      yield* editCreatedActivityName(data.activity.id, thread_id, 'active');
+    }
   }
 }
 
@@ -384,9 +394,15 @@ function* planActivity({ type, name, thread_id, scheduled_start, scheduled_end }
   if (activityId !== undefined && thread_id !== undefined) {
     yield* rememberUndo({ kind: 'activity', id: activityId, thread_id }, scope);
   }
-  // Chart double-click schedules with a start time; open details so the name can be typed.
+  // Chart double-click supplies a start time; open details so the name can be typed.
   if (activityId === undefined || scheduled_start == null) return;
 
+  yield* editCreatedActivityName(activityId, thread_id, 'unstarted');
+}
+
+function* editCreatedActivityName(
+  activityId: EntityId, threadId: EntityId | undefined, fallbackStatus: string,
+): SagaIterator {
   const nextTimeline: TimelineState = yield select(getTimeline);
   const activity = nextTimeline.activities[String(activityId)];
   const index = nextTimeline.blocks.findIndex(
@@ -395,8 +411,8 @@ function* planActivity({ type, name, thread_id, scheduled_start, scheduled_end }
   yield put(focusBlock({
     index: index >= 0 ? index : null,
     activity_id: activityId,
-    activityStatus: activity?.status ?? 'unstarted',
-    thread_id: thread_id ?? activity?.thread_id ?? null,
+    activityStatus: activity?.status ?? fallbackStatus,
+    thread_id: threadId ?? activity?.thread_id ?? null,
   }));
   yield put(showActivityDetails({ editName: true }));
 }

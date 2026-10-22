@@ -281,6 +281,7 @@ export function createActivityB({
   thread_id /* message */,
   category_id,
   phase,
+  editName,
 }: {
   name: string,
   timestamp: number,
@@ -288,6 +289,7 @@ export function createActivityB({
   thread_id: EntityId /* message */,
   category_id: EntityId | null;
   phase: EventPhase;
+  editName?: boolean;
 }) {
   return {
     type: ACTIVITY_CREATE_B,
@@ -297,6 +299,7 @@ export function createActivityB({
     thread_id,
     category_id,
     phase,
+    editName,
   };
 }
 
