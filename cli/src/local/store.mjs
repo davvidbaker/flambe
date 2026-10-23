@@ -11,6 +11,11 @@ const OPEN_PHASES = ['B', 'R', 'X'];
 const SCHEMA = `
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS instance_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
@@ -123,6 +128,19 @@ CREATE TABLE IF NOT EXISTS agents (
   UNIQUE (user_id, agent_id)
 );
 
+CREATE TABLE IF NOT EXISTS reducer_reviews (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  trace_id INTEGER NOT NULL REFERENCES traces(id) ON DELETE CASCADE,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  agent_id TEXT NOT NULL,
+  context TEXT NOT NULL,
+  snapshot_hash TEXT NOT NULL,
+  created_ms INTEGER NOT NULL,
+  decision TEXT,
+  receipt TEXT
+);
+
 CREATE TABLE IF NOT EXISTS observations (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -180,6 +198,8 @@ export class LocalStore {
     this.db = new DatabaseSync(dbPath);
     this.db.exec('PRAGMA foreign_keys = ON');
     this.db.exec(SCHEMA);
+    this.db.prepare('INSERT OR IGNORE INTO instance_settings (key, value) VALUES (?, ?)')
+      .run('instance_id', randomUUID());
     this.db.exec('DROP TABLE IF EXISTS todos');
     for (const column of [
       'scheduled_start_ms INTEGER',
@@ -196,6 +216,13 @@ export class LocalStore {
 
   close() {
     this.db.close();
+  }
+
+  instance() {
+    return {
+      id: this.db.prepare('SELECT value FROM instance_settings WHERE key = ?').get('instance_id').value,
+      name: 'Single Burner',
+    };
   }
 
   credentials() {

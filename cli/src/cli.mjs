@@ -27,6 +27,7 @@ const usage = `Usage:
   flambe ping
   flambe whoami [--json]
   flambe message <text> [--activity <id>] [--json]
+  flambe decide <review-id> --file <decision.json>
   flambe observe <kind> <value> [--unit <unit>] [--on <YYYY-MM-DD>] [--payload <json>] [--at <ISO-8601>]
   flambe serve [--port <n>] [--db <path>] [--static <dir>]
   flambe export [file] [--db <path>]
@@ -55,6 +56,7 @@ Optional:
   FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)
   FLAMBE_LOCAL_DB    SQLite path for flambe serve / export (default: ~/.flambe/local.sqlite)
   FLAMBE_RUNTIME_MODE  local_self_contained restricts CLI requests to numeric loopback; cloud preserves hosted access
+  FLAMBE_LOCAL_REDUCER_MODE  off (default), agent, api, or local; see the Single Burner README
 
 serve / export do not need FLAMBE_URL. import needs FLAMBE_URL and FLAMBE_API_TOKEN (the production instance).`;
 
@@ -336,6 +338,11 @@ function formatReducerNote(note) {
     const lines = [];
     if (note.direction) lines.push(`direction\t${note.direction}\n`);
     if (note.reply) lines.push(`reply\t${note.reply}\n`);
+    if (note.modelReview?.status === 'available') lines.push(`review available\tRequest flambe message --activity ${note.activityId} when scope judgment is needed.\n`);
+    if (note.review) lines.push(`review\t${JSON.stringify(note.review)}\n`);
+    if (note.modelReview?.status === 'failed') {
+      lines.push(`model review\t${note.modelReview.code}: ${note.modelReview.message} Recorded work was preserved.\n`);
+    }
     if (note.actionsApplied?.length) {
       lines.push(`actions\t${note.actionsApplied.map(formatAction).join('; ')}\n`);
     }
@@ -364,7 +371,7 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
   if (command === 'serve') {
     const options = parseServe(args, env);
     const { listenLocal, printServeBanner } = await loadServe();
-    const listening = await listenLocal(options);
+    const listening = await listenLocal({ ...options, reducer: { env } });
     printServeBanner(listening, stdout);
     await new Promise((resolveClose, reject) => {
       listening.server.on('close', resolveClose);
@@ -518,11 +525,24 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
     return;
   }
 
+  if (command === 'decide') {
+    const { value: file, rest } = takeOption(args, '--file');
+    if (!file || rest.length !== 1 || rest[0].startsWith('--')) {
+      throw new Error('Usage: flambe decide <review-id> --file <decision.json>');
+    }
+    const content = readFileSync(resolve(file), 'utf8');
+    if (Buffer.byteLength(content) > 65_536) throw new Error('Decision file exceeds the size limit');
+    const result = await flambe.decide({ reviewId: rest[0], decision: JSON.parse(content) });
+    if (persistQuestions && !(result.actions_applied ?? []).some(a => a.type === 'ask')) clearQuestion(traceId, questionFile);
+    stdout.write(`${JSON.stringify(result)}\n`);
+    return;
+  }
+
   if (command === 'message') {
     const { text, activityId, json } = parseMessage(args);
     const decision = await flambe.message({ activityId, text });
-    if (persistQuestions) clearQuestion(traceId, questionFile);
-    if (json) {
+    if (persistQuestions && !decision.review) clearQuestion(traceId, questionFile);
+    if (json || decision.review) {
       stdout.write(`${JSON.stringify(decision)}\n`);
     } else {
       stdout.write(`activity\t${decision.activityId}\n`);

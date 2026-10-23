@@ -147,7 +147,8 @@ defmodule FlambeNextWeb.AgentCommandContractTest do
               method: "tools/call",
               params: %{
                 name: "flambe_#{command}",
-                arguments: arguments,
+                arguments:
+                  Map.put(arguments, "expected_instance_id", FlambeNext.Instance.info().id),
                 _meta: %{
                   "io.modelcontextprotocol/protocolVersion" => "2026-07-28",
                   "io.modelcontextprotocol/clientInfo" => %{name: "contract", version: "1"},

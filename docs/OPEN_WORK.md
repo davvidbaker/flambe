@@ -14,6 +14,13 @@ Node+SQLite: [ADR-009](ADR-009-local-node-sqlite-and-on-demand-import.md).
 
 ## Follow-ups
 
+- **Starting a planned activity silently ignores `parent_id`.** The live
+  Single Burner ChatGPT test on 2026-10-22 planned activity 10, then started that
+  id with `parent_id: 8`; SQLite retained `parent_id: null`. Ordinary new-child
+  nesting worked. Both `cli/src/local/commands.mjs` and Phoenix's
+  `Reducer.begin_limbo` keep the planned activity's existing parent. Resolve
+  whether an explicit parent should be applied or rejected; do not silently
+  ignore it. Test activities 8, 9, and 10 were all ended after verification.
 - Unstarted activities with `scheduled_start` / `scheduled_end`
   ([ADR-017](ADR-017-unstarted-activities-with-scheduled-times.md)). Not built.
 - Re-place an activity when its name changes
@@ -39,4 +46,8 @@ commit it.
 
 ## Parked (do not implement until asked)
 
+- One Flambe plugin with explicit Cloud/Single Burner selection: validate whether
+  both registered connections can be grouped in the intended personal ChatGPT
+  host. The separate local plugin is the accepted temporary setup, not proof of
+  a platform restriction. See [ADR-020](ADR-020-instance-bound-chat-connections.md#temporary-chatgpt-plugin-decision--2026-10-22).
 - [Deferred: SPA effects without sagas](deferred-spa-async.md)

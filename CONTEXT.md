@@ -4,6 +4,16 @@ A trace of work over time, shared by a person and coding agents.
 
 ## Language
 
+**Instance**:
+An independently stored Flambe history. Cloud, Single Burner, and Development
+are separate instances.
+
+**Connection**:
+A chat's access to a particular Flambe instance.
+
+**Trace**:
+A timeline of work within one Flambe instance.
+
 **Unstarted activity**:
 An activity that is already on a thread and has not begun.
 _Avoid_: Future activity, todo, ghost
@@ -15,3 +25,10 @@ _Avoid_: Ghost, future activity
 **Limbo**:
 Where ideas, tasks, and plans go to die: an unstarted activity with no time, or
 an activity that is currently suspended.
+
+**Reducer review**:
+An evaluation of work against its intent and current activity stack.
+
+**Reducer decision**:
+Guidance and any permitted activity change resulting from a reducer review.
+The reviewer may be the AI doing the work or a separate model.

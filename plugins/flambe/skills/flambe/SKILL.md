@@ -11,10 +11,20 @@ The MCP server is the execution layer. This skill is the workflow layer.
 
 ## Establish context
 
-On the first Flambe tool call in a conversation:
+The bundled MCP connection accesses **Cloud** at `https://flambe.fly.dev/mcp`.
+It cannot access **Single Burner** or **Development**. A trace id selects data
+inside one instance; it does not switch instances. Discussing or developing
+Single Burner does not authorize recording that work in Cloud.
 
-- Reuse any `trace_id` already established in the conversation.
-- Otherwise call `flambe_traces`. If the user's request names a trace, match it by name. Otherwise use `default_trace_id`.
+On the first Flambe interaction in a conversation, and after an explicit switch:
+
+- Resolve the user's intended instance: **Cloud**, **Single Burner**, or **Development**. Use a separately connected local instance only when its tools are available and the user has selected it. If intent is ambiguous and more than one connection is available, ask which instance before reading activity data or writing.
+- Call `flambe_traces` on the intended connection, even if a trace id was mentioned earlier. Verify the returned `instance` matches the requested destination. If that connection is unavailable, explain that it is not connected; never substitute Cloud or another instance.
+- Briefly name the instance when establishing or switching context, for example: "Using Single Burner for this chat."
+- Keep the connection, `instance.id`, and `trace_id` together for this conversation. Reuse a trace id only when it belongs to that verified instance. If the user names a trace, match it inside that instance; otherwise use `default_trace_id`.
+- Pass the exact returned `instance.id` as `expected_instance_id` on every other Flambe tool call, including status reads. Never infer it from a label or copy it between connections.
+- Check `instance` in every result, including errors. On `INSTANCE_REQUIRED` or `INSTANCE_MISMATCH`, stop the attempted operation and rediscover the intended connection. Do not replace the expected id with a different instance's id just to make the request succeed.
+- Stay with the selected instance until the user explicitly switches. On a switch, discard the previous instance's trace/activity ids and rediscover on the new connection.
 - Create one stable conversation-local `agent_id` such as `chatgpt:<8 random lowercase hex characters>` and reuse it for every Flambe tool call in this conversation.
 - Pass `platform: "ChatGPT"`.
 - Do not invent an `agent_name`; let the Reducer Agent name the agent.
@@ -47,7 +57,7 @@ Use the MCP tools directly:
 - `flambe_status`: inspect active, suspended, or unstarted work.
 - `flambe_plan`: create future or limbo work without beginning it.
 - `flambe_message`: ask the Reducer Agent about scope, drift, or a requested change in approach.
-- `flambe_traces`: discover trace ids only when the target trace is not already known.
+- `flambe_traces`: establish the connected instance and discover its traces before first use or an explicit switch.
 
 ## Every lifecycle call is a proposal
 
@@ -80,7 +90,32 @@ Call `flambe_message` when you are about to:
 
 Do not use `flambe_message` for routine progress, and do not use it instead of lifecycle tools.
 
-If the server reports `REDUCER_NOT_CONFIGURED`, do not retry. Continue deterministic lifecycle tracking and surface any unresolved judgment to the user.
+If the server reports `REDUCER_NOT_CONFIGURED`, do not retry or send the message to another instance. Single Burner's AI review is optional and off by default; deterministic tracking remains available. Surface unresolved judgment in this chat. If a lifecycle result reports `model_review.status: failed`, the activity was recorded: use its returned id and state, report the review failure, and do not repeat the start or substitute another instance.
+
+## Review with the current work AI
+
+On a Single Burner connection configured for `agent` review, `flambe_message`
+returns `review` with `model_review.status: awaiting_decision`. Flagged starts
+normally return a small review-available notice; request full review only when
+placement or scope needs judgment. Automatic reviews of flagged starts are
+optional. Do not review every start/end. Review context contains the current
+path and this agent's open work; compact lifecycle replies mark their state scope.
+Omitted activities are not ended.
+You are the reviewer. Read the supplied instructions, context, and decision
+schema, reason about the user's intent and current stack, then call
+`flambe_decide` on that same connection with the exact `review_id`, instance,
+trace, stable `agent_id`, and your decision. Complete that review before further
+substantive work. Do not start another model or request a model API key.
+
+The local engine validates and applies the decision. Follow its returned
+state and direction. Submit at most one permitted action; use no actions and
+escalate to the user when judgment is unresolved. This is your own review of the
+work, not independent approval. Do not repeat an already-recorded start.
+On `REDUCER_STATE_CHANGED` or `REVIEW_EXPIRED`, request a fresh `flambe_message`
+review for that activity and reassess it. Identical submission retries return
+the original receipt with `replayed: true`, without applying another action.
+Never send a local review to Cloud or another connection. If `flambe_decide`
+is unavailable, report the missing support rather than pretending to submit it.
 
 ## Status lookup
 

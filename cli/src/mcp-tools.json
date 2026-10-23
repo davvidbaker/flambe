@@ -1,0 +1,582 @@
+[
+  {
+    "name": "flambe_traces",
+    "description": "Discover this connection's instance and available traces before the first Flambe action in each chat, even if a trace id is already known. Trace ids cannot select another instance.",
+    "title": "List Flambe traces",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [],
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "flambe_start",
+    "description": "Start work in a flame. Omit parent_id to infer this agent's active parent, or pass null to start at the thread root. The reducer may rewrite the proposal and return direction or reply; act on either before continuing.",
+    "title": "Start a Flambe Activity",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "openWorldHint": true
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id",
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Activity name",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Optional event time as Unix milliseconds"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional activity details"
+        },
+        "activity_id": {
+          "type": "integer",
+          "description": "Optional planned activity id to begin",
+          "minimum": 1
+        },
+        "thread_id": {
+          "type": "integer",
+          "description": "Thread id; defaults to the flame's default thread",
+          "minimum": 1
+        },
+        "parent_id": {
+          "description": "Parent activity id; omit to infer for this agent, null for a root",
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Stable agent id",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_name": {
+          "type": "string",
+          "description": "Agent display name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "platform": {
+          "type": "string",
+          "description": "Agent host product",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "flambe_end",
+    "description": "End completed work. A message records a resolution; omitting it is a plain end. Open children must be closed first unless force is true. Act on any returned direction or reply.",
+    "title": "End a Flambe Activity",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id",
+        "activity_id"
+      ],
+      "properties": {
+        "force": {
+          "default": false,
+          "type": "boolean",
+          "description": "Also close open descendants"
+        },
+        "message": {
+          "type": "string",
+          "description": "Optional outcome or transition note"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Optional event time as Unix milliseconds"
+        },
+        "activity_id": {
+          "type": "integer",
+          "description": "Activity id",
+          "minimum": 1
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Stable agent id",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_name": {
+          "type": "string",
+          "description": "Agent display name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "platform": {
+          "type": "string",
+          "description": "Agent host product",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "flambe_suspend",
+    "description": "Suspend work that is explicitly being tabled. Act on any returned direction or reply.",
+    "title": "Suspend a Flambe Activity",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id",
+        "activity_id"
+      ],
+      "properties": {
+        "force": {
+          "default": false,
+          "type": "boolean",
+          "description": "For end, also close open descendants"
+        },
+        "message": {
+          "type": "string",
+          "description": "Optional outcome or transition note"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Optional event time as Unix milliseconds"
+        },
+        "activity_id": {
+          "type": "integer",
+          "description": "Activity id",
+          "minimum": 1
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Stable agent id",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_name": {
+          "type": "string",
+          "description": "Agent display name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "platform": {
+          "type": "string",
+          "description": "Agent host product",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "flambe_resume",
+    "description": "Resume suspended work. Act on any returned direction or reply.",
+    "title": "Resume a Flambe Activity",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id",
+        "activity_id"
+      ],
+      "properties": {
+        "force": {
+          "default": false,
+          "type": "boolean",
+          "description": "For end, also close open descendants"
+        },
+        "message": {
+          "type": "string",
+          "description": "Optional outcome or transition note"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Optional event time as Unix milliseconds"
+        },
+        "activity_id": {
+          "type": "integer",
+          "description": "Activity id",
+          "minimum": 1
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Stable agent id",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_name": {
+          "type": "string",
+          "description": "Agent display name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "platform": {
+          "type": "string",
+          "description": "Agent host product",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "flambe_status",
+    "description": "Read the activity stack and per-thread recommended availableActions without changing it.",
+    "title": "Read Flambe State",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id"
+      ],
+      "properties": {
+        "thread_id": {
+          "type": "integer",
+          "description": "Optional thread id to focus state and availableActions",
+          "minimum": 1
+        },
+        "active_only": {
+          "default": false,
+          "type": "boolean"
+        },
+        "suspended_only": {
+          "default": false,
+          "type": "boolean"
+        },
+        "include_unstarted": {
+          "default": false,
+          "type": "boolean",
+          "description": "Include unstarted activities"
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Stable agent id",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_name": {
+          "type": "string",
+          "description": "Agent display name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "platform": {
+          "type": "string",
+          "description": "Agent host product",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "flambe_message",
+    "description": "Report a meaningful update to the Reducer Agent. It may recommend direction and, when allowed, make one stack change. Follow a returned direction before continuing.",
+    "title": "Message the Flambe Reducer Agent",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "openWorldHint": true
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id",
+        "message"
+      ],
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Concise work update or question",
+          "minLength": 1
+        },
+        "activity_id": {
+          "type": "integer",
+          "description": "Activity id; omit to infer this agent's active activity",
+          "minimum": 1
+        },
+        "allow_stack_changes": {
+          "default": true,
+          "type": "boolean",
+          "description": "Set false for advice only"
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Stable agent id",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_name": {
+          "type": "string",
+          "description": "Agent display name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "platform": {
+          "type": "string",
+          "description": "Agent host product",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "flambe_plan",
+    "description": "Create an activity before it begins. Omit both times for limbo, or pass scheduled_start and scheduled_end as Unix millisecond timestamps.",
+    "title": "Plan an unstarted Flambe activity",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "openWorldHint": true
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id",
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Activity name",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "description": {
+          "type": "string"
+        },
+        "category_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scheduled_start": {
+          "type": "integer",
+          "description": "Optional event time as Unix milliseconds"
+        },
+        "scheduled_end": {
+          "type": "integer",
+          "description": "Optional event time as Unix milliseconds"
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Stable agent id",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_name": {
+          "type": "string",
+          "description": "Agent display name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "platform": {
+          "type": "string",
+          "description": "Agent host product",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+]

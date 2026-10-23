@@ -1,6 +1,6 @@
 {
   "name": "@davvidbaker/flambe-single-burner",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Self-contained local Flambé with SQLite and a bundled UI",
   "type": "module",
   "bin": {
@@ -17,7 +17,7 @@
     "prepack": "npm --prefix ../frontend ci --include=dev --dry-run=false && npm --prefix ../frontend run build:local && npm run prepare:static && npm test"
   },
   "dependencies": {
-    "@davvidbaker/flambe-cli": "0.1.3"
+    "@davvidbaker/flambe-cli": "0.1.4"
   },
   "engines": {
     "node": ">=22"
