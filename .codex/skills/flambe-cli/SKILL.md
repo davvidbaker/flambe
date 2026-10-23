@@ -21,6 +21,24 @@ You will often produce some progress on a parent goal, then go down a rabbit hol
 - Use `--root` only for a genuinely new top-level workstream, not for every digression.
 - Keep the active stack truthful as work changes. Do not plan a detailed chart up front or reconstruct one afterward.
 
+## Local Codex hooks
+
+For a Single Burner project, run `flambe setup codex` from its root after setting
+its local connection values in `.env`. Setup merges project hooks into
+`.codex/hooks.json` and installs this skill if it is missing. Existing custom
+skills and unrelated hooks are retained. Restart local Codex and review/trust
+these hooks with `/hooks`; installed files alone do not prove they are running.
+Use `flambe setup codex --check` to inspect the files, and `--remove` to remove
+only Flambe's own hook handlers. Keep `flambe` on PATH; Windows hooks use
+`flambe.cmd` so PowerShell script policy does not select `flambe.ps1`.
+
+Hooks restore workflow context, request periodic stack checks, and can request
+one reconciliation continuation before a substantive turn ends. They make no
+inference calls or semantic activity changes. You still start/nest/end the real
+work and complete requested work-AI reviews. A turn ending does not mean its
+parent task ended. Missing servers or identity produce feedback without blocking
+ordinary work. Hooks require `local_self_contained`; they do not route to Cloud.
+
 ## Commands
 
 ```sh
