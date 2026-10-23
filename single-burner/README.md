@@ -31,6 +31,24 @@ Options:
 Single Burner binds loopback only. Agents on other machines need a private bridge
 to reach it, or can use a separately hosted Flambe instance.
 
+## Use it with local Codex
+
+Local Codex connects directly to Single Burner; no ChatGPT remote plugin,
+Platform organization, tunnel, or model API key is needed. Copy the server's
+connection values into the project `.env`, including the local-only runtime
+mode, then run from that project's root:
+
+```sh
+flambe setup codex
+```
+
+Restart local Codex and review/trust the hooks through `/hooks`. The setup
+preserves unrelated hooks and existing custom skills. Hooks provide recurring
+workflow checkpoints, while Codex owns meaningful activity names, nesting, and
+work-AI reducer decisions. Keep Single Burner and the global CLI available.
+Use `flambe setup codex --check` to inspect files and `--remove` to remove only
+Flambe's handlers. See [hook behavior and verification](../cli/README.md#local-codex--single-burner-hooks).
+
 ## Use it through ChatGPT
 
 For now, use the separate private **Single Burner** plugin alongside the hosted

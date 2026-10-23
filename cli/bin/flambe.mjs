@@ -3,7 +3,8 @@
 import { run } from '../src/cli.mjs';
 import { loadProjectEnv } from '../src/env.mjs';
 
-loadProjectEnv();
+// Hook input selects its installed project root; do not preload a nested .env.
+if (process.argv[2] !== 'hook') loadProjectEnv();
 
 try {
   await run(process.argv.slice(2));

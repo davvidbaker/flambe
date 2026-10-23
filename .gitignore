@@ -51,3 +51,6 @@ erl_crash.dump
 /frontend/test-results/
 /frontend/stats.json
 /frontend/packages/*/package-lock.json
+
+# Canonical skill copied into the CLI package by prepack.
+/cli/skills/
