@@ -636,13 +636,14 @@ export class FlambeClient {
     const actions = result.actions_applied ?? [];
     const direction = result.direction ?? null;
     const reply = result.reply ?? null;
-    if (!direction && !reply && actions.length === 0) return;
+    if (!direction && !reply && actions.length === 0 && !result.model_review) return;
     this.onReducerNote?.({
       type: 'command_result',
       activityId: result.activity_id,
       direction,
       reply,
       actionsApplied: actions,
+      ...(result.model_review ? { modelReview: result.model_review } : {}),
       asked: actions.some(action => action.type === 'ask'),
     });
   }

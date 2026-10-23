@@ -12,19 +12,20 @@ function result(instance, data, isError = false) {
 }
 
 /** Stateless MCP transport; the existing SQLite command engine owns all mutations. */
-export function createLocalMcpHandler(store) {
+export function createLocalMcpHandler(store, runCommand = (userId, command, args, agent) => executeCommand(store, userId, command, args, agent)) {
   const handler = createMcpHandler(context => {
     const instance = store.instance();
     const token = context.requestInfo.headers.get('authorization')?.replace(/^Bearer /, '');
     const auth = store.authenticateToken(token);
     const server = new Server({ name: 'flambe', title: 'Flambe — Single Burner', version: '0.1.0' }, {
       capabilities: { tools: { listChanged: false } },
-      instructions: 'This connection accesses Single Burner only. Discover its instance with flambe_traces; never substitute Cloud or Development.',
+      instructions: `This connection accesses Single Burner only. Discover its instance with flambe_traces; never substitute Cloud or Development. AI reducer mode: ${runCommand.info?.mode ?? 'off'}.`,
     });
 
     server.setRequestHandler('tools/list', () => ({ tools: tools.map(({ securitySchemes, ...tool }) => ({
       ...tool,
-      description: `${tool.description} Connected instance: Single Burner. This connection cannot access Cloud or Development.`,
+      description: `${tool.description} Connected instance: Single Burner. This connection cannot access Cloud or Development.${tool.name === 'flambe_message'
+        ? ` AI reducer mode: ${runCommand.info?.mode ?? 'off'}; API mode sends activity context to the configured model provider, local mode uses a loopback model endpoint.` : ''}`,
       annotations: { ...tool.annotations, openWorldHint: false },
     })) }));
 
@@ -52,7 +53,7 @@ export function createLocalMcpHandler(store) {
         context.requestInfo.headers.get('x-flambe-agent-name') ?? arguments_.agent_name,
         context.requestInfo.headers.get('x-flambe-agent-platform') ?? arguments_.platform) : null;
       try {
-        return result(instance, executeCommand(store, auth.user.id, name.slice('flambe_'.length), arguments_, agent));
+        return result(instance, await runCommand(auth.user.id, name.slice('flambe_'.length), arguments_, agent));
       } catch (error) {
         if (!(error instanceof CommandError)) throw error;
         const { error: { code, message, ...details } } = error.body;

@@ -90,7 +90,7 @@ Call `flambe_message` when you are about to:
 
 Do not use `flambe_message` for routine progress, and do not use it instead of lifecycle tools.
 
-If the server reports `REDUCER_NOT_CONFIGURED`, do not retry or send the message to another instance. Single Burner has deterministic lifecycle tracking without model review; surface unresolved judgment in this chat.
+If the server reports `REDUCER_NOT_CONFIGURED`, do not retry or send the message to another instance. Single Burner's AI review is optional and off by default; deterministic tracking remains available. Surface unresolved judgment in this chat. If a lifecycle result reports `model_review.status: failed`, the activity was recorded: use its returned id and state, report the review failure, and do not repeat the start or substitute another instance.
 
 ## Status lookup
 

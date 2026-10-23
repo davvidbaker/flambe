@@ -1,6 +1,6 @@
 # @davvidbaker/flambe-cli
 
-Zero-dependency Node 22 CLI that streams coding-agent work into a Flambe trace.
+Node 22 CLI that streams coding-agent work into a Flambe trace.
 
 ## Install
 
@@ -61,3 +61,12 @@ FLAMBE_TRACE_ID=1
 Mint a token in Flambe Settings → API tokens. See the
 [repository README](https://github.com/davvidbaker/flambe#connect-coding-agents)
 for commands (`start`, `end`, `message`, `observe`, local `serve`).
+
+## Single Burner AI review
+
+When running `flambe serve`, optional AI review is configured in that server
+process with `FLAMBE_LOCAL_REDUCER_MODE=off|api|local`. It is off by default;
+provider failures never reroute work to Cloud. See the
+[Single Burner configuration guide](../single-burner/README.md#optional-ai-reducer)
+for model, endpoint, credential, timeout, and data-boundary settings. Client
+processes only need their normal local Flambe connection settings.

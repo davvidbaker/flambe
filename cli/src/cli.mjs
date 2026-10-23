@@ -55,6 +55,7 @@ Optional:
   FLAMBE_QUEUE_PATH  Local offline queue path (default: ~/.flambe/event-queue.json)
   FLAMBE_LOCAL_DB    SQLite path for flambe serve / export (default: ~/.flambe/local.sqlite)
   FLAMBE_RUNTIME_MODE  local_self_contained restricts CLI requests to numeric loopback; cloud preserves hosted access
+  FLAMBE_LOCAL_REDUCER_MODE  off (default), api, or local; see the Single Burner README
 
 serve / export do not need FLAMBE_URL. import needs FLAMBE_URL and FLAMBE_API_TOKEN (the production instance).`;
 
@@ -336,6 +337,9 @@ function formatReducerNote(note) {
     const lines = [];
     if (note.direction) lines.push(`direction\t${note.direction}\n`);
     if (note.reply) lines.push(`reply\t${note.reply}\n`);
+    if (note.modelReview?.status === 'failed') {
+      lines.push(`model review\t${note.modelReview.code}: ${note.modelReview.message} Recorded work was preserved.\n`);
+    }
     if (note.actionsApplied?.length) {
       lines.push(`actions\t${note.actionsApplied.map(formatAction).join('; ')}\n`);
     }
@@ -364,7 +368,7 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
   if (command === 'serve') {
     const options = parseServe(args, env);
     const { listenLocal, printServeBanner } = await loadServe();
-    const listening = await listenLocal(options);
+    const listening = await listenLocal({ ...options, reducer: { env } });
     printServeBanner(listening, stdout);
     await new Promise((resolveClose, reject) => {
       listening.server.on('close', resolveClose);

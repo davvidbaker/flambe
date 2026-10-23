@@ -1,4 +1,4 @@
-export function printStartup({ host, port, store }, stdout = process.stdout) {
+export function printStartup({ host, port, store, reducerInfo }, stdout = process.stdout) {
   const { rawToken, traceId } = store.credentials();
   const origin = `http://${host}:${port}`;
   stdout.write(`
@@ -7,6 +7,8 @@ Flambé Single Burner is running.
 Open your local chart: ${origin}
 Keep this terminal running. Press Ctrl+C to stop Single Burner.
 Your activities are saved locally in SQLite.
+AI reducer: ${reducerInfo?.mode ?? 'off'}${reducerInfo?.model ? ` (${reducerInfo.model})` : ''}.
+${reducerInfo?.mode === 'api' ? 'AI review sends activity context directly to your configured model provider.\n' : ''}
 
 Connect your coding agent
 

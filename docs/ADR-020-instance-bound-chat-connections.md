@@ -98,3 +98,7 @@ working separate plugin rather than pursuing either router now.
   intended ChatGPT host, including destination selection and an unavailable
   local instance. Keep this follow-up parked until requested. Do not silently
   substitute Cloud when Single Burner is unavailable.
+
+Optional AI review was subsequently added in [ADR-021](ADR-021-optional-single-burner-ai-reducer.md).
+The verified tunnel setup above originally ran with review off; enabling a
+provider is a separate local server configuration choice.
