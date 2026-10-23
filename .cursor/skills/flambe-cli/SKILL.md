@@ -39,7 +39,7 @@ flambe message "Auth fix needs the session module refactored too; widening scope
 
 Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch threads or categories to decide placement; that is the reducer's job.
 
-Every command is a proposal; the reducer owns the stack. Without `--parent`/`--root`, `start` nests under **your own** newest active activity (other agents' work is never your parent), puts a child on its parent's thread, and gives it the parent's categories; a new root gets its thread and categories chosen by the reducer a few seconds later. `FLAMBE_THREAD` (name, unique slug, or id) is sent as `--thread` when that flag is omitted; do not list threads and pick one by project name. Pass `--thread` / `--parent` / `--category` only when you are certain. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations. Offline results carry no immediate reducer output; nothing is dropped. Current local `serve` returns deterministic reducer results, including duplicate reuse, ancestor resumption, and descendant closure. It does not run model review.
+Every command is a proposal; the reducer owns the stack. Without `--parent`/`--root`, `start` nests under **your own** newest active activity (other agents' work is never your parent), puts a child on its parent's thread, and gives it the parent's categories; a new root gets its thread and categories chosen by the reducer a few seconds later. `FLAMBE_THREAD` (name, unique slug, or id) is sent as `--thread` when that flag is omitted; do not list threads and pick one by project name. Pass `--thread` / `--parent` / `--category` only when you are certain. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations. Offline results carry no immediate reducer output; nothing is dropped. Local `serve` always applies deterministic rules, including duplicate reuse, ancestor resumption, and descendant closure. Optional model review is off by default and runs only when explicitly configured on that server.
 
 ## Read every result; the reducer may rewrite
 
@@ -63,7 +63,7 @@ When the work you were doing is finished, check limbo and scheduled activities b
 - continue while suspecting the work has drifted from what David asked
 - answer a question the reducer asked
 
-Do not message for routine progress, and never instead of `start`/`end`. Defaults to your newest active activity; pass `--activity <id>` to target another. Needs a reachable server with model review configured (not queued). Local self-contained `serve` returns `REDUCER_NOT_CONFIGURED`; do not retry or switch to a remote server. In that mode, surface scope changes and unresolved judgment to the user and continue deterministic lifecycle logging.
+Do not message for routine progress, and never instead of `start`/`end`. Defaults to your newest active activity; pass `--activity <id>` to target another. Needs a reachable server with model review configured (not queued). Local self-contained `serve` has optional AI review, off by default. On `REDUCER_NOT_CONFIGURED`, do not retry or switch to a remote server; surface unresolved judgment to the user and continue deterministic logging. A lifecycle result with `model_review.status: failed` still recorded the activity: keep its returned id/state, surface the review failure, and do not repeat the start or retarget another instance.
 
 ## What to record
 

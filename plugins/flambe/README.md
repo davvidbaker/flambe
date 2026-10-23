@@ -60,8 +60,9 @@ hosted service. See [the decision and follow-up](../../docs/ADR-020-instance-bou
 Single Burner now serves the same eight MCP tools at `http://127.0.0.1:4001/mcp`,
 authenticated with the local API token printed at startup. Its SQLite database
 has a persistent instance id; another database gets a different id, even when
-both contain trace `1`. It keeps lifecycle operations local and returns
-`REDUCER_NOT_CONFIGURED` for model review.
+both contain trace `1`. It keeps lifecycle operations local. AI reducer review
+defaults to off (`REDUCER_NOT_CONFIGURED`) and can be enabled with an API provider
+or a local model. See [AI reducer setup](../../single-burner/README.md#optional-ai-reducer).
 
 For ChatGPT, connect that endpoint through an authenticated private MCP bridge,
 such as [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels),
