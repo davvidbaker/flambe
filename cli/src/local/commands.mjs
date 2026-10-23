@@ -92,7 +92,7 @@ export function commandState(trace, filters = {}) {
 }
 
 /** A command and all of its corrections commit together, or not at all. */
-export function executeCommand(store, userId, command, attrs, headerAgent = null, { modelReviewAvailable = false } = {}) {
+export function executeCommand(store, userId, command, attrs, headerAgent = null, { modelReviewAvailable = false, reviewStarts = true } = {}) {
   if (!COMMANDS.includes(command) || !attrs || typeof attrs !== 'object' || Array.isArray(attrs)) {
     invalid('command and arguments are required');
   }
@@ -112,6 +112,8 @@ export function executeCommand(store, userId, command, attrs, headerAgent = null
     include_unstarted: bool(attrs.include_unstarted, 'include_unstarted') };
   if (filters.active_only && filters.suspended_only) invalid('active_only and suspended_only cannot both be true');
   const result = { direction: null, reply: null, actions_applied: [], rules_fired: [], closed_descendants: [] };
+  const structuralReview = !modelReviewAvailable ? { type: 'skipped', reason: 'model_unavailable' }
+    : reviewStarts ? { type: 'pending_model_review' } : { type: 'available', reason: 'work_ai_review_on_request' };
   if (command === 'status') {
     const state = commandState(trace, filters);
     if (filters.include_unstarted && !filters.active_only && !filters.suspended_only) {
@@ -246,14 +248,12 @@ export function executeCommand(store, userId, command, attrs, headerAgent = null
         if (result.actions_applied.length) annotate(result.activity_id, 'resume_ancestor',
           result.actions_applied.map(a => a.activity_id));
         if (!parent && agentId && before.activities.some(a => a.agentId === agentId && a.status === 'running')) {
-          annotate(result.activity_id, 'new_root_while_open', modelReviewAvailable
-            ? { type: 'pending_model_review' } : { type: 'skipped', reason: 'model_unavailable' });
+          annotate(result.activity_id, 'new_root_while_open', structuralReview);
         } else if (parent) {
           const ancestorTokens = new Set(ancestors(parent).flatMap(a => tokens(a.name)));
           const childTokens = tokens(name);
           if (childTokens.length && childTokens.every(t => !ancestorTokens.has(t))) {
-            annotate(result.activity_id, 'name_unfit', modelReviewAvailable
-              ? { type: 'pending_model_review' } : { type: 'skipped', reason: 'model_unavailable' });
+            annotate(result.activity_id, 'name_unfit', structuralReview);
           }
         }
       }

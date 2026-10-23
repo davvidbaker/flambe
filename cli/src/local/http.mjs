@@ -147,7 +147,7 @@ async function dispatch(store, req, url, body, { auth, agent, runCommand }) {
 
   if (path === '/api/agent-commands') {
     if (method === 'GET') return { status: 200, json: { data: {
-      version: 1, commands: COMMANDS, runtime_mode: 'local_self_contained',
+      version: 1, commands: [...COMMANDS, ...(runCommand.info?.work_ai_reviews ? ['decide'] : [])], runtime_mode: 'local_self_contained',
       model_review: runCommand.info?.enabled ?? false, reducer: runCommand.info ?? { mode: 'off' },
     } } };
     if (method === 'POST') return { status: 200, json: {
@@ -288,7 +288,7 @@ async function dispatch(store, req, url, body, { auth, agent, runCommand }) {
           phase: folded.state.activities.find(a => a.id === folded.activity_id)?.latestEvent.phase },
         reducer: folded.reducer ?? { actions_applied: folded.actions_applied },
         direction: folded.direction, reply: folded.reply, rules_fired: folded.rules_fired,
-        actions_applied: folded.actions_applied, model_review: folded.model_review,
+        actions_applied: folded.actions_applied, model_review: folded.model_review, review: folded.review,
       } } };
     }
     const result = store.createActivity(userId, {

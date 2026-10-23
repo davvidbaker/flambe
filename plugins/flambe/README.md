@@ -57,12 +57,15 @@ answer that personal-plugin question. A routing endpoint was considered but
 would either make Cloud depend on the Mac or pass local traffic through Flambe's
 hosted service. See [the decision and follow-up](../../docs/ADR-020-instance-bound-chat-connections.md#temporary-chatgpt-plugin-decision--2026-10-22).
 
-Single Burner now serves the same eight MCP tools at `http://127.0.0.1:4001/mcp`,
+Single Burner serves the same eight shared MCP tools at `http://127.0.0.1:4001/mcp`,
 authenticated with the local API token printed at startup. Its SQLite database
 has a persistent instance id; another database gets a different id, even when
 both contain trace `1`. It keeps lifecycle operations local. AI reducer review
 defaults to off (`REDUCER_NOT_CONFIGURED`) and can be enabled with an API provider
-or a local model. See [AI reducer setup](../../single-burner/README.md#optional-ai-reducer).
+or a local model. In `agent` mode, the current work AI receives review context
+and uses a ninth, Single Burner-only `flambe_decide` tool to submit its decision.
+No extra model or inference key is needed. The private plugin workflow lives in
+[`plugins/single-burner`](../single-burner). See [AI reducer setup](../../single-burner/README.md#optional-ai-reducer).
 
 For ChatGPT, connect that endpoint through an authenticated private MCP bridge,
 such as [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels),

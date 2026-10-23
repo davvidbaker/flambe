@@ -2,9 +2,22 @@ import { readFileSync } from 'node:fs';
 import { Server, createMcpHandler, fromJsonSchema, ProtocolError } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { CommandError, executeCommand } from './commands.mjs';
+import { schema as decisionSchema } from './reducer-review.mjs';
 
-const tools = JSON.parse(readFileSync(new URL('../mcp-tools.json', import.meta.url), 'utf8'));
-const validators = new Map(tools.map(tool => [tool.name, fromJsonSchema(tool.inputSchema)['~standard']]));
+const baseTools = JSON.parse(readFileSync(new URL('../mcp-tools.json', import.meta.url), 'utf8'));
+const decideTool = {
+  name: 'flambe_decide', title: 'Submit your Single Burner review decision',
+  description: 'Submit the current work AI decision for a review returned by flambe_message or a flagged start. Use that exact review_id, trace, instance, and agent_id. Single Burner validates and applies it locally, without another model call. Identical retries return a receipt; stale reviews require a fresh flambe_message. This is the work AI reviewing its own context, not independent approval.',
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  inputSchema: { type: 'object', additionalProperties: false,
+    required: ['expected_instance_id', 'trace_id', 'agent_id', 'review_id', 'decision'],
+    properties: {
+      ...Object.fromEntries(['expected_instance_id', 'trace_id', 'agent_id'].map(key =>
+        [key, baseTools.find(t => t.name === 'flambe_message').inputSchema.properties[key]])),
+      review_id: { type: 'string', minLength: 1, description: 'Exact review.review_id returned by this Single Burner connection.' },
+      decision: decisionSchema,
+    } },
+};
 
 function result(instance, data, isError = false) {
   const structuredContent = { ...data, instance };
@@ -13,6 +26,11 @@ function result(instance, data, isError = false) {
 
 /** Stateless MCP transport; the existing SQLite command engine owns all mutations. */
 export function createLocalMcpHandler(store, runCommand = (userId, command, args, agent) => executeCommand(store, userId, command, args, agent)) {
+  const tools = [...baseTools, ...(runCommand.info?.work_ai_reviews ? [decideTool] : [])];
+  const validators = new Map(tools.map(tool => [tool.name, fromJsonSchema(tool.inputSchema)['~standard']]));
+  const reviewDescription = runCommand.info?.work_ai_reviews
+    ? ' Work-AI review: this returns review context and a review_id. Reason over it and submit your decision with flambe_decide, using the same agent_id. No separate model is called.'
+    : ` AI reducer mode: ${runCommand.info?.mode ?? 'off'}; API mode sends activity context to the configured model provider, local mode uses a loopback model endpoint.`;
   const handler = createMcpHandler(context => {
     const instance = store.instance();
     const token = context.requestInfo.headers.get('authorization')?.replace(/^Bearer /, '');
@@ -24,8 +42,7 @@ export function createLocalMcpHandler(store, runCommand = (userId, command, args
 
     server.setRequestHandler('tools/list', () => ({ tools: tools.map(({ securitySchemes, ...tool }) => ({
       ...tool,
-      description: `${tool.description} Connected instance: Single Burner. This connection cannot access Cloud or Development.${tool.name === 'flambe_message'
-        ? ` AI reducer mode: ${runCommand.info?.mode ?? 'off'}; API mode sends activity context to the configured model provider, local mode uses a loopback model endpoint.` : ''}`,
+      description: `${tool.description} Connected instance: Single Burner. This connection cannot access Cloud or Development.${tool.name === 'flambe_message' ? reviewDescription : ''}`,
       annotations: { ...tool.annotations, openWorldHint: false },
     })) }));
 
@@ -44,7 +61,7 @@ export function createLocalMcpHandler(store, runCommand = (userId, command, args
       if (validated.issues) return result(instance, { code: 'INVALID_INPUT', message: validated.issues.map(issue => issue.message).join('; ') }, true);
       if (name === 'flambe_traces') {
         const traces = store.listTraces(auth.user.id).map(({ id, name: traceName }) => ({ id, name: traceName }));
-        return result(instance, { traces, default_trace_id: traces[0]?.id ?? null });
+        return result(instance, { traces, default_trace_id: traces[0]?.id ?? null, reducer: runCommand.info ?? { mode: 'off' } });
       }
       const { expected_instance_id, ...arguments_ } = args;
       // Header identity has the same precedence as the REST adapter.

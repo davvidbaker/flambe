@@ -92,6 +92,31 @@ Do not use `flambe_message` for routine progress, and do not use it instead of l
 
 If the server reports `REDUCER_NOT_CONFIGURED`, do not retry or send the message to another instance. Single Burner's AI review is optional and off by default; deterministic tracking remains available. Surface unresolved judgment in this chat. If a lifecycle result reports `model_review.status: failed`, the activity was recorded: use its returned id and state, report the review failure, and do not repeat the start or substitute another instance.
 
+## Review with the current work AI
+
+On a Single Burner connection configured for `agent` review, `flambe_message`
+returns `review` with `model_review.status: awaiting_decision`. Flagged starts
+normally return a small review-available notice; request full review only when
+placement or scope needs judgment. Automatic reviews of flagged starts are
+optional. Do not review every start/end. Review context contains the current
+path and this agent's open work; compact lifecycle replies mark their state scope.
+Omitted activities are not ended.
+You are the reviewer. Read the supplied instructions, context, and decision
+schema, reason about the user's intent and current stack, then call
+`flambe_decide` on that same connection with the exact `review_id`, instance,
+trace, stable `agent_id`, and your decision. Complete that review before further
+substantive work. Do not start another model or request a model API key.
+
+The local engine validates and applies the decision. Follow its returned
+state and direction. Submit at most one permitted action; use no actions and
+escalate to the user when judgment is unresolved. This is your own review of the
+work, not independent approval. Do not repeat an already-recorded start.
+On `REDUCER_STATE_CHANGED` or `REVIEW_EXPIRED`, request a fresh `flambe_message`
+review for that activity and reassess it. Identical submission retries return
+the original receipt with `replayed: true`, without applying another action.
+Never send a local review to Cloud or another connection. If `flambe_decide`
+is unavailable, report the missing support rather than pretending to submit it.
+
 ## Status lookup
 
 Reuse activity ids returned earlier in the conversation.

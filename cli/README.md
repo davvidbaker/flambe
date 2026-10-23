@@ -65,8 +65,12 @@ for commands (`start`, `end`, `message`, `observe`, local `serve`).
 ## Single Burner AI review
 
 When running `flambe serve`, optional AI review is configured in that server
-process with `FLAMBE_LOCAL_REDUCER_MODE=off|api|local`. It is off by default;
+process with `FLAMBE_LOCAL_REDUCER_MODE=off|agent|api|local`. It is off by default;
 provider failures never reroute work to Cloud. See the
 [Single Burner configuration guide](../single-burner/README.md#optional-ai-reducer)
 for model, endpoint, credential, timeout, and data-boundary settings. Client
 processes only need their normal local Flambe connection settings.
+
+In `agent` mode, your current work AI reads the review returned by `flambe message`
+and submits its decision with `flambe decide <review-id> --file <decision.json>`.
+No separate model or inference API key is required.

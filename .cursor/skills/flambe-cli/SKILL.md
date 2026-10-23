@@ -39,7 +39,7 @@ flambe message "Auth fix needs the session module refactored too; widening scope
 
 Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch threads or categories to decide placement; that is the reducer's job.
 
-Every command is a proposal; the reducer owns the stack. Without `--parent`/`--root`, `start` nests under **your own** newest active activity (other agents' work is never your parent), puts a child on its parent's thread, and gives it the parent's categories; a new root gets its thread and categories chosen by the reducer a few seconds later. `FLAMBE_THREAD` (name, unique slug, or id) is sent as `--thread` when that flag is omitted; do not list threads and pick one by project name. Pass `--thread` / `--parent` / `--category` only when you are certain. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations. Offline results carry no immediate reducer output; nothing is dropped. Local `serve` always applies deterministic rules, including duplicate reuse, ancestor resumption, and descendant closure. Optional model review is off by default and runs only when explicitly configured on that server.
+Every command is a proposal; the reducer owns the stack. Without `--parent`/`--root`, `start` nests under **your own** newest active activity (other agents' work is never your parent), puts a child on its parent's thread, and gives it the parent's categories; a new root gets its thread and categories chosen by the reducer a few seconds later. `FLAMBE_THREAD` (name, unique slug, or id) is sent as `--thread` when that flag is omitted; do not list threads and pick one by project name. Pass `--thread` / `--parent` / `--category` only when you are certain. Offline `offline-…` ids from `start` are valid for `end`. Do not retry queued operations. Offline results carry no immediate reducer output; nothing is dropped. Local `serve` always applies deterministic rules, including duplicate reuse, ancestor resumption, and descendant closure. Optional review is off by default; an explicitly configured server can ask the current work AI to review or call a separate model.
 
 ## Read every result; the reducer may rewrite
 
@@ -48,6 +48,44 @@ Any command (`start`, `end`, `suspend`, `resume`, `message`) may come back with 
 The reducer may answer a proposal with a question in `reply`, usually when a name does not fit its ancestors. Answer before your next step: rename the activity, or reply with `flambe message`. The CLI reminds you on the next command if a question is still open; it never refuses.
 
 A returned `direction` is binding: act on it before doing more work. On `pause`, `stop`, or `escalate`, stop and surface the reply to David rather than deciding yourself. `direction -` or none means continue as you were. A model-judged `start` can take a few seconds; wait for it.
+
+## Review with the AI doing the work
+
+Review only at meaningful scope/approach decisions or when placement is uncertain.
+Routine lifecycle tracking uses deterministic local rules. Do not review every
+start/end, and do not request full history for routine bookkeeping. Work-AI
+review context contains the current path and this agent's open work. Compact
+lifecycle replies mark their state scope; omitted activities are not ended.
+
+When a local result contains `review` and `model_review.status: awaiting_decision`,
+you are the reviewer. This is the current work AI evaluating its own context,
+not independent approval. Do not start another model, ask for provider keys, or
+claim a separate reviewer approved your work.
+
+Read `review.instructions`, `review.context`, and `review.decision_schema`.
+Evaluate the user's intent, current path, and proposed scope. Choose concise
+assessment, direction, reply, rationale, and at most one permitted action.
+Write that decision as JSON and submit it with:
+
+```sh
+flambe decide <review.review_id> --file <decision.json>
+```
+
+`flambe message` returns the review JSON in this mode. Flagged starts normally
+print only a small review-available notice on stderr; request review only when
+scope or placement needs judgment. They include full review JSON only when the
+server explicitly enables automatic start reviews. Stdout remains the recorded id. Keep the same local
+connection, trace, and stable agent id for both steps. Ordinary
+lifecycle tracking continues to use start/end/suspend/resume.
+
+Complete a requested review before continuing substantive work. Follow the
+returned direction after submission; escalate unresolved human judgment with no
+actions and ask the user. Do not repeat the recorded start to request review.
+On `REDUCER_STATE_CHANGED` or `REVIEW_EXPIRED`, request a fresh review with
+`flambe message` for that activity, reassess it, and submit against the new id.
+Do not resubmit the old decision blindly. Identical retries of a completed
+submission return a receipt; `replayed: true` means no new action was applied.
+If the server lacks work-AI review support, report that instead of changing instances.
 
 ## End of work
 
@@ -63,7 +101,7 @@ When the work you were doing is finished, check limbo and scheduled activities b
 - continue while suspecting the work has drifted from what David asked
 - answer a question the reducer asked
 
-Do not message for routine progress, and never instead of `start`/`end`. Defaults to your newest active activity; pass `--activity <id>` to target another. Needs a reachable server with model review configured (not queued). Local self-contained `serve` has optional AI review, off by default. On `REDUCER_NOT_CONFIGURED`, do not retry or switch to a remote server; surface unresolved judgment to the user and continue deterministic logging. A lifecycle result with `model_review.status: failed` still recorded the activity: keep its returned id/state, surface the review failure, and do not repeat the start or retarget another instance.
+Do not message for routine progress, and never instead of `start`/`end`. Defaults to your newest active activity; pass `--activity <id>` to target another. Needs a reachable server with model review configured (not queued). Local self-contained `serve` has optional review, off by default, including an `agent` mode that returns review context for you to evaluate. On `REDUCER_NOT_CONFIGURED`, do not retry or switch to a remote server; surface unresolved judgment to the user and continue deterministic logging. A lifecycle result with `model_review.status: failed` still recorded the activity: keep its returned id/state, surface the review failure, and do not repeat the start or retarget another instance.
 
 ## What to record
 
