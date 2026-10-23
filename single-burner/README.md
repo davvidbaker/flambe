@@ -12,7 +12,16 @@ npx @davvidbaker/flambe-single-burner
 
 Then open http://127.0.0.1:4001.
 
-The startup walkthrough explains how to install the agent CLI, copy the local connection settings into your agent project’s `.env`, give your agent the Flambé tracking instructions, and check the connection. It also explains what the local API token is for. Keep Single Burner running while your agent works.
+Startup shows the local chart, reducer mode, copyable connection settings, and
+three local Codex setup steps. Keep Single Burner running while your agent works.
+Detailed guides are below; the hosted ChatGPT tunnel walkthrough is [separate](CHATGPT.md).
+
+An empty `"activities": []` from `flambe status --active --json` means the
+connection worked and no activity is running. Without `--json`, an empty list
+prints nothing. Starting the server or checking status does not record work.
+The printed local API token lets an agent write to this database; it is not an
+npm or OpenAI credential. Existing shell `FLAMBE_*` values override project `.env`
+settings, so update old connection values before starting your agent.
 
 ## Install it
 
@@ -49,6 +58,19 @@ work-AI reducer decisions. Keep Single Burner and the global CLI available.
 Use `flambe setup codex --check` to inspect files and `--remove` to remove only
 Flambe's handlers. See [hook behavior and verification](../cli/README.md#local-codex--single-burner-hooks).
 
+## Use it with another local coding agent
+
+Install `@davvidbaker/flambe-cli`, copy the printed connection values to the
+agent project's `.env` (keep it out of Git), and add this to its instructions:
+
+> Use Flambé to track substantial work. Run the flambe CLI from this project's
+> directory so it reads .env. Follow the flambe-cli skill: start activities,
+> nest focused work under its parent, and end activities with their outcomes.
+
+Follow the [flambe-cli skill](../.codex/skills/flambe-cli/SKILL.md).
+The agent must run on this machine and be able to reach the printed address;
+a cloud-hosted agent cannot reach this machine's localhost.
+
 ## Use it through ChatGPT
 
 For now, use the separate private **Single Burner** plugin alongside the hosted
@@ -59,7 +81,8 @@ temporary choice, not a confirmed platform limitation. See [why we chose it](../
 Single Burner exposes bearer-authenticated MCP tools at
 `http://127.0.0.1:4001/mcp` using the local API token printed at startup. Connect
 through a private MCP bridge reachable from ChatGPT and name that connection
-**Single Burner**. See the [chat connection setup](../plugins/flambe/README.md#single-burner-and-development).
+**Single Burner**. Follow the [complete tunnel and plugin walkthrough](CHATGPT.md), including
+Windows/Git Bash commands, workspace association, skill installation, and a live check.
 
 The first `flambe_traces` call identifies this database and lists its traces.
 Other tools require its exact `instance.id` as `expected_instance_id`, so an id
