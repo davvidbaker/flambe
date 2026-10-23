@@ -28,6 +28,7 @@ const usage = `Usage:
   flambe whoami [--json]
   flambe message <text> [--activity <id>] [--json]
   flambe decide <review-id> --file <decision.json>
+  flambe setup codex [--check | --remove]
   flambe observe <kind> <value> [--unit <unit>] [--on <YYYY-MM-DD>] [--payload <json>] [--at <ISO-8601>]
   flambe serve [--port <n>] [--db <path>] [--static <dir>]
   flambe export [file] [--db <path>]
@@ -360,8 +361,42 @@ function formatReducerNote(note) {
   return `reducer: ${JSON.stringify(note)}\n`;
 }
 
-export async function run(argv, { env = process.env, stdout = process.stdout, stderr = process.stderr, client, questionsPath } = {}) {
+export async function run(argv, { env = process.env, stdout = process.stdout, stderr = process.stderr, stdin = process.stdin, client, questionsPath } = {}) {
   const [command, ...args] = argv;
+
+  if (command === 'hook' && args.length === 1 && args[0] === 'codex') {
+    const {readHookInput, runCodexHook} = await import('./codex-hook.mjs');
+    let output;
+    try { output = await runCodexHook(await readHookInput(stdin), {env}); }
+    catch { output = {systemMessage: 'Single Burner hook input could not be read; work may continue.'}; }
+    stdout.write(`${JSON.stringify(output)}\n`);
+    return;
+  }
+
+  if (command === 'setup') {
+    if (args[0] !== 'codex' || args.length > 2
+      || (args[1] !== undefined && !['--check', '--remove'].includes(args[1]))) {
+      throw new Error('Usage: flambe setup codex [--check | --remove]');
+    }
+    const {setupCodex} = await import('./codex-setup.mjs');
+    const action = args[1] === '--check' ? 'check' : args[1] === '--remove' ? 'remove' : 'install';
+    const result = setupCodex({action});
+    let localConnectionConfigured = false;
+    try {
+      localConnectionConfigured = env.FLAMBE_RUNTIME_MODE === 'local_self_contained' && Boolean(clientFromEnv(env));
+    } catch { /* Only report whether the config is usable; never echo credentials. */ }
+    if (action === 'check') stdout.write(`${JSON.stringify({...result, localConnectionConfigured})}\n`);
+    else if (action === 'remove') stdout.write(`Single Burner Codex hooks ${result.removed ? 'removed' : 'were not installed'}. Existing skills and unrelated hooks were retained.\n`);
+    else {
+      stdout.write(`Single Burner Codex hooks installed in ${result.root}\n`);
+      stdout.write(result.skillInstalled ? 'Installed the flambe-cli skill.\n' : 'Kept the existing flambe-cli skill.\n');
+      if (!result.skillMatches) stdout.write('The existing skill differs from the bundled version; review it for current work-AI review instructions.\n');
+      if (!localConnectionConfigured) stdout.write('Copy Single Burner connection values into this project .env, including FLAMBE_RUNTIME_MODE=local_self_contained, before using the hooks.\n');
+      stdout.write('Restart the local Codex session. Review and trust these project hooks with /hooks before relying on them. Workspace policy can restrict hooks.\n');
+      stdout.write('Run flambe setup codex --check to inspect installed files and connection configuration. This does not confirm Codex trust or live hook execution.\n');
+    }
+    return;
+  }
 
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     stdout.write(`${usage}\n`);

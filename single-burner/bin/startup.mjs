@@ -35,15 +35,31 @@ FLAMBE_TRACE_ID=${traceId}
    Existing shell environment variables override .env. Update or remove any
    old FLAMBE_* connection settings before starting your agent.
 
-3. Add this instruction to your project's AGENTS.md (or your agent's equivalent
-   instructions file), or paste it into the agent's chat:
+3. For LOCAL CODEX, run this from that project directory:
+
+   flambe setup codex
+
+   This installs project hooks and the flambe-cli skill, preserving existing
+   unrelated hooks and custom instructions. Restart local Codex and use /hooks
+   to review/trust the new hook definitions. Keep the flambe CLI on PATH.
+   Run flambe setup codex --check to inspect the installed files.
+   Use flambe setup codex --remove to remove only Flambe's hook handlers.
+
+   Local Codex connects directly to this server. It needs NO ChatGPT plugin,
+   Platform organization, tunnel, or extra model API key. Hooks prompt regular
+   tracking checkpoints; your agent still names and nests meaningful work.
+   On Windows, the hook command uses flambe.cmd, including when you installed
+   from Git Bash and Codex runs its hooks through the Windows shell.
+
+4. For other coding agents, add this instruction to your project's AGENTS.md
+   (or equivalent instructions file), or paste it into the agent's chat:
 
    Use Flambé to track substantial work. Run the flambe CLI from this project's
    directory so it reads .env. Follow the flambe-cli skill: start activities,
    nest focused work under its parent, and end activities with their outcomes.
    Skill: https://github.com/davvidbaker/flambe/blob/main/.codex/skills/flambe-cli/SKILL.md
 
-4. Check the connection in the second terminal, from that project directory:
+5. Check the connection in the second terminal, from that project directory:
 
    flambe status --active --json
 
@@ -53,16 +69,17 @@ FLAMBE_TRACE_ID=${traceId}
    If the command reports an error, check that this server is still running,
    that you are in the project directory, and that its .env has the values above.
 
-5. Ask your agent to begin tracking its work. Its start/end commands will update
+6. Ask your agent to begin tracking its work. Its start/end commands will update
    the chart at ${origin}. The status check itself creates no activities.
    No npm login is needed to run Single Burner or send activities to it.
 
 The agent must run on this machine and be able to reach ${origin}.
 A cloud-hosted agent cannot reach your machine's localhost.
 
-Connect ChatGPT (requires a separate tunnel)
+OPTIONAL: Connect hosted ChatGPT (requires a separate tunnel)
 
-Starting Single Burner does not set up a tunnel or connect ChatGPT. The local
+Local Codex users do not need this section.
+Starting Single Burner does not set up a tunnel or connect hosted ChatGPT. The local
 coding-agent setup above needs no tunnel. For ChatGPT, follow these steps.
 
 1. Keep this server running. In your browser, open:
