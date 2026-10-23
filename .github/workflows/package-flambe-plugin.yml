@@ -39,7 +39,7 @@ jobs:
           assert interface["privacyPolicyURL"].startswith("https://")
           assert interface["termsOfServiceURL"].startswith("https://")
           assert len(cases["positive"]) == 5
-          assert len(cases["negative"]) == 3
+          assert len(cases["negative"]) == 4
           assert mcp["mcpServers"]["flambe"]["url"] == "https://flambe.fly.dev/mcp"
           assert not (root / ".app.json").exists()
 

@@ -113,7 +113,7 @@ function agentHeaders(agent) {
   };
 }
 
-async function dispatch(store, req, url, body, { auth, agent }) {
+async function dispatch(store, req, url, body, { auth, agent, runCommand }) {
   const method = req.method ?? 'GET';
   const path = url.pathname;
 
@@ -147,10 +147,11 @@ async function dispatch(store, req, url, body, { auth, agent }) {
 
   if (path === '/api/agent-commands') {
     if (method === 'GET') return { status: 200, json: { data: {
-      version: 1, commands: COMMANDS, runtime_mode: 'local_self_contained', model_review: false,
+      version: 1, commands: [...COMMANDS, ...(runCommand.info?.work_ai_reviews ? ['decide'] : [])], runtime_mode: 'local_self_contained',
+      model_review: runCommand.info?.enabled ?? false, reducer: runCommand.info ?? { mode: 'off' },
     } } };
     if (method === 'POST') return { status: 200, json: {
-      data: executeCommand(store, userId, body.command, body.arguments, agent),
+      data: await runCommand(userId, body.command, body.arguments, agent),
     } };
   }
 
@@ -267,7 +268,7 @@ async function dispatch(store, req, url, body, { auth, agent }) {
   if (method === 'POST' && path === '/api/activities') {
     if (!Object.hasOwn(body, 'event') && auth.tokenName !== null) {
       const activity = body.activity ?? {};
-      const planned = executeCommand(store, userId, 'plan', {
+      const planned = await runCommand(userId, 'plan', {
         trace_id: body.trace_id, name: activity.name, description: activity.description,
         weight: activity.weight, category_ids: activity.categories,
         scheduled_start: activity.scheduled_start_integer,
@@ -279,7 +280,7 @@ async function dispatch(store, req, url, body, { auth, agent }) {
     }
     if (auth.tokenName !== null) {
       const activity = body.activity ?? {};
-      const folded = executeCommand(store, userId, 'start', {
+      const folded = await runCommand(userId, 'start', {
         trace_id: body.trace_id, thread_id: body.thread_id, name: activity.name,
         description: activity.description, category_ids: activity.categories,
         ...(Object.hasOwn(activity, 'parent_id') ? { parent_id: activity.parent_id } : {}),
@@ -291,7 +292,7 @@ async function dispatch(store, req, url, body, { auth, agent }) {
           phase: folded.state.activities.find(a => a.id === folded.activity_id)?.latestEvent.phase },
         reducer: folded.reducer ?? { actions_applied: folded.actions_applied },
         direction: folded.direction, reply: folded.reply, rules_fired: folded.rules_fired,
-        actions_applied: folded.actions_applied,
+        actions_applied: folded.actions_applied, model_review: folded.model_review, review: folded.review,
       } } };
     }
     const result = store.createActivity(userId, {
@@ -335,7 +336,7 @@ async function dispatch(store, req, url, body, { auth, agent }) {
     const phase = body.event?.phase;
     const command = { E: 'end', J: 'end', V: 'end', S: 'suspend', R: 'resume' }[phase];
     if (auth.tokenName !== null && command) {
-      const folded = executeCommand(store, userId, command, {
+      const folded = await runCommand(userId, command, {
         trace_id: body.trace_id, activity_id: body.activity_id,
         timestamp: body.event?.timestamp_integer, message: body.event?.message,
         phase, force: body.force ?? true,
@@ -344,7 +345,7 @@ async function dispatch(store, req, url, body, { auth, agent }) {
         id: folded.event_id, phase,
         reducer: { closed_descendants: folded.closed_descendants,
           rules_fired: folded.rules_fired, actions_applied: folded.actions_applied,
-          direction: folded.direction, reply: folded.reply },
+          direction: folded.direction, reply: folded.reply, model_review: folded.model_review },
       } } };
     }
     const result = store.createEvent(userId, {
@@ -437,7 +438,8 @@ function tryStatic(staticDir, urlPath, res) {
   return true;
 }
 
-export async function handleLocalRequest(store, req, res, { staticDir } = {}) {
+export async function handleLocalRequest(store, req, res, { staticDir, mcp,
+  runCommand = (userId, command, args, agent) => executeCommand(store, userId, command, args, agent) } = {}) {
   const host = req.headers.host ?? '127.0.0.1';
   const url = new URL(req.url ?? '/', `http://${host}`);
   // A locally served UI must not send trace content to a compiled-in remote API.
@@ -454,6 +456,22 @@ export async function handleLocalRequest(store, req, res, { staticDir } = {}) {
       sendJson(res, 403, { error: 'LOCAL_ORIGIN_REQUIRED' });
       return;
     }
+  }
+
+  // Single Burner has no OAuth discovery documents. Do not serve the SPA (or
+  // its setup credentials) to MCP clients probing standard metadata paths.
+  if (url.pathname.startsWith('/.well-known/')) {
+    sendJson(res, 404, { error: 'NOT_FOUND' });
+    return;
+  }
+
+  if (url.pathname === '/mcp' && mcp) {
+    if (req.headers.origin) {
+      sendJson(res, 403, { error: 'MCP_BROWSER_ORIGIN_FORBIDDEN' });
+      return;
+    }
+    await mcp.handle(req, res);
+    return;
   }
 
   if (!url.pathname.startsWith('/api') && !url.pathname.startsWith('/auth')) {
@@ -485,7 +503,7 @@ FLAMBE_TRACE_ID=${traceId}</pre>
   const agent = identifyAgent(store, req, auth);
   let result;
   try {
-    result = await dispatch(store, req, url, body, { auth, agent });
+    result = await dispatch(store, req, url, body, { auth, agent, runCommand });
   } catch (error) {
     if (!(error instanceof CommandError)) throw error;
     result = { status: error.status, json: error.body };
