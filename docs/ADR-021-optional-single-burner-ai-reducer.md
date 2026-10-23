@@ -54,3 +54,6 @@ This first local implementation uses one configured model. It does not copy
 Cloud's Jev routing or primary/escalation model chain, and it does not certify
 the judgment quality of an arbitrary installed model. Real-provider evaluation
 is separate from transport, validation, and failure-handling tests.
+
+[ADR-022](ADR-022-work-ai-reducer-reviews.md) subsequently adds an `agent` mode
+for the current work AI to review without a separate inference provider.

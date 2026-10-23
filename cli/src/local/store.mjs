@@ -128,6 +128,19 @@ CREATE TABLE IF NOT EXISTS agents (
   UNIQUE (user_id, agent_id)
 );
 
+CREATE TABLE IF NOT EXISTS reducer_reviews (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  trace_id INTEGER NOT NULL REFERENCES traces(id) ON DELETE CASCADE,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  agent_id TEXT NOT NULL,
+  context TEXT NOT NULL,
+  snapshot_hash TEXT NOT NULL,
+  created_ms INTEGER NOT NULL,
+  decision TEXT,
+  receipt TEXT
+);
+
 CREATE TABLE IF NOT EXISTS observations (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

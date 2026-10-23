@@ -25,3 +25,10 @@ _Avoid_: Ghost, future activity
 **Limbo**:
 Where ideas, tasks, and plans go to die: an unstarted activity with no time, or
 an activity that is currently suspended.
+
+**Reducer review**:
+An evaluation of work against its intent and current activity stack.
+
+**Reducer decision**:
+Guidance and any permitted activity change resulting from a reducer review.
+The reviewer may be the AI doing the work or a separate model.

@@ -8,7 +8,12 @@ const loopback = host => ['127.0.0.1', 'localhost', '[::1]'].includes(host);
 export function reducerConfig(env = process.env) {
   const mode = env.FLAMBE_LOCAL_REDUCER_MODE ?? 'off';
   if (mode === 'off') return { mode };
-  if (!['api', 'local'].includes(mode)) throw configError('FLAMBE_LOCAL_REDUCER_MODE must be off, api, or local.');
+  if (mode === 'agent') {
+    const reviewStarts = env.FLAMBE_LOCAL_REDUCER_REVIEW_STARTS ?? 'false';
+    if (!['false', 'true'].includes(reviewStarts)) throw configError('FLAMBE_LOCAL_REDUCER_REVIEW_STARTS must be true or false.');
+    return { mode, reviewStarts: reviewStarts === 'true' };
+  }
+  if (!['api', 'local'].includes(mode)) throw configError('FLAMBE_LOCAL_REDUCER_MODE must be off, agent, api, or local.');
   const model = env.FLAMBE_LOCAL_REDUCER_MODEL?.trim();
   if (!model) throw configError('Set FLAMBE_LOCAL_REDUCER_MODEL explicitly.');
   let base;
@@ -61,8 +66,9 @@ export function createReducerProvider(config, { fetchImpl = globalThis.fetch } =
   return {
     mode: config.mode,
     model: config.model,
+    reviewStarts: config.reviewStarts,
     async review({ system, context, schema }) {
-      if (config.mode === 'off') throw new CommandError(503, 'REDUCER_NOT_CONFIGURED', 'AI reducer review is off.');
+      if (['off', 'agent'].includes(config.mode)) throw new CommandError(503, 'REDUCER_NOT_CONFIGURED', 'AI reducer review is off.');
       const input = JSON.stringify(context);
       const body = config.mode === 'api' ? {
         model: config.model, store: false, max_output_tokens: 2000,

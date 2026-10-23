@@ -55,13 +55,53 @@ connection. The verified development setup does not start them automatically.
 
 ## Optional AI reducer
 
+To use the AI already helping with your work, start Single Burner with:
+
+```sh
+export FLAMBE_LOCAL_REDUCER_MODE=agent
+flambe-single-burner
+```
+
+This needs no model API key, Ollama, or extra model process. Configure this on
+the Single Burner server; your agent only needs its normal local connection.
+Refresh MCP tool discovery after updating/restarting the server.
+
+The work AI calls `flambe message` / `flambe_message` to receive review context,
+instructions, a decision schema, and a `review_id`. Routine tracking is
+deterministic; flagged starts return a small notice without review context.
+The activity is already recorded. The AI evaluates the packet and submits a decision using `flambe decide <review-id> --file decision.json`
+or the Single Burner-only `flambe_decide` tool. The decision JSON contains
+`assessment`, `direction`, `reply`, `rationale`, and `actions`, matching the
+returned schema. Follow the CLI or plugin skill to complete the review before
+continuing work. Ordinary tracking still uses the normal lifecycle commands.
+
+Single Burner applies allowed decisions locally, rejects stale or expired
+reviews, and records who submitted them. A pending review survives restart and
+expires after 15 minutes. Identical retries return a receipt without applying
+another change; different decisions for a completed review are rejected. Local
+review records/receipts become eligible for cleanup after 24 hours and are
+removed when another review is requested and are excluded from history exports. The work AI reviews
+its own context; this is not independent approval or a background service.
+With a cloud-hosted work AI, the returned context still reaches that provider.
+Reviews consume the current chat model's context and allowance; they do not
+switch to a cheaper model automatically. Request them at meaningful scope or
+approach decisions, not for every lifecycle event. Work-AI reviews include the
+current path and this agent's open work, omitting unrelated and ended history.
+Routine replies mark their compact state scope; an explicit status read can
+still return full history. Set `FLAMBE_LOCAL_REDUCER_REVIEW_STARTS=true` on the
+server to opt into automatic full reviews for flagged starts (default `false`).
+See [ADR-022](../docs/ADR-022-work-ai-reducer-reviews.md).
+
 AI review is **off by default**. Set the mode in the environment of the
 Single Burner server process, then restart that process. The CLI and ChatGPT
-use the same configured reducer; agents do not need the provider credential.
+use the same configured reducer; agents do not need a separate provider credential.
+The following API/local options are alternatives when you want Flambe itself
+to call a model.
 
 | Mode | Model connection | Activity context |
 | --- | --- | --- |
 | `off` | None | No model request is sent |
+| `agent` | Your current work AI | Returned through its existing tools; Flambe makes no inference request |
 | `api` | OpenAI Responses-compatible HTTPS API | Sent directly to your selected model provider, never through Flambe Cloud |
 | `local` | Ollama-compatible loopback endpoint | Sent to the runtime on this machine; use a model that performs inference locally |
 
@@ -106,7 +146,8 @@ reviews can also ask a question or reparent the new activity. Single Burner
 validates every proposal, enforces advice-only requests, and rejects judgments
 if the trace changed during inference. Model changes and audit events commit
 together. Models cannot delete or end activities. Review context is bounded to
-64 KiB and uses the current path, open work, and ended work from the past 21 days.
+64 KiB. Provider-backed review uses the current path, open work, and ended work
+from the past 21 days; work-AI review uses the current path and its own open work.
 Oversized context fails review explicitly before contacting the model; it is not
 silently truncated.
 

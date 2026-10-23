@@ -155,6 +155,7 @@ export class FlambeClient {
             || REQUIRED_AGENT_COMMANDS.some(command => !commands.includes(command))) {
             throw new Error('Flambe API returned an invalid agent-command capability document');
           }
+          this.agentCommandDetails = payload.data;
           return true;
         })
         .catch(error => {
@@ -644,6 +645,7 @@ export class FlambeClient {
       reply,
       actionsApplied: actions,
       ...(result.model_review ? { modelReview: result.model_review } : {}),
+      ...(result.review ? { review: result.review } : {}),
       asked: actions.some(action => action.type === 'ask'),
     });
   }
@@ -700,6 +702,16 @@ export class FlambeClient {
     return this.request('/api/imports', { method: 'POST', body: bundle });
   }
 
+  /** Work-AI decisions are never queued or sent to a substitute connection. */
+  async decide({ reviewId, decision }) {
+    if (!(await this.supportsAgentCommands()) || !this.agentCommandDetails?.reducer?.work_ai_reviews) {
+      throw new Error('This connection does not support work-AI reviews. Configure agent reducer mode on Single Burner.');
+    }
+    const result = await this.agentCommand('decide', { ...this.commandIdentity(), review_id: reviewId, decision });
+    this.reportCommandResult(result);
+    return result;
+  }
+
   /**
    * Send a free-text update to the Reducer Agent. It answers with assessment /
    * direction / reply and, as the single writer for the stack (ADR-011), may apply at
@@ -727,7 +739,7 @@ export class FlambeClient {
         message: text.trim(),
       });
       const decision = { activityId: result.activity_id ?? resolvedActivityId, ...result };
-      this.reportCommandResult(result);
+      if (!result.review) this.reportCommandResult(result);
       return decision;
     }
 
