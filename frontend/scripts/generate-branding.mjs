@@ -5,7 +5,7 @@ import { Resvg } from '@resvg/resvg-js';
 
 const frontendRoot = new URL('../', import.meta.url);
 const sources = {};
-for (const variant of ['production', 'development', 'share-viewer', 'plugin']) {
+for (const variant of ['production', 'development', 'share-viewer', 'plugin', 'single-burner']) {
   const png = await fs.readFile(new URL(`branding/source/${variant}.png`, frontendRoot));
   assert.deepEqual(png.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   const width = png.readUInt32BE(16);
@@ -65,6 +65,7 @@ for (const [name, png] of Object.entries(icons)) {
   outputs.set(`public/${name}`, png);
   outputs.set(`../backend/priv/static/${name}`, png);
 }
+outputs.set('public/favicon_single_burner.png', render(32, { variant: 'single-burner' }));
 outputs.set('packages/core/favicon.png', dev);
 outputs.set('packages/share-viewer/public/favicon.png', render(32, share));
 outputs.set('packages/share-viewer/public/favicon.ico', ico(
