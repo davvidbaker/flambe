@@ -420,9 +420,16 @@ function tryStatic(staticDir, urlPath, res) {
   const root = resolve(staticDir);
   const rootIndex = join(root, 'index.html');
   const indexPath = existsSync(rootIndex) ? rootIndex : join(root, 'assets', 'index.html');
-  const requested = urlPath === '/' || !urlPath.includes('.')
+  let requested = urlPath === '/' || !urlPath.includes('.')
     ? indexPath
     : join(root, urlPath.replace(/^\//, ''));
+  // Hosted builds retain their production favicon URL when served locally.
+  // Prefer the Single Burner mark in either supported static layout.
+  if (['/favicon.png', '/assets/favicon.png', '/favicon_single_burner.png', '/assets/favicon_single_burner.png'].includes(urlPath)) {
+    const localIcon = [join(root, 'favicon_single_burner.png'), join(root, 'assets', 'favicon_single_burner.png')]
+      .find(path => existsSync(path) && statSync(path).isFile());
+    if (localIcon) requested = localIcon;
+  }
   const normalized = normalize(requested);
   if (!normalized.startsWith(root)) return false;
   if (!existsSync(normalized) || !statSync(normalized).isFile()) {
