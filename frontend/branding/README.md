@@ -15,12 +15,18 @@ It was built from `source/production.png`; the final edit refined containment
 in the pastel composite. The final edit prompt is saved in
 `source/plugin.prompt.txt`; transparent output was enabled.
 
+`source/single-burner.png` is an amber/gold color edit of the supplied production
+flame, made with the built-in image generation tool. Its prompt is saved in
+`source/single-burner.prompt.txt`.
+
 From `frontend/`, run `npm ci` then `npm run branding:generate` to regenerate
 the checked-in PNG/ICO outputs. `npm run branding:check` verifies they match.
 The renderer is pinned in `package-lock.json`.
 
 - Production favicon: 32×32, warm/purple, transparent.
 - Development favicon: 32×32, blue, transparent (including the legacy core copy).
+- Single Burner favicon: 32×32, amber/gold, transparent. The Single Burner build
+  selects it directly; the local server also selects it for hosted-build layouts.
 - Share viewer: green 32×32 favicon, genuine 16/32/48 ICO, and 180×180 touch icon.
 - Main Apple touch icon: 180×180. PWA icons: 192×192 and 512×512.
 - Touch/PWA icons: opaque white with padding for the manifest's maskable use.

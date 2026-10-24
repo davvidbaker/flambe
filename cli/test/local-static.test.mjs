@@ -6,7 +6,7 @@ import test from 'node:test';
 import { listenLocal } from '../src/local/serve.mjs';
 
 for (const layout of ['root', 'assets']) {
-  test(`local server serves ${layout} SPA, assets, and authenticated deep links`, async () => {
+  test(`local server serves ${layout} SPA, favicon, assets, and authenticated deep links`, async () => {
     const directory = mkdtempSync(join(tmpdir(), 'flambe-static-'));
     const staticDir = join(directory, 'static');
     const indexDir = layout === 'root' ? staticDir : join(staticDir, 'assets');
@@ -14,6 +14,12 @@ for (const layout of ['root', 'assets']) {
     const html = '<!doctype html><title>Single Burner fixture</title>';
     writeFileSync(join(indexDir, 'index.html'), html);
     writeFileSync(join(indexDir, 'app.js'), 'window.fixture = true;');
+    const assetsDir = join(staticDir, 'assets');
+    mkdirSync(assetsDir, { recursive: true });
+    writeFileSync(join(staticDir, 'favicon.png'), 'production root icon');
+    writeFileSync(join(assetsDir, 'favicon.png'), 'production assets icon');
+    const localIcon = join(indexDir, 'favicon_single_burner.png');
+    writeFileSync(localIcon, 'Single Burner icon');
     const { server, store, port } = await listenLocal({ port: 0, dbPath: join(directory, 'test.sqlite'), staticDir });
     const origin = `http://127.0.0.1:${port}`;
     try {
@@ -23,6 +29,16 @@ for (const layout of ['root', 'assets']) {
       const script = await fetch(`${origin}/${layout === 'root' ? '' : 'assets/'}app.js`);
       assert.match(script.headers.get('content-type'), /javascript/);
       assert.equal(await script.text(), 'window.fixture = true;');
+      for (const path of ['/favicon.png', '/assets/favicon.png', '/favicon_single_burner.png', '/assets/favicon_single_burner.png']) {
+        const icon = await fetch(origin + path);
+        assert.match(icon.headers.get('content-type'), /image\/png/);
+        assert.equal(await icon.text(), 'Single Burner icon');
+      }
+      // Older static bundles without the variant retain their existing icons.
+      rmSync(localIcon);
+      assert.equal(await (await fetch(`${origin}/favicon.png`)).text(), 'production root icon');
+      assert.equal(await (await fetch(`${origin}/assets/favicon.png`)).text(), 'production assets icon');
+      assert.equal(await (await fetch(`${origin}/favicon_single_burner.png`)).text(), html);
       const login = await fetch(`${origin}/auth/identity/callback`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
       });
