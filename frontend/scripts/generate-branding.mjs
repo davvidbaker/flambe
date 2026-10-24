@@ -5,7 +5,7 @@ import { Resvg } from '@resvg/resvg-js';
 
 const frontendRoot = new URL('../', import.meta.url);
 const sources = {};
-for (const variant of ['production', 'development', 'share-viewer']) {
+for (const variant of ['production', 'development', 'share-viewer', 'plugin']) {
   const png = await fs.readFile(new URL(`branding/source/${variant}.png`, frontendRoot));
   assert.deepEqual(png.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   const width = png.readUInt32BE(16);
@@ -71,7 +71,7 @@ outputs.set('packages/share-viewer/public/favicon.ico', ico(
   [16, 32, 48].map(size => ({ size, png: render(size, share) })),
 ));
 outputs.set('packages/share-viewer/public/apple-touch-icon.png', render(180, { ...share, padded: true }));
-outputs.set('../plugins/flambe/assets/flambe.png', render(512));
+outputs.set('../plugins/flambe/assets/flambe.png', render(512, { variant: 'plugin' }));
 outputs.set('branding/flambe.png', render(128));
 
 for (const [relativePath, bytes] of outputs) {
