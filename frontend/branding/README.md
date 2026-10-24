@@ -8,9 +8,11 @@ update, without modifying their artwork:
 - `share-viewer.png`: green flame.
 
 `source/plugin.png` is a separate composite of the supplied production flame
-with an asymmetric flame-chart background, made using the built-in image
-generation tool. It was composed from `source/production.png`, then revised to
-stagger the chart rows. The final edit prompt is saved in
+with an asymmetric pastel flame-chart background, made using the built-in image
+generation tool. It uses a smaller flame, thinner cyan/pink/yellow/peach traces,
+and generous margins. Child spans fit within their parent on the row above.
+It was built from `source/production.png`; the final edit refined containment
+in the pastel composite. The final edit prompt is saved in
 `source/plugin.prompt.txt`; transparent output was enabled.
 
 From `frontend/`, run `npm ci` then `npm run branding:generate` to regenerate
