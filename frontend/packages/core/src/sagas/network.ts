@@ -657,16 +657,6 @@ function* deleteTrace({ type, id }: NetworkAction): SagaIterator {
   });
 }
 
-function isCollapsed(persistedThreads: Record<string, Thread>, thread: Thread): boolean {
-  if (!persistedThreads) return false;
-
-  const found = persistedThreads[String(thread.id)];
-  if (found) {
-    return Boolean(found.collapsed);
-  }
-  return false;
-}
-
 function* processFetchedTrace({ data }: NetworkAction): SagaIterator {
   if (!data) return;
   const timeline: TimelineState = yield select(getTimeline);
@@ -681,8 +671,9 @@ function* processFetchedTrace({ data }: NetworkAction): SagaIterator {
       })),
       data.threads.map(thread => ({
         ...thread,
-        collapsed: isCollapsed(persistedThreads, thread)
-          || persistedCollapseState[String(thread.id)] === true,
+        // Current choices win over storage, which may lag or come from another tab.
+        collapsed: persistedThreads?.[String(thread.id)]?.collapsed
+          ?? (persistedCollapseState[String(thread.id)] === true),
       })),
       data.unstarted ?? [],
     ),
