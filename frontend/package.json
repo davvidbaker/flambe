@@ -7,6 +7,8 @@
   "version": "0.0.0",
   "description": "Flambe timeline application",
   "scripts": {
+    "branding:generate": "node scripts/generate-branding.mjs",
+    "branding:check": "node scripts/generate-branding.mjs --check",
     "dev": "vite --config vite.config.mjs",
     "dev:share-viewer": "vite --config packages/share-viewer/vite.config.ts",
     "build": "vite build --config vite.config.mjs",
@@ -37,6 +39,7 @@
     "@babel/preset-react": "^8.0.1",
     "@babel/preset-typescript": "^8.0.1",
     "@playwright/test": "^1.62.1",
+    "@resvg/resvg-js": "2.6.2",
     "@types/fuzzaldrin-plus": "^0.6.5",
     "@types/humanize-duration": "^3.27.4",
     "@types/lodash": "^4.17.25",

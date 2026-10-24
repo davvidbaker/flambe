@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import mark from '../../../../../../branding/flambe.png';
 
 const Wrapper = styled.div`
   position: relative;
@@ -14,11 +15,14 @@ const H1 = styled.h1<{ $isAnimated?: boolean; $size: number }>`
   font-weight: normal;
 
   &::after {
-    content: '🔥';
+    content: '';
+    background: url(${mark}) center / contain no-repeat;
+    width: 1em;
+    height: 1em;
     position: absolute;
     right: 0;
     transform-origin: top right;
-    transform: translate(27%, 23%) scale(0.5) rotate(30deg);
+    transform: translate(27%, 23%) scale(0.5);
     z-index: -2;
   ${props =>
     (!props.$isAnimated

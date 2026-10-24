@@ -10,6 +10,8 @@ const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 /** Root-scoped PWA files must live in Phoenix priv/static (not /assets/). */
 const PWA_ROOT_FILES = [
+  'favicon.png',
+  'favicon_dev.png',
   'manifest.webmanifest',
   'sw.js',
   'apple-touch-icon.png',
@@ -52,6 +54,8 @@ export default defineConfig(({ mode }) => {
           let next = html;
           if (mode === 'development') {
             next = next.replaceAll('href="/favicon.png"', 'href="/favicon_dev.png"');
+          } else if (isLocalBuild) {
+            next = next.replaceAll('href="/favicon.png"', 'href="/favicon_single_burner.png"');
           }
           // Vite's /assets/ base rewrites public-file hrefs; PWA install URLs must
           // stay at the site root (same as /sw.js registration and icon paths).
@@ -60,6 +64,7 @@ export default defineConfig(({ mode }) => {
             'apple-touch-icon.png',
             'favicon.png',
             'favicon_dev.png',
+            'favicon_single_burner.png',
           ]) {
             next = next.replaceAll(`href="/assets/${file}"`, `href="/${file}"`);
           }
