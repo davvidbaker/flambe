@@ -10,6 +10,8 @@ const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 /** Root-scoped PWA files must live in Phoenix priv/static (not /assets/). */
 const PWA_ROOT_FILES = [
+  'favicon.png',
+  'favicon_dev.png',
   'manifest.webmanifest',
   'sw.js',
   'apple-touch-icon.png',
