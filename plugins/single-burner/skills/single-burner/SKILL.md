@@ -1,6 +1,6 @@
 ---
 name: single-burner
-description: Track substantial work in the selected local Single Burner instance and complete requested reducer reviews with the current work AI, without another model or API key.
+description: Use only when the user or project configuration selects local Single Burner. Track work and complete requested reducer reviews with the current work AI. Generic Flambe tracking defaults to Cloud when connected.
 ---
 
 # Single Burner
@@ -11,7 +11,8 @@ The MCP server is the execution layer. This skill is the workflow layer.
 
 ## Establish context
 
-This plugin accesses **Single Burner**, the selected local Flambe instance.
+This plugin accesses **Single Burner**, a local Flambe instance.
+Its installation does not select it as the tracking destination.
 It cannot access **Cloud** or **Development**. A trace id selects data inside
 this instance; it does not switch instances. Verify this connection before use.
 The database stays local; context returned to a cloud-hosted work AI reaches
@@ -19,7 +20,7 @@ that provider. Agent mode makes no additional inference request from Flambe.
 
 On the first Flambe interaction in a conversation, and after an explicit switch:
 
-- Resolve the user's intended instance: **Cloud**, **Single Burner**, or **Development**. Use a separately connected local instance only when its tools are available and the user has selected it. If intent is ambiguous and more than one connection is available, ask which instance before reading activity data or writing.
+- Honor an explicit user selection or configured project destination first. For generic Flambe tracking with no selected destination, use **Cloud** when its connection is available. Installing Single Burner, running Codex on a personal machine, or discussing local development does not select Single Burner. Use **Single Burner** or **Development** only when the user or project configuration selects that destination. If Cloud is unavailable and no destination is selected, ask rather than silently using a local connection.
 - Call `flambe_traces` on the intended connection, even if a trace id was mentioned earlier. Verify the returned `instance` matches the requested destination. If that connection is unavailable, explain that it is not connected; never substitute Cloud or another instance.
 - Briefly name the instance when establishing or switching context, for example: "Using Single Burner for this chat."
 - Keep the connection, `instance.id`, and `trace_id` together for this conversation. Reuse a trace id only when it belongs to that verified instance. If the user names a trace, match it inside that instance; otherwise use `default_trace_id`.

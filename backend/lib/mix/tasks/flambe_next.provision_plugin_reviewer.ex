@@ -49,15 +49,21 @@ defmodule Mix.Tasks.FlambeNext.ProvisionPluginReviewer do
            username: @username,
            credentials: [%{email: @email, password: password}]
          }) do
-      {:ok, user} -> user
-      {:error, changeset} -> Mix.raise("Could not create reviewer user: #{inspect(changeset.errors)}")
+      {:ok, user} ->
+        user
+
+      {:error, changeset} ->
+        Mix.raise("Could not create reviewer user: #{inspect(changeset.errors)}")
     end
   end
 
   defp create_trace!(user) do
     case Traces.create_trace(user, %{name: @trace_name}) do
-      {:ok, trace} -> trace
-      {:error, changeset} -> Mix.raise("Could not create reviewer trace: #{inspect(changeset.errors)}")
+      {:ok, trace} ->
+        trace
+
+      {:error, changeset} ->
+        Mix.raise("Could not create reviewer trace: #{inspect(changeset.errors)}")
     end
   end
 

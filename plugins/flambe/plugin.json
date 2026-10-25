@@ -21,7 +21,7 @@
     "com.openai": {
       "interface": {
         "displayName": "Flambé — Cloud",
-        "shortDescription": "Work tracking in Cloud",
+        "shortDescription": "flame charts for humans",
         "longDescription": "Flambé tracks substantial human and agent work as a live call stack instead of a flat task list. In ChatGPT, the plugin can inspect your Flambé traces, start meaningful activities, nest rabbit holes under their parent work, suspend and resume work, plan future activities, end completed activities with outcomes, and ask the Flambé Reducer Agent for scope guidance. The bundled skill tells ChatGPT when to use those tools so routine shell commands and file reads do not pollute the flame chart. Flambé requires a connected Flambé account and uses OAuth for the hosted MCP connection. This connection accesses Cloud only, not Single Burner or Development. ChatGPT verifies the connected instance before acting, and every result identifies that instance.",
         "developerName": "David Baker",
         "category": "Productivity",

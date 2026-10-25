@@ -1,0 +1,45 @@
+{
+  "_framework-Cpw-o916.js": {
+    "file": "framework-Cpw-o916.js",
+    "name": "framework",
+    "imports": [
+      "_rolldown-runtime-B0Z9INg1.js"
+    ]
+  },
+  "_rolldown-runtime-B0Z9INg1.js": {
+    "file": "rolldown-runtime-B0Z9INg1.js",
+    "name": "rolldown-runtime"
+  },
+  "_services-BWO3J-XS.js": {
+    "file": "services-BWO3J-XS.js",
+    "name": "services"
+  },
+  "_ui-CfVAyOo3.js": {
+    "file": "ui-CfVAyOo3.js",
+    "name": "ui",
+    "imports": [
+      "_rolldown-runtime-B0Z9INg1.js",
+      "_framework-Cpw-o916.js"
+    ]
+  },
+  "_vendor-Ywoyfi61.js": {
+    "file": "vendor-Ywoyfi61.js",
+    "name": "vendor",
+    "imports": [
+      "_rolldown-runtime-B0Z9INg1.js"
+    ]
+  },
+  "index.html": {
+    "file": "index-qzN_JBXp.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "imports": [
+      "_rolldown-runtime-B0Z9INg1.js",
+      "_framework-Cpw-o916.js",
+      "_ui-CfVAyOo3.js",
+      "_services-BWO3J-XS.js",
+      "_vendor-Ywoyfi61.js"
+    ]
+  }
+}
