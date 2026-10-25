@@ -15,6 +15,7 @@ import {
   isPaintableBlock,
   isVisible,
   pixelsToTime,
+  rightAlignedActivityLabelX,
   shiftedScheduledActivity,
   sortThreadsByRank,
   timeToPixels,
@@ -2279,7 +2280,19 @@ export class FlameChart extends Component<Props, State> {
         + (lane ? lane.depth * FlameChart.actorLaneDepthInset : 0);
       textLeft = Math.max(textLeft, stickyGutter + FlameChart.textPadding.x);
     }
-    const textBudget = (blockX + blockWidth - FlameChart.textPadding.x) - textLeft;
+    const textRight = this.props.rightAlignTimelineText
+      ? rightAlignedActivityLabelX(
+        block,
+        blockX,
+        blockWidth,
+        Date.now(),
+        this.leftBoundaryTime,
+        this.rightBoundaryTime,
+        this.width,
+        FlameChart.textPadding.x,
+      )
+      : blockX + blockWidth - FlameChart.textPadding.x;
+    const textBudget = textRight - textLeft;
     if (textBudget <= 0) return;
 
     // ⚠️ chrome devtools caches the text widths for perf. If I notice that becoming an issue, I will look into doing the same.
@@ -2298,7 +2311,7 @@ export class FlameChart extends Component<Props, State> {
     const textY = blockY + blockHeight / 2;
     if (this.props.rightAlignTimelineText) {
       this.ctx.textAlign = 'right';
-      this.ctx.fillText(text, blockX + blockWidth - FlameChart.textPadding.x, textY);
+      this.ctx.fillText(text, textRight, textY);
       this.ctx.textAlign = 'left';
     } else {
       this.ctx.fillText(text, textLeft, textY);
