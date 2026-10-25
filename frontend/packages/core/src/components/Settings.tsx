@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
 
@@ -7,6 +7,7 @@ import ApiTokensPanel from './ApiTokensPanel';
 import CubicBezierEditor from './CubicBezierEditor';
 import { hideSettings as hideSettingsAction, setSetting, toggleSetting } from '../actions';
 import type { SettingsState } from '../reducers/settings';
+import { filterBySettingsQuery, matchesSettingsQuery } from '../utilities/settingsSearch';
 import { formatShortcut } from '../utilities/keyboardShortcuts';
 import {
   parsePresetZoomCurve,
@@ -118,6 +119,20 @@ const SETTINGS: SettingDefinition[] = [
   },
 ];
 
+const PRESET_ZOOM_SEARCH_TEXT = [
+  'developer',
+  'preset zoom motion',
+  'duration',
+  'link pan and zoom curves',
+  'pan curve',
+  'zoom curve',
+  'bezier',
+].join(' ');
+
+const DEPLOYED_COMMIT_SEARCH_TEXT = 'developer deployed commit sha version';
+
+const API_TOKENS_SEARCH_TEXT = 'api tokens token cli secret create revoke';
+
 const DEVELOPER_SETTINGS: SettingDefinition[] = [
   {
     setting: 'showActivityIds',
@@ -206,6 +221,20 @@ const Wrapper = styled.div`
   }
 `;
 
+const SearchInput = styled.input`
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 6px 8px;
+  font-size: 13px;
+`;
+
+const EmptySearch = styled.p`
+  margin: 8px 0 0;
+  color: #999;
+`;
+
 const DeveloperPanel = styled.div`
   margin-top: 16px;
   padding: 10px 12px;
@@ -264,6 +293,44 @@ interface Props {
   settingsVisible: boolean;
   setSetting: (setting: string, value: boolean | string | number) => unknown;
   toggleSetting: (setting: BooleanSettingKey) => unknown;
+}
+
+function SettingsSearchField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useLayoutEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return (
+    <SearchInput
+      ref={inputRef}
+      autoFocus
+      type="search"
+      value={value}
+      placeholder="Search settings"
+      aria-label="Search settings"
+      autoComplete="off"
+      autoCorrect="off"
+      autoCapitalize="off"
+      spellCheck={false}
+      data-1p-ignore
+      onChange={event => onChange(event.target.value)}
+      onKeyDown={event => {
+        if (event.key === 'Escape' && value.trim()) {
+          event.preventDefault();
+          event.stopPropagation();
+          onChange('');
+        }
+      }}
+    />
+  );
 }
 
 function renderSetting(
@@ -346,6 +413,11 @@ const Settings = ({
   toggleSetting,
 }: Props) => {
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    if (!settingsVisible) setQuery('');
+  }, [settingsVisible]);
 
   useEffect(() => {
     if (!settingsVisible) return;
@@ -398,76 +470,104 @@ const Settings = ({
 
   const sha = buildInfo?.git_sha ?? '…';
   const url = buildInfo ? commitUrl(buildInfo.git_sha) : null;
+  const browsingAll = query.trim().length === 0;
+  const showDeveloperSection = browsingAll || matchesSettingsQuery('developer', query);
+  const visibleSettings = filterBySettingsQuery(SETTINGS, query);
+  const visibleDeveloperSettings = showDeveloperSection
+    ? DEVELOPER_SETTINGS
+    : filterBySettingsQuery(DEVELOPER_SETTINGS, query);
+  const showPresetZoom = showDeveloperSection || matchesSettingsQuery(PRESET_ZOOM_SEARCH_TEXT, query);
+  const showDeployedCommit = showDeveloperSection || matchesSettingsQuery(DEPLOYED_COMMIT_SEARCH_TEXT, query);
+  const showDeveloperPanel = showPresetZoom || showDeployedCommit || visibleDeveloperSettings.length > 0;
+  const showApiTokens = matchesSettingsQuery(API_TOKENS_SEARCH_TEXT, query);
+  const nothingMatches = !browsingAll && visibleSettings.length === 0 && !showDeveloperPanel && !showApiTokens;
 
   return (
     <AppModal
+      contentLabel="Settings"
       isOpen={settingsVisible}
       onRequestClose={hideSettings}
     >
     <Wrapper>
       <h1 style={{ marginTop: 0 }}>Settings</h1>
-      <ul>
-        {SETTINGS.map(item => renderSetting(item, settings, toggleSetting, setSettingValue))}
-      </ul>
-      <DeveloperPanel>
-        <h2>Developer</h2>
-        <ZoomTuning>
-          <label htmlFor="presetZoomDurationMs">
-            Preset zoom motion — {settings.presetZoomDurationMs} ms
-          </label>
-          <input
-            id="presetZoomDurationMs"
-            type="range"
-            min="100"
-            max="1000"
-            step="10"
-            value={settings.presetZoomDurationMs}
-            onChange={event => setSettingValue('presetZoomDurationMs', event.target.valueAsNumber)}
-          />
-          <label htmlFor="presetZoomCurvesLinked">
-            <input
-              id="presetZoomCurvesLinked"
-              type="checkbox"
-              checked={settings.presetZoomCurvesLinked}
-              onChange={event => setCurvesLinked(event.target.checked)}
-            />
-            {' '}
-            Link pan and zoom curves
-          </label>
-          <p>Pan curve</p>
-          <CubicBezierEditor value={panCurve} onChange={setPanCurve} />
-          <p>Zoom curve</p>
-          <CubicBezierEditor value={zoomCurve} onChange={setZoomCurve} />
-        </ZoomTuning>
+      {settingsVisible && (
+        <SettingsSearchField value={query} onChange={setQuery} />
+      )}
+      {visibleSettings.length > 0 && (
         <ul>
-          {DEVELOPER_SETTINGS.map(item =>
-            renderSetting(item, settings, toggleSetting, setSettingValue),
-          )}
+          {visibleSettings.map(item => renderSetting(item, settings, toggleSetting, setSettingValue))}
         </ul>
-        <VersionBlock>
-          <dt>Deployed commit</dt>
-          <dd>
-            {url ? (
-              <a href={url} rel="noreferrer" target="_blank" title={sha}>
-                {shortSha(sha)}
-              </a>
-            ) : (
-              <span title={sha}>{shortSha(sha)}</span>
-            )}
-            {buildInfo && buildInfo.git_sha !== 'unknown' && (
-              <button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard.writeText(buildInfo.git_sha);
-                }}
-              >
-                Copy SHA
-              </button>
-            )}
-          </dd>
-        </VersionBlock>
-      </DeveloperPanel>
-      <ApiTokensPanel />
+      )}
+      {showDeveloperPanel && (
+        <DeveloperPanel>
+          <h2>Developer</h2>
+          {showPresetZoom && (
+            <ZoomTuning>
+              <label htmlFor="presetZoomDurationMs">
+                Preset zoom motion — {settings.presetZoomDurationMs} ms
+              </label>
+              <input
+                id="presetZoomDurationMs"
+                type="range"
+                min="100"
+                max="1000"
+                step="10"
+                value={settings.presetZoomDurationMs}
+                onChange={event => setSettingValue('presetZoomDurationMs', event.target.valueAsNumber)}
+              />
+              <label htmlFor="presetZoomCurvesLinked">
+                <input
+                  id="presetZoomCurvesLinked"
+                  type="checkbox"
+                  checked={settings.presetZoomCurvesLinked}
+                  onChange={event => setCurvesLinked(event.target.checked)}
+                />
+                {' '}
+                Link pan and zoom curves
+              </label>
+              <p>Pan curve</p>
+              <CubicBezierEditor value={panCurve} onChange={setPanCurve} />
+              <p>Zoom curve</p>
+              <CubicBezierEditor value={zoomCurve} onChange={setZoomCurve} />
+            </ZoomTuning>
+          )}
+          {visibleDeveloperSettings.length > 0 && (
+            <ul>
+              {visibleDeveloperSettings.map(item =>
+                renderSetting(item, settings, toggleSetting, setSettingValue),
+              )}
+            </ul>
+          )}
+          {showDeployedCommit && (
+            <VersionBlock>
+              <dt>Deployed commit</dt>
+              <dd>
+                {url ? (
+                  <a href={url} rel="noreferrer" target="_blank" title={sha}>
+                    {shortSha(sha)}
+                  </a>
+                ) : (
+                  <span title={sha}>{shortSha(sha)}</span>
+                )}
+                {buildInfo && buildInfo.git_sha !== 'unknown' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(buildInfo.git_sha);
+                    }}
+                  >
+                    Copy SHA
+                  </button>
+                )}
+              </dd>
+            </VersionBlock>
+          )}
+        </DeveloperPanel>
+      )}
+      {nothingMatches && <EmptySearch>No matching settings.</EmptySearch>}
+      <div hidden={!showApiTokens}>
+        <ApiTokensPanel />
+      </div>
     </Wrapper>
     </AppModal>
   );
