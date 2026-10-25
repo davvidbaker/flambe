@@ -71,7 +71,16 @@ const ABSOLUTE_MIN_GRID_SLICE_PX = 100;
 const viewportTraceStorageKey = 'flambe.timeline.viewport-trace-id.v1';
 const limboCollapsedStorageKey = 'flambe.limbo.collapsed.v1';
 const isValidTime = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
+  typeof value === 'number' && Number.isFinite(value) && value !== 0;
+
+const isValidRange = (
+  leftBoundaryTime: unknown,
+  rightBoundaryTime: unknown,
+): boolean => (
+  isValidTime(leftBoundaryTime)
+  && isValidTime(rightBoundaryTime)
+  && rightBoundaryTime > leftBoundaryTime
+);
 
 function readLocalStorage(key: string): string | null {
   if (typeof window === 'undefined') return null;
@@ -632,11 +641,18 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
   }
 
   syncTimelineToProps(nextProps: TimelineProps, previousProps: TimelineProps): void {
+    const hasExplicitRange = isValidRange(
+      nextProps.leftBoundaryTimeOverride,
+      nextProps.rightBoundaryTimeOverride,
+    );
     if (
-      nextProps.leftBoundaryTimeOverride
-        !== previousProps.leftBoundaryTimeOverride
-      || nextProps.rightBoundaryTimeOverride
-        !== previousProps.rightBoundaryTimeOverride
+      hasExplicitRange
+      && (
+        nextProps.leftBoundaryTimeOverride
+          !== previousProps.leftBoundaryTimeOverride
+        || nextProps.rightBoundaryTimeOverride
+          !== previousProps.rightBoundaryTimeOverride
+      )
     ) {
       this.cancelViewportAnimation();
       this.cancelTouchInertia();
@@ -647,10 +663,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
       });
     }
 
-    const hasExplicitRange = isValidTime(nextProps.leftBoundaryTimeOverride)
-      && isValidTime(nextProps.rightBoundaryTimeOverride);
-    const hasSavedRange = isValidTime(this.leftBoundaryTime)
-      && isValidTime(this.rightBoundaryTime);
+    const hasSavedRange = isValidRange(this.leftBoundaryTime, this.rightBoundaryTime);
     const traceHasTimeRange = isValidTime(nextProps.minTime)
       && isValidTime(nextProps.maxTime);
     const savedRangeOverlapsTrace = savedRangeIsUsable(
@@ -723,9 +736,9 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
   drawChildren = () => {
     const { leftBoundaryTime, rightBoundaryTime } = this.getVisibleTimeRange();
-    if (!isValidTime(leftBoundaryTime) || !isValidTime(rightBoundaryTime)) return;
+    if (!isValidTime(leftBoundaryTime) || !isValidTime(rightBoundaryTime) || !isValidRange(leftBoundaryTime, rightBoundaryTime)) return;
 
-    if (!isValidTime(this.leftBoundaryTime) || !isValidTime(this.rightBoundaryTime)) {
+    if (!isValidRange(this.leftBoundaryTime, this.rightBoundaryTime)) {
       this.setTimelineState({ leftBoundaryTime, rightBoundaryTime });
     }
 
@@ -763,8 +776,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
 
   /* 💁 mostly borrowed from chrome devtools-frontend ❤️ */
   getVisibleTimeRange = (props = this.props) => {
-    const savedRangeIsValid = isValidTime(this.leftBoundaryTime)
-      && isValidTime(this.rightBoundaryTime);
+    const savedRangeIsValid = isValidRange(this.leftBoundaryTime, this.rightBoundaryTime);
     const traceRangeIsValid = isValidTime(props.minTime)
       && isValidTime(props.maxTime);
     const savedRangeOverlapsTrace = !traceRangeIsValid
@@ -800,7 +812,7 @@ class Timeline extends React.Component<TimelineProps, TimelineComponentState> {
     rightBoundaryTime = this.rightBoundaryTime,
   ): DividerData {
     const clientWidth = this.state.width;
-    if (!isValidTime(leftBoundaryTime) || !isValidTime(rightBoundaryTime)
+    if (!isValidRange(leftBoundaryTime, rightBoundaryTime)
       || !Number.isFinite(clientWidth) || clientWidth <= 0) {
       return { offsets: [], precision: 0, gridSliceTime: 0 };
     }
