@@ -28,7 +28,7 @@ export interface SettingsState {
   presetZoomDurationMs: number;
   /** Shade nested flame-chart blocks darker at each deeper level. */
   darkerAsWeGoDown: boolean;
-  /** Draw activity names against the right edge of each flame-chart block. */
+  /** Draw activity names against the right edge of each flame-chart block. Still-running names sit on the present line when it is on screen. */
   rightAlignTimelineText: boolean;
   reactiveThreadHeight: boolean;
   /** Dev: paint activity ids on blocks instead of names. */

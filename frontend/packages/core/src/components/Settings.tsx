@@ -102,7 +102,7 @@ const SETTINGS: SettingDefinition[] = [
   {
     setting: 'rightAlignTimelineText',
     copy: 'Right-align Timeline Text',
-    description: 'Draw activity names against the right edge of each block.',
+    description: 'Draw activity names against the right edge of each block. Names still running sit on the present line when it is on screen.',
   },
   {
     setting: 'absoluteTimeLabels',

@@ -46,6 +46,32 @@ export function insetBlockHeight(rowHeight: number, pad: number): number {
   return Math.max(4, rowHeight - pad * 2);
 }
 
+/**
+ * X for a right-aligned activity name.
+ *
+ * Finished and planned blocks keep the name on the block's right edge.
+ * A lived block still running ends its name on the present/future line
+ * when that line is on screen, so the name sits in the present.
+ */
+export function rightAlignedActivityLabelX(
+  block: Pick<TraceBlock, 'startTime' | 'endTime' | 'scheduled'>,
+  blockX: number,
+  blockWidth: number,
+  now: number,
+  leftBoundaryTime: number,
+  rightBoundaryTime: number,
+  canvasWidth: number,
+  padding: number,
+): number {
+  const blockRight = blockX + blockWidth - padding;
+  const seesPresentAndFuture = now > leftBoundaryTime && now < rightBoundaryTime;
+  const runningNow = !block.scheduled && block.endTime == null && block.startTime < now;
+  if (!seesPresentAndFuture || !runningNow || !(canvasWidth > 0)) return blockRight;
+
+  const precipice = timeToPixels(now, leftBoundaryTime, rightBoundaryTime, canvasWidth);
+  return Math.min(blockRight, precipice - padding);
+}
+
 export function getBlockTransform(
   startTime: number,
   endTime: number | null | undefined,

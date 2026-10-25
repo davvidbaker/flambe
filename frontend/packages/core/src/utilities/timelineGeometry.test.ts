@@ -6,6 +6,7 @@ import {
   isVisible,
   pixelsToTime,
   rankThreadsByAttention,
+  rightAlignedActivityLabelX,
   shiftedScheduledActivity,
   sortThreadsByRank,
   timeToPixels,
@@ -48,6 +49,20 @@ describe('timeline geometry', () => {
     expect(isPaintableBlock(span, 100, 110, 100)).toBe(true);
     expect(isPaintableBlock({ ...span, scheduledPoint: true }, 0, 1000, 100)).toBe(true);
     expect(isPaintableBlock({ startTime: -10, endTime: 10 }, 0, 1000, 100)).toBe(true);
+  });
+
+  it('anchors a running activity name to the present line when past and future are both on screen', () => {
+    const running = { startTime: 100, endTime: undefined };
+    const anchor = (now: number, block = running, blockX = 50, blockWidth = 450) =>
+      rightAlignedActivityLabelX(block, blockX, blockWidth, now, 0, 1000, 1000, 5);
+
+    expect(anchor(400)).toBe(395);
+    expect(anchor(1200)).toBe(495);
+    expect(anchor(-20)).toBe(495);
+    expect(anchor(400, { startTime: 100, endTime: 250 }, 50, 200)).toBe(245);
+    expect(anchor(400, { ...running, scheduled: true })).toBe(495);
+    expect(anchor(400, { startTime: 600 })).toBe(495);
+    expect(anchor(400, running, 100, 50)).toBe(145);
   });
 
   it('uses the viewport edge as the end handle for an open scheduled span', () => {
