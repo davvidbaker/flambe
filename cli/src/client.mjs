@@ -173,6 +173,8 @@ export class FlambeClient {
       method: 'POST',
       body: { command, arguments: arguments_ },
     });
+    const inbox = payload.data?.inbox ?? [];
+    if (inbox.length > 0) this.onReducerNote?.({ type: 'inbox', messages: inbox });
     return payload.data;
   }
 

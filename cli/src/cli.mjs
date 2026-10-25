@@ -332,6 +332,11 @@ function formatReducerNote(note) {
     const list = note.closedDescendants.map(item => `${item.activityId} (${item.activityName})`).join(', ');
     return `reducer closed open descendants of ${note.activityId}: ${list}\n`;
   }
+  if (note.type === 'inbox') {
+    return note.messages
+      .map(message => `message from the user (binding; act on it before your next step): ${message.body}\n`)
+      .join('');
+  }
   if (note.type === 'agent_named') {
     return `reducer named this agent "${note.name}"; the CLI will use it from now on\n`;
   }
