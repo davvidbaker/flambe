@@ -10,7 +10,7 @@ defmodule FlambeNext.Agents do
   import Ecto.Query
 
   alias FlambeNext.Accounts.User
-  alias FlambeNext.Agents.Agent
+  alias FlambeNext.Agents.{Agent, Message}
   alias FlambeNext.Repo
 
   @names ~w(
@@ -65,6 +65,45 @@ defmodule FlambeNext.Agents do
 
   def get(%User{} = user, agent_id) when is_binary(agent_id) do
     Repo.get_by(Agent, user_id: user.id, agent_id: agent_id)
+  end
+
+  @doc "Queues a message from `user` for one of their agents (ADR-020)."
+  def send_message(%User{} = user, agent_id, trace_id, body) when is_binary(agent_id) do
+    case get(user, agent_id) do
+      nil ->
+        {:error, :not_found}
+
+      %Agent{} ->
+        %Message{user_id: user.id, trace_id: trace_id}
+        |> Message.changeset(%{agent_id: agent_id, body: body})
+        |> Repo.insert()
+    end
+  end
+
+  @doc "Messages to `agent_id`, newest first."
+  def list_messages(%User{} = user, agent_id) when is_binary(agent_id) do
+    from(m in Message,
+      where: m.user_id == ^user.id and m.agent_id == ^agent_id,
+      order_by: [desc: m.inserted_at, desc: m.id]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Marks every pending message to `agent_id` delivered and returns them oldest first.
+  Called on each agent command, so a message is handed over exactly once.
+  """
+  def take_inbox(%User{} = user, agent_id) when is_binary(agent_id) do
+    now = DateTime.utc_now()
+
+    {_count, messages} =
+      from(m in Message,
+        where: m.user_id == ^user.id and m.agent_id == ^agent_id and is_nil(m.delivered_at),
+        select: m
+      )
+      |> Repo.update_all(set: [delivered_at: now, updated_at: now])
+
+    Enum.sort_by(messages, & &1.id)
   end
 
   @doc """

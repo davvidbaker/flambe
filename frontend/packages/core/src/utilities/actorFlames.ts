@@ -286,6 +286,17 @@ export function pinActorLaneRailX(
   return Math.max(naturalRailX, minX);
 }
 
+/** Index of the latest-starting block among `activityIds`, or null when none is drawn. */
+export function latestBlockIndexForActivities(blocks: TraceBlock[], activityIds: EntityId[]): number | null {
+  const ids = new Set(activityIds.map(String));
+  let best: number | null = null;
+  blocks.forEach((block, index) => {
+    if (block.scheduled || !ids.has(String(block.activity_id))) return;
+    if (best === null || block.startTime >= blocks[best]!.startTime) best = index;
+  });
+  return best;
+}
+
 /**
  * Pick a label that fits in `maxLengthPx` when drawn horizontally (which becomes
  * the vertical budget after a 90° CCW rotation). Prefer full name, then

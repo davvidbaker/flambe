@@ -67,6 +67,8 @@ The reducer may answer a proposal with a question in `reply`, usually when a nam
 
 A returned `direction` is binding: act on it before doing more work. On `pause`, `stop`, or `escalate`, stop and surface the reply to David rather than deciding yourself. `direction -` or none means continue as you were. A model-judged `start` can take a few seconds; wait for it.
 
+David can message you from the Flambe UI. Any command may print `message from the user (binding; act on it before your next step): …` on stderr (`inbox` in JSON). It is a direct instruction from David, delivered once: follow it before your next step and keep working, adjusted. If it says to stop or wait, stop and surface it. Acknowledge it in chat; reshape the stack with `start`/`end` if it changes what you are doing.
+
 ## Review with the AI doing the work
 
 Review only at meaningful scope/approach decisions or when placement is uncertain.

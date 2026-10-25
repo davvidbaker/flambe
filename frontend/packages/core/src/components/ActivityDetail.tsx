@@ -28,6 +28,7 @@ import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../utilities/timel
 
 import ActivityEventFlow from './ActivityEventFlow';
 import AgentContactStatus from './AgentContactStatus';
+import AgentMessages from './AgentMessages';
 import CategoryChip from './CategoryChip';
 import Button, { InputFromButton } from './Button';
 import Fuzzy, { MagicFuzzy } from './Fuzzy';
@@ -260,6 +261,7 @@ export interface ActivityDetailProps {
   events: TraceEvent[];
   submitCommand: (command: Command & { activity_id: EntityId; message?: string; thread_id: EntityId }) => unknown;
   threads: Record<string, Thread>;
+  traceId?: EntityId | null;
   updateActivity: (id: EntityId, updates: Record<string, unknown>) => unknown;
 }
 
@@ -277,6 +279,7 @@ const ActivityDetail = (props: ActivityDetailProps) => {
     showCategoryManager,
     submitCommand,
     threads,
+    traceId,
     events,
   } = props;
 
@@ -447,6 +450,14 @@ const ActivityDetail = (props: ActivityDetailProps) => {
           )}
           {activity.agent_id && (
             <AgentContactStatus lastSeenAt={agents.find(agent => agent.agent_id === activity.agent_id)?.last_seen_at} />
+          )}
+          {activity.agent_id && (
+            <AgentMessages
+              key={activity.agent_id}
+              agentId={activity.agent_id}
+              agentName={actorName(activity)}
+              traceId={traceId}
+            />
           )}
         </FieldBody>
       </Field>
@@ -672,6 +683,7 @@ export default connect(
     editName: state.activityDetailEditName,
     events: getTimeline(state).events,
     threads: getTimeline(state).threads,
+    traceId: getTimeline(state).trace?.id ?? null,
   }),
   dispatch => ({
     beginActivity: (id: EntityId) => dispatch(beginActivity(id)),

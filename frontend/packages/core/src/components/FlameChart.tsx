@@ -36,6 +36,7 @@ import {
   blockLayoutKey,
   coalesceActorLaneChrome,
   fitActorLaneLabel,
+  latestBlockIndexForActivities,
   pinActorLaneRailX,
   projectActorLaneLayout,
   selectActorFlameSegments,
@@ -325,6 +326,8 @@ export class FlameChart extends Component<Props, State> {
   navigationTransition: { from: ActorLaneLayout; to: ActorLaneLayout; startedAt: number } | null = null;
   actorChromeBands: ReturnType<typeof coalesceActorLaneChrome> = [];
   actorContactRails: Array<{ x: number; y: number; width: number; height: number; title: string; expiresAt: number; opacity: number }> = [];
+  /** Agent rails/labels; clicking one opens the agent's latest activity, where it can be messaged. */
+  actorLaneHits: Array<{ x: number; y: number; width: number; height: number; actorName: string; rootActivityIds: EntityId[] }> = [];
   contactExpiryTimer: ReturnType<typeof setTimeout> | null = null;
   paintableBlockEntries: BlockEntry[] = [];
   paintableBlocks: TraceBlock[] = [];
@@ -601,6 +604,23 @@ export class FlameChart extends Component<Props, State> {
     }
     this.props.selectActivities([]);
 
+    const laneHit = this.actorLaneHitAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    const laneBlockIndex = laneHit
+      ? latestBlockIndexForActivities(this.props.blocks, laneHit.rootActivityIds)
+      : null;
+    if (laneBlockIndex !== null) {
+      const block = this.props.blocks[laneBlockIndex]!;
+      const activity = this.props.activities[String(block.activity_id)];
+      this.props.focusBlock({
+        index: laneBlockIndex,
+        activity_id: block.activity_id,
+        activityStatus: activity?.status,
+        thread_id: activity?.thread_id ?? null,
+      });
+      this.props.showActivityDetails();
+      return;
+    }
+
     if (hit) {
       switch (hit.type) {
         case 'thread_ellipsis':
@@ -661,11 +681,17 @@ export class FlameChart extends Component<Props, State> {
     }
   };
 
+  actorLaneHitAt(x: number, y: number) {
+    return this.actorLaneHits.find(hit =>
+      x >= hit.x && x <= hit.x + hit.width && y >= hit.y && y <= hit.y + hit.height);
+  }
+
   onMouseMove = (e: MouseEvent<HTMLCanvasElement>): void => {
     const contactHit = this.actorContactRails.find(hit =>
       e.nativeEvent.offsetX >= hit.x - 3 && e.nativeEvent.offsetX <= hit.x + hit.width + 3
       && e.nativeEvent.offsetY >= hit.y - 3 && e.nativeEvent.offsetY <= hit.y + hit.height + 3);
-    this.canvas.title = contactHit?.title ?? '';
+    const laneHit = contactHit ? undefined : this.actorLaneHitAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    this.canvas.title = contactHit?.title ?? (laneHit ? `Message ${laneHit.actorName}` : '');
     if (this.marquee) return;
     this.setFlamechartState({
       cursor: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
@@ -1750,7 +1776,10 @@ export class FlameChart extends Component<Props, State> {
   }
 
   drawActorLaneChrome(phase: 'wash' | 'rail' = 'wash'): void {
-    if (phase === 'rail') this.actorContactRails = [];
+    if (phase === 'rail') {
+      this.actorContactRails = [];
+      this.actorLaneHits = [];
+    }
     const layout = this.actorLaneLayout;
     if (!layout) return;
 
@@ -1875,6 +1904,11 @@ export class FlameChart extends Component<Props, State> {
         this.actorContactRails.push({ x: railX, y: top, width: 3, height,
           title: `${chrome.actorName}: ${contact.label}. ${contact.title}`,
           expiresAt: contact.lastSeenTime! + AGENT_CONTACT_FRESH_MS, opacity: muteOpacity });
+      }
+
+      if (chrome.actorKey.startsWith('agent:')) {
+        this.actorLaneHits.push({ x: railX, y: top, width: gutter, height,
+          actorName: chrome.actorName, rootActivityIds: chrome.rootActivityIds });
       }
 
       const label = chrome.actorName;
