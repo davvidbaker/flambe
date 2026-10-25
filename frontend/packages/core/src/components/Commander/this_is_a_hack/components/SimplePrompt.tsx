@@ -33,6 +33,8 @@ function SimplePrompt({ initialInputValue, onBlur, placeholder, onSubmit }: Prop
     <input
       autoFocus
       type="text"
+      autoComplete="off"
+      data-1p-ignore
       value={value}
       onChange={e => setValue(e.target.value)}
       onKeyDown={maybeSubmit}

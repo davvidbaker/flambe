@@ -1,11 +1,12 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { createGlobalStyle } from 'styled-components';
 
 import Toaster from '../containers/Toaster';
 import { getUser } from '../reducers/user';
 import { colors } from '../styles';
+import { syncOnePasswordBodyAttribute } from '../utilities/onePassword';
 import type { RootState } from '../store';
 
 import Login from './Login';
@@ -135,7 +136,14 @@ const GlobalStyle = createGlobalStyle`
 
 interface Props { loggedIn: boolean; username?: string }
 
-const AppRoutes = ({ loggedIn, username = 'david' }: Props) => (
+const AppRoutes = ({ loggedIn, username = 'david' }: Props) => {
+  const { pathname } = useLocation();
+  syncOnePasswordBodyAttribute(pathname);
+  React.useLayoutEffect(() => {
+    syncOnePasswordBodyAttribute(pathname);
+  }, [pathname]);
+
+  return (
     <>
       <GlobalStyle />
       <Routes>
@@ -151,7 +159,8 @@ const AppRoutes = ({ loggedIn, username = 'david' }: Props) => (
       </Routes>
       <Toaster />
     </>
-);
+  );
+};
 
 export default connect((state: RootState) => ({
   /* ⚠️ need to make this a thing */

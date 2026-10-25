@@ -62,9 +62,9 @@ const Login = () => {
       <h1>Log in!</h1>
       <AuthForm onSubmit={submit}>
         <label htmlFor="login-email">Email</label>
-        <input type="email" name="email" id="login-email" required />
+        <input type="email" name="email" id="login-email" autoComplete="username" required />
         <label htmlFor="login-password">Password</label>
-        <input type="password" required name="password" id="login-password" />
+        <input type="password" required name="password" id="login-password" autoComplete="current-password" />
         <button type="submit">Log In</button>
       </AuthForm>
       {error && <p>{error}</p>}

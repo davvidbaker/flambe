@@ -53,7 +53,7 @@ class SearchInput extends Component<Props, State> {
   };
 
   render() {
-    return <Input padding={this.props.padding} onBlur={this.onBlur} onChange={this.onChange} onKeyDown={this.onKeyDown} onKeyPress={this.onKeyPress} value={this.state.value} placeholder={this.props.placeholder} type="text" ref={this.props.inputRef} />;
+    return <Input padding={this.props.padding} onBlur={this.onBlur} onChange={this.onChange} onKeyDown={this.onKeyDown} onKeyPress={this.onKeyPress} value={this.state.value} placeholder={this.props.placeholder} type="text" autoComplete="off" data-1p-ignore ref={this.props.inputRef} />;
   }
 }
 

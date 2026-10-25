@@ -98,6 +98,7 @@ const Fuzzy = <T extends FuzzyItem,>({
       <input
         autoFocus={autoFocus}
         style={{ width: '100%' }}
+        data-1p-ignore
         {...getInputProps({ placeholder, 'aria-label': placeholder, onBlur })}
       />
       <StyledResults {...getMenuProps()} $open={menuOpen}>

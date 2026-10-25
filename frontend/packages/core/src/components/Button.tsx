@@ -146,6 +146,8 @@ export class InputFromButton extends Component<Props, State> {
       <StyledTextarea
         style={{ width: `${this.state.width || 160}px`, height: `${this.state.height || 28}px` }}
         placeholder={placeholder || childText}
+        autoComplete="off"
+        data-1p-ignore
         onBlur={this.transformIntoButton}
         onKeyDown={this.stopShortcutKeys}
         onKeyUp={this.stopShortcutKeys}
