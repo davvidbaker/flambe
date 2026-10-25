@@ -12,6 +12,23 @@ export default defineConfig({
     SOCKET_SERVER: JSON.stringify(''),
   },
   resolve: {
+    dedupe: [
+      'dayjs',
+      'downshift',
+      'emoji-regex',
+      'fuzzaldrin-plus',
+      'humanize-duration',
+      'lodash',
+      'polished',
+      'phoenix',
+      'react-modal',
+      'react-redux',
+      'react-router-dom',
+      'redux',
+      'redux-saga',
+      'tinycolor2',
+      'xstate',
+    ],
     alias: {
       '@davvidbaker/flame-chart': path.resolve(packageDirectory, 'src/index.ts'),
     },
