@@ -132,6 +132,8 @@ export default function ApiTokensPanel() {
       <form onSubmit={createToken}>
         <input
           aria-label="Token name"
+          autoComplete="off"
+          data-1p-ignore
           value={name}
           onChange={event => setName(event.target.value)}
           maxLength={100}

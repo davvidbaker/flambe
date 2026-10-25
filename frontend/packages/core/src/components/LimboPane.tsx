@@ -457,6 +457,8 @@ function LimboPane({
           composingNew ? (
             <input
               autoFocus
+              autoComplete="off"
+              data-1p-ignore
               value={draftName}
               placeholder="Name the idea…"
               aria-label="New limbo activity name"
@@ -634,6 +636,8 @@ function LimboPane({
                 composingNew ? (
                   <input
                     autoFocus
+                    autoComplete="off"
+                    data-1p-ignore
                     value={draftName}
                     placeholder="Name the idea…"
                     aria-label="New limbo activity name"

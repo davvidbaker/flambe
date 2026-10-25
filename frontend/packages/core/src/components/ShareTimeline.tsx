@@ -345,7 +345,7 @@ function ShareTimeline({
         {error ? <p role="alert">{error}</p> : null}
         {shareUrl ? (
           <UrlBox>
-            <input readOnly value={shareUrl} aria-label="Share URL" />
+            <input readOnly data-1p-ignore value={shareUrl} aria-label="Share URL" />
             <button
               type="button"
               onClick={() => {

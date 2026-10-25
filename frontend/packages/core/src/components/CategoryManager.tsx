@@ -127,6 +127,8 @@ const CategoryRow = ({
       <input
         aria-label="Category name"
         type="text"
+        autoComplete="off"
+        data-1p-ignore
         value={name}
         onChange={event => setName(event.target.value)}
         style={{ backgroundColor: background, color: text }}
@@ -179,6 +181,8 @@ const CategoryManager = ({
         <label>
           New category
           <input
+            autoComplete="off"
+            data-1p-ignore
             value={name}
             onChange={event => setName(event.target.value)}
             placeholder="Name"

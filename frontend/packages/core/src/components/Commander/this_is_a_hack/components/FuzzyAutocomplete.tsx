@@ -80,6 +80,7 @@ const FuzzyAutocomplete = <T extends FuzzyAutocompleteItem,>({
       <label {...getLabelProps()} />
       <input
         autoFocus
+        data-1p-ignore
         {...getInputProps({ placeholder, onBlur })}
       />
       <StyledResults {...getMenuProps()}>
