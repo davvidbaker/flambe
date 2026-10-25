@@ -227,6 +227,16 @@ export class App extends React.Component<AppProps, AppState> {
     );
   };
 
+  runShortcutCommand = (command?: Command): void => {
+    if (!command) return;
+
+    if ((command.parameters?.length ?? 0) === 0) {
+      this.submitCommand(command);
+    } else {
+      this.setCommanderCommand(command);
+    }
+  };
+
   renderTimeline = (): React.ReactNode => {
     const { trace_id } = this.props.routeParams;
 
@@ -382,7 +392,7 @@ export class App extends React.Component<AppProps, AppState> {
                           this.props.threadLevels,
                         )
                       ) {
-                        this.setCommanderCommand(
+                        this.runShortcutCommand(
                           this.getCommands(this.props.operand).find(
                             cmd => cmd.shortcut === e.key.toUpperCase(),
                           ),

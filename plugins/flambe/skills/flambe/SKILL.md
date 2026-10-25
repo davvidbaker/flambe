@@ -1,6 +1,6 @@
 ---
 name: flambe
-description: Track substantial or multi-step work in Flambe as a truthful live call stack. Use the Flambe MCP tools to start, nest, suspend, resume, end, plan, and review work while following Reducer Agent direction.
+description: Track substantial or multi-step work in Cloud Flambe by default, unless the user or project configuration selects another instance. Use the Flambe MCP tools to start, nest, suspend, resume, end, plan, and review work while following Reducer Agent direction.
 ---
 
 # Flambe
@@ -18,15 +18,15 @@ Single Burner does not authorize recording that work in Cloud.
 
 On the first Flambe interaction in a conversation, and after an explicit switch:
 
-- Resolve the user's intended instance: **Cloud**, **Single Burner**, or **Development**. Use a separately connected local instance only when its tools are available and the user has selected it. If intent is ambiguous and more than one connection is available, ask which instance before reading activity data or writing.
+- Honor an explicit user selection or configured project destination first. For generic Flambe tracking with no selected destination, use **Cloud** when its connection is available. Installing Single Burner, running Codex on a personal machine, or discussing local development does not select Single Burner. Use **Single Burner** or **Development** only when the user or project configuration selects that destination. If Cloud is unavailable and no destination is selected, ask rather than silently using a local connection.
 - Call `flambe_traces` on the intended connection, even if a trace id was mentioned earlier. Verify the returned `instance` matches the requested destination. If that connection is unavailable, explain that it is not connected; never substitute Cloud or another instance.
-- Briefly name the instance when establishing or switching context, for example: "Using Single Burner for this chat."
+- Briefly name the instance when establishing or switching context, for example: "Using Cloud for this chat."
 - Keep the connection, `instance.id`, and `trace_id` together for this conversation. Reuse a trace id only when it belongs to that verified instance. If the user names a trace, match it inside that instance; otherwise use `default_trace_id`.
 - Pass the exact returned `instance.id` as `expected_instance_id` on every other Flambe tool call, including status reads. Never infer it from a label or copy it between connections.
 - Check `instance` in every result, including errors. On `INSTANCE_REQUIRED` or `INSTANCE_MISMATCH`, stop the attempted operation and rediscover the intended connection. Do not replace the expected id with a different instance's id just to make the request succeed.
 - Stay with the selected instance until the user explicitly switches. On a switch, discard the previous instance's trace/activity ids and rediscover on the new connection.
 - Create one stable conversation-local `agent_id` such as `chatgpt:<8 random lowercase hex characters>` and reuse it for every Flambe tool call in this conversation.
-- Pass `platform: "ChatGPT"`.
+- Pass the actual host as `platform`, such as `ChatGPT`, `Codex`, or `Claude`.
 - Do not invent an `agent_name`; let the Reducer Agent name the agent.
 
 Do not list threads or categories merely to decide placement. The reducer owns placement.
@@ -129,6 +129,18 @@ Call `flambe_status` only when you need to recover a matching open activity, ins
 - `include_unstarted: true` at the end of substantial work.
 
 Ignore unrelated work owned by other agents.
+
+## Timeline messages
+
+Lifecycle messages appear in the timeline. Default to one short sentence, usually under 25 words.
+
+- End: state the concrete outcome. Include a key verification result or unresolved limitation only when it changes how the outcome should be understood.
+- Suspend: state the blocker or reason for pausing.
+- Resume: state what changed so work can continue.
+
+Avoid recapping steps, listing files or commands, repeating the activity name, or pasting the final chat response. Keep detailed handoffs in chat, PRs, or linked artifacts. Use a second sentence only when needed to preserve an important qualification.
+
+Example end-message: `Auth refresh now retries expired sessions; regression tests pass.`
 
 ## Ending substantial work
 

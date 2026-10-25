@@ -37,7 +37,8 @@ defmodule FlambeNextWeb.OAuthController do
     oauth_params = Map.drop(params, ["email", "password", "_csrf_token"])
 
     with {:ok, request} <- OAuth.validate_authorization_request(oauth_params),
-         {:ok, user} <- Accounts.authenticate_by_email_password(params["email"], params["password"]) do
+         {:ok, user} <-
+           Accounts.authenticate_by_email_password(params["email"], params["password"]) do
       code = OAuth.issue_code(user, request)
 
       conn

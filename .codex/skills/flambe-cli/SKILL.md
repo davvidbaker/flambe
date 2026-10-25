@@ -53,7 +53,7 @@ flambe message "Auth fix needs the session module refactored too; widening scope
 
 `observe` writes a user overlay (carbon, mood, …), not an activity. Same `kind` + `--on` date upserts and merges payload keys. Omit `--on` to always insert.
 
-**255-character hard limit on activity names and `--description`.** The column is `varchar(255)`. A longer value returns a 500 and can wedge the offline queue. Count before `start`. Prefer a short concrete name; put detail in the end/suspend/resume message (those are unbounded).
+**255-character hard limit on activity names and `--description`.** The column is `varchar(255)`. A longer value returns a 500 and can wedge the offline queue. Count before `start`. Prefer a short concrete name. Lifecycle messages have no hard length limit, but keep them concise (see Timeline messages).
 
 Reuse this conversation's activity id when you already have one. Run `flambe status --active --json` only to find a matching open activity from this session; ignore unrelated active work. Do not fetch threads or categories to decide placement; that is the reducer's job.
 
@@ -107,6 +107,18 @@ Do not resubmit the old decision blindly. Identical retries of a completed
 submission return a receipt; `replayed: true` means no new action was applied.
 If the server lacks work-AI review support, report that instead of changing instances.
 
+## Timeline messages
+
+Lifecycle messages appear in the timeline. Default to one short sentence, usually under 25 words.
+
+- End: state the concrete outcome. Include a key verification result or unresolved limitation only when it changes how the outcome should be understood.
+- Suspend: state the blocker or reason for pausing.
+- Resume: state what changed so work can continue.
+
+Avoid recapping steps, listing files or commands, repeating the activity name, or pasting the final chat response. Keep detailed handoffs in chat, PRs, or linked artifacts. Use a second sentence only when needed to preserve an important qualification.
+
+Example end-message: `Auth refresh now retries expired sessions; regression tests pass.`
+
 ## End of work
 
 When the work you were doing is finished, check limbo and scheduled activities before you stop. Run `flambe status --unstarted --json`. If something there is worth doing next, propose that candidate with `flambe message` and begin it only if the reply says continue. Do not begin it unasked, and do not ask David in chat.
@@ -128,4 +140,4 @@ Do not message for routine progress, and never instead of `start`/`end`. Default
 - Start a new activity when the goal or scope meaningfully changes (a specific implementation, a discovered prerequisite, a concrete bug, focused tests, verification) — that is a stack push.
 - Do not start an activity for committing or pushing. Those are wrap-up of the current leaf; mention them in the end-message if useful. Exception: the assigned work *is* getting code onto a remote.
 - Name the concrete action and object (`Fix USERPROFILE config resolution`), not `Investigate` / `Implement` / `Work on tests`. Stay well under 255 characters; do not compensate with a long name or `--description`.
-- End-message: the outcome, not `done`. That records a resolution. Omitting the message is a plain end. No secrets, tokens, or transcripts. Ending the leaf is the pop; then resume the parent mentally and in the log.
+- End-message: a concise outcome (see Timeline messages), not `done`. Omitting the message is a plain end. No secrets, tokens, or transcripts. Ending the leaf is the pop; then resume the parent mentally and in the log.

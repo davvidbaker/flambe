@@ -22,7 +22,8 @@ defmodule FlambeNextWeb.Plugs.RequireApiToken do
       |> assign(:api_token, api_token)
     else
       _ ->
-        resource_metadata = FlambeNextWeb.Endpoint.url() <> "/.well-known/oauth-protected-resource"
+        resource_metadata =
+          FlambeNextWeb.Endpoint.url() <> "/.well-known/oauth-protected-resource"
 
         conn
         |> put_resp_header(
