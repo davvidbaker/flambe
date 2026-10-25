@@ -76,3 +76,72 @@ describe('undo/redo and zoom keyboard separation', () => {
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
 });
+
+describe('timeline initial viewport and pre-epoch coordinates', () => {
+  it('initializes from trace minTime/maxTime when overrides and saved bounds are at 0', () => {
+    const instance = new Timeline({
+      addCommand: vi.fn(),
+      trace_id: 1,
+      leftBoundaryTimeOverride: 0,
+      rightBoundaryTimeOverride: 0,
+    } as never);
+
+    expect(instance.leftBoundaryTime).toBe(0);
+    expect(instance.rightBoundaryTime).toBe(0);
+
+    instance.syncTimelineToProps(
+      {
+        trace_id: 1,
+        minTime: 1_000,
+        maxTime: 5_000,
+        leftBoundaryTimeOverride: 0,
+        rightBoundaryTimeOverride: 0,
+        threads: {},
+      } as never,
+      {
+        trace_id: 1,
+        leftBoundaryTimeOverride: 0,
+        rightBoundaryTimeOverride: 0,
+        threads: {},
+      } as never,
+    );
+
+    expect(instance.leftBoundaryTime).toBe(1_000);
+    expect(instance.rightBoundaryTime).toBeGreaterThan(5_000);
+  });
+
+  it('accepts negative pre-epoch explicit viewport overrides', () => {
+    const instance = new Timeline({
+      addCommand: vi.fn(),
+      trace_id: 'deep-time',
+      leftBoundaryTimeOverride: 0,
+      rightBoundaryTimeOverride: 0,
+    } as never);
+
+    instance.syncTimelineToProps(
+      {
+        trace_id: 'deep-time',
+        minTime: -2_000_000_000_000,
+        maxTime: 1_000,
+        leftBoundaryTimeOverride: -2_000_000_000_000,
+        rightBoundaryTimeOverride: 1_000,
+        threads: {},
+      } as never,
+      {
+        trace_id: 'deep-time',
+        leftBoundaryTimeOverride: 0,
+        rightBoundaryTimeOverride: 0,
+        threads: {},
+      } as never,
+    );
+
+    expect(instance.getVisibleTimeRange({
+      trace_id: 'deep-time',
+      minTime: -2_000_000_000_000,
+      maxTime: 1_000,
+    } as never)).toEqual({
+      leftBoundaryTime: -2_000_000_000_000,
+      rightBoundaryTime: 1_000,
+    });
+  });
+});
