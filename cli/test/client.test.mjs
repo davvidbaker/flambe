@@ -355,6 +355,30 @@ test('hosted message lets the server infer activity and does not preflight the t
   assert.equal(requests.some(request => request.url.includes('/api/traces/')), false);
 });
 
+test('hosted commands report inbox messages from the user', async () => {
+  const notes = [];
+  const client = new FlambeClient({
+    baseUrl: 'http://flambe.test', token: 'secret', traceId: 3, agentId: 'agent-7',
+    onReducerNote: note => notes.push(note),
+    fetchImpl: async (_url, options = {}) => {
+      if (options.method === 'GET') {
+        return jsonResponse({ data: { version: 1, commands: HOSTED_COMMANDS } });
+      }
+      return jsonResponse({ data: {
+        activity_id: 21,
+        assessment: 'on_track',
+        direction: null,
+        reply: null,
+        actions_applied: [],
+        inbox: [{ id: 5, body: 'Skip the tests' }],
+      } });
+    },
+  });
+
+  await client.message({ text: 'Progress update' });
+  assert.deepEqual(notes, [{ type: 'inbox', messages: [{ id: 5, body: 'Skip the tests' }] }]);
+});
+
 test('hosted offline queue replay preserves timestamps and resolves activity aliases', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'flambe-hosted-queue-'));
   const queuePath = join(directory, 'queue.json');

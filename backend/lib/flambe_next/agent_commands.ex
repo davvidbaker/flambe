@@ -23,8 +23,9 @@ defmodule FlambeNext.AgentCommands do
       when command in @commands and is_map(attrs) do
     with {:ok, attrs} <- identify_agent(user, attrs),
          {:ok, trace_id} <- positive_id(attrs["trace_id"], "trace_id"),
-         {:ok, trace} <- authorized_trace(user, trace_id) do
-      run(user, trace, command, attrs)
+         {:ok, trace} <- authorized_trace(user, trace_id),
+         {:ok, result} <- run(user, trace, command, attrs) do
+      {:ok, Map.put(result, :inbox, inbox(user, attrs["agent_id"]))}
     end
   end
 
@@ -33,6 +34,25 @@ defmodule FlambeNext.AgentCommands do
 
   def execute(%User{}, _command, _attrs),
     do: {:error, {:invalid_input, "command and arguments must be valid"}}
+
+  @doc false
+  def message_json(message) do
+    %{
+      id: message.id,
+      trace_id: message.trace_id,
+      body: message.body,
+      sent_at: message.inserted_at,
+      delivered_at: message.delivered_at
+    }
+  end
+
+  defp inbox(_user, nil), do: []
+
+  defp inbox(user, agent_id) do
+    user
+    |> Agents.take_inbox(agent_id)
+    |> Enum.map(&message_json/1)
+  end
 
   defp run(user, trace, "start", attrs) do
     with {:ok, name} <- required_string(attrs["name"], "name"),

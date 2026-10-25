@@ -96,6 +96,8 @@ defmodule FlambeNextWeb.Router do
     resources "/observations", ObservationController, except: [:new, :edit]
     get "/agents", AgentController, :index
     get "/agents/me", AgentController, :me
+    get "/agents/:agent_id/messages", AgentMessageController, :index
+    post "/agents/:agent_id/messages", AgentMessageController, :create
     get "/agent-status", AgentStatusController, :show
     get "/agent-status/stream", AgentStatusStreamController, :show
     get "/agent-commands", AgentCommandController, :index

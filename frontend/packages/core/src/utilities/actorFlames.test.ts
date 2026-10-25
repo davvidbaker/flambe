@@ -10,6 +10,7 @@ import {
   blockLayoutKey,
   coalesceActorLaneChrome,
   fitActorLaneLabel,
+  latestBlockIndexForActivities,
   pinActorLaneRailX,
   modelProviderFromAgentId,
   projectActorFlames,
@@ -700,6 +701,14 @@ describe('pinActorLaneRailX', () => {
   it('hides the rail when the flame is fully off-canvas', () => {
     expect(pinActorLaneRailX(-200, -10, 600, 0)).toBeNull();
     expect(pinActorLaneRailX(700, 900, 600, 0)).toBeNull();
+  });
+});
+
+describe('latestBlockIndexForActivities', () => {
+  it('picks the latest lived block of the lane roots, ignoring plans and other activities', () => {
+    const blocks = [block(2, 10, 20), block(3, 30, 40), scheduledBlock(2, 90, 100), block(9, 95)];
+    expect(latestBlockIndexForActivities(blocks, [2, '3'])).toBe(1);
+    expect(latestBlockIndexForActivities(blocks, [7])).toBeNull();
   });
 });
 

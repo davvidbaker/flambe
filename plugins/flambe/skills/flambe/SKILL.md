@@ -76,6 +76,8 @@ The returned state is authoritative. Do not undo a reducer rewrite and do not re
 
 If `direction` is `pause`, `stop`, or `escalate`, stop further work and surface the reducer's reply to the user before continuing.
 
+Any result may include `inbox`: messages the user sent you from the Flambe UI, each delivered once. Treat each as a direct instruction from the user: follow it before your next step and keep working, adjusted. If it says to stop or wait, stop and surface it.
+
 If the reducer asks a question in `reply`, answer it before making another substantive stack change, normally with `flambe_message`.
 
 ## Ask the reducer before drifting
