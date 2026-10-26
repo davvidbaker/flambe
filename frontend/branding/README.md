@@ -1,26 +1,24 @@
 # Flambé mark
 
-`source/production.png` is an amber/gold color edit of the original warm/purple
-flame supplied by David, made with the built-in image generation tool. It was
-first introduced as the Single Burner variant and is now the main Flambé mark.
-Its original generation prompt is preserved in `source/production.prompt.txt`;
-the historical Single Burner wording in that prompt remains unchanged.
+`source/production.png` is the amber/gold main Flambé mark, made with the
+built-in image generation tool. Its upper outer edge and tip use dark
+burnt-orange shading so the mark reads as a dark shell around a bright core.
+The final edit prompt is preserved in `source/production.prompt.txt`.
 
-These three source PNGs preserve David's supplied originals without modifying
-their artwork:
+The other product marks are hue-shifted from the same corrected geometry and
+lighting treatment, including the dark upper edge:
 
-- `single-burner.png`: the warm yellow/orange, magenta, and purple flame that
-  previously served as the production mark.
-- `development.png`: blue flame.
-- `share-viewer.png`: green flame.
+- `single-burner.png`: warm yellow/orange, magenta, and purple.
+- `development.png`: blue and cyan.
+- `share-viewer.png`: green and lime.
 
-`source/plugin.png` is a separate composite of the amber production flame with
-an asymmetric pastel flame-chart background, made using the built-in image
-generation tool. It uses a smaller flame, thinner cyan/pink/yellow/peach traces,
-and generous margins. Child spans fit within their parent on the row above.
-The original composite used the warm/purple flame now stored in
-`source/single-burner.png`; later edits refined chart containment and selected
-the amber foreground. The final edit prompt is saved in
+`source/plugin.png` is a separate composite of the corrected amber production
+flame with an asymmetric pastel flame-chart background, made using the built-in
+image generation tool. It uses a smaller flame, thinner cyan/pink/yellow/peach
+traces, and generous margins. Child spans fit within their parent on the row
+above.
+Earlier edits refined chart containment and selected the amber foreground. The
+final dark-upper-edge edit prompt is saved in
 `source/plugin.prompt.txt`; transparent output was enabled.
 
 From `frontend/`, run `npm ci` then `npm run branding:generate` to regenerate
