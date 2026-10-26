@@ -186,6 +186,7 @@ function* handleCommand({ operand, command }: CommandRunAction): SagaIterator {
         break;
 
       case ACTIVITY_DELETE:
+        if (command.confirm_delete !== true) return;
         if (activity_id === undefined || thread_id === undefined) return;
         yield put(deleteActivity(activity_id, thread_id));
         break;

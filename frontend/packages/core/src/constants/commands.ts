@@ -306,7 +306,15 @@ export const ACTIVITY_COMMANDS: Command[] = [
   },
   {
     action: ACTIVITY_DELETE,
-    copy: 'delete',
+    copy: 'delete activity...',
+    shortcut: 'Delete',
+    parameters: [{
+      key: 'confirm_delete',
+      placeholder: 'Delete this activity and its events? Escape to cancel.',
+      selector: () => [{ name: 'Confirm delete', value: true }],
+      itemStringKey: 'name',
+      itemReturnKey: 'value',
+    }],
     status: ['active', 'suspended', 'complete'],
     label: activityLabel,
   },
@@ -320,8 +328,8 @@ export const ACTIVITY_COMMANDS: Command[] = [
 ];
 
 type Status = 'active' | 'suspended' | 'complete';
-export function activityCommandsByStatus(status: Status): Command[] {
-  return ACTIVITY_COMMANDS.filter(cmd => cmd.status?.includes(status));
+export function activityCommandsByStatus(status: string | undefined): Command[] {
+  return ACTIVITY_COMMANDS.filter(cmd => cmd.status?.some(value => value === status));
 }
 
 export default COMMANDS;
