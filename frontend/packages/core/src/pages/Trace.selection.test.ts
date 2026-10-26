@@ -38,3 +38,47 @@ describe('selection command palette', () => {
     expect(app.showCommander).toHaveBeenCalledOnce();
   });
 });
+
+describe('activity lifecycle shortcuts', () => {
+  const setup = (status = 'active') => {
+    const app = new App({
+      routeParams: {}, fetchUser: vi.fn(), user: { id: 1 },
+      operand: { type: 'activity', activity_id: 1, thread_id: 9, activityStatus: 'complete' },
+      activities: { 1: { id: 1, thread_id: 9, status } },
+      activitySelection: [], blocks: [], threadLevels: {},
+      keyUp: vi.fn(), runCommand: vi.fn(),
+    } as never);
+    app.hideCommander = vi.fn();
+    app.setCommanderCommand = vi.fn();
+    const keyup = app.render().props.eventListeners.find(([type]: [string]) => type === 'keyup')[1];
+    return { app, press: (key: string) => keyup({ key, target: null, preventDefault: vi.fn() }) };
+  };
+
+  it.each(['active', 'suspended'])('ends %s activities without depending on chart geometry or stale operand status', status => {
+    const { app, press } = setup(status);
+    press('e');
+    expect(app.props.runCommand).toHaveBeenCalledWith(app.props.operand, expect.objectContaining({ shortcut: 'E' }));
+  });
+
+  it('opens closing remarks for resolution', () => {
+    const { app, press } = setup();
+    press('v');
+    expect(app.setCommanderCommand).toHaveBeenCalledWith(expect.objectContaining({ shortcut: 'V' }));
+    expect(app.props.runCommand).not.toHaveBeenCalled();
+  });
+
+  it.each(['Delete', 'Backspace'])('requires palette confirmation for %s', key => {
+    const { app, press } = setup();
+    press(key);
+    expect(app.setCommanderCommand).toHaveBeenCalledWith(expect.objectContaining({
+      shortcut: 'Delete', parameters: [expect.objectContaining({ key: 'confirm_delete' })],
+    }));
+    expect(app.props.runCommand).not.toHaveBeenCalled();
+  });
+
+  it('does not end completed activities', () => {
+    const { app, press } = setup('complete');
+    press('e');
+    expect(app.props.runCommand).not.toHaveBeenCalled();
+  });
+});

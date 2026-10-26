@@ -52,7 +52,6 @@ import COMMANDS, {
 } from '../constants/commands';
 import { getTimeline } from '../reducers/timeline';
 import { getUser } from '../reducers/user';
-import isEndable from '../utilities/isEndable';
 import type { Location } from 'react-router-dom';
 import type { RootState } from '../store';
 import type { Command, CommandParameter } from '../constants/commands';
@@ -263,11 +262,9 @@ export class App extends React.Component<AppProps, AppState> {
       switch (operand.type) {
         case 'activity':
           return [
-            ...(operand.activityStatus === 'active' ||
-            operand.activityStatus === 'suspended' ||
-            operand.activityStatus === 'complete'
-              ? activityCommandsByStatus(operand.activityStatus)
-              : []),
+            ...activityCommandsByStatus(
+              this.props.activities[String(operand.activity_id)]?.status ?? operand.activityStatus,
+            ),
             ...baseCommands,
           ];
         default:
@@ -383,20 +380,23 @@ export class App extends React.Component<AppProps, AppState> {
                         }
                         break;
                       }
-                      if (activity &&
-                        isEndable(
-                          activity,
-                          this.props.blocks.filter(
-                            block => String(block.activity_id) === String(activityId),
-                          ),
-                          this.props.threadLevels,
-                        )
-                      ) {
+                      if (activity) {
                         this.runShortcutCommand(
                           this.getCommands(this.props.operand).find(
                             cmd => cmd.shortcut === e.key.toUpperCase(),
                           ),
                         );
+                      }
+                      break;
+                    }
+                    case 'Delete':
+                    case 'Backspace': {
+                      const command = this.getCommands(this.props.operand).find(
+                        cmd => cmd.shortcut === 'Delete',
+                      );
+                      if (command) {
+                        e.preventDefault();
+                        this.setCommanderCommand(command);
                       }
                       break;
                     }
