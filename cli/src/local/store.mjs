@@ -730,8 +730,8 @@ export class LocalStore {
     `).get(Number(id), userId);
     if (!existing) return null;
     this.db.prepare(
-      'UPDATE events SET phase = COALESCE(?, phase), message = COALESCE(?, message) WHERE id = ?',
-    ).run(attrs.phase ?? null, attrs.message ?? null, existing.id);
+      'UPDATE events SET phase = COALESCE(?, phase), message = COALESCE(?, message), timestamp_ms = COALESCE(?, timestamp_ms) WHERE id = ?',
+    ).run(attrs.phase ?? null, attrs.message ?? null, attrs.timestamp_integer ?? null, existing.id);
     const row = this.db.prepare('SELECT id, phase FROM events WHERE id = ?').get(existing.id);
     return { id: row.id, phase: row.phase };
   }

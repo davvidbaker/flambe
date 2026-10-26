@@ -36,6 +36,28 @@ async function withServer(fn) {
   }
 }
 
+test('browser event edits persist dragged timestamps through REST', async () => {
+  await withServer(async ({ origin, traceId, store }) => {
+    const created = store.createActivity(1, { traceId, threadId: 1,
+      activity: { name: 'Drag me' }, event: { phase: 'B', timestamp_integer: 1000 } });
+    const headers = { cookie: 'flambe_user=1', 'content-type': 'application/json' };
+    const readTrace = () => fetch(`${origin}/api/traces/${traceId}`, { headers }).then(r => r.json());
+    const before = await readTrace();
+    const event = before.data.events.find(e => e.activity.id === created.activity.id);
+    const response = await fetch(`${origin}/api/events/${event.id}`, {
+      method: 'PUT', headers, body: JSON.stringify({ event: { timestamp_integer: 0 } }),
+    });
+    assert.equal(response.status, 200);
+    const after = await readTrace();
+    assert.equal(new Date(after.data.events.find(e => e.id === event.id).timestamp).getTime(), 0);
+    await fetch(`${origin}/api/events/${event.id}`, {
+      method: 'PUT', headers, body: JSON.stringify({ event: { message: 'Still at epoch' } }),
+    });
+    const unchanged = await readTrace();
+    assert.equal(new Date(unchanged.data.events.find(e => e.id === event.id).timestamp).getTime(), 0);
+  });
+});
+
 test('default static path finds the frontend build in this checkout', () => {
   assert.equal(defaultStaticDir(), fileURLToPath(new URL('../../backend/priv/static', import.meta.url)));
 });
