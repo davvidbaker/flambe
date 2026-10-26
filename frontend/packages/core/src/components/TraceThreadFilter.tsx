@@ -46,6 +46,16 @@ const Panel = styled.div`
   background: ${colors.background};
   border: 1px solid ${tinycolor(colors.background).darken(15).toString()};
   font-size: 12px;
+
+  @media (max-width: 640px) {
+    position: fixed;
+    top: 44px;
+    left: 8px;
+    width: min(20rem, calc(100vw - 16px));
+    max-height: calc(100dvh - 60px);
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
 `;
 
 const ButtonWrap = styled.span`

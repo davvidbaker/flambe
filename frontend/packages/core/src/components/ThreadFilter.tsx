@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { getFilteredThreads } from '../utilities/timeline';
 import { moveItem } from '../utilities/threadOrder';
 import type { EntityId } from '../types/ids';
 import type { Thread } from '../types/Thread';
@@ -21,6 +20,42 @@ const List = styled.ul`
   list-style: none;
   padding: 0;
   margin: 0 0 8px;
+`;
+
+const BulkActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #eee;
+`;
+
+const BulkAction = styled.button`
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  font: inherit;
+  font-size: 11px;
+  color: #666;
+  cursor: pointer;
+
+  &:hover:enabled {
+    color: #000;
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #888;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  &:disabled {
+    color: #aaa;
+    cursor: default;
+  }
 `;
 
 const Row = styled.li<{ $dimmed: boolean; $dragging: boolean }>`
@@ -72,10 +107,10 @@ const ThreadFilter = ({
 }: Props) => {
   const [draggingId, setDraggingId] = useState<EntityId | null>(null);
   const hidden = new Set(filterExcludes.map(String));
-  const visibleCount = Object.keys(getFilteredThreads(filterExcludes, allThreads)).length;
+  const threadIds = Object.keys(allThreads);
+  const visibleCount = threadIds.filter(id => !hidden.has(id)).length;
 
   const toggleHidden = (id: EntityId, show: boolean) => {
-    if (!show && visibleCount <= 1) return;
     const next = show
       ? filterExcludes.filter(hiddenId => String(hiddenId) !== String(id))
       : [...filterExcludes, id];
@@ -92,6 +127,14 @@ const ThreadFilter = ({
 
   return (
     <div>
+      <BulkActions>
+        <BulkAction type="button" disabled={visibleCount === threadIds.length} onClick={() => onHideChange([])}>
+          Select all
+        </BulkAction>
+        <BulkAction type="button" disabled={visibleCount === 0} onClick={() => onHideChange(threadIds)}>
+          Deselect all
+        </BulkAction>
+      </BulkActions>
       <List>
         {orderedThreadIds.map(id => {
           const thread = allThreads[String(id)];
@@ -129,7 +172,6 @@ const ThreadFilter = ({
                 id={`thread-visible-${id}`}
                 aria-label={`Show ${thread.name}`}
                 checked={!isHidden}
-                disabled={!isHidden && visibleCount <= 1}
                 onChange={event => toggleHidden(id, event.target.checked)}
                 type="checkbox"
               />
