@@ -23,6 +23,32 @@ function chart() {
   return instance;
 }
 
+describe('activity row spacing', () => {
+  it('keeps bar heights and row gaps uniform across delegated washes', () => {
+    const instance = chart();
+    instance.offsets = { 1: 0 };
+    instance.threadCollapsed = () => false;
+    instance.actorLaneLayout = {
+      rootIdByActivity: { 1: 1, 2: 1, 3: 3, 4: 3, 5: 5, 6: 5 },
+      lanes: [
+        { rootActivityId: 1, depth: 0 },
+        { rootActivityId: 3, depth: 1 },
+        { rootActivityId: 5, depth: 2 },
+      ],
+      rowByActivity: { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5 },
+      rowByBlock: {},
+    } as never;
+    const transforms = [1, 2, 3, 4, 5, 6].map(id => instance.getRenderedBlockTransform(
+      { activity_id: id, startTime: 0, endTime: 10, level: id - 1, events: [] } as never,
+      { id, thread_id: 1 } as never,
+    ));
+    expect(new Set(transforms.map(block => block.blockHeight)).size).toBe(1);
+    const gaps = transforms.slice(1).map((block, index) =>
+      block.blockY - (transforms[index]!.blockY + transforms[index]!.blockHeight));
+    expect(gaps).toEqual(Array(5).fill(1 + 2 * FlameChart.actorLaneVerticalMargin));
+  });
+});
+
 describe('navigation settling lifecycle', () => {
   it('animates neighboring bands aside when newly visible work grows a wash', () => {
     const a = { id: 1, agent_id: 'codex:a', categories: [], thread_id: 1 };
