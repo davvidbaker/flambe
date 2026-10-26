@@ -10,7 +10,7 @@ Single Burner runs the Flambé UI and local API together on loopback, backed by 
 npx @davvidbaker/flambe-single-burner
 ```
 
-Then open http://127.0.0.1:4001.
+Then open http://127.0.0.1:4123.
 
 Startup shows the local chart, reducer mode, copyable connection settings, and
 three local Codex setup steps. Keep Single Burner running while your agent works.
@@ -33,7 +33,7 @@ flambe-single-burner
 Options:
 
 ```text
---port <n>   Port to listen on (default: 4001)
+--port <n>   Port to listen on (default: 4123)
 --db <path>  SQLite database path (default: ~/.flambe/local.sqlite)
 ```
 
@@ -79,7 +79,7 @@ experience, but grouping the connections has not been validated. This is a
 temporary choice, not a confirmed platform limitation. See [why we chose it](../docs/ADR-020-instance-bound-chat-connections.md#temporary-chatgpt-plugin-decision--2026-10-22).
 
 Single Burner exposes bearer-authenticated MCP tools at
-`http://127.0.0.1:4001/mcp` using the local API token printed at startup. Connect
+`http://127.0.0.1:4123/mcp` using the local API token printed at startup. Connect
 through a private MCP bridge reachable from ChatGPT and name that connection
 **Single Burner**. Follow the [complete tunnel and plugin walkthrough](CHATGPT.md), including
 Windows/Git Bash commands, workspace association, skill installation, and a live check.
