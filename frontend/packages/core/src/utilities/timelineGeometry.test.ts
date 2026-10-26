@@ -52,7 +52,7 @@ describe('timeline geometry', () => {
   });
 
   it('anchors a running activity name to the present line when past and future are both on screen', () => {
-    const running = { startTime: 100, endTime: undefined };
+    const running: Pick<TraceBlock, 'startTime' | 'endTime' | 'scheduled'> = { startTime: 100 };
     const anchor = (now: number, block = running, blockX = 50, blockWidth = 450) =>
       rightAlignedActivityLabelX(block, blockX, blockWidth, now, 0, 1000, 1000, 5);
 
@@ -63,6 +63,20 @@ describe('timeline geometry', () => {
     expect(anchor(400, { ...running, scheduled: true })).toBe(495);
     expect(anchor(400, { startTime: 600 })).toBe(495);
     expect(anchor(400, running, 100, 50)).toBe(145);
+  });
+
+  it('flows running labels into the future before truncating at the screen edge', () => {
+    const running = { startTime: 100 };
+    const anchor = (textWidth: number, textLeft = 105, blockWidth = 900) =>
+      rightAlignedActivityLabelX(running, 100, blockWidth, 200, 0, 1000, 1000, 5, textWidth, textLeft);
+
+    expect(anchor(50)).toBe(195); // Short names still end at the precipice.
+    expect(anchor(300)).toBe(405); // Full name extends right from its available left edge.
+    expect(anchor(1200)).toBe(995); // Only names exceeding the viewport need shortening.
+    expect(anchor(1200, 105, 1500)).toBe(995); // Even if the bar extends off screen.
+    expect(anchor(300, 180)).toBe(480); // Respect the sticky actor gutter.
+    const finished = { startTime: 100, endTime: 200 };
+    expect(rightAlignedActivityLabelX(finished, 100, 100, 200, 0, 1000, 1000, 5, 300)).toBe(195);
   });
 
   it('uses the viewport edge as the end handle for an open scheduled span', () => {

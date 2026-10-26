@@ -13,6 +13,17 @@ describe('trimTextEnd', () => {
     expect(trimTextEnd(measureContext(), 'Site control', 200)).toBe('Site control');
   });
 
+  it('keeps exact-fit labels stable across fractional zoom coordinates', () => {
+    const label = 'Recent contact · open work';
+    const context = measureContext(7.13);
+    const width = context.measureText(label).width;
+    for (let frame = 0; frame < 200; frame++) {
+      const left = 50 + frame * 0.137;
+      expect(trimTextEnd(context, label, (left + width) - left)).toBe(label);
+    }
+    expect(trimTextEnd(context, label, width - 1)).not.toBe(label);
+  });
+
   it('keeps the start of a long name instead of punching a hole in the middle', () => {
     const text = trimTextEnd(
       measureContext(),

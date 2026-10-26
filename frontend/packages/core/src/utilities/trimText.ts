@@ -44,7 +44,10 @@ const trimText = (
   if (text.length > maxLength) text = trimFunction(text, maxLength);
   // const textWidth = UI.measureTextWidth(context, text);
   const textWidth = context.measureText(text).width;
-  if (textWidth <= maxWidth) return text;
+  // Geometry subtracts fractional canvas coordinates during zoom. Treat only
+  // floating-point noise as an exact fit, so full labels do not flicker to ellipses.
+  const roundingTolerance = Number.EPSILON * Math.max(1, textWidth, Math.abs(maxWidth)) * 8;
+  if (textWidth <= maxWidth + roundingTolerance) return text;
 
   let l = 0;
   let r = text.length;
