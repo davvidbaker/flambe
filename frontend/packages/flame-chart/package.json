@@ -1,6 +1,6 @@
 {
   "name": "@davvidbaker/flame-chart",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Standalone React flame chart, plus Flambe's production chart embed (ChartHarness).",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,7 +16,10 @@
       "import": "./dist/flambe.js"
     }
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "vite build && rm -rf dist/core dist/flame-chart && cp src/index-api.d.ts dist/index.d.ts && cp src/flambe-api.d.ts dist/flambe.d.ts",
