@@ -28,6 +28,7 @@ defmodule FlambeNext.AgentTransitions do
     case status(phase) do
       "running" -> [%{operation: "suspend"}, end_action]
       "suspended" -> [%{operation: "resume"}, end_action]
+      "ended" -> [%{operation: "resurrect"}]
       _ -> []
     end
   end

@@ -176,7 +176,7 @@ test('agent MCP discovers the local decision tool, guards instances, and applies
   };
   const call = (name, arguments_) => rpc('tools/call', { name: `flambe_${name}`, arguments: { ...args, ...arguments_ } });
   const tools = (await rpc('tools/list', {})).tools;
-  assert.equal(tools.length, 9);
+  assert.equal(tools.length, 10);
   assert.ok(tools.some(tool => tool.name === 'flambe_decide'));
   const start = await call('start', { name: 'MCP work-AI review', parent_id: null });
   const packet = await call('message', { activity_id: start.structuredContent.activity_id, message: 'Review current work' });

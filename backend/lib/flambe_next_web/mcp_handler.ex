@@ -5,7 +5,7 @@ defmodule FlambeNextWeb.MCPHandler do
 
   alias FlambeNext.{AgentCommandIdentity, AgentCommands, Instance, Traces}
 
-  @tools ~w(flambe_traces flambe_start flambe_end flambe_suspend flambe_resume flambe_status flambe_message flambe_plan)
+  @tools ~w(flambe_traces flambe_start flambe_end flambe_suspend flambe_resume flambe_resurrect flambe_status flambe_message flambe_plan)
 
   @impl GenServer
   def init(%{user: user} = context), do: {:ok, Map.put(context, :user, user)}
@@ -56,7 +56,8 @@ defmodule FlambeNextWeb.MCPHandler do
   end
 
   def handle_call_tool("flambe_" <> command, arguments, state)
-      when command in ~w(start end suspend resume status message plan) and is_map(arguments) do
+      when command in ~w(start end suspend resume resurrect status message plan) and
+             is_map(arguments) do
     arguments =
       AgentCommandIdentity.merge(arguments, state.agent, Map.get(state, :platform?, false))
 
@@ -136,6 +137,15 @@ defmodule FlambeNextWeb.MCPHandler do
       "flambe_resume",
       "Resume a Flambe Activity",
       "Resume suspended work. Act on any returned direction or reply.",
+      %{}
+    )
+  end
+
+  defp tool_definition("flambe_resurrect") do
+    lifecycle_tool(
+      "flambe_resurrect",
+      "Resurrect a Flambe Activity",
+      "Reopen ended work by activity id, preserving its history. Act on any returned direction or reply.",
       %{}
     )
   end

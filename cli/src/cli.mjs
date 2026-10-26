@@ -20,6 +20,7 @@ const usage = `Usage:
   flambe end <activity-id> [message] [--force]
   flambe suspend <activity-id> [message]
   flambe resume <activity-id> [message]
+  flambe resurrect <activity-id> [message]
   flambe plan <activity name> [--start <ISO-8601>] [--end <ISO-8601>] [--description <text>] [--weight <n>]
   flambe status [--active | --suspended] [--unstarted] [--json]
   flambe threads [--json]
@@ -492,7 +493,7 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
     return;
   }
 
-  if (command === 'suspend' || command === 'resume') {
+  if (command === 'suspend' || command === 'resume' || command === 'resurrect') {
     const [activityId, ...messageParts] = args;
     if (!activityId) throw new Error(`Usage: flambe ${command} <activity-id> [message]`);
     const eventId = await flambe[command]({ activityId, message: messageParts.join(' ') || undefined });

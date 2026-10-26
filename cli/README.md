@@ -127,3 +127,5 @@ confirm these hooks are trusted in `/hooks`, then ask it to track a short local
 activity, request/submit an agent-mode review, and end or suspend the activity.
 Verify that the chart and that agent's lane reflect the result. A fresh install
 on the work laptop still needs this native Codex verification.
+
+Reopen ended work by number with `flambe resurrect <activity-id> [message]`. This records a resurrection (`X`) event on the same activity, preserving its history. MCP clients can use `flambe_resurrect`.

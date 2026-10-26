@@ -1554,3 +1554,29 @@ test('status ignores reducer annotation events when deciding what is active', as
 
   assert.deepEqual(status.activities.map(activity => [activity.id, activity.latestEvent.phase]), [[6, 'B']]);
 });
+
+
+test('CLI resurrect reopens the requested activity number', async () => {
+  const calls = [];
+  const output = [];
+  await run(['resurrect', '1046', 'Fix alignment'], {
+    stdout: { write: value => output.push(value) },
+    client: { resurrect: async input => { calls.push(input); return 99; } },
+  });
+  assert.deepEqual(calls, [{ activityId: '1046', message: 'Fix alignment' }]);
+  assert.deepEqual(output, ['99\n']);
+});
+
+test('resurrection falls back to X events on servers without the new command', async () => {
+  const requests = [];
+  const client = legacyClient({
+    baseUrl: 'http://flambe.test', token: 'test', traceId: 1,
+    fetchImpl: async (url, options) => {
+      requests.push([url, JSON.parse(options.body)]);
+      return jsonResponse({ data: { id: 99 } });
+    },
+  });
+  assert.equal(await client.resurrect({ activityId: 1046, message: 'Fix alignment' }), 99);
+  assert.equal(requests[0][1].activity_id, 1046);
+  assert.equal(requests[0][1].event.phase, 'X');
+});

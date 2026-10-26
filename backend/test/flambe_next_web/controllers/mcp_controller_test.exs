@@ -70,6 +70,7 @@ defmodule FlambeNextWeb.McpControllerTest do
              "flambe_message",
              "flambe_plan",
              "flambe_resume",
+             "flambe_resurrect",
              "flambe_start",
              "flambe_status",
              "flambe_suspend",
@@ -100,7 +101,7 @@ defmodule FlambeNextWeb.McpControllerTest do
       assert Enum.find(tools, &(&1["name"] == name))["annotations"]["openWorldHint"]
     end
 
-    for name <- ~w(flambe_end flambe_suspend flambe_resume) do
+    for name <- ~w(flambe_end flambe_suspend flambe_resume flambe_resurrect) do
       refute Enum.find(tools, &(&1["name"] == name))["annotations"]["openWorldHint"]
     end
   end
@@ -276,7 +277,7 @@ defmodule FlambeNextWeb.McpControllerTest do
     assert Jason.decode!(hd(data["content"])["text"])["instance"] == instance
 
     for expected <- [nil, "different-instance"],
-        command <- ~w(start end suspend resume status message plan) do
+        command <- ~w(start end suspend resume resurrect status message plan) do
       failed =
         modern_post(
           conn,

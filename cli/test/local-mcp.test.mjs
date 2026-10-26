@@ -82,7 +82,7 @@ for (const modern of [false, true]) {
     assert.equal(JSON.stringify(discovery).includes(rawToken), false);
     assert.equal(JSON.stringify(discovery).includes(dbPath), false);
     const listed = await rpc('tools/list', {}, { modern });
-    assert.equal(listed.body.result.tools.length, 8);
+    assert.equal(listed.body.result.tools.length, 9);
     assert.ok(listed.body.result.tools.every(tool => tool.description.includes('Single Burner')));
     const startTool = listed.body.result.tools.find(tool => tool.name === 'flambe_start');
     assert.ok(startTool.inputSchema.required.includes('expected_instance_id'));
@@ -100,6 +100,11 @@ for (const modern of [false, true]) {
     });
     const rest = (await response.json()).data.state;
     assert.equal(rest.activities.find(activity => activity.id === child.structuredContent.activity_id).status, 'ended');
+    const reopened = await call('resurrect', { ...args, activity_id: child.structuredContent.activity_id }, { modern });
+    assert.equal(reopened.isError, false, JSON.stringify(reopened));
+    const activity = reopened.structuredContent.state.activities.find(a => a.id === child.structuredContent.activity_id);
+    assert.equal(activity.status, 'running');
+    assert.equal(activity.latestEvent.phase, 'X');
   });
 }
 

@@ -8,6 +8,7 @@
   {"command":"message","arguments":{"activity_id":"$activity","message":"Contract update"},"error":"REDUCER_NOT_CONFIGURED"},
   {"command":"end","arguments":{"activity_id":"$activity"},"status":"ended"},
   {"command":"status","arguments":{},"status":"ended"},
+  {"command":"resurrect","arguments":{"activity_id":"$activity"},"same_activity":true,"status":"running"},
   {"command":"start","arguments":{"name":""},"error":"INVALID_INPUT"},
   {"command":"status","arguments":{"trace_id":999999999},"error":"NOT_FOUND"}
 ]

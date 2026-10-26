@@ -39,7 +39,7 @@ function connectionWarning(event) {
 function trackingCommand(input) {
   const command = input?.tool_input?.command ?? input?.tool_input?.cmd;
   if (typeof command !== 'string' || /[\n;&|]/.test(command)) return null;
-  const match = command.trim().match(/^(?:(?:[A-Z_][A-Z_0-9]*=(?:"[^"]*"|'[^']*'|[^\s]+))\s+)*(?:flambe(?:\.cmd)?|(?:"[^"]*node(?:\.exe)?"|[^\s]*node(?:\.exe)?)\s+(?:"[^"]*flambe\.mjs"|[^\s]*flambe\.mjs))\s+(start|end|suspend|resume|plan|message|decide|status|ping|whoami)\b/);
+  const match = command.trim().match(/^(?:(?:[A-Z_][A-Z_0-9]*=(?:"[^"]*"|'[^']*'|[^\s]+))\s+)*(?:flambe(?:\.cmd)?|(?:"[^"]*node(?:\.exe)?"|[^\s]*node(?:\.exe)?)\s+(?:"[^"]*flambe\.mjs"|[^\s]*flambe\.mjs))\s+(start|end|suspend|resume|resurrect|plan|message|decide|status|ping|whoami)\b/);
   return match?.[1] ?? null;
 }
 

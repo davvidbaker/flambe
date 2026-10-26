@@ -15,7 +15,7 @@ defmodule FlambeNext.AgentCommands do
   alias FlambeNext.Traces.{Activity, Event}
   alias FlambeNextWeb.EventStream
 
-  @commands ~w(start end suspend resume status message plan)
+  @commands ~w(start end suspend resume resurrect status message plan)
   @open_phases ~w(B R X)
   @lifecycle_phases ~w(B R X S E J V)
 
@@ -123,7 +123,7 @@ defmodule FlambeNext.AgentCommands do
     end
   end
 
-  defp run(user, trace, command, attrs) when command in ~w(end suspend resume) do
+  defp run(user, trace, command, attrs) when command in ~w(end suspend resume resurrect) do
     with {:ok, phase} <- lifecycle_phase(command, attrs),
          {:ok, activity_id} <- positive_id(attrs["activity_id"], "activity_id"),
          {:ok, activity} <- authorized_activity(user, trace, activity_id),
@@ -351,6 +351,7 @@ defmodule FlambeNext.AgentCommands do
 
   defp lifecycle_phase("suspend", _attrs), do: {:ok, "S"}
   defp lifecycle_phase("resume", _attrs), do: {:ok, "R"}
+  defp lifecycle_phase("resurrect", _attrs), do: {:ok, "X"}
 
   defp lifecycle_phase("end", attrs) do
     message = optional_string(attrs["message"])

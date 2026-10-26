@@ -334,7 +334,7 @@ async function dispatch(store, req, url, body, { auth, agent, runCommand }) {
 
   if (method === 'POST' && path === '/api/events') {
     const phase = body.event?.phase;
-    const command = { E: 'end', J: 'end', V: 'end', S: 'suspend', R: 'resume' }[phase];
+    const command = { E: 'end', J: 'end', V: 'end', S: 'suspend', R: 'resume', X: 'resurrect' }[phase];
     if (auth.tokenName !== null && command) {
       const folded = await runCommand(userId, command, {
         trace_id: body.trace_id, activity_id: body.activity_id,

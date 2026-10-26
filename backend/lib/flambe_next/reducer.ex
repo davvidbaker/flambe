@@ -51,7 +51,7 @@ defmodule FlambeNext.Reducer do
   def fold(%User{} = user, %Trace{} = trace, proposal) when is_map(proposal) do
     case Map.get(proposal, :command) do
       "start" -> fold_start(user, trace, proposal)
-      command when command in ~w(end suspend resume) -> fold_lifecycle(trace, proposal)
+      command when command in ~w(end suspend resume resurrect) -> fold_lifecycle(trace, proposal)
       "message" -> fold_message(user, proposal)
       other -> {:error, {:invalid_input, "unknown command: #{other}"}}
     end

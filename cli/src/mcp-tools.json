@@ -349,6 +349,81 @@
     }
   },
   {
+    "name": "flambe_resurrect",
+    "description": "Reopen ended work by activity id, preserving its history. Act on any returned direction or reply.",
+    "title": "Resurrect a Flambe Activity",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id",
+        "activity_id"
+      ],
+      "properties": {
+        "force": {
+          "default": false,
+          "type": "boolean",
+          "description": "For end, also close open descendants"
+        },
+        "message": {
+          "type": "string",
+          "description": "Optional outcome or transition note"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Optional event time as Unix milliseconds"
+        },
+        "activity_id": {
+          "type": "integer",
+          "description": "Activity id",
+          "minimum": 1
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        },
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Stable agent id",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_name": {
+          "type": "string",
+          "description": "Agent display name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "platform": {
+          "type": "string",
+          "description": "Agent host product",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "flambe_status",
     "description": "Read the activity stack and per-thread recommended availableActions without changing it.",
     "title": "Read Flambe State",

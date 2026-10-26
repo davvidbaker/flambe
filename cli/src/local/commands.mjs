@@ -1,5 +1,5 @@
 // Local start/end/suspend/resume rules. HTTP is the adapter; SQLite is the source of truth.
-export const COMMANDS = ['start', 'end', 'suspend', 'resume', 'status', 'message', 'plan'];
+export const COMMANDS = ['start', 'end', 'suspend', 'resume', 'resurrect', 'status', 'message', 'plan'];
 const RUNNING = new Set(['B', 'R', 'X']);
 const ENDED = new Set(['E', 'J', 'V']);
 const LIFECYCLE = new Set([...RUNNING, ...ENDED, 'S']);
@@ -70,7 +70,8 @@ export function commandState(trace, filters = {}) {
     const actions = status === 'running' ? [
       { operation: 'start', arguments: { trace_id: trace.id, thread_id: activity.thread.id, parent_id: activity.id } },
       { operation: 'suspend', arguments: args }, end,
-    ] : status === 'suspended' ? [{ operation: 'resume', arguments: args }, end] : [];
+    ] : status === 'suspended' ? [{ operation: 'resume', arguments: args }, end]
+      : status === 'ended' ? [{ operation: 'resurrect', arguments: args }] : [];
     return {
       id: activity.id, name: activity.name, threadId: activity.thread.id,
       threadName: threads.find(t => t.id === activity.thread.id)?.name ?? null,
@@ -262,7 +263,7 @@ export function executeCommand(store, userId, command, attrs, headerAgent = null
       const id = positiveId(attrs.activity_id, 'activity_id');
       const activity = byId.get(id);
       if (!activity) notFound();
-      const phase = command === 'end' ? attrs.phase ?? (attrs.message ? 'V' : 'E') : command === 'resume' ? 'R' : 'S';
+      const phase = command === 'end' ? attrs.phase ?? (attrs.message ? 'V' : 'E') : command === 'resume' ? 'R' : command === 'resurrect' ? 'X' : 'S';
       if (command === 'end' && !ENDED.has(phase)) invalid('end phase must be E, J, or V');
       const descendants = before.activities.filter(a => a.id !== id && RUNNING.has(a.latestEvent.phase)
         && ancestors(a).some(p => p.id === id)).sort((a, b) => b.path.length - a.path.length || b.id - a.id);

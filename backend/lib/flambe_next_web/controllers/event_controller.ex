@@ -152,6 +152,7 @@ defmodule FlambeNextWeb.EventController do
   defp lifecycle_command(phase) when phase in ~w(E J V), do: "end"
   defp lifecycle_command("S"), do: "suspend"
   defp lifecycle_command("R"), do: "resume"
+  defp lifecycle_command("X"), do: "resurrect"
   defp lifecycle_command(_phase), do: nil
 
   defp phase(attrs), do: Map.get(attrs, "phase") || Map.get(attrs, :phase)

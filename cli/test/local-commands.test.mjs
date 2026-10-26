@@ -165,3 +165,25 @@ test('plan stays out of status until asked, and a matching start begins limbo', 
   assert.equal(begun.activity_id, planned.activity_id);
   assert.equal(begun.actions_applied[0].type, 'begin_existing');
 });
+
+
+test('resurrection preserves completed history, activity identity, and closed children', t => {
+  const { store, start, call, traceId } = fixture(t);
+  const root = start('Original work');
+  const child = start('Completed child');
+  call('end', { activity_id: child.activity_id, message: 'Verified' });
+  call('end', { activity_id: root.activity_id, message: 'Verified' });
+  const before = store.getTrace(1, traceId);
+  const ended = call('status').state.activities.find(a => a.id === root.activity_id);
+  assert.equal(ended.availableActions[0].operation, 'resurrect');
+  const reopened = call('resurrect', { activity_id: root.activity_id, message: 'Needs correction' });
+  const activity = reopened.state.activities.find(a => a.id === root.activity_id);
+  assert.equal(activity.status, 'running');
+  assert.equal(activity.latestEvent.phase, 'X');
+  assert.equal(activity.parentId, ended.parentId);
+  assert.equal(activity.threadId, ended.threadId);
+  assert.equal(activity.startedAt, ended.startedAt);
+  assert.equal(reopened.state.activities.find(a => a.id === child.activity_id).status, 'ended');
+  const after = store.getTrace(1, traceId);
+  assert.deepEqual(after.events.slice(0, -1), before.events);
+});

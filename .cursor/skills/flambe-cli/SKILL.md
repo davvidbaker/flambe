@@ -47,6 +47,7 @@ flambe start "Add Windows support" --root     # new top-level workstream
 flambe end "$ID" "Resolved USERPROFILE on Windows"
 flambe suspend "$ID" "Waiting for product decision"   # only when explicitly tabling work
 flambe resume "$ID" "Decision received"
+flambe resurrect 1046 "Reopen work that needs correction" # preserves the ended activity and its history
 flambe observe carbon 312.4 --unit gCO2eq/kWh --on 2026-09-04 --payload '{"source":"us-ba-mean"}'
 flambe message "Auth fix needs the session module refactored too; widening scope"   # ask the Reducer Agent
 ```

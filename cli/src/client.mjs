@@ -566,6 +566,10 @@ export class FlambeClient {
     return this.lifecycleEvent({ activityId, message, phase: 'R', queueType: 'resume' });
   }
 
+  async resurrect({ activityId, message }) {
+    return this.lifecycleEvent({ activityId, message, phase: 'X', queueType: 'resurrect' });
+  }
+
   async lifecycleEvent({ activityId, message, phase, queueType, force = false, guardChildren = false }) {
     if (!String(activityId).startsWith('offline-')) {
       const id = Number(activityId);
@@ -601,8 +605,10 @@ export class FlambeClient {
   }
 
   async postLifecycleEvent({ activityId, message, timestamp, phase, force = false }) {
-    if (await this.supportsAgentCommands()) {
-      const command = { E: 'end', J: 'end', V: 'end', S: 'suspend', R: 'resume' }[phase];
+    const supportsCommands = await this.supportsAgentCommands();
+    // Older servers accept X through the events API but do not advertise resurrect.
+    if (supportsCommands && (phase !== 'X' || this.agentCommandDetails?.commands.includes('resurrect'))) {
+      const command = { E: 'end', J: 'end', V: 'end', S: 'suspend', R: 'resume', X: 'resurrect' }[phase];
       const result = await this.agentCommand(command, {
         ...this.commandIdentity(),
         activity_id: Number(activityId),
@@ -675,6 +681,7 @@ export class FlambeClient {
       }),
       suspend: input => this.postLifecycleEvent({ ...input, phase: 'S' }),
       resume: input => this.postLifecycleEvent({ ...input, phase: 'R' }),
+      resurrect: input => this.postLifecycleEvent({ ...input, phase: 'X' }),
       observe: input => this.postObservation(input),
     });
   }

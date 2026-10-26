@@ -96,7 +96,7 @@ export class FlambeQueue {
     await this.write(state);
   }
 
-  async flush({ start, end, suspend, resume, observe }, { warn = warnToStderr } = {}) {
+  async flush({ start, end, suspend, resume, resurrect, observe }, { warn = warnToStderr } = {}) {
     const state = await this.read();
 
     for (let index = 0; index < state.entries.length;) {
@@ -110,9 +110,9 @@ export class FlambeQueue {
         if (entry.type === 'start') {
           const activityId = await start(entry.input);
           state.aliases[entry.localId] = activityId;
-        } else if (entry.type === 'end' || entry.type === 'suspend' || entry.type === 'resume') {
+        } else if (entry.type === 'end' || entry.type === 'suspend' || entry.type === 'resume' || entry.type === 'resurrect') {
           const activityId = state.aliases[entry.activityId] ?? entry.activityId;
-          const post = { end, suspend, resume }[entry.type];
+          const post = { end, suspend, resume, resurrect }[entry.type];
           await post({
             activityId,
             message: entry.message,

@@ -363,3 +363,16 @@ export const SwyzzleFluid: Story = {
     storeExtras: { settings: { swyzzle: true, swyzzleEffect: 'fluid' } },
   },
 };
+
+
+export const PrecipiceLabels: Story = {
+  args: (() => {
+    const now = Date.now();
+    return {
+      fixture: createAgentContactFixture(now),
+      viewport: { leftBoundaryTime: now - 35 * 60_000, rightBoundaryTime: now + 20 * 60_000 },
+      demoOverlays: false,
+      storeExtras: { settings: { showActivityIds: false, rightAlignTimelineText: true } },
+    };
+  })(),
+};

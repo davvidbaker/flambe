@@ -52,7 +52,7 @@ describe('timeline geometry', () => {
   });
 
   it('anchors a running activity name to the present line when past and future are both on screen', () => {
-    const running = { startTime: 100, endTime: undefined };
+    const running: Pick<TraceBlock, 'startTime' | 'endTime' | 'scheduled'> = { startTime: 100 };
     const anchor = (now: number, block = running, blockX = 50, blockWidth = 450) =>
       rightAlignedActivityLabelX(block, blockX, blockWidth, now, 0, 1000, 1000, 5);
 

@@ -20,7 +20,16 @@ defmodule FlambeNextWeb.AgentCommandControllerTest do
     assert json_response(conn, 200) == %{
              "data" => %{
                "version" => 1,
-               "commands" => ["start", "end", "suspend", "resume", "status", "message", "plan"]
+               "commands" => [
+                 "start",
+                 "end",
+                 "suspend",
+                 "resume",
+                 "resurrect",
+                 "status",
+                 "message",
+                 "plan"
+               ]
              }
            }
   end
