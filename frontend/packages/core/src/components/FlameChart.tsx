@@ -308,6 +308,7 @@ export class FlameChart extends Component<Props, State> {
   contentHeight = 0;
 
   width = 300;
+  frameNow = Date.now();
   leftBoundaryTime = Date.now();
   rightBoundaryTime = Date.now() + 1000;
   dividersData: DividerData = { offsets: [] };
@@ -1335,6 +1336,7 @@ export class FlameChart extends Component<Props, State> {
     topOffset: number = this.requestedTopOffset,
   ): void {
     /* ⚠️ IDK if this is a bad idea, but this is the only place I will ever set these values */
+    this.frameNow = Date.now();
     this.leftBoundaryTime = leftBoundaryTime;
     this.rightBoundaryTime = rightBoundaryTime;
     this.width = width;
@@ -1528,6 +1530,7 @@ export class FlameChart extends Component<Props, State> {
       this.rightBoundaryTime,
       this.width,
       this.state.canvasHeight,
+      this.frameNow,
     );
   }
 
@@ -2258,9 +2261,6 @@ export class FlameChart extends Component<Props, State> {
       : (activity.name || '');
     const { width: textWidth } = this.ctx.measureText(label);
 
-    if (textWidth + FlameChart.textPadding.x > blockWidth) {
-    }
-
     if (collapsed) return;
 
     let textLeft = blockX + FlameChart.textPadding.x;
@@ -2278,11 +2278,13 @@ export class FlameChart extends Component<Props, State> {
         block,
         blockX,
         blockWidth,
-        Date.now(),
+        this.frameNow,
         this.leftBoundaryTime,
         this.rightBoundaryTime,
         this.width,
         FlameChart.textPadding.x,
+        textWidth,
+        textLeft,
       )
       : blockX + blockWidth - FlameChart.textPadding.x;
     const textBudget = textRight - textLeft;

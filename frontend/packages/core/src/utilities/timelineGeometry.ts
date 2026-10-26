@@ -51,7 +51,8 @@ export function insetBlockHeight(rowHeight: number, pad: number): number {
  *
  * Finished and planned blocks keep the name on the block's right edge.
  * A lived block still running ends its name on the present/future line
- * when that line is on screen, so the name sits in the present.
+ * when it fits before that line. Otherwise it flows into the future,
+ * stopping at the visible block edge before truncation.
  */
 export function rightAlignedActivityLabelX(
   block: Pick<TraceBlock, 'startTime' | 'endTime' | 'scheduled'>,
@@ -62,6 +63,8 @@ export function rightAlignedActivityLabelX(
   rightBoundaryTime: number,
   canvasWidth: number,
   padding: number,
+  textWidth = 0,
+  textLeft = blockX + padding,
 ): number {
   const blockRight = blockX + blockWidth - padding;
   const seesPresentAndFuture = now > leftBoundaryTime && now < rightBoundaryTime;
@@ -69,7 +72,8 @@ export function rightAlignedActivityLabelX(
   if (!seesPresentAndFuture || !runningNow || !(canvasWidth > 0)) return blockRight;
 
   const precipice = timeToPixels(now, leftBoundaryTime, rightBoundaryTime, canvasWidth);
-  return Math.min(blockRight, precipice - padding);
+  const visibleRight = Math.min(blockRight, canvasWidth - padding);
+  return Math.min(visibleRight, Math.max(precipice - padding, textLeft + textWidth));
 }
 
 export function getBlockTransform(
@@ -102,8 +106,8 @@ export function drawFutureWindow(
   rightBoundaryTime: number,
   canvasWidth: number,
   canvasHeight: number,
+  now = Date.now(),
 ): void {
-  const now = Date.now();
   if (now >= rightBoundaryTime) return;
 
   const nowPixels = timeToPixels(now, leftBoundaryTime, rightBoundaryTime, canvasWidth);

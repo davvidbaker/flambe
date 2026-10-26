@@ -366,11 +366,24 @@ export const SwyzzleFluid: Story = {
 
 
 export const PrecipiceLabels: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: 'Running labels stay against the present line when they fit. Longer labels flow into the future; only the deliberately oversized name is shortened at the screen edge. Resize or pan to inspect both cases.',
+      },
+    },
+  },
   args: (() => {
     const now = Date.now();
+    const fixture = createAgentContactFixture(now);
+    for (const event of fixture.events) {
+      if (event.activity?.id === 3003) {
+        event.activity.name = 'This deliberately long activity name should continue across the future until it reaches the edge of the screen, and only then be shortened. '.repeat(4);
+      }
+    }
     return {
-      fixture: createAgentContactFixture(now),
-      viewport: { leftBoundaryTime: now - 35 * 60_000, rightBoundaryTime: now + 20 * 60_000 },
+      fixture,
+      viewport: { leftBoundaryTime: now - 35 * 60_000, rightBoundaryTime: now + 150 * 60_000 },
       demoOverlays: false,
       storeExtras: { settings: { showActivityIds: false, rightAlignTimelineText: true } },
     };
