@@ -246,6 +246,9 @@ export function executeCommand(store, userId, command, attrs, headerAgent = null
         result.event_id = created.event.id;
         result.reducer = { ...created.reducer,
           parent_source: parent ? explicitParent ? 'explicit' : 'inferred' : 'root' };
+        if (!parent && agentId && threadId == null && modelReviewAvailable && trace.threads.length > 1) {
+          annotate(result.activity_id, 'initial_thread_selection', { type: 'pending_model_review' });
+        }
         if (result.actions_applied.length) annotate(result.activity_id, 'resume_ancestor',
           result.actions_applied.map(a => a.activity_id));
         if (!parent && agentId && before.activities.some(a => a.agentId === agentId && a.status === 'running')) {

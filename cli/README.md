@@ -75,6 +75,15 @@ In `agent` mode, your current work AI reads the review returned by `flambe messa
 and submits its decision with `flambe decide <review-id> --file <decision.json>`.
 No separate model or inference API key is required.
 
+With AI review enabled, a newly created agent root without an explicit thread
+receives an initial thread-selection review when the trace has multiple threads.
+The review includes thread names and permits `select_thread` for that root.
+In `agent` mode this start returns the full review even when automatic structural
+start reviews are disabled; complete it with `flambe decide` before continuing.
+Children inherit the chosen thread. Explicit `--thread` / `FLAMBE_THREAD` choices,
+existing activities, and completed thread choices are not automatically reassigned.
+With review off, the lowest-ranked thread remains the fallback.
+
 ## Local Codex / Single Burner hooks
 
 With Single Burner running, put its printed connection values in the target

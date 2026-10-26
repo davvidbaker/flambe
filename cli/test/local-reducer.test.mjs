@@ -39,6 +39,24 @@ test('off is the default even with ambient provider credentials; invalid opt-ins
   }
 });
 
+test('provider chooses an unspecified root lane at start and subsequent children inherit it', async t => {
+  let calls = 0;
+  let lane;
+  const f = fixture(t, async ({ context }) => {
+    calls++;
+    assert.equal(context.thread_selection, true);
+    return decision([{ type: 'select_thread', activity_id: context.current, thread_id: lane.id }]);
+  });
+  lane = f.store.createThread(1, f.traceId, { name: 'Engineering' });
+  await f.call('end', { activity_id: f.root });
+  const root = await f.call('start', { name: 'Engineering work', parent_id: null });
+  assert.equal(root.model_review.status, 'completed');
+  assert.equal(f.store.getActivity(1, root.activity_id).thread_id, lane.id);
+  const child = await f.call('start', { name: 'Engineering follow-up', parent_id: root.activity_id });
+  assert.equal(f.store.getActivity(1, child.activity_id).thread_id, lane.id);
+  assert.equal(calls, 1);
+});
+
 test('local mode requires loopback and ignores API keys; API mode requires explicit HTTPS credentials', () => {
   const local = { FLAMBE_LOCAL_REDUCER_MODE: 'local', FLAMBE_LOCAL_REDUCER_MODEL: 'installed-model' };
   const api = { FLAMBE_LOCAL_REDUCER_MODE: 'api', FLAMBE_LOCAL_REDUCER_MODEL: 'chosen', FLAMBE_LOCAL_REDUCER_API_KEY: 'secret' };
