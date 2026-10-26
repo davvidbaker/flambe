@@ -46,6 +46,53 @@ test('agent mode needs no model or key and returns context, policy, and schema w
   assert.equal(f.store.db.prepare("SELECT COUNT(*) AS n FROM events WHERE phase='reducer_decision'").get().n, 0);
 });
 
+test('an unspecified root chooses a thread once, survives stale reviews, and children inherit it', async t => {
+  const f = fixture(t);
+  const lane = f.store.createThread(1, f.traceId, { name: 'Engineering' });
+  const started = await f.call('start', { name: 'Fix the engineering build', parent_id: null });
+  assert.equal(started.model_review.status, 'awaiting_decision');
+  assert.equal(started.review.context.thread_selection, true);
+  assert.ok(started.review.context.threads.some(t => t.id === lane.id && t.name === 'Engineering'));
+  const action = { type: 'select_thread', activity_id: started.activity_id, thread_id: lane.id };
+  f.store.updateActivity(1, started.activity_id, { description: 'More context' });
+  await assert.rejects(f.submit(started, decision([action])), code('REDUCER_STATE_CHANGED'));
+  const earlyChild = await f.call('start', { name: 'Engineering prerequisite', parent_id: started.activity_id });
+  const fresh = await f.review({ activity_id: started.activity_id });
+  assert.equal(fresh.review.context.thread_selection, true);
+  await f.submit(fresh, decision([action]));
+  assert.equal(f.store.getActivity(1, started.activity_id).thread_id, lane.id);
+  assert.equal(f.store.getActivity(1, earlyChild.activity_id).thread_id, lane.id);
+  f.reopen();
+  const later = await f.review({ activity_id: started.activity_id });
+  assert.equal(later.review.context.thread_selection, false);
+  await assert.rejects(f.submit(later, decision([action])), code('REDUCER_INVALID_DECISION'));
+  const child = await f.call('start', { name: 'Fix the engineering tests', parent_id: started.activity_id });
+  assert.equal(child.review, undefined);
+  assert.equal(f.store.getActivity(1, child.activity_id).thread_id, lane.id);
+});
+
+test('thread selection protects explicit lanes, existing work, other traces, and advice-only reviews', async t => {
+  const f = fixture(t);
+  const lane = f.store.createThread(1, f.traceId, { name: 'Engineering' });
+  const explicit = await f.call('start', { name: 'Explicit lane', parent_id: null, thread_id: lane.id });
+  assert.equal(explicit.review, undefined);
+  const existing = await f.review();
+  assert.equal(existing.review.context.thread_selection, false);
+  const started = await f.call('start', { name: 'Choose a lane', parent_id: null });
+  const foreign = f.store.createTrace(1, 'Other trace');
+  const foreignLane = f.store.getTrace(1, foreign.id).threads[0];
+  const fresh = await f.review({ activity_id: started.activity_id });
+  await assert.rejects(f.submit(fresh, decision([{ type: 'select_thread', activity_id: started.activity_id,
+    thread_id: foreignLane.id }])), code('REDUCER_INVALID_DECISION'));
+  const advice = await f.review({ activity_id: started.activity_id, allow_stack_changes: false });
+  await f.submit(advice, decision([{ type: 'select_thread', activity_id: started.activity_id, thread_id: lane.id }]));
+  assert.notEqual(f.store.getActivity(1, started.activity_id).thread_id, lane.id);
+  const keep = await f.review({ activity_id: started.activity_id });
+  assert.equal(keep.review.context.thread_selection, true);
+  await f.submit(keep, decision([{ type: 'no_op' }]));
+  assert.equal((await f.review({ activity_id: started.activity_id })).review.context.thread_selection, false);
+});
+
 test('opted-in flagged lifecycle proposals stay recorded while awaiting the work AI', async t => {
   const f = fixture(t, { reviewStarts: true });
   const result = await f.call('start', { name: 'Check a structural issue', parent_id: null });

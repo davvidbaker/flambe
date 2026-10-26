@@ -317,6 +317,7 @@ function formatAction(action) {
   if (action.type === 'create_child') return `created child ${action.activity_id} under ${action.parent_activity_id}`;
   if (action.type === 'update_activity') return `updated activity ${action.activity_id}`;
   if (action.type === 'reparent') return `reparented ${action.activity_id} under ${action.parent_activity_id}`;
+  if (action.type === 'select_thread') return `placed ${action.activity_id} on thread ${action.thread_id}`;
   if (action.type === 'rename') return `renamed ${action.activity_id} to ${action.name}`;
   if (action.type === 'ask') return `asked about ${action.activity_id}`;
   if (action.type === 'resume_existing') return `resumed existing ${action.activity_id}`;

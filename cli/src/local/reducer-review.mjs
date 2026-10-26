@@ -10,6 +10,7 @@ const actionSchema = { anyOf: [
   object({ type: { type: 'string', enum: ['create_child'] }, parent_activity_id: { type: 'integer' }, name: { type: 'string' }, description: nullableText }),
   object({ type: { type: 'string', enum: ['update_activity'] }, activity_id: { type: 'integer' }, name: nullableText, description: nullableText }),
   object({ type: { type: 'string', enum: ['reparent'] }, activity_id: { type: 'integer' }, parent_activity_id: { type: 'integer' } }),
+  object({ type: { type: 'string', enum: ['select_thread'] }, activity_id: { type: 'integer' }, thread_id: { type: 'integer' } }),
   object({ type: { type: 'string', enum: ['ask'] }, activity_id: { type: 'integer' }, question: { type: 'string' } }),
 ] };
 export const schema = object({ assessment: { type: 'string', enum: assessments },
@@ -24,11 +25,17 @@ For advice_only, return no actions. For message review, actions may be no_op,
 create_child (an unstarted child), or update_activity (name/description only).
 For structural review, act only on current: no_op, update_activity, reparent, or ask
 (with activity_id and question). Use ask for a clarification that the worker must answer.
+The initial thread-selection permission below is an additional allowed action.
 A poor child name alone is not evidence of wrong placement: ask for clarification or
 rename. Reparent only on structural evidence. A new root can legitimately stay a root.
 Never modify global intent; escalate to the user if it appears wrong. Never create
 bookkeeping activities for routine progress, commits, or pushes. Do not end or delete work.
-Keep replies concise. If no guidance is needed, direction and reply may be null.`;
+Keep replies concise. If no guidance is needed, direction and reply may be null.
+When thread_selection is true, choose the best existing thread for the current
+root from threads using its name, description, and the user's intent. Use select_thread
+with the current activity_id and an existing thread_id, or no_op to keep its lane.
+This is a one-time start-of-work choice. Explicit thread choices and inherited lanes
+are authoritative; never reclassify them during routine work.`;
 export const fail = (code, message, status = 422) => new CommandError(status, code, message);
 const invalid = () => fail('REDUCER_INVALID_DECISION', 'The model returned an invalid or disallowed reducer decision.');
 const text = (v, max, nullable = false) => (nullable && v === null) || (typeof v === 'string' && v.length <= max);
@@ -40,6 +47,11 @@ export function view(store, userId, trace, id, kind, message, agentId, adviceOnl
   const state = commandState(trace);
   const current = state.activities.find(a => a.id === id);
   if (!current) throw fail('NOT_FOUND', 'The requested activity was not found.', 404);
+  const pendingSelection = store.db.prepare(`SELECT
+    EXISTS(SELECT 1 FROM events WHERE activity_id = ? AND phase = 'reducer_decision'
+      AND message LIKE 'rule=initial_thread_selection |%') AS requested,
+    EXISTS(SELECT 1 FROM events WHERE activity_id = ? AND phase = 'reducer_thread_selected') AS completed
+  `).get(id, id);
   const path = new Set([id]);
   let parentId = current.parentId;
   while (parentId != null && !path.has(parentId)) {
@@ -68,6 +80,9 @@ export function view(store, userId, trace, id, kind, message, agentId, adviceOnl
   const context = { instance: store.instance(), trace: state.trace, current: id,
     kind, message, agent_id: agentId ?? null, advice_only: adviceOnly,
     reparent_candidates: candidates, stack,
+    threads: state.threads.map(({ id, name }) => ({ id, name })),
+    thread_selection: Boolean(pendingSelection.requested && !pendingSelection.completed
+      && current.parentId === null && current.status === 'running' && current.agentId === agentId),
     context_scope: compact ? 'current_path_and_own_open_work' : 'open_work_and_recent_history' };
   if (Buffer.byteLength(JSON.stringify(context)) > 65_536) {
     throw fail('REDUCER_CONTEXT_TOO_LARGE', 'The activity context exceeds the local reducer limit; no model request was sent.', 413);
@@ -85,6 +100,9 @@ export function validate(decision, context) {
   for (const a of decision.actions) {
     if (!a || typeof a !== 'object' || Array.isArray(a)) throw invalid();
     if (a.type === 'no_op' && exactKeys(a, ['type'])) continue;
+    if (a.type === 'select_thread' && exactKeys(a, ['type', 'activity_id', 'thread_id'])
+      && context.thread_selection && a.activity_id === context.current
+      && Number.isSafeInteger(a.thread_id) && context.threads.some(t => t.id === a.thread_id)) continue;
     if (a.type === 'ask' && exactKeys(a, ['type', 'activity_id', 'question'])
       && (context.kind !== 'message' || context.reviewer_mode === 'agent') && a.activity_id === context.current
       && text(a.question, 4000) && a.question.trim()) continue;
@@ -121,6 +139,17 @@ export function validate(decision, context) {
 function apply(store, userId, traceId, action) {
   if (action.type === 'no_op') return { type: 'no_op' };
   if (action.type === 'ask') return { ...action };
+  if (action.type === 'select_thread') {
+    const thread = store.getTrace(userId, traceId)?.threads.find(t => t.id === action.thread_id);
+    const activity = store.getActivity(userId, action.activity_id);
+    if (!thread || !activity || activity.parent_id !== null) throw invalid();
+    store.db.prepare(`WITH RECURSIVE subtree(id) AS (
+      SELECT id FROM activities WHERE id = ? UNION
+      SELECT a.id FROM activities a JOIN subtree s ON a.parent_id = s.id
+    ) UPDATE activities SET thread_id = ? WHERE id IN (SELECT id FROM subtree)`)
+      .run(action.activity_id, action.thread_id);
+    return { ...action };
+  }
   if (action.type === 'update_activity') {
     store.updateActivity(userId, action.activity_id, {
       ...(action.name !== null ? { name: action.name.trim() } : {}),
@@ -170,6 +199,11 @@ export function applyReviewedDecision(store, { userId, traceId, activityId, cont
     message: context.message, timestamp_integer: now } });
   store.createEvent(userId, { traceId, activityId, event: { phase: 'reducer_decision',
     message: JSON.stringify({ ...reviewer, ...decision, reply, actions_applied: applied }), timestamp_integer: now + 1 } });
+  if (context.thread_selection && !context.advice_only
+    && actions.some(a => ['select_thread', 'no_op'].includes(a.type))) {
+    store.createEvent(userId, { traceId, activityId, event: { phase: 'reducer_thread_selected',
+      message: 'Initial thread choice completed', timestamp_integer: now + 2 } });
+  }
   return { activity_id: activityId, rules_fired: [], closed_descendants: [], ...result,
     assessment: decision.assessment, direction: decision.direction, reply, rationale: decision.rationale,
     actions_applied: [...(result.actions_applied ?? []), ...applied],

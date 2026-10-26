@@ -103,6 +103,14 @@ function* refreshOpenTrace(): SagaIterator {
 }
 
 function* initSocket(): SagaIterator {
+  // Single Burner serves REST only; it has no Phoenix socket endpoint.
+  if (import.meta.env.MODE === 'single-burner') {
+    while (true) {
+      yield delay(TRACE_REFRESH_FALLBACK_MS);
+      yield* refreshOpenTrace();
+    }
+  }
+
   const user_id = (yield select(getUser)).id;
 
   // eslint-disable-next-line no-undef

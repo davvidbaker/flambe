@@ -26,9 +26,9 @@ export function createLocalCommandRunner(store, options = {}) {
     catch (error) {
       if (!enabled || command !== 'message' || error.body?.error?.code !== 'REDUCER_NOT_CONFIGURED') throw error;
     }
-    const rule = result?.rules_fired.find(r => ['new_root_while_open', 'name_unfit'].includes(r.rule));
+    const rule = result?.rules_fired.find(r => ['initial_thread_selection', 'new_root_while_open', 'name_unfit'].includes(r.rule));
     if (command !== 'message' && (!enabled || !rule)) return result;
-    if (workAI && command !== 'message' && !provider.reviewStarts) {
+    if (workAI && command !== 'message' && !provider.reviewStarts && rule.rule !== 'initial_thread_selection') {
       return { ...result, model_review: { mode: 'agent', status: 'available' },
         review_available: { activity_id: result.activity_id, reason: rule.rule,
           message: 'Tracking was recorded. Request flambe_message or flambe message for this activity when judgment is needed.' } };
