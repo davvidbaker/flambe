@@ -16,7 +16,7 @@ Usage:
 Runs a self-contained local Flambé on loopback with SQLite and the bundled UI.
 
 Options:
-  --port <n>   Port to listen on (default: 4001)
+  --port <n>   Port to listen on (default: 4123)
   --db <path>  SQLite database path (default: ~/.flambe/local.sqlite)
   --help       Show this help
 `;
@@ -44,7 +44,7 @@ function parseArgs(args) {
   ({ value: dbPath, rest } = takeOption(rest, '--db'));
   if (rest.length > 0) throw new Error(`Unknown option: ${rest[0]}`);
 
-  const parsedPort = port === undefined ? 4001 : Number(port);
+  const parsedPort = port === undefined ? 4123 : Number(port);
   if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
     throw new Error('--port must be an integer from 1 to 65535');
   }
