@@ -241,9 +241,6 @@ export class FlameChart extends Component<Props, State> {
   /** Extra inset per nesting depth so delegated lanes tuck under parents. */
   static actorLaneDepthInset = 6;
 
-  /** Vertical inset for nested lane chrome so it doesn't sit flush on the parent row. */
-  static actorLaneNestedPad = 2;
-
   /** Vertical inset of an agent bar from its row edge; the wash gap between bands is ~1 + 2× this. */
   static actorLaneVerticalMargin = 2;
 
@@ -1668,25 +1665,22 @@ export class FlameChart extends Component<Props, State> {
     return this.displayRowForActivity(block.activity_id);
   }
 
-  nestedPadForActivity(activityId: EntityId): number {
+  verticalPadForActivity(activityId: EntityId): number {
     const layout = this.actorLaneLayout;
     if (!layout) return 0;
     const rootId = layout.rootIdByActivity[String(activityId)];
     if (rootId === null || rootId === undefined) return 0; // human work fills its row
     const lane = layout.lanes.find(entry => String(entry.rootActivityId) === String(rootId));
     if (lane === undefined) return 0;
-    // Inset agent bars from the row edge (keeps interior bars tight) plus the
-    // nested inset for delegated lanes. The wash pad is added around the band,
-    // not per bar, so stacked bars in one band stay close together.
-    return FlameChart.actorLaneVerticalMargin
-      + (lane.depth > 0 ? FlameChart.actorLaneNestedPad : 0);
+    // Delegation changes horizontal indentation, not bar height or row spacing.
+    return FlameChart.actorLaneVerticalMargin;
   }
 
   getRenderedBlockTransform(block: TraceBlock, activity: ProcessedActivity) {
     const collapsed = activity.thread_id !== undefined
       && this.threadCollapsed(activity.thread_id);
     const row = this.displayRowForBlock(block);
-    const pad = collapsed ? 0 : this.nestedPadForActivity(activity.id);
+    const pad = collapsed ? 0 : this.verticalPadForActivity(activity.id);
     const { blockX, blockY, blockWidth } = this.getBlockTransform(
       block.startTime,
       block.endTime,
@@ -1807,7 +1801,6 @@ export class FlameChart extends Component<Props, State> {
         ? (this.offsets[threadIds[threadIndex + 1]!] ?? this.state.canvasHeight)
         : this.state.canvasHeight;
       const rowHeight = this.blockHeight + 1;
-      const nestedPad = chrome.depth > 0 ? FlameChart.actorLaneNestedPad : 0;
       const margin = FlameChart.actorLaneVerticalMargin;
       const accent = actorAccentColor(chrome.actorKey);
       const muteOpacity = this.actorChromeOpacity(chrome.rootActivityIds);
@@ -1834,7 +1827,7 @@ export class FlameChart extends Component<Props, State> {
         // The wash wraps the band's bars with a small outward pad (actorLaneWashPad)
         // at the top of the first row's bar and the bottom of the last row's bar.
         // Interior bars stay tightly packed because the pad is only at the edges.
-        const barInset = margin + nestedPad;
+        const barInset = margin;
         const pad = FlameChart.actorLaneWashPad;
         const base = threadOffset + FlameChart.threadHeaderHeight;
         const top = base + rowStart * rowHeight + barInset - pad;
