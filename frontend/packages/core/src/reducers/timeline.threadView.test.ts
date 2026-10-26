@@ -46,4 +46,11 @@ describe('thread hide and reorder', () => {
     const next = timeline(stateWithThreads(threads, [2]), setHiddenThreads([]));
     expect(next.trace?.filterExcludes).toEqual([]);
   });
+
+  it('allows deselecting all threads and selecting them all again', () => {
+    const hidden = timeline(stateWithThreads(threads), setHiddenThreads([1, 2]));
+    expect(hidden.trace?.filterExcludes).toEqual([1, 2]);
+    const visible = timeline(hidden, setHiddenThreads([]));
+    expect(visible.trace?.filterExcludes).toEqual([]);
+  });
 });

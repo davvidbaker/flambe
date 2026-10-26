@@ -72,10 +72,11 @@ function nextHiddenThreadIds(
   requested: unknown,
   threads: Record<string, Thread>,
   current: EntityId[],
+  allowEmpty = false,
 ): EntityId[] {
   const known = new Set(knownThreadIds(threads).map(String));
   const next = numericIds(requested).filter(id => known.has(String(id)));
-  if (known.size > 0 && next.length >= known.size) return current;
+  if (!allowEmpty && known.size > 0 && next.length >= known.size) return current;
   return next;
 }
 
@@ -315,6 +316,7 @@ function timeline(state: TimelineState = initialState, action: TimelineAction): 
             action.filterExcludes,
             state.threads,
             state.trace?.filterExcludes ?? [],
+            true,
           ),
         },
       };
