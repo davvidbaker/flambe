@@ -139,7 +139,7 @@ const Header = ({
       title="Command palette"
       aria-label="Command palette"
     >
-      {formatShortcut(['Mod', 'Shift', 'P'], true)}
+      {formatShortcut(['Mod', 'Shift', 'P'])}
     </button>
     <button type="button" onClick={logout}>Log out</button>
   </StyledHeader>
