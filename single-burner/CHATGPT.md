@@ -4,7 +4,7 @@ Local Codex connects directly and needs no tunnel. See [local Codex setup](READM
 
 This guide is for hosted ChatGPT. Starting Single Burner does not set up a tunnel
 or connect ChatGPT. Keep the server running throughout setup. The examples use
-`http://127.0.0.1:4001`; replace that address throughout if your server prints a
+`http://127.0.0.1:4123`; replace that address throughout if your server prints a
 different port.
 
 1. Keep this server running. In your browser, open:
@@ -61,7 +61,7 @@ different port.
        --control-plane.organization-id "$CONTROL_PLANE_ORGANIZATION_ID" \
        --control-plane.tunnel-id "$CONTROL_PLANE_TUNNEL_ID" \
        --control-plane.api-key env:CONTROL_PLANE_API_KEY \
-       --mcp.server-url http://127.0.0.1:4001/mcp \
+       --mcp.server-url http://127.0.0.1:4123/mcp \
        --mcp.extra-headers 'Authorization: env:FLAMBE_LOCAL_AUTH' \
        --mcp.discovery-extra-headers 'Authorization: env:FLAMBE_LOCAL_AUTH' \
        --health.listen-addr 127.0.0.1:8787
