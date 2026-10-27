@@ -49,7 +49,7 @@ export function insetBlockHeight(rowHeight: number, pad: number): number {
 /**
  * X for a right-aligned activity name.
  *
- * Finished and planned blocks keep the name on the block's right edge.
+ * Finished and planned blocks keep the name on the visible block's right edge.
  * A lived block still running ends its name on the present/future line
  * when it fits before that line. Otherwise it flows into the future,
  * stopping at the visible block edge before truncation.
@@ -69,10 +69,11 @@ export function rightAlignedActivityLabelX(
   const blockRight = blockX + blockWidth - padding;
   const seesPresentAndFuture = now > leftBoundaryTime && now < rightBoundaryTime;
   const runningNow = !block.scheduled && block.endTime == null && block.startTime < now;
-  if (!seesPresentAndFuture || !runningNow || !(canvasWidth > 0)) return blockRight;
+  if (!(canvasWidth > 0)) return blockRight;
+  const visibleRight = Math.min(blockRight, canvasWidth - padding);
+  if (!seesPresentAndFuture || !runningNow) return visibleRight;
 
   const precipice = timeToPixels(now, leftBoundaryTime, rightBoundaryTime, canvasWidth);
-  const visibleRight = Math.min(blockRight, canvasWidth - padding);
   return Math.min(visibleRight, Math.max(precipice - padding, textLeft + textWidth));
 }
 
