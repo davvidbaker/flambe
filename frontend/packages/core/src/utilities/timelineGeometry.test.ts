@@ -65,6 +65,16 @@ describe('timeline geometry', () => {
     expect(anchor(400, running, 100, 50)).toBe(145);
   });
 
+  it('keeps completed labels at the visible edge when their bars end off screen', () => {
+    const finished = { startTime: 100, endTime: 1500 };
+    for (const now of [400, 1200, -20]) {
+      expect(rightAlignedActivityLabelX(finished, 100, 1400, now, 0, 1000, 1000, 5, 300)).toBe(995);
+    }
+    // Panning the bar back into view restores its actual right edge.
+    expect(rightAlignedActivityLabelX(finished, 100, 600, 400, 0, 2000, 1000, 5, 300)).toBe(695);
+    expect(rightAlignedActivityLabelX({ ...finished, scheduled: true }, 100, 1400, 400, 0, 1000, 1000, 5)).toBe(995);
+  });
+
   it('flows running labels into the future before truncating at the screen edge', () => {
     const running = { startTime: 100 };
     const anchor = (textWidth: number, textLeft = 105, blockWidth = 900) =>
