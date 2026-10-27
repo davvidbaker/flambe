@@ -13,6 +13,8 @@ import type { AppChartFixture } from './fixtureTrace';
 
 export type ChartHarnessProps = {
   fixture: AppChartFixture;
+  /** Omit for the app layout, or compose TimelineFlameChart / TimelineTimeSeries. */
+  children?: ReactNode;
   className?: string;
   style?: CSSProperties;
   /** CSS height of the chart shell. Storybook fullscreen uses the default `100vh`. */
@@ -28,6 +30,7 @@ export type ChartHarnessProps = {
 
 export function ChartHarness({
   fixture,
+  children,
   className,
   style,
   height = '100vh',
@@ -85,7 +88,7 @@ export function ChartHarness({
               addCommand={() => undefined}
               submitCommand={() => undefined}
               trace_id={fixture.traceId}
-            />
+            >{children}</ConnectedTimeline>
           </div>
         </div>
       </Provider>

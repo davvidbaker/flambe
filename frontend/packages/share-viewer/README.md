@@ -1,6 +1,6 @@
 # Flambe share viewer
 
-Static client that renders a frozen timeline snapshot with `ChartHarness`. Deploy **once** from the `frontend` directory (ChartHarness lives in `packages/core`, so the Vercel root cannot be this package alone).
+Static client that renders a frozen timeline snapshot with `ChartHarness` and `TimelineFlameChart`. The homepage and saved shares render only the flamechart; timeseries and limbo panes are omitted. Deploy **once** from the `frontend` directory (ChartHarness lives in `packages/core`, so the Vercel root cannot be this package alone).
 
 Phoenix uploads snapshot JSON to Vercel Blob; this app loads `/s/:id` from `VITE_SNAPSHOT_BASE_URL`.
 

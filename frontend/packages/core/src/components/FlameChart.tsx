@@ -1239,6 +1239,7 @@ export class FlameChart extends Component<Props, State> {
         >
           {({ measureRef }) => (
             <canvas
+              role="img" aria-label="Flambe flamechart"
               ref={canvas => {
                 measureRef(canvas);
                 if (canvas) this.canvas = canvas;

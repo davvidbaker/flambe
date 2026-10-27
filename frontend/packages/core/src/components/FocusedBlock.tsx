@@ -8,6 +8,8 @@ import type { TimelineState } from '../reducers/timeline';
 import type { FlameChartHandle } from '../types/FlameChartHandle';
 
 interface OwnProps {
+  /** Changes when canvas geometry moves without a Redux update. */
+  geometryRevision?: number;
   flameChartRef: React.RefObject<FlameChartHandle | null>;
   yOffset: number;
 }
@@ -54,6 +56,7 @@ class FocusedBlock extends React.Component<Props> {
         {hoveredBlock &&
           hoveredBlock.blockWidth > 0 && (
             <HoverBlock
+              data-flamechart-hover="true"
               key="hover"
               style={{
                 left: `${hoveredBlock.blockX}px`,
@@ -66,6 +69,7 @@ class FocusedBlock extends React.Component<Props> {
         {focusedBlock &&
           focusedBlock.blockWidth > 0 && (
             <FocusBlock
+              data-flamechart-focus="true"
               key="focus"
               style={{
                 left: `${focusedBlock.blockX}px`,

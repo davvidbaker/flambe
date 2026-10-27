@@ -1,6 +1,6 @@
 {
   "name": "@davvidbaker/flame-chart",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Standalone React flame chart, plus Flambe's production chart embed (ChartHarness).",
   "type": "module",
   "main": "./dist/index.js",

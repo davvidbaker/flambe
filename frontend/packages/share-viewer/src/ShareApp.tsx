@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ChartHarness,
+  TimelineFlameChart,
   isTimelineSnapshot,
   type TimelineSnapshot,
 } from '../../core/src/chart';
@@ -96,6 +97,8 @@ export function ShareApp() {
       height="100%"
       timeLabels={snapshot.timeLabels}
       viewport={snapshot.viewport}
-    />
+    >
+      <TimelineFlameChart />
+    </ChartHarness>
   );
 }

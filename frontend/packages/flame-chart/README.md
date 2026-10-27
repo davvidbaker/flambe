@@ -89,3 +89,37 @@ export function AgentWork() {
 ## Publish
 
 This package is public on npm as `@davvidbaker/flame-chart`. CI publishes from `frontend/packages/flame-chart` via trusted publishing when `package.json` on `main` changes. Local `npm publish` needs npm access to `@davvidbaker`.
+
+## Compose production chart panes
+
+`ChartHarness` supplies the trace, settings, and shared viewport. With no children it
+renders the app layout. Provide children to choose your own panes and layout:
+
+```tsx
+import {
+  ChartHarness,
+  TimelineFlameChart,
+  TimelineTimeSeries,
+} from '@davvidbaker/flame-chart/flambe';
+
+// A flamechart without timeseries or limbo panes.
+<ChartHarness fixture={fixture} height={400} demoOverlays={false}>
+  <TimelineFlameChart />
+</ChartHarness>
+
+// Both panes share pan/zoom, even when their containers have different widths.
+<ChartHarness fixture={fixture} height={600}>
+  <div style={{ display: 'grid', gridTemplateRows: '120px 1fr', height: '100%' }}>
+    <TimelineTimeSeries />
+    <TimelineFlameChart />
+  </div>
+</ChartHarness>
+```
+
+Panes fill their parent; give each parent a height. Each accepts `className` and
+`style`. Use one flamechart per harness, with zero or more timeseries panes.
+Selection, tooltips, and activity details belong to the flamechart pane. Removing
+or remounting a timeseries does not reset the flamechart viewport. Each pane maps
+the same visible time range across its own width; equal widths align timestamps
+vertically. Navigation remains in the existing imperative animation path rather
+than routing every frame through the Redux store.

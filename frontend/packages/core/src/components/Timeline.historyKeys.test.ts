@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import Timeline from './Timeline';
+import Timeline from './TimelineController';
 import { App } from '../pages/Trace';
 
 beforeEach(() => {

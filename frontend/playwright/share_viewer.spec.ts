@@ -79,7 +79,7 @@ test('homepage shows example JSON beside a live chart', async ({ page }) => {
   await expect(editor).toContainText('Are these co-gens or paper mills?');
   expect(Date.now() - parsed.exportedAt).toBeLessThan(5 * 60 * 1000);
   await expect(page.getByText('Nothing leaves this browser', { exact: false })).toBeVisible();
-  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Flambe flamechart', exact: true })).toBeVisible();
   await expect(page).toHaveTitle(/Share playground/);
   expect(pageErrors).toEqual([]);
 });
@@ -95,14 +95,14 @@ test('JSON edits render live and survive refresh', async ({ page }) => {
   await page.reload();
   await expect(page.getByLabel('Timeline snapshot JSON')).toContainText('Live edited trace');
   await expect(page).toHaveTitle(/Live edited trace/);
-  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Flambe flamechart', exact: true })).toBeVisible();
 });
 
 test('invalid JSON keeps the last good chart', async ({ page }) => {
   await openCleanPlayground(page);
   await page.getByLabel('Timeline snapshot JSON').fill('{');
-  await expect(page.getByText('That file is not valid JSON.')).toBeVisible();
-  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'That file is not valid JSON.' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Flambe flamechart', exact: true })).toBeVisible();
 });
 
 test('dropping a file replaces the editor snapshot', async ({ page }) => {
@@ -116,5 +116,22 @@ test('dropping a file replaces the editor snapshot', async ({ page }) => {
 
   await expect(page.getByLabel('Timeline snapshot JSON')).toContainText('Dropped locally');
   await expect(page).toHaveTitle(/Dropped locally/);
-  await expect(page.locator('#chart-wrapper canvas')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Flambe flamechart', exact: true })).toBeVisible();
+});
+
+
+test('share playground composes only the flamechart pane', async ({ page }) => {
+  await openCleanPlayground(page);
+  await expect(page.getByRole('img', { name: 'Flambe flamechart', exact: true })).toBeVisible();
+  await expect(page.locator('[data-timeline-pane="timeseries"]')).toHaveCount(0);
+  await expect(page.getByRole('separator')).toHaveCount(0);
+});
+
+
+test('saved shares compose only the flamechart pane', async ({ page }) => {
+  await page.route('**/composition.json', route => route.fulfill({ json: snapshot }));
+  await page.goto('/s/composition');
+  await expect(page.getByRole('img', { name: 'Flambe flamechart', exact: true })).toBeVisible();
+  await expect(page.locator('[data-timeline-pane="timeseries"]')).toHaveCount(0);
+  await expect(page.getByRole('separator')).toHaveCount(0);
 });

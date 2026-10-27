@@ -2,6 +2,9 @@
 
 export {
   ChartHarness,
+  TimelineFlameChart,
+  TimelineTimeSeries,
+  type TimelinePaneProps,
   createAppChartFixture,
   createFrontiersFixture,
   isTimelineSnapshot,
