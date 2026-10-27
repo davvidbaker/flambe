@@ -25,3 +25,13 @@ export const Animated: Story = {
     isAnimated: true,
   },
 };
+
+export const Sizes: Story = {
+  render: () => (
+    <div style={{ padding: 32 }}>
+      {[40, 80, 120].map(size => (
+        <Logo key={size} size={size} />
+      ))}
+    </div>
+  ),
+};

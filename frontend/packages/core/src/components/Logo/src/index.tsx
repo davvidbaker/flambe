@@ -22,15 +22,10 @@ const H1 = styled.h1<{ $isAnimated?: boolean; $size: number }>`
     position: absolute;
     right: 0;
     transform-origin: top right;
-    transform: translate(27%, 23%) scale(0.5);
+    transform: translate(29%, 37%) scale(0.5) rotate(30deg);
     z-index: -2;
-  ${props =>
-    (!props.$isAnimated
-      ? `
-  }`
-      : `
     filter: hue-rotate(0);
-    animation: rotateHue 1s infinite alternate;
+    animation: ${props => props.$isAnimated ? 'rotateHue 1s infinite alternate' : 'none'};
   }
 
   &:hover {
@@ -51,7 +46,6 @@ const H1 = styled.h1<{ $isAnimated?: boolean; $size: number }>`
       filter: hue-rotate(-180deg);
     }
   }
-  `)}
 `;
 
 const Logo = ({ size, isAnimated }: { size?: number; isAnimated?: boolean }) => (
