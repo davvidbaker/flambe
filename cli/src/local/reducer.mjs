@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { commandOutcome, commandRequest } from './diagnostics.mjs';
 import { CommandError, commandState, executeCommand } from './commands.mjs';
 import { createReducerProvider, reducerConfig } from './reducer-provider.mjs';
 import { applyReviewedDecision, fail, fingerprint, schema, system, view } from './reducer-review.mjs';
@@ -8,7 +10,7 @@ export function createLocalCommandRunner(store, options = {}) {
   const provider = options.provider ?? createReducerProvider(reducerConfig(options.env), options);
   const enabled = provider.mode !== 'off';
   const workAI = provider.mode === 'agent' ? createWorkAIReviewer(store) : null;
-  const dispatch = async (userId, command, attrs, agent = null) => {
+  const dispatch = async (userId, command, attrs, agent = null, recorded = () => {}) => {
     if (enabled && attrs?.allow_stack_changes !== undefined && typeof attrs.allow_stack_changes !== 'boolean') {
       throw fail('INVALID_INPUT', 'allow_stack_changes must be boolean.');
     }
@@ -26,6 +28,7 @@ export function createLocalCommandRunner(store, options = {}) {
     catch (error) {
       if (!enabled || command !== 'message' || error.body?.error?.code !== 'REDUCER_NOT_CONFIGURED') throw error;
     }
+    if (result) recorded(result);
     const rule = result?.rules_fired.find(r => ['initial_thread_selection', 'new_root_while_open', 'name_unfit'].includes(r.rule));
     if (command !== 'message' && (!enabled || !rule)) return result;
     if (workAI && command !== 'message' && !provider.reviewStarts && rule.rule !== 'initial_thread_selection') {
@@ -65,9 +68,28 @@ export function createLocalCommandRunner(store, options = {}) {
     }
   };
   const run = async (userId, command, attrs, agent = null) => {
-    const response = await dispatch(userId, command, attrs, agent);
-    return workAI && command !== 'status'
-      ? compactWorkAIResult(response, agent?.agent_id ?? attrs?.agent_id) : response;
+    const requestId = randomUUID();
+    const request = commandRequest(command, attrs, agent);
+    const log = (event, fields = {}) => {
+      try { options.diagnostic?.(event, { request_id: requestId, ...request, reducer_mode: provider.mode, ...fields }); }
+      catch { /* Observability must not affect tracking. */ }
+    };
+    const outcome = (event, response, extra = {}) => {
+      try {
+        if (options.diagnostic) log(event, { ...commandOutcome(store, userId, request, response), ...extra });
+      } catch { /* Reading diagnostic metadata must not fail an already committed command. */ }
+    };
+    log('command.received');
+    const started = Date.now();
+    try {
+      const response = await dispatch(userId, command, attrs, agent, result => outcome('command.recorded', result));
+      outcome('command.completed', response, { duration_ms: Date.now() - started });
+      return workAI && command !== 'status'
+        ? compactWorkAIResult(response, agent?.agent_id ?? attrs?.agent_id) : response;
+    } catch (error) {
+      log('command.failed', { error_code: error.body?.error?.code ?? 'INTERNAL', duration_ms: Date.now() - started });
+      throw error;
+    }
   };
   run.info = { mode: provider.mode, model: provider.model ?? null, enabled, work_ai_reviews: Boolean(workAI), review_starts: workAI ? Boolean(provider.reviewStarts) : enabled };
   return run;

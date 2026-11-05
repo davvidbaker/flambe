@@ -35,7 +35,90 @@ Options:
 ```text
 --port <n>   Port to listen on (default: 4123)
 --db <path>  SQLite database path (default: ~/.flambe/local.sqlite)
+--log <path> Diagnostic JSONL log (default: <db path>.log)
+--version   Show Single Burner and its bundled engine versions
 ```
+
+## Diagnose activity placement
+
+Single Burner writes a diagnostic log automatically, separate from the startup
+output (which contains your API token). The banner shows the log path, app and
+engine versions, and reducer mode. With the default database:
+
+```sh
+tail -F ~/.flambe/local.sqlite.log
+# Optional: only completed commands, formatted with jq
+tail -F ~/.flambe/local.sqlite.log | jq --unbuffered 'select(.event == "command.completed")'
+```
+
+On Windows PowerShell:
+
+```powershell
+Get-Content "$HOME/.flambe/local.sqlite.log" -Tail 30 -Wait
+```
+
+Use `--log <path>` to choose another location. Logs rotate at 5 MiB, retaining
+one previous file (`.log.1`); `tail -F` follows rotation. Each command has a
+`request_id` linking `command.received`, `command.recorded` (before optional
+model review), and `command.completed` or `command.failed`. Commands arriving
+through both the agent CLI and MCP use this log. It is **not** a browser access
+log; manual UI edits do not pass through the agent command reducer.
+
+Key fields:
+
+- `agent_id`, `trace_id`, `activity_id`: which agent and work were involved.
+- `requested_thread_id`, `parent_specified`, `requested_parent_id`: what the
+  client actually sent. An environment default such as `FLAMBE_THREAD` arrives
+  as a requested thread, indistinguishable from an explicit `--thread` here.
+- `selected_thread_id`, `selected_parent_id`, `thread_source`, `parent_source`:
+  the actual placement. Thread source `default` means first-ranked thread,
+  `parent` means inheritance, `request` means an explicit lane, and
+  `existing_activity` means a duplicate or planned activity was reused, and
+  `review` means an AI decision selected a thread or reparented the activity.
+- `reducer_mode`, `rules_fired`, `review_status`, `review_id`,
+  `thread_selection_requested`, `actions_applied`, `review_error_code`:
+  whether AI selection was requested, awaits the work AI, completed, or failed.
+  Compare recorded and completed placement when a model selects another thread.
+  A later `decide` completion records the work AI's chosen thread.
+
+No API tokens, request headers, activity names/descriptions/messages, model
+context, or decision rationale are logged. Logs do contain local activity and
+agent identifiers; inspect them before sharing. New log files use owner-only
+permissions where supported. Logging failures warn once on stderr and do not
+fail or retry recorded work.
+
+### Why an activity can land on the wrong thread
+
+1. **Older server:** initial AI thread selection shipped in **0.1.7**. Single
+   Burner 0.1.6 pinned engine 0.1.5, so upgrading only your global agent CLI
+   does not update the server's engine. Check both installed packages with
+   `npm ls -g @davvidbaker/flambe-single-burner @davvidbaker/flambe-cli`; this
+   build also provides `flambe-single-burner --version`. For npx installs, run
+   `npx @davvidbaker/flambe-single-burner@latest` explicitly. Stop the old server
+   and restart after updating; an already running process keeps its old code.
+2. **Reducer off (the default):** a root without a requested thread goes to the
+   first thread ordered by rank, then id. There is no semantic/project-name
+   selection in this mode. Configure `FLAMBE_LOCAL_REDUCER_MODE=agent` in the
+   **server's** environment and restart to let your work AI choose.
+3. **Parent inheritance:** without `--root` or `--parent`, a start nests beneath
+   that agent's newest running activity, across threads. Children stay on the
+   parent's thread even if `--thread`/`FLAMBE_THREAD` requested another. Finish
+   stale work, or use `--root` when genuinely starting a separate workstream.
+   Reusing one `FLAMBE_AGENT_ID` across independent sessions can pick up another
+   session's open work; let the harness derive per-session identities.
+4. **Explicit lane:** `--thread`, MCP `thread_id`, or `FLAMBE_THREAD` prevents
+   automatic initial selection on a root. Check both shell and project `.env`;
+   shell configuration wins. An inherited lane is also not re-selected.
+5. **Unfinished/failed review:** in `agent` mode, the work AI must submit the
+   initial review with `decide`; until then the root remains on the fallback
+   lane. Merely enabling agent mode is not a background classifier. API/local
+   provider review can fail or reject a stale snapshot while preserving the
+   already recorded activity. Update the agent skill/hooks too, so reviews
+   are completed rather than ignored.
+
+Diagnostic logging and version output are available starting in **0.1.8** of
+Single Burner and its bundled CLI engine. Version 0.1.7 supplies initial thread
+selection, but not this diagnostic log.
 
 Single Burner binds loopback only. Agents on other machines need a private bridge
 to reach it, or can use a separately hosted Flambe instance.

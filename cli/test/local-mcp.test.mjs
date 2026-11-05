@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import http from 'node:http';
@@ -10,7 +10,8 @@ import { LocalStore } from '../src/local/store.mjs';
 async function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), 'flambe-mcp-'));
   const dbPath = join(dir, 'local.sqlite');
-  const { server, store, port } = await listenLocal({ port: 0, dbPath, staticDir: null });
+  const logPath = join(dir, 'diagnostic.log');
+  const { server, store, port } = await listenLocal({ port: 0, dbPath, staticDir: null, logPath });
   const { rawToken, traceId } = store.credentials();
   t.after(async () => {
     server.closeAllConnections();
@@ -49,7 +50,7 @@ async function fixture(t) {
     assert.equal(body.error, undefined, JSON.stringify(body));
     return body.result;
   }
-  return { store, traceId, rawToken, dbPath, url, rpc, call };
+  return { store, traceId, rawToken, dbPath, logPath, url, rpc, call };
 }
 
 test('OAuth discovery probes return 404 without exposing the setup page or local token', async t => {
@@ -65,7 +66,7 @@ test('OAuth discovery probes return 404 without exposing the setup page or local
 
 for (const modern of [false, true]) {
   test(`${modern ? 'modern' : 'legacy'} MCP discovers Single Burner and shares lifecycle state with REST`, async t => {
-    const { store, traceId, rawToken, dbPath, url, rpc, call } = await fixture(t);
+    const { store, traceId, rawToken, dbPath, logPath, url, rpc, call } = await fixture(t);
     const opening = modern
       ? await rpc('server/discover', {}, { modern })
       : await rpc('initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'test', version: '1' } });
@@ -105,6 +106,11 @@ for (const modern of [false, true]) {
     const activity = reopened.structuredContent.state.activities.find(a => a.id === child.structuredContent.activity_id);
     assert.equal(activity.status, 'running');
     assert.equal(activity.latestEvent.phase, 'X');
+    const log = readFileSync(logPath, 'utf8');
+    const completed = log.trim().split('\n').map(JSON.parse).filter(e => e.event === 'command.completed');
+    assert.ok(completed.some(e => e.command === 'start' && e.activity_id === child.structuredContent.activity_id));
+    assert.ok(completed.some(e => e.command === 'resurrect' && e.activity_id === activity.id));
+    assert.equal(log.includes(rawToken), false);
   });
 }
 

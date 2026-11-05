@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +8,9 @@ import { handleLocalRequest } from './http.mjs';
 import { LocalStore } from './store.mjs';
 import { createLocalMcpHandler } from './mcp.mjs';
 import { createLocalCommandRunner } from './reducer.mjs';
+import { createDiagnosticLog } from './diagnostics.mjs';
+
+export const engineVersion = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
 
 /** Kept in sync with the copy in cli.mjs, which must not import this module eagerly. */
 export function defaultDbPath() {
@@ -17,10 +21,15 @@ export function defaultStaticDir() {
   return resolve(fileURLToPath(new URL('../../../backend/priv/static', import.meta.url)));
 }
 
-export function createLocalServer({ dbPath = defaultDbPath(), staticDir, reducer } = {}) {
+export function createLocalServer({ dbPath = defaultDbPath(), staticDir, reducer, logPath, appVersion } = {}) {
+  if (logPath && [resolve(logPath), resolve(`${logPath}.1`)].includes(resolve(dbPath))) {
+    throw new Error('The diagnostic log and its rotated file must not overwrite the SQLite database.');
+  }
   const store = new LocalStore(dbPath);
+  const diagnostic = logPath ? createDiagnosticLog(logPath) : null;
   let runCommand;
-  try { runCommand = createLocalCommandRunner(store, reducer); }
+  try { runCommand = createLocalCommandRunner(store, { ...reducer,
+    ...(diagnostic ? { diagnostic: diagnostic.write } : {}) }); }
   catch (error) { store.close(); throw error; }
   const resolvedStatic = staticDir === undefined ? defaultStaticDir() : staticDir;
   const mcp = createLocalMcpHandler(store, runCommand);
@@ -34,7 +43,13 @@ export function createLocalServer({ dbPath = defaultDbPath(), staticDir, reducer
     });
   });
   server.store = store;
+  server.logPath = diagnostic?.path ?? null;
   server.reducerInfo = runCommand.info;
+  server.on('listening', () => diagnostic?.write('server.started', {
+    engine_version: engineVersion, app_version: appVersion ?? null,
+    node_version: process.version, instance_id: store.instance().id,
+    reducer_mode: runCommand.info.mode, review_starts: runCommand.info.review_starts,
+  }));
   server.on('close', () => { void mcp.close(); });
   return server;
 }
@@ -45,16 +60,18 @@ export function listenLocal({
   dbPath,
   staticDir,
   reducer,
+  logPath,
+  appVersion,
 } = {}) {
   if (host !== '127.0.0.1' && host !== 'localhost') {
     throw new Error('Local mode binds loopback only (127.0.0.1). Refusing --host ' + host);
   }
 
-  const server = createLocalServer({ dbPath, staticDir, reducer });
+  const server = createLocalServer({ dbPath, staticDir, reducer, logPath, appVersion });
   return new Promise((resolveListen, reject) => {
     server.listen(port, host, () => {
       const address = server.address();
-      resolveListen({ server, store: server.store, host, port: address.port, reducerInfo: server.reducerInfo });
+      resolveListen({ server, store: server.store, host, port: address.port, reducerInfo: server.reducerInfo, logPath: server.logPath });
     });
     server.on('error', reject);
   });
