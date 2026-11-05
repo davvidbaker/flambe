@@ -47,11 +47,13 @@ export function createLocalCommandRunner(store, options = {}) {
       const context = view(store, userId, trace, id, rule?.rule ?? 'message',
         attrs.message ?? 'Review this activity placement.', agentId, attrs.allow_stack_changes === false, candidates, { compact: Boolean(workAI) });
       if (workAI) return workAI.request(userId, { traceId, activityId: id, agentId, context, snapshotHash, result });
-      const decision = await provider.review({ system, context, schema });
+      let usage;
+      const decision = await provider.review({ system, context, schema, onUsage: value => { usage = value; } });
       store.db.exec('BEGIN IMMEDIATE');
       try {
         const response = applyReviewedDecision(store, { userId, traceId, activityId: id,
-          context, snapshotHash, decision, reviewer: { mode: provider.mode, model: provider.model }, result });
+          context, snapshotHash, decision, reviewer: { mode: provider.mode, model: provider.model,
+            ...(usage ? { usage } : {}) }, result });
         store.db.exec('COMMIT');
         return response;
       } catch (error) { store.db.exec('ROLLBACK'); throw error; }

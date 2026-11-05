@@ -65,7 +65,7 @@ for commands (`start`, `end`, `message`, `observe`, local `serve`).
 ## Single Burner AI review
 
 When running `flambe serve`, optional AI review is configured in that server
-process with `FLAMBE_LOCAL_REDUCER_MODE=off|agent|api|local`. It is off by default;
+process with `FLAMBE_LOCAL_REDUCER_MODE=off|agent|api|local|codex`. It is off by default;
 provider failures never reroute work to Cloud. See the
 [Single Burner configuration guide](../single-burner/README.md#optional-ai-reducer)
 for model, endpoint, credential, timeout, and data-boundary settings. Client
@@ -74,6 +74,12 @@ processes only need their normal local Flambe connection settings.
 In `agent` mode, your current work AI reads the review returned by `flambe message`
 and submits its decision with `flambe decide <review-id> --file <decision.json>`.
 No separate model or inference API key is required.
+
+In `codex` mode, Single Burner independently reviews messages and flagged starts
+through the pinned official Codex npm runtime. It requires an explicitly selected
+model and a dedicated reducer Codex login (separate from the work agent's profile).
+It uses the same validated decisions as API/local mode, not worker `decide` packets.
+See [Codex reducer setup](../single-burner/README.md#independent-codex-reducer).
 
 With AI review enabled, a newly created agent root without an explicit thread
 receives an initial thread-selection review when the trace has multiple threads.

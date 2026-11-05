@@ -9,7 +9,7 @@ import { printStartup } from '../bin/startup.mjs';
 
 test('startup shows version, diagnostic path, and reducer-off placement warning', () => {
   const store = { credentials: () => ({ rawToken: 'fixture-token', traceId: 1 }), instance: () => ({ id: 'fixture-instance' }) };
-  for (const mode of ['off', 'agent', 'api']) {
+  for (const mode of ['off', 'agent', 'api', 'codex']) {
     let output = '';
     printStartup({ host: '127.0.0.1', port: 4123, store, reducerInfo: { mode },
       version: 'app-test', engineVersion: 'engine-test', logPath: '/private/test.log' },
@@ -19,6 +19,7 @@ test('startup shows version, diagnostic path, and reducer-off placement warning'
     assert.ok(output.includes('flambe-single-burner logs --log'));
     assert.ok(output.includes('/private/test.log'));
     assert.equal(output.includes('AI is off'), mode === 'off');
+    assert.equal(output.includes('dedicated Codex login'), mode === 'codex');
     assert.ok(output.includes('fixture-token')); // Setup credentials remain terminal-only.
   }
 });

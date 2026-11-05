@@ -114,6 +114,8 @@ Key fields:
   `parent` means inheritance, `request` means an explicit lane, and
   `existing_activity` means a duplicate or planned activity was reused, and
   `review` means an AI decision selected a thread or reparented the activity.
+- `review_model`, `review_usage`: model id and token counts/duration for successful
+  Codex reviews (available in `logs --json`, not a dollar-cost estimate).
 - `reducer_mode`, `rules_fired`, `review_status`, `review_id`,
   `thread_selection_requested`, `actions_applied`, `review_error_code`:
   whether AI selection was requested, awaits the work AI, completed, or failed.
@@ -150,7 +152,7 @@ fail or retry recorded work.
    shell configuration wins. An inherited lane is also not re-selected.
 5. **Unfinished/failed review:** in `agent` mode, the work AI must submit the
    initial review with `decide`; until then the root remains on the fallback
-   lane. Merely enabling agent mode is not a background classifier. API/local
+   lane. Merely enabling agent mode is not a background classifier. API/local/Codex
    provider review can fail or reject a stale snapshot while preserving the
    already recorded activity. Update the agent skill/hooks too, so reviews
    are completed rather than ignored.
@@ -258,8 +260,8 @@ See [ADR-022](../docs/ADR-022-work-ai-reducer-reviews.md).
 AI review is **off by default**. Set the mode in the environment of the
 Single Burner server process, then restart that process. The CLI and ChatGPT
 use the same configured reducer; agents do not need a separate provider credential.
-The following API/local options are alternatives when you want Flambe itself
-to call a model.
+The following API/local/Codex options are alternatives when you want Flambe itself
+to call a model independently of the work AI.
 
 | Mode | Model connection | Activity context |
 | --- | --- | --- |
@@ -267,6 +269,96 @@ to call a model.
 | `agent` | Your current work AI | Returned through its existing tools; Flambe makes no inference request |
 | `api` | OpenAI Responses-compatible HTTPS API | Sent directly to your selected model provider, never through Flambe Cloud |
 | `local` | Ollama-compatible loopback endpoint | Sent to the runtime on this machine; use a model that performs inference locally |
+| `codex` | Official pinned Codex runtime with a dedicated login | Sent to the Codex service under that account; not local inference |
+
+### Independent Codex reducer
+
+Available in **Single Burner 0.1.10 (engine 0.1.9)** and later.
+
+This is an independent reviewer, not another coding worker or merely a thread
+classifier. It reviews worker messages and flagged structural starts, can return
+scope/approach guidance, clarify activity intent, and propose an unstarted child.
+Structural reviews can also ask questions and correct parent placement, with
+the same action permissions as API/local mode.
+Single Burner still owns validation, transactions, and all state changes. No
+work-AI `decide` round trip is needed. Existing API/local modes remain available.
+
+First sign in **once** using a dedicated profile. In bash/zsh/Git Bash:
+
+```sh
+CODEX_HOME="$HOME/.flambe/reducer-codex" npx --yes @openai/codex@0.166.0 login
+
+export FLAMBE_LOCAL_REDUCER_MODE=codex
+export FLAMBE_LOCAL_REDUCER_MODEL='gpt-6-luna'
+flambe-single-burner
+```
+
+In PowerShell, scope `CODEX_HOME` to the login command and then restore it:
+
+```powershell
+$previousCodexHome = $env:CODEX_HOME
+try {
+  $env:CODEX_HOME = Join-Path $HOME '.flambe/reducer-codex'
+  npx --yes @openai/codex@0.166.0 login
+} finally { $env:CODEX_HOME = $previousCodexHome }
+$env:FLAMBE_LOCAL_REDUCER_MODE = 'codex'
+$env:FLAMBE_LOCAL_REDUCER_MODEL = 'gpt-6-luna'
+flambe-single-burner
+```
+
+These examples select **Luna (`gpt-6-luna`)**, listed in the
+[official Codex model documentation](https://developers.openai.com/codex/models)
+and the pinned runtime's model catalog with low-effort support. This is an
+explicit choice, not an implicit default or a measured quality/cost guarantee.
+You can choose another model available to that Codex account that supports
+structured output and **low reasoning effort**. There is no implicit model selection, stronger-model
+escalation or cross-provider fallback. Single Burner does not retry a review;
+Codex may retry transient transport failures within the configured timeout.
+Account availability, allowance/billing, quality, and latency depend on Codex;
+this mode does not promise free or local inference. For a headless login, use
+Codex's `login --device-auth` if available to your account.
+
+`FLAMBE_LOCAL_CODEX_HOME` overrides the reducer profile path. Use the same path
+as `CODEX_HOME` only for the one-time login, not as the server's ambient
+`CODEX_HOME`: worker-profile reuse is rejected. Do not put `AGENTS.md` or
+`AGENTS.override.md` in the reducer profile; these files stop review rather than
+being silently imported. Codex may persist its authentication, caches, and
+runtime diagnostics there; keep that directory private. Single Burner does not
+read, copy, or log its credentials.
+
+The official npm runtime is an optional engine dependency, pinned to **0.166.0**.
+There is no global Codex binary lookup or arbitrary executable configuration.
+If optional dependencies were omitted, reinstall the engine with them enabled.
+Only `codex` mode requires this runtime; the other modes still work without it.
+
+Each review uses a fresh ephemeral process and temporary working directory.
+A restricted custom model catalog keeps the exact selected model id but declares
+no agent tools; otherwise Codex model metadata can enable tools independently of
+feature flags. The profile uses ordinary Responses structured output and does
+not infer a context-window size or enable automatic compaction.
+User configuration and execpolicy rules are ignored; project instructions,
+host skills, hooks, MCP/plugin connections, shell execution, web search, file
+editing, and other agent capabilities are disabled. The runtime is also
+read-only/noninteractive, receives no worker Flambe connection/identity or ambient
+provider tokens, and unexpected tool operations abort review. A native-runtime
+fixture verifies an empty outbound tool catalog and exclusion of inherited
+instructions using only a loopback mock endpoint. This is an inference profile,
+not a general OS/container security boundary against a compromised local runtime
+or administrator-managed configuration.
+
+Successful reviews include bounded token counts, duration and runtime version
+in their audit record and JSON diagnostics. Temporary input files are removed
+when the process exits; a hard server crash can leave a private temporary
+directory to clean up. Ephemeral mode suppresses Codex session transcripts, not
+all runtime diagnostics or provider-side retention.
+
+This adds a transport to the existing reducer, not full Cloud parity. It retains
+the conservative whole-trace stale-review guard: concurrent edits, including
+unrelated/audit changes, can reject a review. Already recorded lifecycle work is
+preserved. Cloud category selection, richer unstarted-work context, semantic
+conflict guards, and escalation remain separate work.
+
+### API and local model alternatives
 
 For an API provider, choose a model available in your provider account and enter
 the dedicated key in the terminal without echoing it or putting it in shell history:
@@ -316,8 +408,9 @@ silently truncated.
 
 `FLAMBE_LOCAL_REDUCER_TIMEOUT_MS` defaults to `30000` (maximum `90000`). Invalid
 configuration stops startup with a configuration error. Explicitly set
-`FLAMBE_LOCAL_REDUCER_MODE=off` to disable review again. No provider key is stored
-by Single Burner; restart with the desired environment. This first version uses
+`FLAMBE_LOCAL_REDUCER_MODE=off` to disable review again. API/local keys are not
+stored by Single Burner; Codex owns its dedicated profile's authentication.
+Restart with the desired environment. This first version uses
 one configured model, without Cloud's Jev or escalation-model chain. See
 [ADR-021](../docs/ADR-021-optional-single-burner-ai-reducer.md).
 

@@ -1,4 +1,7 @@
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { CommandError } from './commands.mjs';
+import { createCodexProvider } from './codex-provider.mjs';
 
 const configError = message => new CommandError(503, 'REDUCER_CONFIG_INVALID', message);
 const providerError = message => new CommandError(502, 'REDUCER_PROVIDER_ERROR', message);
@@ -13,9 +16,17 @@ export function reducerConfig(env = process.env) {
     if (!['false', 'true'].includes(reviewStarts)) throw configError('FLAMBE_LOCAL_REDUCER_REVIEW_STARTS must be true or false.');
     return { mode, reviewStarts: reviewStarts === 'true' };
   }
-  if (!['api', 'local'].includes(mode)) throw configError('FLAMBE_LOCAL_REDUCER_MODE must be off, agent, api, or local.');
+  if (!['api', 'local', 'codex'].includes(mode)) throw configError('FLAMBE_LOCAL_REDUCER_MODE must be off, agent, api, local, or codex.');
   const model = env.FLAMBE_LOCAL_REDUCER_MODEL?.trim();
   if (!model) throw configError('Set FLAMBE_LOCAL_REDUCER_MODEL explicitly.');
+  const timeoutMs = Number(env.FLAMBE_LOCAL_REDUCER_TIMEOUT_MS ?? 30_000);
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 90_000) {
+    throw configError('Reducer timeout must be between 1 and 90000 milliseconds.');
+  }
+  if (mode === 'codex') {
+    const home = env.FLAMBE_LOCAL_CODEX_HOME?.trim();
+    return { mode, model, timeoutMs, codexHome: resolve(home || join(homedir(), '.flambe', 'reducer-codex')) };
+  }
   let base;
   try {
     base = new URL(env.FLAMBE_LOCAL_REDUCER_BASE_URL ?? (mode === 'api'
@@ -33,10 +44,6 @@ export function reducerConfig(env = process.env) {
   if (mode === 'api' && base.protocol !== 'https:') throw configError('API reducer mode requires HTTPS.');
   const apiKey = mode === 'api' ? env.FLAMBE_LOCAL_REDUCER_API_KEY?.trim() : undefined;
   if (mode === 'api' && !apiKey) throw configError('Set FLAMBE_LOCAL_REDUCER_API_KEY for API mode.');
-  const timeoutMs = Number(env.FLAMBE_LOCAL_REDUCER_TIMEOUT_MS ?? 30_000);
-  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 90_000) {
-    throw configError('Reducer timeout must be between 1 and 90000 milliseconds.');
-  }
   if (!base.pathname.endsWith('/')) base.pathname += '/';
   return { mode, model, apiKey, timeoutMs,
     endpoint: new URL(mode === 'api' ? 'responses' : 'api/chat', base).href };
@@ -62,7 +69,9 @@ async function boundedJson(response) {
   } finally { await reader.cancel().catch(() => {}); }
 }
 
-export function createReducerProvider(config, { fetchImpl = globalThis.fetch } = {}) {
+export function createReducerProvider(config, options = {}) {
+  if (config.mode === 'codex') return createCodexProvider(config, options);
+  const { fetchImpl = globalThis.fetch } = options;
   return {
     mode: config.mode,
     model: config.model,

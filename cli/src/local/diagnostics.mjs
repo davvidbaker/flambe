@@ -56,5 +56,7 @@ export function commandOutcome(store, userId, request, response) {
     thread_selection_requested: response?.review?.context?.thread_selection ?? false,
     review_error_code: response?.model_review?.code ?? null,
     direction: response?.direction ?? null,
+    review_model: response?.reviewer?.model ?? null,
+    review_usage: response?.reviewer?.usage ?? null,
   };
 }

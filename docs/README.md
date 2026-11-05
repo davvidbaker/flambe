@@ -5,6 +5,7 @@
 | [SELF_HOSTING.md](SELF_HOSTING.md) | Host your own instance (Fly.io or the Docker image) |
 | [PRODUCT_PRINCIPLES.md](PRODUCT_PRINCIPLES.md) | Product boundary: Flambe owns intent/control/observability, not generic agent orchestration |
 | [OPEN_WORK.md](OPEN_WORK.md) | Unfinished and parked work |
+| [PLAN-single-burner-independent-reducer.md](PLAN-single-burner-independent-reducer.md) | Proposal: Cloud-like server-owned reviews via isolated Codex, with semantic conflict handling; implementation choices remain open |
 | [ADR-022-work-ai-reducer-reviews.md](ADR-022-work-ai-reducer-reviews.md) | Let the current work AI submit validated local reviews without another model or API key |
 | [ADR-021-optional-single-burner-ai-reducer.md](ADR-021-optional-single-burner-ai-reducer.md) | Optional off/API/local AI review, validated SQLite changes, and explicit provider data boundaries |
 | [ADR-020-instance-bound-chat-connections.md](ADR-020-instance-bound-chat-connections.md) | Instance identity and the temporary separate Single Burner ChatGPT plugin; unified packaging remains unverified |
