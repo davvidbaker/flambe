@@ -5,8 +5,8 @@ const password = process.env.PLAYWRIGHT_PASSWORD || 'e2e-password';
 
 const phone = { width: 390, height: 844 };
 
-// 844px phone − 40px header − 100px time series − 260px limbo pane − 12px of split handles ≈ 432.
-// CI measures the canvas near 428. Stay under that, and still fail if the chart collapses.
+// Timeline is now an explicit mobile inspection mode. It must still reserve
+// useful space for the zoomable chart, without desktop metrics or Limbo panes.
 const minPhoneChartHeight = 400;
 
 async function assertFitsPhoneViewport(page: Page) {
@@ -84,6 +84,8 @@ test('keeps the flame chart usable in a phone-sized viewport', async ({ page }) 
   await page.getByRole('button', { name: 'Log In' }).click();
   await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
 
+  await expect(page.getByRole('heading', { name: 'Threads', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Timeline', exact: true }).click();
   const canvas = page.locator('#chart-wrapper canvas:not([aria-hidden="true"])');
   await expect(canvas).toBeVisible();
 
@@ -123,6 +125,7 @@ test('scrubs the timeline with a one-finger drag and pinches to zoom', async ({ 
   await page.getByRole('button', { name: 'Log In' }).click();
   await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
 
+  await page.getByRole('button', { name: 'Timeline', exact: true }).click();
   const surface = page.locator('[data-timeline-surface="true"]');
   const canvas = page.locator('#chart-wrapper canvas:not([aria-hidden="true"])');
   await expect(canvas).toBeVisible();
@@ -324,6 +327,7 @@ test('opens activity details from a tap and supports renaming', async ({ page })
   await pinViewport();
   await page.reload();
   await page.setViewportSize(phone);
+  await page.getByRole('button', { name: 'Timeline', exact: true }).click();
 
   const canvas = page.locator('#chart-wrapper canvas:not([aria-hidden="true"])');
   const surface = page.locator('[data-timeline-surface="true"]');
@@ -399,6 +403,8 @@ test('renders the post-login timeline on WebKit without requestIdleCallback', as
   await expect(page).toHaveURL(/\/[^/]+\/traces\/\d+$/);
 
   await expect(page.getByRole('banner')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Threads', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Timeline', exact: true }).click();
   await expect(page.locator('#chart-wrapper canvas:not([aria-hidden="true"])')).toBeVisible();
 
   const metrics = await page.evaluate(() => {
@@ -415,7 +421,7 @@ test('renders the post-login timeline on WebKit without requestIdleCallback', as
   expect(metrics.hasIdle).toBe('undefined');
   expect(metrics.appHeight).toBeGreaterThan(500);
   expect(metrics.canvasHeight).toBeGreaterThan(minPhoneChartHeight);
-  expect(metrics.headerText).toMatch(/Traces|Log out/);
+  expect(metrics.headerText).toMatch(/Menu/);
   expect(pageErrors.filter(message => /requestIdleCallback/i.test(message))).toEqual([]);
 });
 

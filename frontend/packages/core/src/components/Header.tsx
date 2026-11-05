@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import tinycolor from 'tinycolor2';
 
 import ToggleButton from './ToggleButton';
+import AppModal, { useMobileLayout } from './AppModal';
 import TraceThreadFilter from './TraceThreadFilter';
 import { InputFromButton } from './Button';
 import TraceList from './TraceList';
@@ -98,7 +99,44 @@ interface Props {
   traces: Trace[];
 }
 
-const Header = ({
+function MobileHeader(props: Props) {
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  return <>
+    <header data-mobile-header="true" style={{ display: 'flex', alignItems: 'center', gap: 8,
+      padding: '4px 8px', minHeight: 52, flexShrink: 0, boxSizing: 'border-box', background: '#eee' }}>
+      <select aria-label="Current trace" value={String(props.currentTrace?.id ?? '')}
+        style={{ flex: 1, minWidth: 0, height: 44, fontSize: 16 }}
+        onChange={event => {
+          const trace = props.traces.find(item => String(item.id) === event.target.value);
+          if (trace) props.selectTrace(trace);
+        }}>
+        {!props.currentTrace && <option value="">Choose trace</option>}
+        {props.traces.map(trace => <option key={trace.id} value={String(trace.id)}>{trace.name}</option>)}
+      </select>
+      <button type="button" aria-label="Command palette" style={{ minHeight: 44 }} onClick={props.onOpenCommander}>＋</button>
+      <button type="button" aria-label="Workspace menu" style={{ minHeight: 44 }} onClick={() => setMenuOpen(true)}>Menu</button>
+    </header>
+    <AppModal contentLabel="Workspace menu" isOpen={menuOpen} onRequestClose={() => setMenuOpen(false)}
+      chrome={<div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+        <h2 style={{ margin: 0 }}>Workspace</h2><button type="button" style={{ minHeight: 44 }} onClick={() => setMenuOpen(false)}>Done</button>
+      </div>}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 16 }}>
+        <TraceThreadFilter />
+        <InputFromButton submit={props.createMantra} placeholderIsDefaultValue>{props.currentMantra || 'Note to self'}</InputFromButton>
+        <TraceList traces={props.traces} currentTrace={props.currentTrace} selectTrace={props.selectTrace}
+          deleteTrace={props.deleteTrace} deleteCurrentTrace={props.deleteCurrentTrace} toggle={() => setMenuOpen(false)} />
+        <button type="button" style={{ minHeight: 44 }} onClick={props.logout}>Log out</button>
+      </div>
+    </AppModal>
+  </>;
+}
+
+const Header = (props: Props) => {
+  const mobile = useMobileLayout();
+  return mobile ? <MobileHeader {...props} /> : <DesktopHeader {...props} />;
+};
+
+const DesktopHeader = ({
   traces,
   currentTrace,
   selectTrace,

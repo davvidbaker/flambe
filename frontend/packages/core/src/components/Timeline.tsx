@@ -5,6 +5,8 @@ import { TimelineTimeSeries } from './TimelineTimeSeries';
 import { useTimelineContext } from './TimelineContext';
 import SplitPane from './SplitPane';
 import LimboPane from './LimboPane';
+import MobileTimeline from './MobileTimeline';
+import { useMobileLayout } from './AppModal';
 import SwyzzleTraceOverlay from './SwyzzleTraceOverlay';
 import { rankThreadsByAttention } from '../utilities/timelineGeometry';
 import { loadSuspendedActivityCount } from '../utilities/timeline';
@@ -15,6 +17,11 @@ export type { TimelineProps } from './TimelineController';
 const limboCollapsedStorageKey = 'flambe.limbo.collapsed.v1';
 
 function TimelineLayout() {
+  const mobile = useMobileLayout();
+  return mobile ? <MobileTimeline /> : <DesktopTimelineLayout />;
+}
+
+function DesktopTimelineLayout() {
   const { controller, props } = useTimelineContext();
   const [timeSeriesHeight, setTimeSeriesHeight] = React.useState(100);
   const [limboCollapsed, setLimboCollapsed] = React.useState(() => {
