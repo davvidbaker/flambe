@@ -16,6 +16,8 @@ Usage:
   flambe-single-burner [--port <n>] [--db <path>] [--log <path>]
   flambe-single-burner logs [--log <path>] [--db <path>] [--lines <n>] [--no-follow] [--json] [--verbose]
 
+Alias: fsb (same options and subcommands).
+
 Runs a self-contained local Flambé on loopback with SQLite and the bundled UI.
 Use logs to view readable diagnostics without starting another server.
 Server startup loads .env from the current directory; existing shell values win.

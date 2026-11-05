@@ -30,6 +30,18 @@ npm install -g @davvidbaker/flambe-single-burner
 flambe-single-burner
 ```
 
+Starting in **0.1.12**, `fsb` is a shorter alias for the same launcher. All
+options, `.env` loading, and subcommands behave identically:
+
+```sh
+fsb
+fsb --version
+fsb logs
+```
+
+On PowerShell, use `fsb.cmd` if execution policy blocks the generated `.ps1`
+shim. The existing `flambe-single-burner` command remains available.
+
 Options:
 
 ```text

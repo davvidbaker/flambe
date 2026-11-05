@@ -24,6 +24,18 @@ test('startup shows version, diagnostic path, and reducer-off placement warning'
   }
 });
 
+test('npm exposes fsb and the existing command as aliases of the same shipped launcher', () => {
+  const app = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.deepEqual(app.bin, {
+    'flambe-single-burner': 'bin/flambe-single-burner.mjs',
+    fsb: 'bin/flambe-single-burner.mjs',
+  });
+  for (const target of Object.values(app.bin)) {
+    assert.ok(app.files.includes(target.split('/')[0]), 'launcher is included in the published files');
+    assert.ok(existsSync(new URL(`../${target}`, import.meta.url)));
+  }
+});
+
 test('executable exposes version and log option using the current engine', t => {
   // Isolate package resolution: no global installs or npm registry dependency.
   const dir = mkdtempSync(join(tmpdir(), 'flambe-single-burner-cli-'));
@@ -46,6 +58,7 @@ test('executable exposes version and log option using the current engine', t => 
   const help = run(['--help']);
   assert.equal(help.status, 0, help.stderr);
   assert.ok(help.stdout.includes('--log <path>'));
+  assert.ok(help.stdout.includes('Alias: fsb'));
   const invalid = run(['--log']);
   assert.equal(invalid.status, 1);
   assert.ok(invalid.stderr.includes('--log requires a value'));
