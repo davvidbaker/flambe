@@ -30,7 +30,7 @@ export default defineConfig({
         ...devices['iPhone 12'],
         browserName: 'webkit',
       },
-      testMatch: '**/mobile_trace.spec.ts',
+      testMatch: ['**/mobile_trace.spec.ts', '**/magic_button.spec.ts'],
     },
   ],
 });
