@@ -20,7 +20,7 @@ export function TimelineTimeSeries({ className, style }: TimelinePaneProps) {
       {({ measureRef }) => (
         <div ref={element => { surface.current = element; measureRef(element); }}
           data-timeline-pane="timeseries" className={className}
-          style={{ position: 'relative', height: '100%', minHeight: 0, ...style }}>
+          style={{ position: 'relative', height: '100%', minHeight: 0, touchAction: 'none', ...style }}>
           <TimeSeries ref={chart} mantras={props.mantras} observations={props.observations ?? []}
             searchTerms={props.searchTerms} tabs={props.tabs} />
         </div>

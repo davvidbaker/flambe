@@ -1,6 +1,7 @@
 import React, { Component, type MouseEvent } from 'react';
 import styled from 'styled-components';
 import Measure, { type Bounds } from './Measure';
+import AppModal from './AppModal';
 import {
   getBlockTransform,
   timeToPixels,
@@ -28,6 +29,12 @@ const tabColor = '#90BD71';
 const ONE_MINUTE = 1000 * 60;
 
 const CountsBar = styled.div<{ $hidden: boolean }>`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.9);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min-content, 120px));
   font-size: 11px;
@@ -64,24 +71,24 @@ const Legend = styled.div`
   }
 `;
 
-const LegendPanel = styled.div`
-  position: absolute;
-  top: calc(100% + 3px);
-  right: 0;
-  box-sizing: border-box;
-  width: min(260px, calc(100vw - 24px));
-  max-height: 220px;
-  overflow: auto;
-  padding: 6px 8px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-
-  header { margin-bottom: 3px; color: #555; font-weight: 600; }
-  div { display: flex; align-items: center; gap: 6px; min-height: 16px; }
-  span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+const SeriesControls = styled.div`
+  width: min(380px, 100%); font: 14px sans-serif; color: #302d26;
+  fieldset { border: 1px solid #d9d6d0; border-radius: 8px; margin: 14px 0; min-width: 0; }
+  legend { font-weight: bold; padding: 0 6px; overflow-wrap: anywhere; }
+  label { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+  label span { overflow-wrap: anywhere; min-width: 0; }
+  input { flex: none; width: 18px; height: 18px; }
+  button { min-height: 44px; padding: 6px 12px; border: 1px solid #d9d6d0; border-radius: 6px; background: #faf9f6; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 `;
+
+const hiddenSeriesStorageKey = 'flambe.timeseries.hidden.v1';
+function loadHiddenSeries(): string[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(hiddenSeriesStorageKey) ?? '[]');
+    return Array.isArray(value) ? value.filter((key): key is string => typeof key === 'string') : [];
+  } catch { return []; }
+}
 
 const LegendSwatch = styled.i<{ $color: string }>`
   flex: 0 0 12px;
@@ -100,7 +107,8 @@ interface Props {
 }
 
 interface State {
-  openLegendKind: string | null;
+  legendOpen: boolean;
+  hiddenSeries: string[];
   mouseIsOver: boolean;
   hoverWindowCount: number;
   hoverTabCount: number;
@@ -123,7 +131,8 @@ export class TimeSeries extends Component<Props, State> {
   observationSeries: ObservationSeries[] = [];
 
   state: State = {
-    openLegendKind: null,
+    legendOpen: false,
+    hiddenSeries: loadHiddenSeries(),
     mouseIsOver: false,
     hoverWindowCount: 0,
     hoverTabCount: 0,
@@ -131,6 +140,19 @@ export class TimeSeries extends Component<Props, State> {
     cursor: { x: 0, y: 0 },
     canvasWidth: 300,
     canvasHeight: 150,
+  };
+
+  visibleSeries = (): ObservationSeries[] => groupObservationSeries(this.props.observations)
+    .filter(series => !this.state.hiddenSeries.includes(series.key));
+
+  setSeriesVisibility = (keys: string[], visible: boolean): void => {
+    this.setState(state => {
+      const hidden = new Set(state.hiddenSeries);
+      keys.forEach(key => visible ? hidden.delete(key) : hidden.add(key));
+      return { hiddenSeries: [...hidden], hoverObservations: [] };
+    }, () => {
+      try { localStorage.setItem(hiddenSeriesStorageKey, JSON.stringify(this.state.hiddenSeries)); } catch { /* Private mode. */ }
+    });
   };
 
   chartHeight = (): number =>
@@ -168,7 +190,7 @@ export class TimeSeries extends Component<Props, State> {
     const { offsetX: x, offsetY: y } = event.nativeEvent;
     const time = this.pixelsToTime(x);
     const closestPoint = this.props.tabs.find(({ timestamp }) => time < timestamp);
-    const series = groupObservationSeries(this.props.observations);
+    const series = this.visibleSeries();
 
     this.setState({
       cursor: { x, y },
@@ -185,7 +207,13 @@ export class TimeSeries extends Component<Props, State> {
       kind,
       series: series.filter(item => item.kind === kind),
     }));
-    const openGroup = groups.find(group => group.kind === this.state.openLegendKind);
+    const layers = [
+      ...(this.props.tabs.length ? [{ key: '@tabs', label: 'Browser tabs & windows' }] : []),
+      ...(this.props.mantras.length ? [{ key: '@mantras', label: 'Notes to self' }] : []),
+      ...(this.props.searchTerms.length ? [{ key: '@searches', label: 'Searches' }] : []),
+    ];
+    const allKeys = [...series.map(item => item.key), ...layers.map(item => item.key)];
+    const visibleCount = allKeys.filter(key => !this.state.hiddenSeries.includes(key)).length;
 
     return (
       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -217,42 +245,49 @@ export class TimeSeries extends Component<Props, State> {
             />
           )}
         </Measure>
-        {series.length > 0 && (
-          <Legend>
-            {groups.map(({ kind, series: items }) => (
-              <button
-                key={kind}
-                type="button"
-                aria-expanded={this.state.openLegendKind === kind}
-                aria-label={`${kind}: ${items.length} plotted series; ${this.state.openLegendKind === kind ? 'hide' : 'show'} legend`}
-                onClick={() => this.setState(({ openLegendKind }) => ({
-                  openLegendKind: openLegendKind === kind ? null : kind,
-                }))}
-              >
-                <LegendSwatch $color={items[0].color} />
-                {kind} {items.length > 1 ? items.length : ''} {this.state.openLegendKind === kind ? '▴' : '▾'}
-              </button>
-            ))}
-            {openGroup && (
-              <LegendPanel>
-                <header>{openGroup.kind}{openGroup.series[0].unit ? ` (${openGroup.series[0].unit})` : ''}</header>
-                {openGroup.series.map(item => (
-                  <div key={item.key} title={item.label}>
-                    <LegendSwatch $color={item.color} />
-                    <span>{item.label}</span>
-                  </div>
-                ))}
-              </LegendPanel>
-            )}
-          </Legend>
-        )}
+        {allKeys.length > 0 && <Legend data-native-scroll="true">
+          <button type="button" aria-label="Manage timeseries" aria-expanded={this.state.legendOpen}
+            onClick={() => this.setState({ legendOpen: true })}>
+            Series · {visibleCount}/{allKeys.length}
+          </button>
+        </Legend>}
+        <AppModal contentLabel="Timeseries visibility" fullScreenOnMobile wide
+          isOpen={this.state.legendOpen} onRequestClose={() => this.setState({ legendOpen: false })}
+          chrome={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <h2 style={{ margin: 0, fontSize: 18 }}>Timeseries</h2>
+            <button type="button" style={{ minHeight: 44 }} onClick={() => this.setState({ legendOpen: false })}>Done</button>
+          </div>}>
+          <SeriesControls data-native-scroll="true">
+            <p>Choose which series to plot. Colors match the chart; hidden series are excluded from the scale and hover values.</p>
+            <div className="actions">
+              <button type="button" onClick={() => this.setSeriesVisibility(allKeys, true)}>Show all</button>
+              <button type="button" onClick={() => this.setSeriesVisibility(allKeys, false)}>Hide all</button>
+            </div>
+            {groups.map(group => <fieldset key={group.kind}>
+              <legend>{group.kind.replaceAll('_', ' ')}</legend>
+              <div className="actions">
+                <button type="button" onClick={() => this.setSeriesVisibility(group.series.map(item => item.key), true)}>Show group</button>
+                <button type="button" onClick={() => this.setSeriesVisibility(group.series.map(item => item.key), false)}>Hide group</button>
+              </div>
+              {group.series.map(item => <label key={item.key}>
+                <input type="checkbox" checked={!this.state.hiddenSeries.includes(item.key)}
+                  onChange={event => this.setSeriesVisibility([item.key], event.target.checked)} />
+                <LegendSwatch $color={item.color} />
+                <span>{item.label}{item.unit ? ` (${item.unit})` : ''}</span>
+              </label>)}
+            </fieldset>)}
+            {layers.length > 0 && <fieldset><legend>Context</legend>{layers.map(item => <label key={item.key}>
+              <input type="checkbox" checked={!this.state.hiddenSeries.includes(item.key)}
+                onChange={event => this.setSeriesVisibility([item.key], event.target.checked)} />
+              <span>{item.label}</span>
+            </label>)}</fieldset>}
+          </SeriesControls>
+        </AppModal>
         <CountsBar $hidden={!this.state.mouseIsOver}>
-          <div style={{ color: windowColor }}>
-            windows: {this.state.hoverWindowCount}
-          </div>
-          <div style={{ color: tabColor }}>
-            tabs: {this.state.hoverTabCount}
-          </div>
+          {this.props.tabs.length > 0 && !this.state.hiddenSeries.includes('@tabs') && <>
+            <div style={{ color: windowColor }}>windows: {this.state.hoverWindowCount}</div>
+            <div style={{ color: tabColor }}>tabs: {this.state.hoverTabCount}</div>
+          </>}
           {this.state.hoverObservations.map(sample => (
             <div key={sample.key} style={{ color: sample.color }}>
               {sample.label === sample.kind ? sample.kind : `${sample.kind} · ${sample.label}`}: {' '}
@@ -269,7 +304,7 @@ export class TimeSeries extends Component<Props, State> {
     this.leftBoundaryTime = leftBoundaryTime;
     this.rightBoundaryTime = rightBoundaryTime;
     this.width = width;
-    this.observationSeries = groupObservationSeries(this.props.observations);
+    this.observationSeries = this.visibleSeries();
 
     const { ctx } = this;
     if (!ctx || !this.canvas) return;
@@ -289,11 +324,11 @@ export class TimeSeries extends Component<Props, State> {
       width,
       this.state.canvasHeight,
     );
-    this.drawMantras();
-    this.drawTabs();
+    if (!this.state.hiddenSeries.includes('@mantras')) this.drawMantras();
+    if (!this.state.hiddenSeries.includes('@tabs')) this.drawTabs();
     this.drawObservations();
     this.drawObservationAxis();
-    this.drawSearchTerms();
+    if (!this.state.hiddenSeries.includes('@searches')) this.drawSearchTerms();
     ctx.restore();
   }
 

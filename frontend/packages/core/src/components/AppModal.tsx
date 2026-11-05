@@ -11,6 +11,7 @@ const desktopStyleOverrides: Styles = {
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent',
+    zIndex: 1000,
   },
   content: {
     bottom: 'unset',
@@ -30,6 +31,7 @@ const sheetStyleOverrides: Styles = {
     justifyContent: 'center',
     alignItems: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    zIndex: 1000,
   },
   content: {
     inset: 'unset',
@@ -48,11 +50,13 @@ const sheetStyleOverrides: Styles = {
   },
 };
 
-const ActualContent = styled.div<{ $sheet: boolean; $wide?: boolean; $split: boolean }>`
-  border-radius: ${props => (props.$sheet ? '12px 12px 0 0' : '4px')};
+const ActualContent = styled.div<{ $sheet: boolean; $wide?: boolean; $split: boolean; $fullScreen: boolean }>`
+  box-sizing: border-box;
+  ${props => props.$fullScreen ? 'height: 100dvh;' : ''}
+  border-radius: ${props => (props.$fullScreen ? '0' : props.$sheet ? '12px 12px 0 0' : '4px')};
   background: white;
   border: 1px solid rgb(204, 204, 204);
-  padding: ${props => (props.$sheet ? '12px 16px' : '10px')};
+  padding: ${props => (props.$sheet ? 'max(12px, env(safe-area-inset-top, 0px)) 16px 12px' : '10px')};
   padding-bottom: ${props => (
     props.$sheet
       ? 'max(16px, env(safe-area-inset-bottom, 0px))'
@@ -65,7 +69,7 @@ const ActualContent = styled.div<{ $sheet: boolean; $wide?: boolean; $split: boo
   /* Split chrome+body so a sticky-less header (e.g. Activity close) cannot
      scroll away on long mobile sheets. Unsplit modals keep one scroller. */
   overflow: ${props => (props.$split ? 'hidden' : 'auto')};
-  max-height: ${props => (props.$sheet ? 'min(88dvh, 100%)' : 'min(80vh, 640px)')};
+  max-height: ${props => (props.$fullScreen ? '100dvh' : props.$sheet ? 'min(88dvh, 100%)' : 'min(80vh, 640px)')};
   max-width: ${props => {
     if (props.$sheet) return '100%';
     if (props.$wide) return 'min(90vw, 640px)';
@@ -83,6 +87,7 @@ const ScrollBody = styled.div<{ $split: boolean }>`
   ${props => (props.$split ? `
     flex: 1 1 auto;
     min-height: 0;
+    position: relative;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
   ` : '')}
@@ -98,9 +103,11 @@ interface Props {
   /** When false, leave focus alone (e.g. name field already focused). Default true. */
   shouldFocusAfterRender?: boolean;
   wide?: boolean;
+  /** Use an entire phone screen, with fixed chrome and a scrollable body. */
+  fullScreenOnMobile?: boolean;
 }
 
-function useSheetLayout(): boolean {
+export function useMobileLayout(): boolean {
   const query = useMemo(
     () => `(max-width: ${MOBILE_LAYOUT_MAX_WIDTH_PX}px)`,
     [],
@@ -147,8 +154,9 @@ const AppModal = ({
   contentLabel = 'Dialog',
   shouldFocusAfterRender = true,
   wide = false,
+  fullScreenOnMobile = false,
 }: Props) => {
-  const sheet = useSheetLayout();
+  const sheet = useMobileLayout();
   const split = chrome != null;
 
   return (
@@ -161,9 +169,17 @@ const AppModal = ({
     >
       <ActualContent
         $sheet={sheet}
+        $fullScreen={sheet && fullScreenOnMobile}
+        data-app-modal-fullscreen={sheet && fullScreenOnMobile ? 'true' : 'false'}
         $wide={wide}
         $split={split}
         data-app-modal-sheet={sheet ? 'true' : 'false'}
+        onKeyDown={event => {
+          // Keep workspace shortcuts out of local-state dialogs too. Modal
+          // itself still needs Tab for focus trapping and Escape for dismissal.
+          if (event.key !== 'Tab' && event.key !== 'Escape') event.stopPropagation();
+        }}
+        onKeyUp={event => event.stopPropagation()}
         onWheel={event => {
           // react-modal portals to document.body, but React still bubbles
           // wheel events to Timeline's onWheel ancestor and zooms the chart.

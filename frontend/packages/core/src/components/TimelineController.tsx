@@ -684,6 +684,7 @@ class TimelineController extends React.Component<TimelineProps, TimelineComponen
   }
 
   handleWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
+    if (isNativeScrollTouchTarget(e.target)) return;
     const surface = this.eventSurface(e.target);
     const rect = surface?.getBoundingClientRect();
     const width = rect?.width ?? this.state.width;
@@ -1066,7 +1067,7 @@ class TimelineController extends React.Component<TimelineProps, TimelineComponen
                   <div
                     ref={element => { measureRef(element); this.setTimelineSurface(element); }}
                     data-timeline-surface="true"
-                    style={{ position: 'relative', height: '100%', touchAction: 'none' }}
+                    style={{ position: 'relative', height: '100%', minHeight: 0 }}
                     onWheel={this.handleWheel}
                   >
                     {this.props.children}

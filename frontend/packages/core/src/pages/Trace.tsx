@@ -451,7 +451,7 @@ export class App extends React.Component<AppProps, AppState> {
                 onOpenCommander={this.showCommander}
                 logout={this.logout}
               />
-              <main style={{ position: 'relative', height: '100%' }}>
+              <main style={{ position: 'relative', flex: 1, minHeight: 0 }}>
                 <MaybeSplitPane
                   isSplit={this.props.advancedSearchVisible}
                   hideSidePanel={this.props.hideAdvancedSearch}

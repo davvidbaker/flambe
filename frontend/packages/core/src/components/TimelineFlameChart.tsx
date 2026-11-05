@@ -69,7 +69,7 @@ export function TimelineFlameChart({ className, style }: TimelinePaneProps) {
       {({ measureRef }) => (
         <div ref={element => { surface.current = element; measureRef(element); }}
           data-timeline-pane="flamechart" className={className}
-          style={{ position: 'relative', height: '100%', minHeight: 0, overflow: 'hidden', ...style }}>
+          style={{ position: 'relative', height: '100%', minHeight: 0, overflow: 'hidden', touchAction: 'none', ...style }}>
           <FlameChart ref={chart}
             activities={props.activities} attentionShifts={props.attentionShifts}
             blocks={props.blocks} categories={props.categories}
