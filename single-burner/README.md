@@ -39,6 +39,25 @@ Options:
 --version   Show Single Burner and its bundled engine versions
 ```
 
+## Server configuration from .env
+
+Starting in **0.1.11**, server startup loads `.env` from the **current working
+directory**, like `flambe serve`. Existing shell variables take precedence,
+including old values from an earlier launch. A missing `.env` is fine. It does
+not search parent directories or watch for changes: launch from the directory
+containing the file, and restart the server after editing it.
+
+For the independent Luna reducer, that file can contain:
+
+```dotenv
+FLAMBE_LOCAL_REDUCER_MODE=codex
+FLAMBE_LOCAL_REDUCER_MODEL=gpt-6-luna
+```
+
+Then run `flambe-single-burner` from that directory. The dedicated Codex login
+below is still required. Do not commit `.env` if it contains credentials.
+Help, version output, and log viewing do not load `.env` or start a server.
+
 ## Diagnose activity placement
 
 Single Burner writes a diagnostic log automatically, separate from the startup
@@ -274,6 +293,8 @@ to call a model independently of the work AI.
 ### Independent Codex reducer
 
 Available in **Single Burner 0.1.10 (engine 0.1.9)** and later.
+From **0.1.11**, the mode and model can also be set in the launch directory's
+[`.env` file](#server-configuration-from-env), instead of shell exports.
 
 This is an independent reviewer, not another coding worker or merely a thread
 classifier. It reviews worker messages and flagged structural starts, can return

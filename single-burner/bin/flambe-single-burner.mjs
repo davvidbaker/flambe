@@ -18,6 +18,7 @@ Usage:
 
 Runs a self-contained local Flambé on loopback with SQLite and the bundled UI.
 Use logs to view readable diagnostics without starting another server.
+Server startup loads .env from the current directory; existing shell values win.
 
 Options:
   --port <n>   Port to listen on (default: 4123)
@@ -71,6 +72,10 @@ async function main(args) {
   }
   const options = parseArgs(args);
   if (options.help) { process.stdout.write(usage); return; }
+
+  // Only server startup reads .env; help/version/log viewing stay configuration-free.
+  const { loadProjectEnv } = await import('@davvidbaker/flambe-cli/src/env.mjs');
+  loadProjectEnv();
 
   // Viewing logs/help never loads SQLite or opens a database.
   const { engineVersion, listenLocal } = await import('@davvidbaker/flambe-cli/src/local/serve.mjs');
