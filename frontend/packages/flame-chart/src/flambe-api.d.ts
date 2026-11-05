@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactElement } from 'react';
+import type { CSSProperties, ReactElement, ReactNode } from 'react';
 
 export type EntityId = number | string;
 
@@ -92,6 +92,7 @@ export type TimelineSnapshot = {
 
 export type ChartHarnessProps = {
   fixture: AppChartFixture;
+  children?: ReactNode;
   className?: string;
   style?: CSSProperties;
   /** CSS height of the chart shell. Storybook fullscreen uses the default `100vh`. */
@@ -108,3 +109,11 @@ export function createAppChartFixture(
 ): AppChartFixture;
 
 export function isTimelineSnapshot(value: unknown): value is TimelineSnapshot;
+
+export interface TimelinePaneProps {
+  className?: string;
+  style?: CSSProperties;
+}
+
+export function TimelineFlameChart(props: TimelinePaneProps): ReactElement;
+export function TimelineTimeSeries(props: TimelinePaneProps): ReactElement;

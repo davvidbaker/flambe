@@ -34,6 +34,8 @@ const getTooltipPosition = (
 };
 
 interface Props {
+  /** Changes when canvas geometry moves without a Redux update. */
+  geometryRevision?: number;
   activities: Record<string, ProcessedActivity>;
   blocks: TraceBlock[];
   flameChartRef: React.RefObject<FlameChartHandle | null>;
@@ -90,6 +92,7 @@ const Tooltip = ({
 
   return (
     <Div
+      data-flamechart-tooltip="true"
       ref={tooltipRef}
       style={left && top && name ? { left, top } : { top: 0, opacity: 0 }}
     >

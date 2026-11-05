@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChartHarness, type TimelineSnapshot } from '../../core/src/chart';
+import { ChartHarness, TimelineFlameChart, type TimelineSnapshot } from '../../core/src/chart';
 import { AuthFrame } from '../../core/src/components/AuthShell';
 import Logo from '../../core/src/components/Logo/src';
 import { colors } from '../../core/src/styles';
@@ -347,7 +347,9 @@ export function SharePlayground() {
               key={chartKey}
               timeLabels={snapshot.timeLabels}
               viewport={snapshot.viewport}
-            />
+            >
+              <TimelineFlameChart />
+            </ChartHarness>
           </div>
 
           <details className="share-editor" open={editorOpen} onToggle={event => setEditorOpen(event.currentTarget.open)}>

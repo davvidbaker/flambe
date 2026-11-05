@@ -25,3 +25,6 @@ export type { EntityId } from './types/ids';
 export type { Thread } from './types/Thread';
 export type { EventPhase, TraceEvent } from './types/TraceEvent';
 export type { AttentionShift } from './reducers/user';
+
+export { TimelineFlameChart, type TimelinePaneProps } from './components/TimelineFlameChart';
+export { TimelineTimeSeries } from './components/TimelineTimeSeries';

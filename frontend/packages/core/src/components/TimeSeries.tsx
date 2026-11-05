@@ -202,6 +202,7 @@ export class TimeSeries extends Component<Props, State> {
         >
           {({ measureRef }) => (
             <canvas
+              role="img" aria-label="Timeline timeseries"
               ref={canvas => {
                 measureRef(canvas);
                 this.canvas = canvas;
@@ -322,7 +323,8 @@ export class TimeSeries extends Component<Props, State> {
 
   drawTabs(): void {
     const { ctx } = this;
-    const tabsWithinTimeWindow = this.props.tabs;
+    const tabsWithinTimeWindow = this.props.tabs.filter(({ timestamp }) =>
+      timestamp > this.leftBoundaryTime && timestamp < this.rightBoundaryTime);
     if (!ctx || tabsWithinTimeWindow.length === 0) return;
 
     const tabsWithX = tabsWithinTimeWindow.map(({ timestamp, ...rest }) => ({
