@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,10 +27,14 @@ test('executable exposes version and log option using the current engine', t => 
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   cpSync(fileURLToPath(new URL('../bin', import.meta.url)), join(dir, 'bin'), { recursive: true });
   const app = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  const engine = JSON.parse(readFileSync(new URL('../../cli/package.json', import.meta.url), 'utf8'));
+  // Release jobs install the published dependency, not ../cli's dependencies.
+  // Prefer that installed engine; use the repository checkout for local development.
+  const installed = fileURLToPath(new URL('../node_modules/@davvidbaker/flambe-cli', import.meta.url));
+  const engineDir = existsSync(installed) ? installed : fileURLToPath(new URL('../../cli', import.meta.url));
+  const engine = JSON.parse(readFileSync(join(engineDir, 'package.json'), 'utf8'));
   writeFileSync(join(dir, 'package.json'), JSON.stringify({ type: 'module', version: app.version }));
   mkdirSync(join(dir, 'node_modules', '@davvidbaker'), { recursive: true });
-  symlinkSync(fileURLToPath(new URL('../../cli', import.meta.url)), join(dir, 'node_modules', '@davvidbaker', 'flambe-cli'),
+  symlinkSync(engineDir, join(dir, 'node_modules', '@davvidbaker', 'flambe-cli'),
     process.platform === 'win32' ? 'junction' : 'dir');
   const run = args => spawnSync(process.execPath, [join(dir, 'bin', 'flambe-single-burner.mjs'), ...args], { encoding: 'utf8' });
   const version = run(['--version']);
