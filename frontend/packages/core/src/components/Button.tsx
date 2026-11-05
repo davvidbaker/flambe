@@ -44,7 +44,11 @@ const Button = styled.button<ButtonStyleProps>`
 
 const StyledTextarea = styled.textarea`
   vertical-align: middle;
-  line-height: unset;
+  box-sizing: border-box;
+  margin: 0;
+  resize: none;
+  font: inherit;
+  line-height: inherit;
   ${commonStyles};
 `;
 
@@ -69,12 +73,9 @@ interface State {
 export class InputFromButton extends Component<Props, State> {
   button: HTMLButtonElement | null = null;
   transformedInput: HTMLTextAreaElement | null = null;
-  didAutoFocus = false;
-  state: State = {
-    height: 0,
-    isInput: Boolean(this.props.startAsInput),
-    width: 0,
-  };
+  focusFrame: number | null = null;
+  // Mount the display first so startAsInput uses the same measured geometry.
+  state: State = { height: 0, isInput: false, width: 0 };
 
   focusInput = (element: HTMLTextAreaElement | null = this.transformedInput): void => {
     if (!element) return;
@@ -83,25 +84,46 @@ export class InputFromButton extends Component<Props, State> {
   };
 
   transformIntoInput = (): void => {
-    this.setState({ isInput: true }, () => {
-      this.focusInput();
-    });
+    const bounds = this.button?.getBoundingClientRect();
+    this.setState(state => ({
+      isInput: true,
+      width: bounds?.width ?? state.width,
+      height: bounds?.height ?? state.height,
+    }), () => this.focusInput());
   };
 
   componentDidMount(): void {
-    if (!this.state.isInput) return;
-    // react-modal focuses the dialog after open; steal focus back onto the name.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => this.focusInput());
+    if (!this.props.startAsInput) return;
+    this.transformIntoInput();
+    // react-modal focuses the dialog after open. Restore focus only if needed,
+    // without selecting again when the user has already started typing.
+    this.focusFrame = requestAnimationFrame(() => {
+      this.focusFrame = requestAnimationFrame(() => {
+        this.focusFrame = null;
+        if (this.state.isInput && this.transformedInput &&
+            document.activeElement !== this.transformedInput) this.focusInput();
+      });
     });
   }
 
-  onKeyPress = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-    if (event.key !== 'Enter') return;
+  componentWillUnmount(): void {
+    this.cancelPendingFocus();
+  }
+
+  cancelPendingFocus = (): void => {
+    if (this.focusFrame !== null) cancelAnimationFrame(this.focusFrame);
+    this.focusFrame = null;
+  };
+
+  onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+    event.stopPropagation();
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
     event.preventDefault();
+    if (event.repeat) return;
     if (this.props.canBeBlank || event.currentTarget.value.length > 0) {
-      this.props.submit(event.currentTarget.value);
+      const value = event.currentTarget.value;
       this.transformIntoButton();
+      this.props.submit(value);
     }
   };
 
@@ -110,7 +132,10 @@ export class InputFromButton extends Component<Props, State> {
     event.stopPropagation();
   };
 
-  transformIntoButton = (): void => this.setState({ isInput: false });
+  transformIntoButton = (): void => {
+    this.cancelPendingFocus();
+    this.setState({ isInput: false });
+  };
 
   setTextareaSize = ({ width, height }: Bounds): void => this.setState({ width, height });
 
@@ -123,7 +148,9 @@ export class InputFromButton extends Component<Props, State> {
         <Measure
           bounds
           onResize={({ bounds }) => {
-            if (bounds.height !== this.state.height) this.setTextareaSize(bounds);
+            if (bounds.width !== this.state.width || bounds.height !== this.state.height) {
+              this.setTextareaSize(bounds);
+            }
           }}
         >
           {({ measureRef }) => (
@@ -132,6 +159,8 @@ export class InputFromButton extends Component<Props, State> {
                 measureRef(element);
                 this.button = element;
               }}
+              type="button"
+              style={{ verticalAlign: 'middle' }}
               onClick={this.transformIntoInput}
               looksLikeButton={looksLikeButton}
             >
@@ -149,16 +178,12 @@ export class InputFromButton extends Component<Props, State> {
         autoComplete="off"
         data-1p-ignore
         onBlur={this.transformIntoButton}
-        onKeyDown={this.stopShortcutKeys}
+        onKeyDown={this.onKeyDown}
         onKeyUp={this.stopShortcutKeys}
-        onKeyPress={this.onKeyPress}
+        onKeyPress={this.stopShortcutKeys}
         defaultValue={placeholderIsDefaultValue ? placeholder || childText : undefined}
         ref={element => {
           this.transformedInput = element;
-          if (element && this.state.isInput && !this.didAutoFocus) {
-            this.didAutoFocus = true;
-            this.focusInput(element);
-          }
         }}
       />
     );
