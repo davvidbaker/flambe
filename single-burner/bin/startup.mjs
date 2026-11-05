@@ -10,13 +10,14 @@ export function printStartup({ host, port, store, reducerInfo, logPath, version,
     : `${mode}${reducerInfo?.model ? ` (${reducerInfo.model})` : ''}`;
 
   stdout.write(`
-  ${heading('Flambé Single Burner')}
+  ${heading(`Flambé Single Burner v${version ?? 'unknown'}`)}
   Running locally. Keep this terminal open; Ctrl+C to stop.
 
   Chart     ${origin}
   Storage   SQLite on this machine
   Version   ${version ?? 'unknown'} (engine ${engineVersion ?? 'unknown'})
   Log       ${logPath ?? 'disabled'}
+  View logs flambe-single-burner logs${logPath ? ` --log ${JSON.stringify(logPath)}` : ''}
   Instance  ${store.instance().id}
   Reducer   ${reducer}
 ${mode === 'api' ? '  AI review sends activity context to your configured model provider.\n' : ''}${mode === 'off' ? '  Thread selection: AI is off; new roots without a thread use the first-ranked thread.\n' : ''}

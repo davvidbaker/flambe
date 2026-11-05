@@ -14,7 +14,9 @@ test('startup shows version, diagnostic path, and reducer-off placement warning'
     printStartup({ host: '127.0.0.1', port: 4123, store, reducerInfo: { mode },
       version: 'app-test', engineVersion: 'engine-test', logPath: '/private/test.log' },
     { write: text => { output += text; } });
+    assert.ok(output.includes('Flambé Single Burner vapp-test'));
     assert.ok(output.includes('app-test (engine engine-test)'));
+    assert.ok(output.includes('flambe-single-burner logs --log'));
     assert.ok(output.includes('/private/test.log'));
     assert.equal(output.includes('AI is off'), mode === 'off');
     assert.ok(output.includes('fixture-token')); // Setup credentials remain terminal-only.

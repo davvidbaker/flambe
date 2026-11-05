@@ -42,8 +42,47 @@ Options:
 ## Diagnose activity placement
 
 Single Burner writes a diagnostic log automatically, separate from the startup
-output (which contains your API token). The banner shows the log path, app and
-engine versions, and reducer mode. With the default database:
+output (which contains your API token). The startup heading includes the app
+version; the banner also shows the log path, engine version, and reducer mode.
+
+Starting in **0.1.9**, use the built-in readable viewer (no jq required, works on
+Windows too):
+
+```sh
+flambe-single-burner logs
+flambe-single-burner logs --no-follow --lines 50
+flambe-single-burner logs --db /path/to/work.sqlite
+flambe-single-burner logs --log /path/to/custom.log
+flambe-single-burner logs --verbose
+flambe-single-burner logs --json
+```
+
+By default it prints the last 30 useful events and follows new ones, including
+across log rotation. Use `--lines 0` to watch only new events and Ctrl+C to stop.
+If the log does not exist yet, it waits for the server to create it. The viewer
+does **not** start a server or open your database. It reads the existing 0.1.8
+log format, so the server need not be upgraded or restarted to view its log.
+
+Readable output hides received/recorded duplicates and successful status polls,
+showing completed commands and failures instead. Times are UTC, matching the
+underlying log. For example:
+
+```text
+17:41:05 START   #305  → thread 2  (fallback)  WAITING for thread-selection review
+17:44:37 START   #307  → thread 2  inherited from parent #303
+17:45:24 DECIDE  #306  → thread 3  (AI placement)  review completed
+```
+
+`--verbose` includes intermediate stages and full request, agent, and review
+identifiers. `--json` prints original JSON records, including intermediate
+stages, for piping to other tools. Missing activity/review ids in older failed
+records cannot be reconstructed reliably; failures show a short request and
+agent id instead. Thread names and activity text are not in the diagnostic
+file, so the viewer displays numeric ids rather than querying the database.
+Malformed records are skipped with a warning; incomplete lines wait until their
+newline arrives. For one-shot reads, a missing log is an error.
+
+You can also tail the underlying file directly. With the default database:
 
 ```sh
 tail -F ~/.flambe/local.sqlite.log
