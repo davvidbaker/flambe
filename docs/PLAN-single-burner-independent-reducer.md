@@ -10,8 +10,11 @@ flags), a dedicated login, explicit model/low effort, ephemeral execution, and
 an inert custom model catalog so backend model metadata cannot restore agent
 tools. No credentials are copied, no stronger-model escalation is added, and no
 real inference/billing claim is made. See the [setup and isolation contract](../single-burner/README.md#independent-codex-reducer).
-The semantic conflict guard, richer context/category policy, authority alignment,
-and escalation proposals below are **not** implemented by that transport change.
+A subsequent context-budget fix retains current-path/candidate structure and the
+thread catalog, selects additional open/recent evidence by priority, and explicitly
+marks text shortening and omissions within 64 KiB. It does not add unstarted-work
+coverage or category selection. The semantic conflict guard, broader context/category
+policy, authority alignment, and escalation proposals below remain **not implemented**.
 
 ## Goal
 

@@ -3,6 +3,7 @@ import { commandOutcome, commandRequest } from './diagnostics.mjs';
 import { CommandError, commandState, executeCommand } from './commands.mjs';
 import { createReducerProvider, reducerConfig } from './reducer-provider.mjs';
 import { applyReviewedDecision, fail, fingerprint, schema, system, view } from './reducer-review.mjs';
+import { contextStats } from './reducer-context.mjs';
 import { compactWorkAIResult, createWorkAIReviewer } from './work-ai-review.mjs';
 
 /** Await models outside SQLite transactions; validate and commit against an unchanged trace. */
@@ -53,7 +54,7 @@ export function createLocalCommandRunner(store, options = {}) {
       try {
         const response = applyReviewedDecision(store, { userId, traceId, activityId: id,
           context, snapshotHash, decision, reviewer: { mode: provider.mode, model: provider.model,
-            ...(usage ? { usage } : {}) }, result });
+            context: contextStats(context), ...(usage ? { usage } : {}) }, result });
         store.db.exec('COMMIT');
         return response;
       } catch (error) { store.db.exec('ROLLBACK'); throw error; }

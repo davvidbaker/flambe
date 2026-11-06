@@ -57,6 +57,7 @@ export function commandOutcome(store, userId, request, response) {
     review_error_code: response?.model_review?.code ?? null,
     direction: response?.direction ?? null,
     review_model: response?.reviewer?.model ?? null,
+    review_context: response?.reviewer?.context ?? null,
     review_usage: response?.reviewer?.usage ?? null,
   };
 }

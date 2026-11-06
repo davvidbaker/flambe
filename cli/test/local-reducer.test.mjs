@@ -198,12 +198,56 @@ test('structural clarification returns an ask action and preserves the recorded 
   assert.equal(result.state.activities.find(a => a.id === result.activity_id).parentId, f.root);
 });
 
-test('too-large context fails before network access while preserving lifecycle work', async t => {
+test('long persisted descriptions are explicitly shortened for review without changing stored intent', async t => {
+  const inputs = [];
+  const f = fixture(t, async ({ context }) => { inputs.push(context); return decision(); });
+  const description = 'Root intent: ' + 'x'.repeat(70_000) + ' final constraint';
+  f.store.updateActivity(1, f.root, { description });
+  await f.message();
+  const result = await f.call('start', { name: 'Another local root', parent_id: null });
+  assert.equal(result.model_review.status, 'completed');
+  assert.equal(inputs.length, 2);
+  for (const context of inputs) {
+    assert.ok(Buffer.byteLength(JSON.stringify(context)) <= 65_536);
+    assert.ok(context.stack.some(a => a.id === f.root && a.description.includes('shortened for review')));
+    assert.ok(context.context_budget.shortened_fields > 0);
+  }
+  assert.equal(f.store.getActivity(1, f.root).description, description);
+});
+
+test('accumulated history no longer prevents message or initial placement review and reports safe context statistics', async t => {
+  const inputs = [];
+  let lane;
+  const f = fixture(t, async ({ context }) => {
+    inputs.push(context);
+    return decision(context.thread_selection ? [{ type: 'select_thread', activity_id: context.current, thread_id: lane.id }] : []);
+  });
+  const threadId = f.store.getActivity(1, f.root).thread_id;
+  for (let n = 0; n < 100; n++) {
+    const added = f.store.createActivity(1, { traceId: f.traceId, threadId,
+      activity: { name: `Ended work ${n}`, parent_id: null, description: 'Historical detail '.repeat(200) },
+      event: { phase: 'E', timestamp_integer: Date.now() - n, message: 'Historical completion '.repeat(200) } });
+    assert.ok(added.activity);
+  }
+  lane = f.store.createThread(1, f.traceId, { name: 'Second lane' });
+  const message = await f.message();
+  assert.equal(message.model_review.status, 'completed');
+  assert.ok(message.reviewer.context.omitted_ended_activities > 0);
+  assert.ok(message.reviewer.context.bytes <= 65_536);
+  const started = await f.call('start', { name: 'New work after history accumulated', parent_id: null });
+  assert.equal(started.model_review.status, 'completed');
+  assert.equal(f.store.getActivity(1, started.activity_id).thread_id, lane.id);
+  assert.equal(started.state.activities.length, 102, 'packing must not erase history');
+  assert.ok(inputs.every(context => context.stack.some(a => a.id === f.root)));
+  assert.ok(inputs.every(context => context.threads.some(t => t.id === lane.id)));
+});
+
+test('an irreducibly large review message still fails safely before inference and preserves recorded starts', async t => {
   let calls = 0;
   const f = fixture(t, async () => { calls++; return decision(); });
-  f.store.updateActivity(1, f.root, { description: 'x'.repeat(70_000) });
-  await assert.rejects(f.message(), hasCode('REDUCER_CONTEXT_TOO_LARGE'));
-  const result = await f.call('start', { name: 'Another local root', parent_id: null });
+  const message = 'x'.repeat(70_000);
+  await assert.rejects(f.message({ message }), hasCode('REDUCER_CONTEXT_TOO_LARGE'));
+  const result = await f.call('start', { name: 'Another local root', parent_id: null, message });
   assert.equal(result.model_review.code, 'REDUCER_CONTEXT_TOO_LARGE');
   assert.equal(result.state.activities.find(a => a.id === result.activity_id).status, 'running');
   assert.equal(calls, 0);

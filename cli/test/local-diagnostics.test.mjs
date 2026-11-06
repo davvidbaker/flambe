@@ -93,6 +93,19 @@ test('logs initial fallback before provider review, final placement, and safe fa
   assert.equal(readFileSync(f.path, 'utf8').includes('secret provider credential'), false);
 });
 
+test('provider diagnostics report bounded context counts without logging shortened text', async t => {
+  const f = fixture(t, { provider: { mode: 'local', model: 'fixture', review: async () => decision([]) } });
+  const root = await f.call('start', { name: 'Private intent', parent_id: null });
+  f.store.updateActivity(1, root.activity_id, { description: 'private original description '.repeat(4000) });
+  await f.call('message', { activity_id: root.activity_id, message: 'private review request' });
+  const stats = f.entries().at(-1).review_context;
+  assert.ok(stats.bytes <= 65_536);
+  assert.ok(stats.source_bytes > 65_536);
+  assert.equal(stats.shortened_fields, 1);
+  const text = readFileSync(f.path, 'utf8');
+  for (const secret of ['Private intent', 'private original description', 'private review request', 'shortened for review']) assert.equal(text.includes(secret), false);
+});
+
 test('rotation bounds disk use, sets private permissions, and failed logging does not throw', t => {
   const dir = mkdtempSync(join(tmpdir(), 'flambe-log-rotation-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));

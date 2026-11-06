@@ -145,6 +145,8 @@ Key fields:
   `parent` means inheritance, `request` means an explicit lane, and
   `existing_activity` means a duplicate or planned activity was reused, and
   `review` means an AI decision selected a thread or reparented the activity.
+- `review_context`: safe byte counts, omitted activity counts, and shortened-field
+  counts for successful independent reviews; no context text.
 - `review_model`, `review_usage`: model id and token counts/duration for successful
   Codex reviews (available in `logs --json`, not a dollar-cost estimate).
 - `reducer_mode`, `rules_fired`, `review_status`, `review_id`,
@@ -434,10 +436,29 @@ reviews can also ask a question or reparent the new activity. Single Burner
 validates every proposal, enforces advice-only requests, and rejects judgments
 if the trace changed during inference. Model changes and audit events commit
 together. Models cannot delete or end activities. Review context is bounded to
-64 KiB. Provider-backed review uses the current path, open work, and ended work
-from the past 21 days; work-AI review uses the current path and its own open work.
-Oversized context fails review explicitly before contacting the model; it is not
-silently truncated.
+64 KiB. Starting in **Single Burner 0.1.13 (engine 0.1.10)**, API/local/Codex
+reviews budget the snapshot instead of failing when recent history accumulates:
+
+- Keep the current activity, its complete ancestry, eligible placement candidates
+  and their ancestry, and the complete thread catalog. Names/ids/statuses stay intact.
+- Prefer intact root/current descriptions. Under pressure, shorten other required
+  descriptions and lifecycle notes first, then root/current descriptions only if
+  necessary. Shortened strings retain both ends and are explicitly marked; they
+  are not model-generated summaries and never change stored history.
+- Fit additional own open work, other open work, then recent ended work (21 days),
+  favoring the current lane and newest evidence within each priority group.
+- `context_budget` reports omitted open/ended activity counts and shortened fields.
+  The model must not infer completion/irrelevance from missing work or rewrite
+  intent based on omitted facts. Only visible activities remain mutation targets;
+  a description shown only in shortened form cannot be overwritten by the reviewer.
+
+Successful review audit records and `fsb logs --json` include `review_context`
+byte/omission/shortening counts, without recording context text. The full review
+message, thread catalog, and required structural core are not silently dropped:
+if these alone cannot fit, review still explicitly fails before inference.
+Work-AI (`agent`) review retains its existing compact current-path/own-open-work
+scope and oversized-context guard. Existing stale-review checks, action limits,
+advice-only enforcement, and preservation of recorded lifecycle work remain in force.
 
 `FLAMBE_LOCAL_REDUCER_TIMEOUT_MS` defaults to `30000` (maximum `90000`). Invalid
 configuration stops startup with a configuration error. Explicitly set
