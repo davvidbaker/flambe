@@ -94,6 +94,6 @@ export function createLocalCommandRunner(store, options = {}) {
       throw error;
     }
   };
-  run.info = { mode: provider.mode, model: provider.model ?? null, enabled, work_ai_reviews: Boolean(workAI), review_starts: workAI ? Boolean(provider.reviewStarts) : enabled };
+  run.info = { mode: provider.mode, model: provider.model ?? null, ...(provider.loginHelp ? { loginHelp: provider.loginHelp } : {}), enabled, work_ai_reviews: Boolean(workAI), review_starts: workAI ? Boolean(provider.reviewStarts) : enabled };
   return run;
 }

@@ -21,7 +21,7 @@ export function printStartup({ host, port, store, reducerInfo, logPath, version,
   Instance  ${store.instance().id}
   Reducer   ${reducer}
 ${mode === 'api' ? '  AI review sends activity context to your configured model provider.\n' : ''}${mode === 'codex' ? '  Independent AI review sends activity context through a dedicated Codex login.\n' : ''}${mode === 'off' ? '  Thread selection: AI is off; new roots without a thread use the first-ranked thread.\n' : ''}
-  ${heading('Connect local Codex · one-time setup')}
+${mode === 'codex' && reducerInfo.loginHelp ? `  ${heading('Reducer Codex authentication')}\n  ${reducerInfo.loginHelp}\n\n` : ''}  ${heading('Connect local Codex · one-time setup')}
 
   1. In a second terminal, install the agent CLI:
      npm install -g @davvidbaker/flambe-cli

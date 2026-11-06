@@ -99,11 +99,22 @@ export function codexArguments({ model, schemaPath, policyPath, catalogPath }) {
 const safeUsage = usage => Object.fromEntries(['input_tokens', 'cached_input_tokens', 'cache_write_input_tokens',
   'output_tokens', 'reasoning_output_tokens'].filter(key => Number.isSafeInteger(usage?.[key]) && usage[key] >= 0).map(key => [key, usage[key]]));
 
-export function createCodexProvider(config, { env = process.env, codexRuntime, spawnImpl = spawn } = {}) {
+export function codexLoginHelp(home, platform = process.platform) {
+  const quoted = `'${home.replaceAll("'", platform === 'win32' ? "''" : "'\"'\"'")}'`;
+  const login = `npx --yes @openai/codex@${codexVersion} login`;
+  const command = platform === 'win32'
+    ? `$previousCodexHome = $env:CODEX_HOME; try { $env:CODEX_HOME = ${quoted}; ${login} } finally { $env:CODEX_HOME = $previousCodexHome }`
+    : `CODEX_HOME=${quoted} ${login}`;
+  return `Codex reducer login is separate from your regular Codex login. If missing or expired, run in another terminal${platform === 'win32' ? ' (PowerShell)' : ''}:\n${command}\nIf browser login fails, append --device-auth. Then retry the review; no FSB restart is needed. Do not export CODEX_HOME or add it to FSB's .env.`;
+}
+
+export function createCodexProvider(config, { env = process.env, codexRuntime, spawnImpl = spawn, warn = message => console.error(message) } = {}) {
   assertIsolatedHome(config.codexHome, env);
   const runtime = codexRuntime ?? resolveCodexRuntime();
+  const loginHelp = codexLoginHelp(config.codexHome);
+  let authWarningShown = false;
   return {
-    mode: 'codex', model: config.model,
+    mode: 'codex', model: config.model, loginHelp,
     async review({ system, context, schema, onUsage }) {
       let directory;
       const started = Date.now();
@@ -180,9 +191,14 @@ export function createCodexProvider(config, { env = process.env, codexRuntime, s
             clearTimeout(timer);
             pending += decoder.end();
             if (pending.trim()) record(pending);
-            if ((failure || code !== 0 || !completed) && /not logged in|unauthorized|authentication|401|login required/i.test(stderr)
+            if ((failure || code !== 0 || !completed) && /not logged in|unauthorized|authentication|401|login required|refresh_token_(?:expired|reused|invalidated)|(?:session|token|credentials?) (?:has |have )?expired/i.test(stderr)
               && (!failure || failure.body?.error?.code === 'REDUCER_PROVIDER_ERROR')) {
-              reject(error('REDUCER_CODEX_AUTH_REQUIRED', 'Sign in to the dedicated reducer Codex profile before requesting review.', 503));
+              if (!authWarningShown) {
+                authWarningShown = true;
+                try { warn(`Codex reducer authentication required (login missing or expired).\n${loginHelp}`); }
+                catch { /* Terminal output must not affect recorded work. */ }
+              }
+              reject(error('REDUCER_CODEX_AUTH_REQUIRED', loginHelp, 503));
             } else if (failure) reject(failure);
             else if (code !== 0 || !completed || typeof finalResponse !== 'string') {
               reject(error('REDUCER_PROVIDER_ERROR', 'Codex did not complete a decision. Check the model and dedicated profile login.'));
@@ -193,6 +209,7 @@ export function createCodexProvider(config, { env = process.env, codexRuntime, s
           });
           child.stdin.end(JSON.stringify(context));
         });
+        authWarningShown = false;
         onUsage?.({ ...result.usage, duration_ms: Date.now() - started, runtime_version: codexVersion });
         return result.decision;
       } catch (problem) {

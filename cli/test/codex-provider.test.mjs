@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
-import { createCodexProvider, codexVersion, resolveCodexRuntime } from '../src/local/codex-provider.mjs';
+import { createCodexProvider, codexLoginHelp, codexVersion, resolveCodexRuntime } from '../src/local/codex-provider.mjs';
 import { createReducerProvider, reducerConfig } from '../src/local/reducer-provider.mjs';
 import { createLocalCommandRunner } from '../src/local/reducer.mjs';
 import { LocalStore } from '../src/local/store.mjs';
@@ -27,6 +27,7 @@ writeFileSync(capture, JSON.stringify({ args, context, env: process.env, cwd: pr
 const emit = event => process.stdout.write(JSON.stringify(event) + '\\n');
 if (mode === 'timeout') { setInterval(() => {}, 1000); }
 else if (mode === 'auth') { process.stderr.write('401 Unauthorized secret-token-value'); process.exitCode = 1; }
+else if (mode === 'expired') { emit({type:'turn.failed',error:{message:'refresh_token_expired'}}); }
 else if (mode === 'exit') { process.stderr.write('secret-token-value'); process.exitCode = 1; }
 else if (mode === 'overflow') { process.stdout.write('x'.repeat(1048577)); }
 else if (mode === 'tool') { emit({type:'item.started',item:{type:'command_execution',command:'do not log this private command'}}); setInterval(() => {}, 1000); }
@@ -112,7 +113,7 @@ test('fresh independent Codex process receives only bounded context, schema, pol
 });
 
 for (const [mode, code] of [['timeout', 'REDUCER_TIMEOUT'], ['tool', 'REDUCER_CODEX_TOOL_CALL'],
-  ['overflow', 'REDUCER_PROVIDER_ERROR'], ['auth', 'REDUCER_CODEX_AUTH_REQUIRED'], ['exit', 'REDUCER_PROVIDER_ERROR'],
+  ['overflow', 'REDUCER_PROVIDER_ERROR'], ['auth', 'REDUCER_CODEX_AUTH_REQUIRED'], ['expired', 'REDUCER_CODEX_AUTH_REQUIRED'], ['exit', 'REDUCER_PROVIDER_ERROR'],
   ['badstream', 'REDUCER_PROVIDER_ERROR'], ['nullstream', 'REDUCER_PROVIDER_ERROR'], ['invalid', 'REDUCER_PROVIDER_ERROR'], ['incomplete', 'REDUCER_PROVIDER_ERROR']]) {
   test(`Codex ${mode} fails safely without exposing stderr, prompts, or commands`, async t => {
     const f = fixture(t, mode, { FLAMBE_LOCAL_REDUCER_TIMEOUT_MS: mode === 'timeout' ? '300' : '3000' });
@@ -124,6 +125,33 @@ for (const [mode, code] of [['timeout', 'REDUCER_TIMEOUT'], ['tool', 'REDUCER_CO
     if (existsSync(f.capture)) assert.equal(existsSync(f.captured().cwd), false);
   });
 }
+
+test('login help quotes custom profiles and restores PowerShell CODEX_HOME', () => {
+  assert.ok(codexLoginHelp("/tmp/reducer's profile", 'darwin').includes(`CODEX_HOME='/tmp/reducer'"'"'s profile' npx`));
+  const windows = codexLoginHelp("C:\\Users\\O'Brien\\reducer", 'win32');
+  assert.ok(windows.includes("'C:\\Users\\O''Brien\\reducer'"));
+  assert.ok(windows.includes('finally { $env:CODEX_HOME = $previousCodexHome }'));
+});
+
+test('auth failures include the configured login command and warn once until recovery', async t => {
+  const f = fixture(t, 'expired');
+  const warnings = [];
+  const provider = createCodexProvider(f.config, { ...f.options, warn: text => warnings.push(text) });
+  for (let i = 0; i < 2; i++) {
+    await assert.rejects(provider.review(request), problem => {
+      assert.ok(problem.body.error.message.includes(`CODEX_HOME='${f.home}'`));
+      assert.ok(problem.body.error.message.includes('--device-auth'));
+      return hasCode('REDUCER_CODEX_AUTH_REQUIRED')(problem);
+    });
+  }
+  assert.equal(warnings.length, 1);
+  assert.ok(warnings[0].includes('missing or expired'));
+  writeFileSync(join(f.dir, 'fake-codex.mjs'), fakeSource.replace("mode === 'expired'", "mode === 'never'"));
+  await provider.review(request);
+  writeFileSync(join(f.dir, 'fake-codex.mjs'), fakeSource);
+  await assert.rejects(provider.review(request), hasCode('REDUCER_CODEX_AUTH_REQUIRED'));
+  assert.equal(warnings.length, 2);
+});
 
 test('Codex nonfatal warning items do not abort a successful review', async t => {
   const f = fixture(t, 'warning');

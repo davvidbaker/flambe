@@ -51,6 +51,18 @@ test('human output highlights fallbacks, waiting, inherited lanes and actual AI 
   assert.match(formatLogRecord(entry({ review_status: 'failed', review_error_code: 'REDUCER_TIMEOUT' })), /REVIEW FAILED: REDUCER_TIMEOUT/);
 });
 
+test('missing and expired Codex logins show recovery guidance for reviews and messages', () => {
+  for (const fields of [
+    { review_status: 'failed', review_error_code: 'REDUCER_CODEX_AUTH_REQUIRED' },
+    { event: 'command.failed', command: 'message', error_code: 'REDUCER_CODEX_AUTH_REQUIRED' },
+  ]) {
+    const text = formatLogRecord(entry(fields));
+    assert.match(text, /login is missing or expired/);
+    assert.match(text, /dedicated-profile login command/);
+    assert.match(text, /retry the review/);
+  }
+});
+
 test('failed decisions show short correlation ids, never invent an activity, and verbose exposes full ids', () => {
   const failed = entry({ event: 'command.failed', command: 'decide', activity_id: null, error_code: 'REDUCER_STATE_CHANGED' });
   const text = formatLogRecord(failed);

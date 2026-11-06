@@ -86,6 +86,9 @@ export function formatLogRecord(record, { verbose = false } = {}) {
       + ((record.actions_applied ?? []).length ? '' : '; no actions applied'));
     if (record.direction && record.direction !== 'continue') parts.push(`direction=${safe(record.direction)}`);
   }
+  if ((failed ? record.error_code : record.review_error_code) === 'REDUCER_CODEX_AUTH_REQUIRED') {
+    parts.push('Reducer Codex login is missing or expired. Run the dedicated-profile login command shown in the FSB server terminal, then retry the review.');
+  }
   if (verbose) {
     parts.push(`[${safe(record.event)}]`, `request=${safe(record.request_id ?? '-')}`,
       `agent=${safe(record.agent_id ?? '-')}`, `review=${safe(record.review_id ?? '-')}`);

@@ -11,7 +11,7 @@ test('startup shows version, diagnostic path, and reducer-off placement warning'
   const store = { credentials: () => ({ rawToken: 'fixture-token', traceId: 1 }), instance: () => ({ id: 'fixture-instance' }) };
   for (const mode of ['off', 'agent', 'api', 'codex']) {
     let output = '';
-    printStartup({ host: '127.0.0.1', port: 4123, store, reducerInfo: { mode },
+    printStartup({ host: '127.0.0.1', port: 4123, store, reducerInfo: { mode, loginHelp: 'Login fixture: CODEX_HOME=custom-profile npx codex login' },
       version: 'app-test', engineVersion: 'engine-test', logPath: '/private/test.log' },
     { write: text => { output += text; } });
     assert.ok(output.includes('Flambé Single Burner vapp-test'));
@@ -20,6 +20,7 @@ test('startup shows version, diagnostic path, and reducer-off placement warning'
     assert.ok(output.includes('/private/test.log'));
     assert.equal(output.includes('AI is off'), mode === 'off');
     assert.equal(output.includes('dedicated Codex login'), mode === 'codex');
+    assert.equal(output.includes('CODEX_HOME=custom-profile'), mode === 'codex');
     assert.ok(output.includes('fixture-token')); // Setup credentials remain terminal-only.
   }
 });
