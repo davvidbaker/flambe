@@ -318,7 +318,8 @@ the same action permissions as API/local mode.
 Single Burner still owns validation, transactions, and all state changes. No
 work-AI `decide` round trip is needed. Existing API/local modes remain available.
 
-FSB prints the dedicated-profile login command at startup in Codex reducer mode.
+FSB prints the dedicated-profile login command at startup in Codex reducer mode;
+this guidance does not check credential validity or make an inference request.
 If a review detects a missing or expired login, the server terminal prints that
 command again and the review error includes recovery instructions. Sign in from
 another terminal, then retry the review; no FSB restart is needed. Repeated auth

@@ -139,7 +139,8 @@ test('auth failures include the configured login command and warn once until rec
   const provider = createCodexProvider(f.config, { ...f.options, warn: text => warnings.push(text) });
   for (let i = 0; i < 2; i++) {
     await assert.rejects(provider.review(request), problem => {
-      assert.ok(problem.body.error.message.includes(`CODEX_HOME='${f.home}'`));
+      const assignment = process.platform === 'win32' ? `$env:CODEX_HOME = '${f.home}'` : `CODEX_HOME='${f.home}'`;
+      assert.ok(problem.body.error.message.includes(assignment));
       assert.ok(problem.body.error.message.includes('--device-auth'));
       return hasCode('REDUCER_CODEX_AUTH_REQUIRED')(problem);
     });
