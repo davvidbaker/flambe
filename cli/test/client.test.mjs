@@ -49,6 +49,17 @@ test('configFromEnv requires exactly the agent-facing configuration', () => {
   );
 });
 
+test('configFromEnv derives Pi identity and respects explicit overrides', () => {
+  const env = {
+    FLAMBE_URL: 'http://localhost:4001', FLAMBE_API_TOKEN: 'test', FLAMBE_TRACE_ID: '7',
+    PI_SESSION_ID: ' session-1 ',
+  };
+  assert.equal(configFromEnv(env).agentId, 'pi:session-1');
+  assert.equal(configFromEnv(env).agentPlatform, 'Pi');
+  assert.equal(configFromEnv({ ...env, FLAMBE_AGENT_ID: 'custom' }).agentId, 'custom');
+  assert.equal(configFromEnv({ ...env, PI_SESSION_ID: ' ' }).agentId, undefined);
+});
+
 test('configFromEnv derives an agent identity from the Codex session when needed', () => {
   const config = configFromEnv({
     FLAMBE_URL: 'http://localhost:4001',

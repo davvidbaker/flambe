@@ -57,6 +57,7 @@ export function agentIdentityFromEnv(env = process.env) {
     || (env.CURSOR_AGENT?.trim() && env.CURSOR_CONVERSATION_ID?.trim()
       ? `cursor:${env.CURSOR_CONVERSATION_ID.trim()}`
       : undefined)
+    || (env.PI_SESSION_ID?.trim() ? `pi:${env.PI_SESSION_ID.trim()}` : undefined)
     || claudeAgentId(env);
   const agentNamesPath = env.FLAMBE_AGENT_NAMES_PATH?.trim() || defaultAgentNamesPath();
   // An explicit name is an override; otherwise reuse whatever the reducer named this agent.
@@ -76,6 +77,7 @@ function platformFromAgentId(agentId) {
   if (agentId.startsWith('codex:')) return 'Codex';
   if (agentId.startsWith('cursor:')) return 'Cursor';
   if (agentId.startsWith('claude:')) return 'Claude Code';
+  if (agentId.startsWith('pi:')) return 'Pi';
   return undefined;
 }
 
@@ -258,7 +260,7 @@ export class FlambeClient {
 
   async whoami() {
     if (!this.agentId) {
-      throw new Error('No agent id for this process; set FLAMBE_AGENT_ID (Cursor, Codex, and Claude Code sessions derive one automatically)');
+      throw new Error('No agent id for this process; set FLAMBE_AGENT_ID (Cursor, Codex, Pi, and Claude Code sessions derive one automatically)');
     }
     const payload = await this.request('/api/agents/me');
     return {

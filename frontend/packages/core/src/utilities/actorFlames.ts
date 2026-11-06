@@ -141,6 +141,9 @@ export function actorKey(activity: Pick<Activity, 'agent_id'>): string {
 
 export function actorName(activity: Pick<Activity, 'agent_id' | 'agent_name'>): string {
   if (activity.agent_id === null || activity.agent_id === undefined) return 'Human';
+  if (String(activity.agent_id).startsWith('pi:') && activity.agent_name) {
+    return activity.agent_name.startsWith('pi-') ? activity.agent_name : `pi-${activity.agent_name}`;
+  }
   return activity.agent_name || String(activity.agent_id);
 }
 
