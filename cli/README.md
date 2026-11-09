@@ -144,3 +144,33 @@ Verify that the chart and that agent's lane reflect the result. A fresh install
 on the work laptop still needs this native Codex verification.
 
 Reopen ended work by number with `flambe resurrect <activity-id> [message]`. This records a resurrection (`X`) event on the same activity, preserving its history. MCP clients can use `flambe_resurrect`.
+
+
+## Pi: automatic request headlines (hosted and Single Burner)
+
+The Flambé CLI package is also a [Pi extension package](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/packages.md).
+Install it into Pi after installing the CLI for agent shell commands:
+
+```sh
+npm install -g @davvidbaker/flambe-cli
+pi install npm:@davvidbaker/flambe-cli
+```
+
+Or, while developing from a checkout, run `pi install ./cli` from the repository root.
+Reload Pi after installation. Keep your normal project `.env` containing
+`FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID`; the same extension
+works with a hosted Flambé instance or Single Burner's loopback API. For Single
+Burner also set `FLAMBE_RUNTIME_MODE=local_self_contained`.
+
+At the start of each user prompt, the extension opens a **root** activity named
+from the prompt (first 120 characters, no extra model call). During the request,
+normal `flambe start` commands run by that Pi session inherit the same
+`PI_SESSION_ID` and nest beneath that root. When Pi settles, the extension
+closes the root and any leftover children. Interrupted turns are marked
+"Interrupted." Pi's internal custom-message runs do not create a new root.
+
+This only automates the outer request. Agents still decide when to start and
+end meaningful subactivities. A separately launched agent with a different
+session identity needs an explicit `--parent <root-id>` to attach its work.
+If Flambé is not configured, the extension does nothing. The Single Burner
+server must be running for activities to appear.
