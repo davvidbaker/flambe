@@ -38,6 +38,12 @@ export function configFromEnv(env = process.env) {
   }
 
   const defaultThread = env.FLAMBE_THREAD?.trim() || undefined;
+  const requestRootRaw = env.FLAMBE_REQUEST_ROOT_ID?.trim();
+  const requestRootId = requestRootRaw === undefined ? undefined : Number(requestRootRaw);
+  if (requestRootRaw !== undefined
+    && (!/^\\d+$/.test(requestRootRaw) || !Number.isSafeInteger(requestRootId) || requestRootId <= 0)) {
+    throw new Error('FLAMBE_REQUEST_ROOT_ID must be a positive integer');
+  }
 
   return {
     baseUrl: env.FLAMBE_URL.replace(/\/+$/, ''),
@@ -46,6 +52,7 @@ export function configFromEnv(env = process.env) {
     token: env.FLAMBE_API_TOKEN,
     traceId,
     ...(defaultThread ? { defaultThread } : {}),
+    ...(requestRootId ? { requestRootId } : {}),
   };
 }
 
@@ -122,7 +129,7 @@ function errorDetail(payload) {
 }
 
 export class FlambeClient {
-  constructor({ baseUrl, token, traceId, threadId, defaultThread, agentId, agentName, agentPlatform, agentNamesPath, runtimeMode, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
+  constructor({ baseUrl, token, traceId, threadId, defaultThread, requestRootId, agentId, agentName, agentPlatform, agentNamesPath, runtimeMode, fetchImpl = globalThis.fetch, now = Date.now, queuePath, queue, onReducerNote }) {
     runtimeConfig({ FLAMBE_RUNTIME_MODE: runtimeMode });
     assertRuntimeUrl(baseUrl, runtimeMode);
     this.runtimeMode = runtimeMode;
@@ -134,6 +141,7 @@ export class FlambeClient {
     this.agentNamesPath = agentNamesPath;
     this.traceId = Number(traceId);
     this.defaultThread = firstPresent(defaultThread, threadId == null ? undefined : String(threadId));
+    this.requestRootId = requestRootId;
     this.fetch = fetchImpl;
     this.now = now;
     this.onReducerNote = onReducerNote;
@@ -430,16 +438,50 @@ export class FlambeClient {
     return timestamp;
   }
 
+  /**
+   * In a request-scoped harness, start an agent's first subactivity under the
+   * request root. Once it has an active child, preserve the normal nesting.
+   * This works across agents as long as each receives the same root id.
+   */
+  async requestParent() {
+    const rootId = Number(this.requestRootId);
+    if (!Number.isSafeInteger(rootId) || rootId <= 0) return undefined;
+    const active = (await this.status({ activeOnly: true })).activities;
+    const byId = new Map(active.map(activity => [Number(activity.id), activity]));
+    const root = byId.get(rootId);
+    if (!root || root.status !== 'running') {
+      throw new Error(`Flambé request root ${rootId} is no longer active; start or resume a request`);
+    }
+    const belongsToRequest = activity => {
+      const visited = new Set();
+      for (let cursor = activity; cursor && !visited.has(Number(cursor.id)); cursor = byId.get(Number(cursor.parentId))) {
+        if (Number(cursor.id) === rootId) return true;
+        visited.add(Number(cursor.id));
+      }
+      return false;
+    };
+    const mine = active.filter(activity => activity.status === 'running'
+      && activity.agentId === this.agentId
+      && Number(activity.id) !== rootId && belongsToRequest(activity));
+    const newest = mine.sort((a, b) => {
+      const at = Date.parse(a.latestEvent?.timestamp ?? a.startedAt ?? 0);
+      const bt = Date.parse(b.latestEvent?.timestamp ?? b.startedAt ?? 0);
+      return (bt - at) || (Number(b.id) - Number(a.id));
+    })[0];
+    return newest ? Number(newest.id) : rootId;
+  }
+
   async start({ name, description, threadId, parentId, categoryIds, startedAt }) {
     if (!name?.trim()) throw new Error('Activity name is required');
     const timestamp = this.resolveStartTimestamp(startedAt);
     const resolvedCategoryIds = this.resolveCategoryIds(categoryIds);
+    const resolvedParentId = parentId === undefined ? await this.requestParent() : parentId;
 
     const input = {
       name: name.trim(),
       description,
       threadId: await this.resolveThreadId(threadId),
-      parentId: this.resolveParentId(parentId),
+      parentId: this.resolveParentId(resolvedParentId),
       categoryIds: resolvedCategoryIds,
       timestamp,
     };
