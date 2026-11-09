@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 
 import { clientFromEnv, clientFromHostEnv } from './client.mjs';
 import { clearQuestion, readOpenQuestion, rememberQuestion } from './questions.mjs';
+import { beginRequest, completeRequest } from './requests.mjs';
 
 // `node:sqlite` still prints an ExperimentalWarning on import in some Node 22 releases.
 // Only serve/export need it, so load those modules on demand and keep every other
@@ -17,6 +18,8 @@ function defaultDbPath() {
 
 const usage = `Usage:
   flambe start <activity name> [--description <text>] [--thread <id|name>] [--parent <id> | --root] [--category <id>...] [--started-at <ISO-8601>]
+  flambe request start <request headline>
+  flambe request complete <root-activity-id> [outcome]
   flambe end <activity-id> [message] [--force]
   flambe suspend <activity-id> [message]
   flambe resume <activity-id> [message]
@@ -52,6 +55,8 @@ Optional:
   FLAMBE_AGENT_PLATFORM  Product the agent runs on, shared by many agents ("Cursor Cloud",
                      "Codex"). Derived from the session type when unset.
   FLAMBE_AGENT_NAMES_PATH  Where remembered agent names live.
+  FLAMBE_REQUEST_ROOT_ID  Active request root to attach new agent subactivities under.
+                       Set by a harness and shared with workers; explicit --parent overrides.
   FLAMBE_THREAD      Thread name, unique slug, or id for start when --thread is omitted
                      (overridden by --thread). 'flambe' matches 'flambé🔥'. The reducer
                      still keeps a child on its parent's thread.
@@ -473,6 +478,25 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
   const flambe = client ?? clientFromEnv(env, { onReducerNote });
   flambe.onReducerNote ??= onReducerNote;
   await flambe.flushQueue?.();
+
+  if (command === 'request') {
+    const [action, ...rest] = args;
+    if (action === 'start') {
+      if (!rest.length || rest.some(arg => arg.startsWith('--'))) {
+        throw new Error('Usage: flambe request start <request headline>');
+      }
+      stdout.write(`${await beginRequest(flambe, { name: rest.join(' ') })}\n`);
+    } else if (action === 'complete') {
+      const [activityId, ...outcome] = rest;
+      if (!activityId || !/^\\d+$/.test(activityId) || outcome.some(arg => arg.startsWith('--'))) {
+        throw new Error('Usage: flambe request complete <root-activity-id> [outcome]');
+      }
+      stdout.write(`${await completeRequest(flambe, { activityId, message: outcome.join(' ') || undefined })}\n`);
+    } else {
+      throw new Error('Usage: flambe request <start|complete>');
+    }
+    return;
+  }
 
   if (command === 'plan') {
     const activityId = await flambe.plan(parsePlan(args));
