@@ -1,17 +1,16 @@
 import { clientFromEnv } from '../src/client.mjs';
 import { loadProjectEnv } from '../src/env.mjs';
+import { beginRequest, requestHeadline } from '../src/requests.mjs';
 
-/** One readable headline for a whole Pi user request, without an extra model call. */
-export function requestHeadline(prompt) {
-  const text = String(prompt ?? '').trim().replace(/\s+/g, ' ');
-  if (!text) return 'Image or attachment request';
-  return text.length > 120 ? `${text.slice(0, 119)}…` : text;
-}
+export { requestHeadline } from '../src/requests.mjs';
 
 /**
- * Pi owns the root lifecycle. The normal Flambé CLI owns child activities.
- * PI_SESSION_ID makes shell-invoked "flambe start" use the same agent identity
- * as this extension, so the reducer nests those starts under the open root.
+ * The Pi adapter detects when requests begin. Completion belongs to the work,
+ * not to Pi's agent_end/agent_settled or session shutdown notifications.
+ *
+ * A live root remains available across prompts, reloads, and session resumes.
+ * The agent explicitly ends it with "flambe request complete" only after the
+ * user's original request has actually been satisfied.
  */
 export function registerPiActivityRoots(pi, {
   env = process.env,
@@ -19,58 +18,58 @@ export function registerPiActivityRoots(pi, {
   loadEnv = loadProjectEnv,
 } = {}) {
   const originalSessionId = env.PI_SESSION_ID;
+  const originalRequestRootId = env.FLAMBE_REQUEST_ROOT_ID;
   let root = null;
 
-  const warn = (ctx, action, error) => {
-    if (ctx.hasUI) ctx.ui.notify(`Flambé: couldn't ${action}: ${error.message}`, 'warning');
-  };
-
-  const finish = async (ctx, message) => {
-    const current = root;
-    root = null;
-    if (!current) return;
-    try {
-      // At settlement, unfinished child activities must not strand the root.
-      await current.client.end({ activityId: current.id, force: true, ...(message ? { message } : {}) });
-    } catch (error) {
-      warn(ctx, 'close the request activity', error);
-    }
+  const warn = (ctx, message, error) => {
+    if (ctx.hasUI) ctx.ui.notify(`Flambé: ${message}: ${error.message}`, 'warning');
   };
 
   pi.on('before_agent_start', async (event, ctx) => {
     if (event.messageType !== 'user') return;
 
-    // If a new user request arrives before settlement, give it a fresh root.
-    await finish(ctx, 'Superseded by a new request');
-
     const sessionId = ctx.sessionManager.getSessionId();
     if (!sessionId) return;
-    // Child shell tools inherit this, and CLI already derives pi:<session id>.
     env.PI_SESSION_ID = sessionId;
 
     const config = { ...env };
     try {
       loadEnv({ cwd: ctx.cwd, env: config });
       if (!['FLAMBE_URL', 'FLAMBE_API_TOKEN', 'FLAMBE_TRACE_ID'].every(key => config[key]?.trim())) return;
+
+      // Resolve under the current Pi session, not an earlier session's root.
+      config.PI_SESSION_ID = sessionId;
+      delete config.FLAMBE_REQUEST_ROOT_ID;
       const client = makeClient(config);
-      // Detect a stopped or unauthorized server rather than silently queuing a
-      // root that the child activity commands cannot yet see.
       await client.supportsAgentCommands();
-      const id = await client.start({ name: requestHeadline(event.prompt), parentId: null });
-      root = { id, client };
+      const active = (await client.status({ activeOnly: true })).activities;
+      const roots = active.filter(activity => activity.parentId == null
+        && activity.agentId === client.agentId && activity.status === 'running');
+      // Reuse the active request until the agent explicitly completes it.
+      const existing = roots.at(-1);
+      const id = existing?.id ?? await beginRequest(client, { prompt: event.prompt });
+      root = { sessionId, id, client };
+      env.FLAMBE_REQUEST_ROOT_ID = String(id);
+      return {
+        systemPrompt: `${event.systemPrompt}
+
+Flambé is tracking the user's current request as root activity #${id}. Keep this root open through handoffs, retries, follow-ups, and pauses. Use normal Flambé commands to track meaningful subactivities. ONLY when the original request is actually complete, finish any open subactivities and run \`flambe request complete ${id} "<brief outcome>"\` before giving the final answer. If blocked or incomplete, leave the root open; do not close it merely because this Pi run ended. New prompts will continue the root until it is complete.`,
+      };
     } catch (error) {
-      warn(ctx, 'start the request activity', error);
+      root = null;
+      if (originalRequestRootId === undefined) delete env.FLAMBE_REQUEST_ROOT_ID;
+      else env.FLAMBE_REQUEST_ROOT_ID = originalRequestRootId;
+      warn(ctx, 'could not track the request', error);
     }
   });
 
-  pi.on('agent_settled', async (event, ctx) => {
-    await finish(ctx, event.aborted ? 'Interrupted' : undefined);
-  });
-
-  pi.on('session_shutdown', async (_event, ctx) => {
-    await finish(ctx, 'Pi session closed');
+  pi.on('session_shutdown', () => {
+    // Never equate the end of a session with the end of the user's request.
+    root = null;
     if (originalSessionId === undefined) delete env.PI_SESSION_ID;
     else env.PI_SESSION_ID = originalSessionId;
+    if (originalRequestRootId === undefined) delete env.FLAMBE_REQUEST_ROOT_ID;
+    else env.FLAMBE_REQUEST_ROOT_ID = originalRequestRootId;
   });
 }
 
