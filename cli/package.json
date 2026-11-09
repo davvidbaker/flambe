@@ -9,6 +9,7 @@
   "files": [
     "bin",
     "src",
+    "pi",
     "README.md",
     "skills",
     "scripts/prepare-skills.mjs"
@@ -40,5 +41,10 @@
   },
   "optionalDependencies": {
     "@openai/codex": "0.166.0"
+  },
+  "pi": {
+    "extensions": [
+      "./pi/flambe.js"
+    ]
   }
 }
