@@ -197,6 +197,27 @@ selection, but not this diagnostic log.
 Single Burner binds loopback only. Agents on other machines need a private bridge
 to reach it, or can use a separately hosted Flambe instance.
 
+## Use Single Burner with Pi
+
+Install the same Flambé CLI as a Pi extension. It automatically gives each
+user request one root activity, spanning the complete Pi run.
+
+```sh
+npm install -g @davvidbaker/flambe-cli
+pi install npm:@davvidbaker/flambe-cli
+```
+
+Start Single Burner and put its printed connection values in your project's
+`.env` (including `FLAMBE_RUNTIME_MODE=local_self_contained`). Reload or restart
+Pi, then submit a request. The Pi extension starts a top-level activity, and
+`flambe start` commands from the same Pi session naturally nest beneath it.
+At the end of the request, Pi closes the activity. The server does not need a
+separate Pi adapter: the CLI already supports both Single Burner and hosted
+Flambé. For development without a published CLI version, run
+`pi install ./cli` from the repository root.
+
+See [Pi extension details](../cli/README.md#pi-automatic-request-headlines-hosted-and-single-burner).
+
 ## Use it with local Codex
 
 Local Codex connects directly to Single Burner; no ChatGPT remote plugin,

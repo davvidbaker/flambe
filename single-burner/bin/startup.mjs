@@ -37,6 +37,13 @@ FLAMBE_TRACE_ID=${traceId}
      Restart Codex, then open /hooks to review/trust the hooks.
      Local Codex needs no tunnel, ChatGPT plugin, or extra API key.
 
+  ${heading('Connect Pi · automatic request headlines')}
+
+  Install the same CLI globally, then install its Pi extension:
+     pi install npm:@davvidbaker/flambe-cli
+     Restart Pi after installation; it reads the same project .env.
+     Each Pi user request gets a root activity; its subactivities nest inside.
+
   ${heading('Check the connection')}
      flambe status --active --json
      "activities": [] means connected, with no work running yet.
