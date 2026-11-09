@@ -146,9 +146,49 @@ on the work laptop still needs this native Codex verification.
 Reopen ended work by number with `flambe resurrect <activity-id> [message]`. This records a resurrection (`X`) event on the same activity, preserving its history. MCP clients can use `flambe_resurrect`.
 
 
+## Request-level activities (all Flambé runtimes)
+
+A user request is an ordinary top-level activity that **stays open until the
+actual request is complete**. Agent turns, idle periods, interruptions, follow-ups,
+and handoffs do not end it. No new database entity or model call is needed.
+
+Any harness or script can use the shared CLI lifecycle against **hosted Flambé
+or Single Burner**:
+
+```sh
+ROOT=$(flambe request start "Implement authentication")
+# Pass FLAMBE_REQUEST_ROOT_ID to every worker serving this request.
+FLAMBE_REQUEST_ROOT_ID="$ROOT" flambe start "Inspect auth code"
+# After the workers have ended their child activities and the request is done:
+flambe request complete "$ROOT" "Authentication implemented and verified"
+```
+
+`FLAMBE_REQUEST_ROOT_ID` makes a worker's first `flambe start` attach to the
+request root. Subsequent starts continue nesting under that worker's running
+subactivities within the same request. Explicit `--parent` or `--root` still
+wins. If the specified request root is closed, a normal start fails rather
+than silently attaching work somewhere else. Share the root ID across spawned
+agents to preserve one tree. Other active requests are unaffected.
+
+Completion is **explicit and non-forced**: a root with unfinished children
+cannot be completed. Finish them first, or leave the request active if it is
+blocked, needs another turn, or has been delegated. Ordinary `flambe suspend`
+and `flambe resume` remain available for paused work.
+
+MCP clients can use the existing `flambe_start` with `parent_id: null` for
+the request root, followed by `flambe_start` with the returned root ID as
+`parent_id` for the first activity in each agent. Use `flambe_end` on the root
+**without force** only after the request is complete. The local and hosted
+servers already enforce the same open-descendant safeguard.
+
+Every harness still needs a way to detect the initial request and a trustworthy
+completion signal. Flambé cannot infer completion from a disconnected CLI
+process or an idle agent; integrations must provide those signals. Pi is the
+first automatic start adapter. Other agent runtimes can reuse these commands.
+
 ## Pi: automatic request headlines (hosted and Single Burner)
 
-The Flambé CLI package is also a [Pi extension package](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/packages.md).
+The Flambé CLI package is a [Pi extension package](https://pi.dev/docs/latest/extensions).
 Install it into Pi after installing the CLI for agent shell commands:
 
 ```sh
@@ -156,21 +196,21 @@ npm install -g @davvidbaker/flambe-cli
 pi install npm:@davvidbaker/flambe-cli
 ```
 
-Or, while developing from a checkout, run `pi install ./cli` from the repository root.
-Reload Pi after installation. Keep your normal project `.env` containing
-`FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID`; the same extension
-works with a hosted Flambé instance or Single Burner's loopback API. For Single
-Burner also set `FLAMBE_RUNTIME_MODE=local_self_contained`.
+Or, while developing from a checkout, run `pi install ./cli` from the repository
+root. Reload Pi after installation. Keep the normal project `.env` containing
+`FLAMBE_URL`, `FLAMBE_API_TOKEN`, and `FLAMBE_TRACE_ID`. For Single Burner
+also set `FLAMBE_RUNTIME_MODE=local_self_contained`.
 
-At the start of each user prompt, the extension opens a **root** activity named
-from the prompt (first 120 characters, no extra model call). During the request,
-normal `flambe start` commands run by that Pi session inherit the same
-`PI_SESSION_ID` and nest beneath that root. When Pi settles, the extension
-closes the root and any leftover children. Interrupted turns are marked
-"Interrupted." Pi's internal custom-message runs do not create a new root.
+Pi automatically creates a root named from the first user prompt (up to 120
+characters, no model call). It injects `FLAMBE_REQUEST_ROOT_ID` into child
+shell commands and instructs the agent to run `flambe request complete <id>`
+**only after** the original request is satisfied and child activities ended.
+An interrupted or merely settled Pi run does not complete the request.
+Further prompts in the same session reuse the open root; reloads and resumed
+sessions recover it from server state. A new root begins after completion.
 
-This only automates the outer request. Agents still decide when to start and
-end meaningful subactivities. A separately launched agent with a different
-session identity needs an explicit `--parent <root-id>` to attach its work.
-If Flambé is not configured, the extension does nothing. The Single Burner
-server must be running for activities to appear.
+This adapter cannot reliably tell whether a completely unrelated prompt means
+the user abandoned an unfinished request. In that case, explicitly complete,
+suspend, or otherwise reconcile the old root before starting a new workstream.
+Separately launched agents need to receive the root ID in their environment or
+attach with `--parent`.
