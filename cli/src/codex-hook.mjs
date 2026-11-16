@@ -113,7 +113,7 @@ export async function runCodexHook(input, {
   env: shellEnv = process.env, now = Date.now,
   stateDir = shellEnv.FLAMBE_CODEX_HOOK_STATE_DIR?.trim() || join(homedir(), '.flambe', 'codex-hooks'),
   fetchImpl = globalThis.fetch, checkEveryMs = 30_000,
-  remindEveryCalls = 10, remindEveryMs = 90_000,
+  remindEveryCalls = 10, warnEveryMs = 90_000,
 } = {}) {
   const event = input?.hook_event_name;
   if (!EVENTS.has(event) || typeof input.cwd !== 'string' || !input.session_id) return {};
@@ -162,7 +162,6 @@ export async function runCodexHook(input, {
         if (tracking && !['status', 'ping', 'whoami'].includes(tracking) && succeeded(input.tool_response)) {
           state.workSinceTracked = 0;
           state.callsSinceReminder = 0;
-          state.remindedAt = at;
           state.checkedAt = 0;
         }
         return save({});
@@ -177,7 +176,7 @@ export async function runCodexHook(input, {
       }
       if (event === 'Stop' && (state.workInTurn < 3 || state.workSinceTracked === 0 || state.stopTurn === turn)) return save({});
       const restore = RESTORE.has(event);
-      const periodic = state.callsSinceReminder >= remindEveryCalls || at - (state.remindedAt ?? at) >= remindEveryMs;
+      const periodic = state.callsSinceReminder >= remindEveryCalls;
       const due = restore || periodic || event === 'Stop' || !state.checkedAt || at - state.checkedAt >= checkEveryMs;
       let activities = [];
       if (due) {
@@ -192,14 +191,13 @@ export async function runCodexHook(input, {
             && ((!activities.length && state.hasActive) || latestChange >= (state.lastWorkAt ?? 0))) {
             state.workSinceTracked = 0;
             state.callsSinceReminder = 0;
-            state.remindedAt = at;
           }
           state.fingerprint = current;
           state.available = true;
           state.hasActive = activities.length > 0;
         } catch {
           state.available = false;
-          if (!state.warnedAt || at - state.warnedAt >= remindEveryMs || restore) {
+          if (!state.warnedAt || at - state.warnedAt >= warnEveryMs || restore) {
             state.warnedAt = at;
             return save(connectionWarning(event));
           }
@@ -208,7 +206,7 @@ export async function runCodexHook(input, {
       }
       if (!state.available) return save({});
       if (event === 'Stop') {
-        if (!state.workSinceTracked) return save({});
+        if (!state.hasActive || !state.workSinceTracked) return save({});
         state.stopTurn = turn;
         return save({decision: 'block', reason: guidance(root, activities)
           + '\nBefore handing back, reconcile the work you actually did. End completed activities, suspend work waiting on the user, or explain why an activity remains running. Complete any requested reducer review. This is one checkpoint, not an instruction to invent work or end every open parent.'});
@@ -217,7 +215,6 @@ export async function runCodexHook(input, {
       if (restore || firstUntracked || periodic) {
         if (firstUntracked) state.missingWarned = true;
         state.callsSinceReminder = 0;
-        state.remindedAt = at;
         const interrupted = state.interrupted;
         state.interrupted = false;
         return save(context(event, guidance(root, activities, {restore, interrupted})));

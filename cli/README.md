@@ -114,11 +114,11 @@ see the updated PATH.
 
 - Session start, resume, prompts, subagent start, and compaction restore context.
 - Tool hooks use a small cache, refresh local status at most once per 30 seconds
-  during ordinary work, and request a fresh stack check every ten tool calls or
-  90 seconds while tools continue. Explicit lifecycle checkpoints reset the
-  call counter; a timer does not run while the agent is idle.
+  during ordinary work, and request a fresh stack check every ten tool calls.
+  Explicit lifecycle checkpoints reset the call counter.
 - Stop requests at most one reconciliation continuation after substantial tool
-  work without a verified checkpoint. It does not automatically close parents.
+  work without a verified checkpoint when the current agent has an open
+  activity.
 - Interrupt records a pending local reconciliation reminder; it does not mutate
   activities or prevent interruption.
 

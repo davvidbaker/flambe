@@ -126,33 +126,33 @@ test('missing Codex identity never inspects another agent stack or invents a sha
 });
 
 test('periodic checkpoints query a fresh stack while ordinary tools use cached local state', async t => {
-  const h = harness(t, {remindEveryCalls: 3});
+  const h = harness(t, {remindEveryCalls: 4});
   h.activities([h.own()]);
   await h.run('SessionStart');
   assert.deepEqual(await h.run('PreToolUse', {tool_name: 'Bash', tool_input: {command: 'rg needle'}}), {});
   assert.deepEqual(await h.run('PreToolUse', {tool_name: 'Bash', tool_input: {command: 'rg other'}}), {});
   assert.equal(h.calls().length, 2);
+  h.advance(120_000);
+  assert.deepEqual(await h.run('PreToolUse', {tool_name: 'Read'}), {});
   const checkpoint = await h.run('PreToolUse', {tool_name: 'apply_patch', tool_input: {command: 'patch'}});
   assert.match(JSON.stringify(checkpoint), /Actual work/);
-  assert.equal(h.calls().length, 4);
+  assert.equal(h.calls().length, 6);
 });
 
-test('an empty stack gets one early reminder and at most one Stop continuation per turn', async t => {
+test('an empty stack gets one early reminder and allows Stop after three tool calls', async t => {
   const h = harness(t);
   await h.run('SessionStart');
   const work = {tool_name: 'Bash', tool_input: {command: 'rg code'}};
   assert.match(JSON.stringify(await h.run('PreToolUse', work)), /no running activity/);
   assert.deepEqual(await h.run('PreToolUse', work), {});
   await h.run('PreToolUse', work);
-  const stop = await h.run('Stop');
-  assert.equal(stop.decision, 'block');
-  assert.match(stop.reason, /reconcile/);
+  h.activities([{...h.own(), agentId: 'someone-else'}]);
   assert.deepEqual(await h.run('Stop'), {});
-  assert.deepEqual(await h.run('Stop', {stop_hook_active: true}), {});
 });
 
 test('each new prompt can reconcile once even when the host omits turn_id', async t => {
   const h = harness(t);
+  h.activities([h.own()]);
   const fields = {turn_id: undefined};
   for (let turn = 0; turn < 2; turn++) {
     await h.run('UserPromptSubmit', fields);
@@ -164,6 +164,7 @@ test('each new prompt can reconcile once even when the host omits turn_id', asyn
 
 test('status/ping is not activity reconciliation; successful lifecycle writes acknowledge the checkpoint', async t => {
   const h = harness(t);
+  h.activities([h.own()]);
   await h.run('SessionStart');
   await h.run('PreToolUse', {tool_name: 'apply_patch'});
   await h.run('PostToolUse', {tool_name: 'Bash', tool_input: {command: 'flambe status --active'}, tool_response: {exit_code: 0}});
@@ -176,6 +177,7 @@ test('status/ping is not activity reconciliation; successful lifecycle writes ac
 
 test('a failed tracking command does not acknowledge work, and mixed scripts count as work', async t => {
   const h = harness(t);
+  h.activities([h.own()]);
   await h.run('SessionStart');
   await h.run('PreToolUse', {tool_name: 'apply_patch'});
   await h.run('PostToolUse', {tool_input: {command: 'flambe end 1'}, tool_response: {exit_code: 1}});
@@ -273,12 +275,14 @@ test('real CLI hook entrypoint resolves the project env from a nested cwd and ve
   assert.equal(checked.skillMatches, true);
   assert.match(JSON.stringify(await hook('SessionStart')), /no running activity/);
   await hook('PreToolUse', {tool_name: 'apply_patch'});
-  assert.equal((await hook('Stop')).decision, 'block');
-  assert.deepEqual(await hook('Stop', {stop_hook_active: true}), {});
+  assert.deepEqual(await hook('Stop'), {});
   assert.equal(local.store.getTrace(1, traceId).events.length, 0);
   const id = Number((await command(['start','Verify Codex hooks','--root'], f.root)).trim());
   await hook('PostToolUse', {tool_name: 'Bash', tool_input: {command: 'flambe start "Verify Codex hooks" --root'}, tool_response: {exit_code: 0}});
   assert.deepEqual(await hook('Stop'), {});
+  await hook('PreToolUse', {tool_name: 'apply_patch'});
+  assert.equal((await hook('Stop')).decision, 'block');
+  assert.deepEqual(await hook('Stop', {stop_hook_active: true}), {});
   await command(['end',String(id),'Local hook verification passed'], f.root);
   const trace = local.store.getTrace(1, traceId);
   assert.equal(trace.events.filter(event => event.phase === 'B').length, 1);
