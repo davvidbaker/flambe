@@ -31,6 +31,26 @@ On the first Flambe interaction in a conversation, and after an explicit switch:
 
 Do not list threads or categories merely to decide placement. The reducer owns placement.
 
+## Reconcile missed tracking on explicit request
+
+Treat “Why weren't you using Flambé?”, “Reconcile your Flambé history”, and
+`/flambe-reconcile` as requests to audit missed tracking. Inspect the current
+session and accessible subagent records. Work backward until you verify an
+interval whose trace matches the actual work and lifecycle transitions, or
+until you reach session start. A recent Flambé event alone is insufficient.
+
+Group semantic work, preserve ownership and nesting, and deduplicate work
+reported by both parent and subagent. Record observed and estimated times
+with their basis. Identify coverage gaps and inaccessible subagent branches.
+Keep full transcripts and tool logs in the harness.
+
+Use `flambe_reconcile_version` for the selected trace baseline and
+`flambe_reconcile` for the whole proposal. Continue to pass the verified
+instance ID on both calls. Refresh the baseline and reassess
+after a stale-version response. Report applied changes, estimates, and gaps.
+If reconciliation is unavailable, report the audit and the unavailable
+capability. Do not replay ordinary lifecycle calls or switch instances.
+
 ## Think in a stack
 
 Treat attention as a **call stack**, not a flat to-do list.

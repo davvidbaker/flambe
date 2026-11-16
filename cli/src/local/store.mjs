@@ -38,6 +38,15 @@ CREATE TABLE IF NOT EXISTS traces (
   UNIQUE (user_id, name)
 );
 
+CREATE TABLE IF NOT EXISTS reconciliation_receipts (
+  trace_id INTEGER NOT NULL REFERENCES traces(id) ON DELETE CASCADE,
+  agent_id TEXT NOT NULL,
+  repair_id TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  receipt TEXT NOT NULL,
+  PRIMARY KEY (trace_id, agent_id, repair_id)
+);
+
 CREATE TABLE IF NOT EXISTS threads (
   id INTEGER PRIMARY KEY,
   trace_id INTEGER NOT NULL REFERENCES traces(id) ON DELETE CASCADE,

@@ -9,6 +9,25 @@ Log semantic work units as a live flame chart — not commands, file opens, or h
 
 Needs Node 22+ and `flambe` on `PATH`. If it is missing, `npm install -g @davvidbaker/flambe-cli`; in this repo without a global install, use `node cli/bin/flambe.mjs`. You do not need to pick a name: the reducer names each agent on its first request, the CLI remembers it (`~/.flambe/agent-names.json`) and prints `reducer named this agent "X"` on stderr once. `flambe whoami` shows your id, name, and platform. `FLAMBE_AGENT_PLATFORM` is the product you run on (`"Cursor Cloud"`, `"Codex"`; derived from the session when unset) and is shared by many agents; it is not your name. Set `FLAMBE_AGENT_NAME` only to override; never put `FLAMBE_AGENT_ID`, `FLAMBE_AGENT_NAME`, or `FLAMBE_AGENT_PLATFORM` in `.env`.
 
+## Reconcile missed tracking on explicit request
+
+Treat “Why weren't you using Flambé?”, “Reconcile your Flambé history”, and
+`/flambe-reconcile` as requests to audit missed tracking. Inspect the current
+session and accessible subagent records. Work backward until you verify an
+interval whose trace matches the actual work and lifecycle transitions, or
+until you reach session start. A recent Flambé event alone is insufficient.
+
+Group semantic work, preserve ownership and nesting, and deduplicate work
+reported by both parent and subagent. Record observed and estimated times
+with their basis. Identify coverage gaps and inaccessible subagent branches.
+Keep full transcripts and tool logs in the harness.
+
+If the selected instance supports reconciliation, submit the whole repair
+as one proposal against its trace version. Refresh the baseline and reassess
+after a stale-version response. Report applied changes, estimates, and gaps.
+If reconciliation is unavailable, report the audit and the unavailable
+capability. Do not replay ordinary lifecycle calls or switch instances.
+
 ## Think in a stack
 
 Always treat attention as a **call stack**, not a flat to-do list.

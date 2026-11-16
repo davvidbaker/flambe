@@ -83,7 +83,7 @@ for (const modern of [false, true]) {
     assert.equal(JSON.stringify(discovery).includes(rawToken), false);
     assert.equal(JSON.stringify(discovery).includes(dbPath), false);
     const listed = await rpc('tools/list', {}, { modern });
-    assert.equal(listed.body.result.tools.length, 9);
+    assert.equal(listed.body.result.tools.length, 11);
     assert.ok(listed.body.result.tools.every(tool => tool.description.includes('Single Burner')));
     const startTool = listed.body.result.tools.find(tool => tool.name === 'flambe_start');
     assert.ok(startTool.inputSchema.required.includes('expected_instance_id'));
@@ -106,6 +106,19 @@ for (const modern of [false, true]) {
     const activity = reopened.structuredContent.state.activities.find(a => a.id === child.structuredContent.activity_id);
     assert.equal(activity.status, 'running');
     assert.equal(activity.latestEvent.phase, 'X');
+    const target = { trace_id: traceId, expected_instance_id: instance.id };
+    const baseline = await call('reconcile_version', target, { modern });
+    const proposal = {
+      repair_id: 'mcp-repair', trace_version: baseline.structuredContent.trace_version,
+      changes: [{
+        ref: 'historical', name: 'Recovered task', thread_id: rest.threads[0].id, reason: 'Missing start',
+        events: [{ phase: 'B', timestamp_ms: 1000, timing: 'observed', basis: 'Session timestamp' }],
+      }],
+    };
+    const reconciled = await call('reconcile', { ...args, proposal }, { modern });
+    assert.equal(reconciled.isError, false, JSON.stringify(reconciled));
+    assert.equal(reconciled.structuredContent.applied.length, 1);
+    assert.equal((await call('reconcile', { ...args, proposal }, { modern })).structuredContent.replayed, true);
     const log = readFileSync(logPath, 'utf8');
     const completed = log.trim().split('\n').map(JSON.parse).filter(e => e.event === 'command.completed');
     assert.ok(completed.some(e => e.command === 'start' && e.activity_id === child.structuredContent.activity_id));

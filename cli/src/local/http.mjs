@@ -1,6 +1,7 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import { reverseCreation } from './history.mjs';
+import { reconcileTrace, reviewReconciliation } from './reconcile.mjs';
 import { COMMANDS, CommandError, executeCommand } from './commands.mjs';
 
 function sendJson(res, status, body) {
@@ -216,6 +217,14 @@ async function dispatch(store, req, url, body, { auth, agent, runCommand }) {
       return { status: 422, json: { errors: { thread_ids: ['must include each thread in this trace exactly once'] } } };
     }
     return { status: 200, json: { data: { threads: result.threads } } };
+  }
+
+  const reconcileMatch = path.match(/^\/api\/traces\/(\d+)\/reconcile$/);
+  if (reconcileMatch && (method === 'GET' || method === 'POST')) {
+    const traceId = reconcileMatch[1];
+    if (method === 'GET') return reconcileTrace(store, userId, traceId, agent);
+    const accepted = await reviewReconciliation(store, userId, traceId, agent, body, runCommand.reviewReconciliation);
+    return reconcileTrace(store, userId, traceId, agent, body, accepted);
   }
 
   const historyMatch = path.match(/^\/api\/traces\/(\d+)\/reverse_creation$/);

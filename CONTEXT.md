@@ -32,3 +32,15 @@ An evaluation of work against its intent and current activity stack.
 **Reducer decision**:
 Guidance and any permitted activity change resulting from a reducer review.
 The reviewer may be the AI doing the work or a separate model.
+
+**Reconciliation proposal**:
+An evidence-backed reconstruction of missing or incorrect activity history,
+submitted against a specific version of a trace.
+
+**Coverage gap**:
+A period or branch of an agent session whose work could not be established
+from available evidence.
+
+**Repair receipt**:
+An immutable record of a reconciliation, including the state before and after
+the applied changes, provenance, and the time Flambé committed the repair.

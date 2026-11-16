@@ -69,6 +69,8 @@ defmodule FlambeNextWeb.McpControllerTest do
              "flambe_end",
              "flambe_message",
              "flambe_plan",
+             "flambe_reconcile",
+             "flambe_reconcile_version",
              "flambe_resume",
              "flambe_resurrect",
              "flambe_start",

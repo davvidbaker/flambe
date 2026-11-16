@@ -180,6 +180,13 @@ export class FlambeClient {
     return payload.data;
   }
 
+  async reconcile(proposal) {
+    const path = `/api/traces/${this.traceId}/reconcile`;
+    const result = await this.request(path, proposal === undefined
+      ? undefined : { method: 'POST', body: proposal });
+    return result.data;
+  }
+
   commandIdentity() {
     return {
       trace_id: this.traceId,

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { Server, createMcpHandler, fromJsonSchema, ProtocolError } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { CommandError, executeCommand } from './commands.mjs';
+import { reconcileTrace, reviewReconciliation } from './reconcile.mjs';
 import { schema as decisionSchema } from './reducer-review.mjs';
 
 const baseTools = JSON.parse(readFileSync(new URL('../mcp-tools.json', import.meta.url), 'utf8'));
@@ -63,6 +64,10 @@ export function createLocalMcpHandler(store, runCommand = (userId, command, args
         const traces = store.listTraces(auth.user.id).map(({ id, name: traceName }) => ({ id, name: traceName }));
         return result(instance, { traces, default_trace_id: traces[0]?.id ?? null, reducer: runCommand.info ?? { mode: 'off' } });
       }
+      if (name === 'flambe_reconcile_version') {
+        const response = reconcileTrace(store, auth.user.id, args.trace_id);
+        return response.status === 200 ? result(instance, response.json.data) : result(instance, { code: response.json.error }, true);
+      }
       const { expected_instance_id, ...arguments_ } = args;
       // Header identity has the same precedence as the REST adapter.
       const agentId = context.requestInfo.headers.get('x-flambe-agent-id') ?? arguments_.agent_id;
@@ -70,6 +75,12 @@ export function createLocalMcpHandler(store, runCommand = (userId, command, args
         context.requestInfo.headers.get('x-flambe-agent-name') ?? arguments_.agent_name,
         context.requestInfo.headers.get('x-flambe-agent-platform') ?? arguments_.platform) : null;
       try {
+        if (name === 'flambe_reconcile') {
+          const { trace_id, proposal } = arguments_;
+          const accepted = await reviewReconciliation(store, auth.user.id, trace_id, agent, proposal, runCommand.reviewReconciliation);
+          const response = reconcileTrace(store, auth.user.id, trace_id, agent, proposal, accepted);
+          return response.status === 200 ? result(instance, response.json.data) : result(instance, { code: response.json.error }, true);
+        }
         return result(instance, await runCommand(auth.user.id, name.slice('flambe_'.length), arguments_, agent));
       } catch (error) {
         if (!(error instanceof CommandError)) throw error;

@@ -144,3 +144,34 @@ Verify that the chart and that agent's lane reflect the result. A fresh install
 on the work laptop still needs this native Codex verification.
 
 Reopen ended work by number with `flambe resurrect <activity-id> [message]`. This records a resurrection (`X`) event on the same activity, preserving its history. MCP clients can use `flambe_resurrect`.
+
+
+## Reconcile missed tracking
+
+Use `/flambe-reconcile` in this repository's Claude Code or Pi setup, or
+`$flambe-reconcile` in Codex. On an explicit request, audit session records until the work and trace agree or
+you reach the start of the session. `flambe reconcile --history claude path.jsonl`
+reads local timing and tool metadata and discovers adjacent Claude subagent
+logs. Use `codex` or `pi` for those transcript formats and supply additional
+session files separately. Keep full records local.
+
+Run `flambe reconcile` for the configured trace version. Submit one JSON
+proposal with `flambe reconcile --file proposal.json`. Cloud and Single Burner
+also expose `flambe_reconcile_version` and `flambe_reconcile` over MCP.
+
+A proposal has a unique `repair_id`, the returned `trace_version`, a
+`coverage_gaps` array of short explanations, and a `changes` array. Each change
+has a unique `ref`, a `reason`, optional `session_ref`, and ordered `events`.
+Each event supplies `phase` (such as `B`, `S`, `R`, or `E`),
+`timestamp_ms` (Unix milliseconds), `timing` (`observed` or `estimated`),
+and a compact `basis`. For new activities supply `name` and `thread_id`.
+For existing activities supply `activity_id` and account for each recorded
+lifecycle event with its `event_id` and original phase. Omit `parent_ref` to
+keep an existing parent, pass null to make it a root, or reference a change
+earlier in the same proposal. Delegated changes may specify `agent_id` and a `session_ref` when the activity
+is nested under the caller's work. Existing activities outside that tree
+require the owning agent to submit the correction.
+
+The response includes before and after records, deferred conflicts, and the
+restored active stack. A stale version requires a fresh audit against the
+updated history. An identical replay of a committed proposal returns its receipt.

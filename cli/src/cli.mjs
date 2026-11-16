@@ -28,6 +28,8 @@ const usage = `Usage:
   flambe ping
   flambe whoami [--json]
   flambe message <text> [--activity <id>] [--json]
+  flambe reconcile [--file <proposal.json>]
+  flambe reconcile --history <codex|claude|pi> <session.jsonl>
   flambe decide <review-id> --file <decision.json>
   flambe setup codex [--check | --remove]
   flambe observe <kind> <value> [--unit <unit>] [--on <YYYY-MM-DD>] [--payload <json>] [--at <ISO-8601>]
@@ -450,6 +452,22 @@ export async function run(argv, { env = process.env, stdout = process.stdout, st
     });
     const result = await flambe.importBundle(bundle);
     stdout.write(`${JSON.stringify(result.data ?? result)}\n`);
+    return;
+  }
+
+  if (command === 'reconcile') {
+    if (args[0] === '--history' && args.length === 3) {
+      const { readSessionHistory } = await import('./session-history.mjs');
+      stdout.write(`${JSON.stringify(await readSessionHistory(args[1], args[2]))}\n`);
+      return;
+    }
+    if (args.length !== 0 && !(args.length === 2 && args[0] === '--file')) {
+      throw new Error('Use flambe reconcile [--file <proposal.json>] or --history <harness> <session.jsonl>');
+    }
+    const proposal = args.length === 0 ? undefined : JSON.parse(readFileSync(args[1], 'utf8'));
+    const flambe = client ?? clientFromEnv(env);
+    const result = await flambe.reconcile(proposal);
+    stdout.write(`${JSON.stringify(result)}\n`);
     return;
   }
 

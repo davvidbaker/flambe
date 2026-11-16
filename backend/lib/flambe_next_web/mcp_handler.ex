@@ -3,9 +3,10 @@ defmodule FlambeNextWeb.MCPHandler do
 
   use ExMCP.Server.Handler
 
-  alias FlambeNext.{AgentCommandIdentity, AgentCommands, Instance, Traces}
+  alias FlambeNext.{AgentCommandIdentity, AgentCommands, Agents, Instance, Traces}
+  alias FlambeNext.Traces.Reconciliation
 
-  @tools ~w(flambe_traces flambe_start flambe_end flambe_suspend flambe_resume flambe_resurrect flambe_status flambe_message flambe_plan)
+  @tools ~w(flambe_traces flambe_start flambe_end flambe_suspend flambe_resume flambe_resurrect flambe_status flambe_message flambe_plan flambe_reconcile_version flambe_reconcile)
 
   @impl GenServer
   def init(%{user: user} = context), do: {:ok, Map.put(context, :user, user)}
@@ -55,6 +56,32 @@ defmodule FlambeNextWeb.MCPHandler do
      }), state}
   end
 
+  def handle_call_tool(name, arguments, state)
+      when name in ~w(flambe_reconcile_version flambe_reconcile) and is_map(arguments) do
+    result =
+      with :ok <- Instance.verify(arguments),
+           id when is_integer(id) and id > 0 <- arguments["trace_id"] do
+        if name == "flambe_reconcile_version" do
+          Reconciliation.version(state.user, id)
+        else
+          with {:ok, agent} <- reconciliation_agent(state, arguments) do
+            Reconciliation.apply(state.user, id, agent, arguments["proposal"])
+          end
+        end
+      else
+        {:error, reason} -> {:error, reason}
+        _ -> {:error, :invalid_reconciliation}
+      end
+
+    response =
+      case result do
+        {:ok, data} -> tool_result(data)
+        {:error, reason} -> tool_error(reason)
+      end
+
+    {:ok, response, state}
+  end
+
   def handle_call_tool("flambe_" <> command, arguments, state)
       when command in ~w(start end suspend resume resurrect status message plan) and
              is_map(arguments) do
@@ -74,6 +101,18 @@ defmodule FlambeNextWeb.MCPHandler do
     {:error, ExMCP.Error.protocol_error(-32602, "Unknown tool: #{name}"), state}
   end
 
+  defp reconciliation_agent(%{agent: agent}, _arguments) when not is_nil(agent), do: {:ok, agent}
+
+  defp reconciliation_agent(state, %{"agent_id" => id} = arguments)
+       when is_binary(id) and byte_size(id) in 1..200 do
+    case Agents.identify(state.user, id, arguments["agent_name"], arguments["platform"]) do
+      {:ok, %{agent: agent}} -> {:ok, %{id: agent.agent_id, name: agent.name}}
+      _ -> {:error, :agent_id_required}
+    end
+  end
+
+  defp reconciliation_agent(_state, _arguments), do: {:error, :agent_id_required}
+
   defp execute(user, command, arguments) do
     with :ok <- Instance.verify(arguments) do
       AgentCommands.execute(user, command, Map.delete(arguments, "expected_instance_id"))
@@ -88,6 +127,32 @@ defmodule FlambeNextWeb.MCPHandler do
       %{},
       [],
       %{readOnlyHint: true, destructiveHint: false, openWorldHint: false}
+    )
+  end
+
+  defp tool_definition("flambe_reconcile_version") do
+    tool(
+      "flambe_reconcile_version",
+      "Read Flambé trace version",
+      "Read the baseline version for an explicit historical trace reconciliation.",
+      Map.take(common_properties(), [:trace_id]),
+      ["trace_id"],
+      %{readOnlyHint: true, destructiveHint: false, openWorldHint: false}
+    )
+  end
+
+  defp tool_definition("flambe_reconcile") do
+    tool(
+      "flambe_reconcile",
+      "Reconcile Flambé history",
+      "Review and atomically apply one evidence-backed historical repair. Keep full transcripts local.",
+      Map.put(common_properties(), :proposal, %{
+        type: "object",
+        description:
+          "Reconciliation proposal with repair_id, trace_version, changes and coverage_gaps."
+      }),
+      ["trace_id", "agent_id", "proposal"],
+      %{readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true}
     )
   end
 
@@ -327,6 +392,17 @@ defmodule FlambeNextWeb.MCPHandler do
 
   defp command_error(:reducer_not_configured),
     do: {"REDUCER_NOT_CONFIGURED", "The Reducer Agent is not configured", %{}}
+
+  defp command_error(reason)
+       when reason in [
+              :invalid_reconciliation,
+              :trace_version_changed,
+              :repair_id_reused,
+              :agent_id_required
+            ] do
+    code = reason |> Atom.to_string() |> String.upcase()
+    {code, "The reconciliation request could not be applied", %{}}
+  end
 
   defp command_error(_reason), do: {"COMMAND_FAILED", "The agent command failed", %{}}
 end

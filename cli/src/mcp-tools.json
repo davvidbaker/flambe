@@ -653,5 +653,106 @@
       },
       "additionalProperties": false
     }
+  },
+  {
+    "name": "flambe_reconcile_version",
+    "description": "Read the baseline version for an explicit historical trace reconciliation.",
+    "title": "Read Flambé trace version",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id"
+      ],
+      "properties": {
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "flambe_reconcile",
+    "description": "Review and atomically apply one evidence-backed historical repair. Keep full transcripts local.",
+    "title": "Reconcile Flambé history",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "openWorldHint": true,
+      "idempotentHint": true
+    },
+    "securitySchemes": [
+      {
+        "type": "oauth2",
+        "scopes": [
+          "flambe"
+        ]
+      }
+    ],
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "expected_instance_id",
+        "trace_id",
+        "agent_id",
+        "proposal"
+      ],
+      "properties": {
+        "trace_id": {
+          "type": "integer",
+          "description": "Flame/trace id",
+          "minimum": 1
+        },
+        "proposal": {
+          "type": "object",
+          "description": "Reconciliation proposal with repair_id, trace_version, changes and coverage_gaps."
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Stable agent id",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expected_instance_id": {
+          "type": "string",
+          "description": "Exact instance.id returned by flambe_traces on this connection. Never copy it from another connection.",
+          "minLength": 1
+        },
+        "agent_name": {
+          "type": "string",
+          "description": "Agent display name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "platform": {
+          "type": "string",
+          "description": "Agent host product",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
   }
 ]

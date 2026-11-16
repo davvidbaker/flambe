@@ -84,6 +84,8 @@ defmodule FlambeNextWeb.Router do
     put "/traces/:id/thread_order", TraceController, :reorder_threads
     post "/traces/:id/activity_moves", ActivityMoveController, :create
     post "/traces/:id/undo_move", ActivityMoveController, :undo
+    get "/traces/:id/reconcile", ReconciliationController, :show
+    post "/traces/:id/reconcile", ReconciliationController, :create
     post "/traces/:id/reverse_creation", ActivityMoveController, :reverse_creation
     resources "/threads", ThreadController, only: [:create, :show, :update, :delete]
     resources "/categories", CategoryController, except: [:new, :edit]
